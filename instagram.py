@@ -33,12 +33,13 @@ def get_fileExtension(url):
         return m.group(0)[1:-1]
 
 def download_pic(name, url, date_epoch, outputlabel=None):
+    # Returns true, if file was actually downloaded, i.e. updated
     if outputlabel is None:
         outputlabel = epochToString(date_epoch)
     filename = name.lower() + '/' + epochToString(date_epoch) + '.' + get_fileExtension(url)
     if os.path.isfile(filename):
         print(outputlabel + ' exists', end='  ', flush=True)
-        return None
+        return False
     r = requests.get(url, stream=True)
     if r.status_code == 200:
         print(outputlabel, end='  ', flush=True)
@@ -47,6 +48,7 @@ def download_pic(name, url, date_epoch, outputlabel=None):
             r.raw.decode_content = True
             shutil.copyfileobj(r.raw, f)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
+        return True
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
@@ -97,7 +99,7 @@ def download_profilepic(name, url):
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
-def download(name, ProfilePicOnly = False, DownloadVideos = True):
+def download(name, ProfilePicOnly = False, DownloadVideos = True, FastUpdate = False):
     data = get_json(name)
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     if len(data["entry_data"]) == 0:
@@ -113,7 +115,7 @@ def download(name, ProfilePicOnly = False, DownloadVideos = True):
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
                 print("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count = count + 1
-                download_pic(name, node["display_src"], node["date"])
+                downloaded = download_pic(name, node["display_src"], node["date"])
                 if "caption" in node:
                     saveCaption(name, node["date"], node["caption"])
                 if node["is_video"] and DownloadVideos:
@@ -122,6 +124,8 @@ def download(name, ProfilePicOnly = False, DownloadVideos = True):
                             video_data['entry_data']['PostPage'][0]['media']['video_url'], \
                             node["date"], 'mp4')
                 print()
+                if FastUpdate and not downloaded:
+                    return
             data = get_json(name, get_last_id(data))
 
 if __name__ == "__main__":
@@ -133,5 +137,7 @@ if __name__ == "__main__":
             help='Only download profile picture')
     parser.add_argument('-V', '--skip-videos', action='store_true',
             help='Do not download videos')
+    parser.add_argument('-F', '--fast-update', action='store_true',
+            help='Abort at encounter of first already-downloaded picture')
     args = parser.parse_args()
-    download(args.name, args.profile_pic_only, not args.skip_videos)
+    download(args.name, args.profile_pic_only, not args.skip_videos, args.fast_update)
