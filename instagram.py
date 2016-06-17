@@ -2,6 +2,9 @@
 
 import requests, re, json, datetime, shutil, os
 
+class DownloaderException(Exception):
+    pass
+
 def get_json(name, id = 0):
     r = requests.get('http://www.instagram.com/'+name, \
         params={'max_id': id})
@@ -45,7 +48,7 @@ def download_pic(name, url, date_epoch, outputlabel=None):
             shutil.copyfileobj(r.raw, f)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
     else:
-        print("ERROR: file \'" + url + "\' could not be downloaded")
+        raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
 def saveCaption(name, date_epoch, caption):
     filename = name.lower() + '/' + epochToString(date_epoch) + '.txt'
@@ -92,20 +95,18 @@ def download_profilepic(name, url):
             shutil.copyfileobj(r.raw, f)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_object.timestamp()))
     else:
-        print("ERROR: file \'" + url + "\' could not be downloaded")
+        raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
 def download(name, ProfilePicOnly = False, DownloadVideos = True):
     data = get_json(name)
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     if len(data["entry_data"]) == 0:
-        print("ERROR: user does not exist")
-        return None
+        raise DownloaderException("user does not exist")
     else:
         download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
         if len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0 \
                 and not ProfilePicOnly:
-            print("ERROR: no pics found")
-            return None
+            raise DownloaderException("no pics found")
     if not ProfilePicOnly:
         count = 1
         while not get_last_id(data) is None:
