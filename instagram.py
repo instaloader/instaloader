@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import requests, re, json, datetime, shutil, os, time, random, sys, pickle
+import requests, re, json, datetime, shutil, os, time, random, sys, pickle, getpass
 from io import BytesIO
 
 class DownloaderException(Exception):
@@ -88,7 +88,9 @@ def download_profilepic(name, url):
     if os.path.isfile(filename):
         print(filename + ' already exists')
         return None
-    m = re.search('http.*://.*instagram\.com/[^/]+/.', url)
+    m = re.search('http.*://.*instagram.*[^/]+\.(com|net)/[^/]+/.', url)
+    if m is None:
+        raise DownloaderException("url \'" + url + "\' could not be processed")
     index = len(m.group(0))-1
     offset = 8 if m.group(0)[-1:] == 's' else 0
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
@@ -124,7 +126,7 @@ def test_login(user, session):
         return False
     r = session.get('https://www.instagram.com/')
     time.sleep(4 * random.random() + 1)
-    if r.text.find(user.tolower()) != -1:
+    if r.text.find(user.lower()) != -1:
         return True
     else:
         return False
@@ -133,22 +135,29 @@ def get_session(user, passwd, EmptySessionOnly=False, session=None):
     def instaheader():
         user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
                     '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
-        return {'Accept-Encoding' : 'gzip, deflate', \
-                'Accept-Language' : 'en-US,en;q=0.8', \
-                'Connection' : 'keep-alive', \
-                'Content-Length' : '0', \
-                'Host' : 'www.instagram.com', \
-                'Origin' : 'https://www.instagram.com', \
-                'Referer' : 'https://www.instagram.com/', \
-                'User-Agent' : user_agent, \
-                'X-Instagram-AJAX' : '1', \
-                'X-Requested-With' : 'XMLHttpRequest'}
+        header = {  'Accept-Encoding' : 'gzip, deflate', \
+                    'Accept-Language' : 'en-US,en;q=0.8', \
+                    'Connection' : 'keep-alive', \
+                    'Content-Length' : '0', \
+                    'Host' : 'www.instagram.com', \
+                    'Origin' : 'https://www.instagram.com', \
+                    'Referer' : 'https://www.instagram.com/', \
+                    'User-Agent' : user_agent, \
+                    'X-Instagram-AJAX' : '1', \
+                    'X-Requested-With' : 'XMLHttpRequest'}
+        if EmptySessionOnly:
+            del header['Host']
+            del header['Origin']
+            del header['Referer']
+            del header['X-Instagram-AJAX']
+            del header['X-Requested-With']
+        return header
     if session is None:
         session = requests.Session()
         session.cookies.update({'sessionid' : '', 'mid' : '', 'ig_pr' : '1', \
                                      'ig_vw' : '1920', 'csrftoken' : '', \
                                            's_network' : '', 'ds_user_id' : ''})
-        session.headers.update(instaheader())
+    session.headers.update(instaheader())
     if EmptySessionOnly:
         return session
     r = session.get('https://www.instagram.com/')
@@ -177,22 +186,25 @@ def download(name, username = None, password = None, sessionfile = None, \
     else:
         download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
         time.sleep((SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
-        if data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
+        if not ProfilePicOnly and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
             if not test_login(username, session):
                 if username is None or password is None:
                     while True:
                         if username is None:
                             username = input('Enter your Instagram username to login: ')
                         if password is None:
-                            password = input('Enter your corresponding Instagram password: ')
+                            password = getpass.getpass(
+                                prompt='Enter your corresponding Instagram password: ')
                         session, status = get_session(username, password, session=session)
                         if status:
                             break
                 else:
                     session, status = get_session(username, password, session=session)
                     if not status:
-                        raise DownloaderException("aborting...")
-        if len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0 \
+                        raise DownloaderException("aborting due to login error")
+            data = get_json(name, session=session)
+        if (not "nodes" in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
+            or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                 and not ProfilePicOnly:
             raise DownloaderException("no pics found")
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
