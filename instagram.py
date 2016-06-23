@@ -88,7 +88,7 @@ def download_profilepic(name, url):
     if os.path.isfile(filename):
         print(filename + ' already exists')
         return None
-    m = re.search('http.*://.*instagram.*[^/]+\.(com|net)/[^/]+/.', url)
+    m = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
     if m is None:
         raise DownloaderException("url \'" + url + "\' could not be processed")
     index = len(m.group(0))-1
