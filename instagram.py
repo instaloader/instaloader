@@ -234,7 +234,7 @@ def download(name, username = None, password = None, sessionfile = None, \
 if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
-                                        'captions from a given public profile')
+                                        'captions from a given profile')
     parser.add_argument('target', help='Name of profile to download')
     parser.add_argument('-l', '--login', nargs='?', const=None, metavar='login_name',
             help='Provide login name for your Instagram account')
