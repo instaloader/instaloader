@@ -8,6 +8,12 @@ import requests
 class DownloaderException(Exception):
     pass
 
+quiet = False
+
+def log(*msg, sep='', end='\n', flush=False):
+    if not quiet:
+        print(*msg, sep=sep, end=end, flush=flush)
+
 def get_json(name, max_id = 0, session=None, SleepMinMax=[1,5]):
     if session is None:
         session = get_session(None, None, True)
@@ -44,11 +50,11 @@ def download_pic(name, url, date_epoch, outputlabel=None):
         outputlabel = epochToString(date_epoch)
     filename = name.lower() + '/' + epochToString(date_epoch) + '.' + get_fileExtension(url)
     if os.path.isfile(filename):
-        print(outputlabel + ' exists', end='  ', flush=True)
+        log(outputlabel + ' exists', end='  ', flush=True)
         return False
     r = get_session(None, None, True).get(url, stream=True)
     if r.status_code == 200:
-        print(outputlabel, end='  ', flush=True)
+        log(outputlabel, end='  ', flush=True)
         os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as f:
             r.raw.decode_content = True
@@ -64,7 +70,7 @@ def saveCaption(name, date_epoch, caption):
         with open(filename, 'r') as f:
             fileCaption = f.read()
         if fileCaption == caption:
-            print('txt unchanged', end=' ', flush=True)
+            log('txt unchanged', end=' ', flush=True)
             return None
         else:
             def get_filename(index):
@@ -75,8 +81,8 @@ def saveCaption(name, date_epoch, caption):
                 i = i + 1
             for index in range(i, 0, -1):
                 os.rename(get_filename(index-1), get_filename(index))
-            print('txt updated', end=' ', flush=True)
-    print('txt', end=' ', flush=True)
+            log('txt updated', end=' ', flush=True)
+    log('txt', end=' ', flush=True)
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'w') as text_file:
         text_file.write(caption)
@@ -88,7 +94,7 @@ def download_profilepic(name, url):
     filename = name.lower() + '/' + epochToString(date_object.timestamp()) + \
         '_UTC_profile_pic.' + url[-3:]
     if os.path.isfile(filename):
-        print(filename + ' already exists')
+        log(filename + ' already exists')
         return None
     m = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
     if m is None:
@@ -98,7 +104,7 @@ def download_profilepic(name, url):
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
     r = get_session(None, None, True).get(url, stream=True)
     if r.status_code == 200:
-        print(filename)
+        log(filename)
         os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as f:
             r.raw.decode_content = True
@@ -188,6 +194,9 @@ def download(name, username = None, password = None, sessionfile = None, \
         if not ProfilePicOnly and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
             if not test_login(username, session):
                 if username is None or password is None:
+                    if quiet:
+                        raise DownloaderException('Login required, credentials not given, ' \
+                                'operating in quiet mode')
                     while True:
                         if username is None:
                             username = input('Enter your Instagram username to login: ')
@@ -211,7 +220,7 @@ def download(name, username = None, password = None, sessionfile = None, \
         count = 1
         while not get_last_id(data) is None:
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
-                print("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count = count + 1
                 downloaded = download_pic(name, node["display_src"], node["date"])
                 time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
@@ -222,7 +231,7 @@ def download(name, username = None, password = None, sessionfile = None, \
                     download_pic(name, \
                             video_data['entry_data']['PostPage'][0]['media']['video_url'], \
                             node["date"], 'mp4')
-                print()
+                log()
                 if FastUpdate and not downloaded:
                     return
             data = get_json(name, get_last_id(data), session)
@@ -248,7 +257,11 @@ if __name__ == "__main__":
             help='Abort at encounter of first already-downloaded picture')
     parser.add_argument('-S', '--no-sleep', action='store_true',
             help='Do not sleep between actual downloads of pictures')
+    parser.add_argument('-q', '--quiet', action='store_true',
+            help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
+                    'if login credentials are needed but not given.')
     args = parser.parse_args()
+    quiet = args.quiet
     for target in args.targets:
         download(target, args.login, args.password, args.sessionfile,
                  args.profile_pic_only, not args.skip_videos, args.fast_update,
