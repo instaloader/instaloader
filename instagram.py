@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
-import requests, re, json, datetime, shutil, os, time, random, sys, pickle, getpass
+import re, json, datetime, shutil, os, time, random, sys, pickle, getpass
 from io import BytesIO
+from argparse import ArgumentParser
+import requests
 
 class DownloaderException(Exception):
     pass
 
-def get_json(name, id = 0, session=None, SleepMinMax=[1,5]):
+def get_json(name, max_id = 0, session=None, SleepMinMax=[1,5]):
     if session is None:
         session = get_session(None, None, True)
     r = session.get('http://www.instagram.com/'+name, \
-        params={'max_id': id})
+        params={'max_id': max_id})
     time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
     m = re.search('window\._sharedData = .*<', r.text)
     if m is None:
@@ -21,7 +23,7 @@ def get_json(name, id = 0, session=None, SleepMinMax=[1,5]):
 def get_last_id(data):
     if len(data["entry_data"]) == 0 or \
         len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0:
-            return None
+        return None
     else:
         data = data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
         return int(data[len(data)-1]["id"])
@@ -72,7 +74,7 @@ def saveCaption(name, date_epoch, caption):
             while os.path.isfile(get_filename(i)):
                 i = i + 1
             for index in range(i, 0, -1):
-                os.rename(get_filename(index-1), get_filename(index));
+                os.rename(get_filename(index-1), get_filename(index))
             print('txt updated', end=' ', flush=True)
     print('txt', end=' ', flush=True)
     os.makedirs(name.lower(), exist_ok=True)
@@ -126,10 +128,7 @@ def test_login(user, session):
         return False
     r = session.get('https://www.instagram.com/')
     time.sleep(4 * random.random() + 1)
-    if r.text.find(user.lower()) != -1:
-        return True
-    else:
-        return False
+    return r.text.find(user.lower()) != -1
 
 def get_session(user, passwd, EmptySessionOnly=False, session=None):
     def instaheader():
@@ -232,7 +231,6 @@ def download(name, username = None, password = None, sessionfile = None, \
         save_object(session, sessionfile)
 
 if __name__ == "__main__":
-    from argparse import ArgumentParser
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('target', help='Name of profile to download')
