@@ -1,0 +1,12 @@
+language: python
+python:
+# - "3.2"
+# - "3.3"
+# - "3.4"
+ - "3.5"
+# - "3.5-dev"
+# - "nightly"
+install:
+ - pip install --user pylint
+script:
+ - python3 -m pylint -r n -d bad-whitespace,bad-continuation,missing-docstring,anomalous-backslash-in-string,invalid-name,multiple-imports,dangerous-default-value --max-args=8 --max-locals=16 --max-branches=19 --max-nested-blocks=6 instagram
