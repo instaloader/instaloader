@@ -184,6 +184,9 @@ def get_session(user, passwd, EmptySessionOnly=False, session=None):
 
 def download(name, username = None, password = None, sessionfile = None, \
     ProfilePicOnly = False, DownloadVideos = True, FastUpdate = False, SleepMinMax=[0.25,2]):
+    # pylint:disable=too-many-arguments,too-many-locals,too-many-nested-blocks,too-many-branches
+    # We are aware that this function has many arguments, many local variables, many nested blocks
+    # and many branches. But we don't care.
     session = load_object(sessionfile)
     data = get_json(name, session=session)
     if len(data["entry_data"]) == 0:
@@ -211,14 +214,14 @@ def download(name, username = None, password = None, sessionfile = None, \
                     if not status:
                         raise DownloaderException("aborting due to login error")
             data = get_json(name, session=session)
-        if (not "nodes" in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
+        if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
             or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                 and not ProfilePicOnly:
             raise DownloaderException("no pics found")
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     if not ProfilePicOnly:
         count = 1
-        while not get_last_id(data) is None:
+        while get_last_id(data) is not None:
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
                 log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count = count + 1
