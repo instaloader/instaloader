@@ -233,7 +233,7 @@ def download(name, username = None, password = None, sessionfile = None, \
 if __name__ == "__main__":
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
-    parser.add_argument('target', help='Name of profile to download')
+    parser.add_argument('targets', nargs='+', help='Names of profiles to download')
     parser.add_argument('-l', '--login', nargs='?', const=None, metavar='login_name',
             help='Provide login name for your Instagram account')
     parser.add_argument('-p', '--password', nargs='?', const=None,
@@ -249,6 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('-S', '--no-sleep', action='store_true',
             help='Do not sleep between actual downloads of pictures')
     args = parser.parse_args()
-    download(args.target, args.login, args.password, args.sessionfile,
-             args.profile_pic_only, not args.skip_videos, args.fast_update,
-             [0,0] if args.no_sleep else [0.25,2])
+    for target in args.targets:
+        download(target, args.login, args.password, args.sessionfile,
+                 args.profile_pic_only, not args.skip_videos, args.fast_update,
+                 [0,0] if args.no_sleep else [0.25,2])
