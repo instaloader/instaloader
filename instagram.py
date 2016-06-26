@@ -243,11 +243,11 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('targets', nargs='+', help='Names of profiles to download')
-    parser.add_argument('-l', '--login', nargs='?', const=None, metavar='login_name',
+    parser.add_argument('-l', '--login', const=None, metavar='login_name',
             help='Provide login name for your Instagram account')
-    parser.add_argument('-p', '--password', nargs='?', const=None,
+    parser.add_argument('-p', '--password', const=None,
             help='Provide password for your Instagram account')
-    parser.add_argument('-f', '--sessionfile', nargs='?', const=None,
+    parser.add_argument('-f', '--sessionfile', const=None,
             help='File to store session key, defaults to /tmp/instaloader.session')
     parser.add_argument('-P', '--profile-pic-only', action='store_true',
             help='Only download profile picture')
