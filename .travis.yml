@@ -1,11 +1,10 @@
 language: python
 python:
-# - "3.2"
-# - "3.3"
-# - "3.4"
+ - "3.3"
+ - "3.4"
  - "3.5"
-# - "3.5-dev"
-# - "nightly"
+ - "3.5-dev"
+ - "nightly"
 install:
  - pip install pylint requests
 script:
