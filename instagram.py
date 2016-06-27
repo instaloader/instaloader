@@ -19,7 +19,7 @@ def get_json(name, max_id = 0, session=None, SleepMinMax=[1,5]):
         session = get_session(None, None, True)
     r = session.get('http://www.instagram.com/'+name, \
         params={'max_id': max_id})
-    time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
+    time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
     m = re.search('window\._sharedData = .*<', r.text)
     if m is None:
         return None
@@ -193,7 +193,7 @@ def download(name, username = None, password = None, sessionfile = None, \
         raise DownloaderException("user does not exist")
     else:
         download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
-        time.sleep((SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
+        time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
         if not ProfilePicOnly and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
             if not test_login(username, session):
                 if username is None or password is None:
@@ -209,6 +209,8 @@ def download(name, username = None, password = None, sessionfile = None, \
                         session, status = get_session(username, password, session=session)
                         if status:
                             break
+                        username = None
+                        password = None
                 else:
                     session, status = get_session(username, password, session=session)
                     if not status:
@@ -226,7 +228,7 @@ def download(name, username = None, password = None, sessionfile = None, \
                 log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count = count + 1
                 downloaded = download_pic(name, node["display_src"], node["date"])
-                time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
+                time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
                 if "caption" in node:
                     saveCaption(name, node["date"], node["caption"])
                 if node["is_video"] and DownloadVideos:
@@ -238,7 +240,7 @@ def download(name, username = None, password = None, sessionfile = None, \
                 if FastUpdate and not downloaded:
                     return
             data = get_json(name, get_last_id(data), session)
-            time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+SleepMinMax[0])
+            time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
     if test_login(username, session):
         save_object(session, sessionfile)
 
@@ -246,11 +248,11 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('targets', nargs='+', help='Names of profiles to download')
-    parser.add_argument('-l', '--login', const=None, metavar='login_name',
+    parser.add_argument('-l', '--login', metavar='login_name',
             help='Provide login name for your Instagram account')
-    parser.add_argument('-p', '--password', const=None,
+    parser.add_argument('-p', '--password',
             help='Provide password for your Instagram account')
-    parser.add_argument('-f', '--sessionfile', const=None,
+    parser.add_argument('-f', '--sessionfile',
             help='File to store session key, defaults to /tmp/instaloader.session')
     parser.add_argument('-P', '--profile-pic-only', action='store_true',
             help='Only download profile picture')
