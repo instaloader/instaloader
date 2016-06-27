@@ -8,23 +8,21 @@ import requests
 class DownloaderException(Exception):
     pass
 
-quiet = False
-
-def log(*msg, sep='', end='\n', flush=False):
+def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
 
-def get_json(name, max_id = 0, session=None, SleepMinMax=[1,5]):
+def get_json(name, max_id = 0, session=None, sleep_min_max=[1,5]):
     if session is None:
         session = get_session(None, None, True)
-    r = session.get('http://www.instagram.com/'+name, \
+    resp = session.get('http://www.instagram.com/'+name, \
         params={'max_id': max_id})
-    time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
-    m = re.search('window\._sharedData = .*<', r.text)
-    if m is None:
+    time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+    match = re.search('window\._sharedData = .*<', resp.text)
+    if match is None:
         return None
     else:
-        return json.loads(m.group(0)[21:-2])
+        return json.loads(match.group(0)[21:-2])
 
 def get_last_id(data):
     if len(data["entry_data"]) == 0 or \
@@ -34,43 +32,43 @@ def get_last_id(data):
         data = data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
         return int(data[len(data)-1]["id"])
 
-def epochToString(epoch):
+def epoch_to_string(epoch):
     return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d_%H-%M-%S')
 
-def get_fileExtension(url):
-    m = re.search('\.[a-z]*\?', url)
-    if m is None:
+def get_file_extension(url):
+    match = re.search('\.[a-z]*\?', url)
+    if match is None:
         return url[-3:]
     else:
-        return m.group(0)[1:-1]
+        return match.group(0)[1:-1]
 
-def download_pic(name, url, date_epoch, outputlabel=None):
+def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
     # Returns true, if file was actually downloaded, i.e. updated
     if outputlabel is None:
-        outputlabel = epochToString(date_epoch)
-    filename = name.lower() + '/' + epochToString(date_epoch) + '.' + get_fileExtension(url)
+        outputlabel = epoch_to_string(date_epoch)
+    filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.' + get_file_extension(url)
     if os.path.isfile(filename):
-        log(outputlabel + ' exists', end='  ', flush=True)
+        log(outputlabel + ' exists', end='  ', flush=True, quiet=quiet)
         return False
-    r = get_session(None, None, True).get(url, stream=True)
-    if r.status_code == 200:
-        log(outputlabel, end='  ', flush=True)
+    resp = get_session(None, None, True).get(url, stream=True)
+    if resp.status_code == 200:
+        log(outputlabel, end='  ', flush=True, quiet=quiet)
         os.makedirs(name.lower(), exist_ok=True)
-        with open(filename, 'wb') as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
+        with open(filename, 'wb') as file:
+            resp.raw.decode_content = True
+            shutil.copyfileobj(resp.raw, file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
         return True
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
-def saveCaption(name, date_epoch, caption):
-    filename = name.lower() + '/' + epochToString(date_epoch) + '.txt'
+def save_caption(name, date_epoch, caption, quiet=False):
+    filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
     if os.path.isfile(filename):
-        with open(filename, 'r') as f:
-            fileCaption = f.read()
-        if fileCaption == caption:
-            log('txt unchanged', end=' ', flush=True)
+        with open(filename, 'r') as file:
+            file_caption = file.read()
+        if file_caption == caption:
+            log('txt unchanged', end=' ', flush=True, quiet=quiet)
             return None
         else:
             def get_filename(index):
@@ -81,34 +79,34 @@ def saveCaption(name, date_epoch, caption):
                 i = i + 1
             for index in range(i, 0, -1):
                 os.rename(get_filename(index-1), get_filename(index))
-            log('txt updated', end=' ', flush=True)
-    log('txt', end=' ', flush=True)
+            log('txt updated', end=' ', flush=True, quiet=quiet)
+    log('txt', end=' ', flush=True, quiet=quiet)
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'w') as text_file:
         text_file.write(caption)
     os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
-def download_profilepic(name, url):
+def download_profilepic(name, url, quiet=False):
     date_object = datetime.datetime.strptime(requests.head(url).headers["Last-Modified"], \
         '%a, %d %b %Y %H:%M:%S GMT')
-    filename = name.lower() + '/' + epochToString(date_object.timestamp()) + \
+    filename = name.lower() + '/' + epoch_to_string(date_object.timestamp()) + \
         '_UTC_profile_pic.' + url[-3:]
     if os.path.isfile(filename):
-        log(filename + ' already exists')
+        log(filename + ' already exists', quiet=quiet)
         return None
-    m = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
-    if m is None:
+    match = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
+    if match is None:
         raise DownloaderException("url \'" + url + "\' could not be processed")
-    index = len(m.group(0))-1
-    offset = 8 if m.group(0)[-1:] == 's' else 0
+    index = len(match.group(0))-1
+    offset = 8 if match.group(0)[-1:] == 's' else 0
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
-    r = get_session(None, None, True).get(url, stream=True)
-    if r.status_code == 200:
-        log(filename)
+    resp = get_session(None, None, True).get(url, stream=True)
+    if resp.status_code == 200:
+        log(filename, quiet=quiet)
         os.makedirs(name.lower(), exist_ok=True)
-        with open(filename, 'wb') as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
+        with open(filename, 'wb') as file:
+            resp.raw.decode_content = True
+            shutil.copyfileobj(resp.raw, file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_object.timestamp()))
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
@@ -116,15 +114,15 @@ def download_profilepic(name, url):
 def save_object(obj, filename):
     if filename is None:
         filename = '/tmp/instaloader.session'
-    with open(filename, 'wb') as f:
-        shutil.copyfileobj(BytesIO(pickle.dumps(obj, -1)), f)
+    with open(filename, 'wb') as file:
+        shutil.copyfileobj(BytesIO(pickle.dumps(obj, -1)), file)
 
 def load_object(filename):
     if filename is None:
         filename = '/tmp/instaloader.session'
     if os.path.isfile(filename):
-        with open(filename, 'rb') as f:
-            obj = pickle.load(f)
+        with open(filename, 'rb') as sessionfile:
+            obj = pickle.load(sessionfile)
         return obj
     else:
         return None
@@ -132,11 +130,11 @@ def load_object(filename):
 def test_login(user, session):
     if user is None or session is None:
         return False
-    r = session.get('https://www.instagram.com/')
+    resp = session.get('https://www.instagram.com/')
     time.sleep(4 * random.random() + 1)
-    return r.text.find(user.lower()) != -1
+    return resp.text.find(user.lower()) != -1
 
-def get_session(user, passwd, EmptySessionOnly=False, session=None):
+def get_session(user, passwd, empty_session_only=False, session=None):
     def instaheader():
         user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
                     '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
@@ -150,7 +148,7 @@ def get_session(user, passwd, EmptySessionOnly=False, session=None):
                     'User-Agent' : user_agent, \
                     'X-Instagram-AJAX' : '1', \
                     'X-Requested-With' : 'XMLHttpRequest'}
-        if EmptySessionOnly:
+        if empty_session_only:
             del header['Host']
             del header['Origin']
             del header['Referer']
@@ -163,10 +161,10 @@ def get_session(user, passwd, EmptySessionOnly=False, session=None):
                                      'ig_vw' : '1920', 'csrftoken' : '', \
                                            's_network' : '', 'ds_user_id' : ''})
     session.headers.update(instaheader())
-    if EmptySessionOnly:
+    if empty_session_only:
         return session
-    r = session.get('https://www.instagram.com/')
-    session.headers.update({'X-CSRFToken':r.cookies['csrftoken']})
+    resp = session.get('https://www.instagram.com/')
+    session.headers.update({'X-CSRFToken':resp.cookies['csrftoken']})
     time.sleep(9 * random.random() + 3)
     login = session.post('https://www.instagram.com/accounts/login/ajax/', \
             data={'password':passwd,'username':user}, allow_redirects=True)
@@ -183,7 +181,8 @@ def get_session(user, passwd, EmptySessionOnly=False, session=None):
         return session, False
 
 def download(name, username = None, password = None, sessionfile = None, \
-    ProfilePicOnly = False, DownloadVideos = True, FastUpdate = False, SleepMinMax=[0.25,2]):
+    profile_pic_only = False, download_videos = True, fast_update = False, \
+    sleep_min_max=[0.25,2], quiet=False):
     # pylint:disable=too-many-arguments,too-many-locals,too-many-nested-blocks,too-many-branches
     # We are aware that this function has many arguments, many local variables, many nested blocks
     # and many branches. But we don't care.
@@ -192,9 +191,10 @@ def download(name, username = None, password = None, sessionfile = None, \
     if len(data["entry_data"]) == 0:
         raise DownloaderException("user does not exist")
     else:
-        download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
-        time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
-        if not ProfilePicOnly and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
+        download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
+                quiet=quiet)
+        time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+        if not profile_pic_only and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
             if not test_login(username, session):
                 if username is None or password is None:
                     if quiet:
@@ -218,33 +218,34 @@ def download(name, username = None, password = None, sessionfile = None, \
             data = get_json(name, session=session)
         if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
             or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
-                and not ProfilePicOnly:
+                and not profile_pic_only:
             raise DownloaderException("no pics found")
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
-    if not ProfilePicOnly:
+    if not profile_pic_only:
         count = 1
         while get_last_id(data) is not None:
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
-                log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
                 count = count + 1
-                downloaded = download_pic(name, node["display_src"], node["date"])
-                time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
+                downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+                time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random() + \
+                           abs(sleep_min_max[0]))
                 if "caption" in node:
-                    saveCaption(name, node["date"], node["caption"])
-                if node["is_video"] and DownloadVideos:
+                    save_caption(name, node["date"], node["caption"], quiet=quiet)
+                if node["is_video"] and download_videos:
                     video_data = get_json('p/' + node["code"], session=session)
                     download_pic(name, \
                             video_data['entry_data']['PostPage'][0]['media']['video_url'], \
-                            node["date"], 'mp4')
-                log()
-                if FastUpdate and not downloaded:
+                            node["date"], 'mp4', quiet=quiet)
+                log(quiet=quiet)
+                if fast_update and not downloaded:
                     return
             data = get_json(name, get_last_id(data), session)
-            time.sleep(abs(SleepMinMax[1]-SleepMinMax[0])*random.random()+abs(SleepMinMax[0]))
+            time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
     if test_login(username, session):
         save_object(session, sessionfile)
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('targets', nargs='+', help='Names of profiles to download')
@@ -266,8 +267,10 @@ if __name__ == "__main__":
             help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
-    quiet = args.quiet
     for target in args.targets:
         download(target, args.login, args.password, args.sessionfile,
                  args.profile_pic_only, not args.skip_videos, args.fast_update,
-                 [0,0] if args.no_sleep else [0.25,2])
+                 [0,0] if args.no_sleep else [0.25,2], args.quiet)
+
+if __name__ == "__main__":
+    main()
