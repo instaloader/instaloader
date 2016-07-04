@@ -188,8 +188,8 @@ def download(name, username = None, password = None, sessionfile = None, \
     # and many branches. But we don't care.
     session = load_object(sessionfile)
     data = get_json(name, session=session)
-    if len(data["entry_data"]) == 0:
-        raise DownloaderException("user does not exist")
+    if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
+        raise DownloaderException("user %s does not exist" % name)
     else:
         download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
                 quiet=quiet)
