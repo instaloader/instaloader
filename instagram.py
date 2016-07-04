@@ -244,6 +244,7 @@ def download(name, username = None, password = None, sessionfile = None, \
             time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
     if test_login(username, session):
         save_object(session, sessionfile)
+    return username
 
 def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
@@ -267,8 +268,9 @@ def main():
             help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
+    username = args.login
     for target in args.targets:
-        download(target, args.login, args.password, args.sessionfile,
+        username = download(target, username, args.password, args.sessionfile,
                  args.profile_pic_only, not args.skip_videos, args.fast_update,
                  [0,0] if args.no_sleep else [0.25,2], args.quiet)
 
