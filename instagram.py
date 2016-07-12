@@ -8,6 +8,12 @@ import requests
 class DownloaderException(Exception):
     pass
 
+class ProfileNotExistsException(DownloaderException):
+    pass
+
+class ProfileHasNoPicsException(DownloaderException):
+    pass
+
 def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
@@ -189,7 +195,7 @@ def download(name, username = None, password = None, sessionfile = None, \
     session = load_object(sessionfile)
     data = get_json(name, session=session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
-        raise DownloaderException("user %s does not exist" % name)
+        raise ProfileNotExistsException("user %s does not exist" % name)
     else:
         download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
                 quiet=quiet)
@@ -219,7 +225,7 @@ def download(name, username = None, password = None, sessionfile = None, \
         if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
             or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                 and not profile_pic_only:
-            raise DownloaderException("no pics found")
+            raise ProfileHasNoPicsException("user %s: no pics found" % name)
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     if not profile_pic_only:
         count = 1
@@ -269,10 +275,18 @@ def main():
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
     username = args.login
+    failedtargets = []
     for target in args.targets:
-        username = download(target, username, args.password, args.sessionfile,
-                 args.profile_pic_only, not args.skip_videos, args.fast_update,
-                 [0,0] if args.no_sleep else [0.25,2], args.quiet)
+        try:
+            username = download(target, username, args.password, args.sessionfile,
+                     args.profile_pic_only, not args.skip_videos, args.fast_update,
+                     [0,0] if args.no_sleep else [0.25,2], args.quiet)
+        except (ProfileNotExistsException, ProfileHasNoPicsException) as err:
+            failedtargets.append(target)
+            print("%s\n" % err, file=sys.stderr)
+    if len(args.targets) > 1 and len(failedtargets) > 0:
+        print("Errors occured (see above) while downloading profiles: %s\n" %
+                ", ".join(failedtargets), file=sys.stderr)
 
 if __name__ == "__main__":
     main()
