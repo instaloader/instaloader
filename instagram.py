@@ -283,9 +283,9 @@ def main():
                      [0,0] if args.no_sleep else [0.25,2], args.quiet)
         except (ProfileNotExistsException, ProfileHasNoPicsException) as err:
             failedtargets.append(target)
-            print("%s\n" % err, file=sys.stderr)
+            print("%s" % err, file=sys.stderr)
     if len(args.targets) > 1 and len(failedtargets) > 0:
-        print("Errors occured (see above) while downloading profiles: %s\n" %
+        print("Errors occured (see above) while downloading profiles: %s" %
                 ", ".join(failedtargets), file=sys.stderr)
 
 if __name__ == "__main__":
