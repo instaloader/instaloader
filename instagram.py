@@ -245,6 +245,8 @@ def download(name, username = None, password = None, sessionfile = None, \
                             node["date"], 'mp4', quiet=quiet)
                 log(quiet=quiet)
                 if fast_update and not downloaded:
+                    if test_login(username, session):
+                        save_object(session, sessionfile)
                     return username
             data = get_json(name, get_last_id(data), session)
             time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
