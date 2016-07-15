@@ -5,6 +5,8 @@ from io import BytesIO
 from argparse import ArgumentParser
 import requests
 
+DEFAULTSESSIONFILE = "/tmp/.instaloadersession"
+
 class DownloaderException(Exception):
     pass
 
@@ -119,13 +121,14 @@ def download_profilepic(name, url, quiet=False):
 
 def save_object(obj, filename):
     if filename is None:
-        filename = '/tmp/instaloader.session'
+        filename = DEFAULTSESSIONFILE
     with open(filename, 'wb') as file:
+        os.chmod(filename, 0o600)
         shutil.copyfileobj(BytesIO(pickle.dumps(obj, -1)), file)
 
 def load_object(filename):
     if filename is None:
-        filename = '/tmp/instaloader.session'
+        filename = DEFAULTSESSIONFILE
     if os.path.isfile(filename):
         with open(filename, 'rb') as sessionfile:
             obj = pickle.load(sessionfile)
@@ -263,7 +266,7 @@ def main():
     parser.add_argument('-p', '--password',
             help='Provide password for your Instagram account')
     parser.add_argument('-f', '--sessionfile',
-            help='File to store session key, defaults to /tmp/instaloader.session')
+            help='File to store session key, defaults to '+DEFAULTSESSIONFILE)
     parser.add_argument('-P', '--profile-pic-only', action='store_true',
             help='Only download profile picture')
     parser.add_argument('-V', '--skip-videos', action='store_true',
