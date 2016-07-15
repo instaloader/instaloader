@@ -221,7 +221,7 @@ def download(name, username = None, password = None, sessionfile = None, \
                     session, status = get_session(username, password, session=session)
                     if not status:
                         raise DownloaderException("aborting due to login error")
-            data = get_json(name, session=session)
+                data = get_json(name, session=session)
         if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
             or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                 and not profile_pic_only:
