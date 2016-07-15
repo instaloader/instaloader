@@ -16,6 +16,9 @@ class ProfileNotExistsException(DownloaderException):
 class ProfileHasNoPicsException(DownloaderException):
     pass
 
+class LoginRequiredException(DownloaderException):
+    pass
+
 def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
@@ -207,8 +210,7 @@ def download(name, username = None, password = None, sessionfile = None, \
             if not test_login(username, session):
                 if username is None or password is None:
                     if quiet:
-                        raise DownloaderException('Login required, credentials not given, ' \
-                                'operating in quiet mode')
+                        raise LoginRequiredException("user %s requires login" % name)
                     while True:
                         if username is None:
                             username = input('Enter your Instagram username to login: ')
@@ -286,7 +288,8 @@ def main():
             username = download(target, username, args.password, args.sessionfile,
                      args.profile_pic_only, not args.skip_videos, args.fast_update,
                      [0,0] if args.no_sleep else [0.25,2], args.quiet)
-        except (ProfileNotExistsException, ProfileHasNoPicsException) as err:
+        except (ProfileNotExistsException, ProfileHasNoPicsException,
+                LoginRequiredException) as err:
             failedtargets.append(target)
             print("%s" % err, file=sys.stderr)
     if len(args.targets) > 1 and len(failedtargets) > 0:
