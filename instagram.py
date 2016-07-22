@@ -16,6 +16,9 @@ class ProfileNotExistsException(DownloaderException):
 class ProfileHasNoPicsException(DownloaderException):
     pass
 
+class PrivateProfileNotFollowedException(DownloaderException):
+    pass
+
 class LoginRequiredException(DownloaderException):
     pass
 
@@ -227,6 +230,8 @@ def download(name, username = None, password = None, sessionfile = None, \
                     if not status:
                         raise DownloaderException("aborting due to login error")
                 data = get_json(name, session=session)
+            if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
+                raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
         if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
             or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                 and not profile_pic_only:
@@ -289,7 +294,7 @@ def main():
                      args.profile_pic_only, not args.skip_videos, args.fast_update,
                      [0,0] if args.no_sleep else [0.25,2], args.quiet)
         except (ProfileNotExistsException, ProfileHasNoPicsException,
-                LoginRequiredException) as err:
+                PrivateProfileNotFollowedException, LoginRequiredException) as err:
             failedtargets.append(target)
             print("%s" % err, file=sys.stderr)
     if len(args.targets) > 1 and len(failedtargets) > 0:
