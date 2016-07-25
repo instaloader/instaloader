@@ -8,4 +8,4 @@ python:
 install:
  - pip install pylint requests
 script:
- - python3 -m pylint -r n -d bad-whitespace,bad-continuation,missing-docstring,anomalous-backslash-in-string,multiple-imports,dangerous-default-value,locally-disabled instagram
+ - python3 -m pylint -r n -d bad-whitespace,bad-continuation,missing-docstring,anomalous-backslash-in-string,multiple-imports,dangerous-default-value,locally-disabled instaloader
