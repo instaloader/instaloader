@@ -125,22 +125,22 @@ def download_profilepic(name, url, quiet=False):
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
-def save_object(obj, filename):
+def save_object(obj, filename, quiet=False):
     if filename is None:
         filename = DEFAULTSESSIONFILE
     with open(filename, 'wb') as file:
+        log("Saved session to %s." % filename, quiet=quiet)
         os.chmod(filename, 0o600)
         shutil.copyfileobj(BytesIO(pickle.dumps(obj, -1)), file)
 
-def load_object(filename):
+def load_object(filename, quiet=False):
     if filename is None:
         filename = DEFAULTSESSIONFILE
     if os.path.isfile(filename):
         with open(filename, 'rb') as sessionfile:
             obj = pickle.load(sessionfile)
-        return obj
-    else:
-        return None
+            log("Loaded session from %s." % filename, quiet=quiet)
+            return obj
 
 def test_login(user, session):
     if user is None or session is None:
@@ -201,7 +201,7 @@ def download(name, username = None, password = None, sessionfile = None, \
     # pylint:disable=too-many-arguments,too-many-locals,too-many-nested-blocks,too-many-branches
     # We are aware that this function has many arguments, many local variables, many nested blocks
     # and many branches. But we don't care.
-    session = load_object(sessionfile)
+    session = load_object(sessionfile, quiet=quiet)
     data = get_json(name, session=session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
         raise ProfileNotExistsException("user %s does not exist" % name)
@@ -256,12 +256,12 @@ def download(name, username = None, password = None, sessionfile = None, \
                 log(quiet=quiet)
                 if fast_update and not downloaded:
                     if test_login(username, session):
-                        save_object(session, sessionfile)
+                        save_object(session, sessionfile, quiet=quiet)
                     return username
             data = get_json(name, get_last_id(data), session)
             time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
     if test_login(username, session):
-        save_object(session, sessionfile)
+        save_object(session, sessionfile, quiet=quiet)
     return username
 
 def main():
