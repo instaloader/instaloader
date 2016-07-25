@@ -199,6 +199,7 @@ def download(name, username = None, password = None, sessionfile = None, \
     profile_pic_only = False, download_videos = True, fast_update = False, \
     sleep_min_max=[0.25,2], quiet=False):
     # pylint:disable=too-many-arguments,too-many-locals,too-many-nested-blocks,too-many-branches
+    # pylint:disable=too-many-statements
     # We are aware that this function has many arguments, many local variables, many nested blocks
     # and many branches. But we don't care.
     session = load_object(sessionfile, quiet=quiet)
