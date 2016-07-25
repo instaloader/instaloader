@@ -22,6 +22,9 @@ class PrivateProfileNotFollowedException(DownloaderException):
 class LoginRequiredException(DownloaderException):
     pass
 
+class LoginException(DownloaderException):
+    pass
+
 def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
@@ -187,13 +190,11 @@ def get_session(user, passwd, empty_session_only=False, session=None):
     time.sleep(5 * random.random())
     if login.status_code == 200:
         if test_login(user, session):
-            return session, True
+            return session
         else:
-            print('Login error! Check your credentials!', file=sys.stderr)
-            return session, False
+            raise LoginException('Login error! Check your credentials!')
     else:
-        print('Login error! Connection error!', file=sys.stderr)
-        return session, False
+        raise LoginException('Login error! Connection error!')
 
 def download(name, username = None, password = None, sessionfile = None, \
     profile_pic_only = False, download_videos = True, fast_update = False, \
@@ -221,15 +222,16 @@ def download(name, username = None, password = None, sessionfile = None, \
                         if password is None:
                             password = getpass.getpass(
                                 prompt='Enter your corresponding Instagram password: ')
-                        session, status = get_session(username, password, session=session)
-                        if status:
+                        try:
+                            session = get_session(username, password, session=session)
+                        except LoginException as err:
+                            print("%s" % err, file=sys.stderr)
+                        else:
                             break
                         username = None
                         password = None
                 else:
-                    session, status = get_session(username, password, session=session)
-                    if not status:
-                        raise DownloaderException("aborting due to login error")
+                    session = get_session(username, password, session=session)
                 data = get_json(name, session=session)
             if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
                 raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
