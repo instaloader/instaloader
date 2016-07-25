@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import re, json, datetime, shutil, os, time, random, sys, pickle, getpass
-from io import BytesIO
 from argparse import ArgumentParser
-import requests
+import requests, requests.utils
 
 DEFAULTSESSIONFILE = "/tmp/.instaloadersession"
 
@@ -128,22 +127,36 @@ def download_profilepic(name, url, quiet=False):
     else:
         raise DownloaderException("file \'" + url + "\' could not be downloaded")
 
-def save_object(obj, filename, quiet=False):
+def save_session(session, filename, quiet=False):
     if filename is None:
         filename = DEFAULTSESSIONFILE
-    with open(filename, 'wb') as file:
-        log("Saved session to %s." % filename, quiet=quiet)
+    with open(filename, 'wb') as sessionfile:
         os.chmod(filename, 0o600)
-        shutil.copyfileobj(BytesIO(pickle.dumps(obj, -1)), file)
+        pickle.dump(requests.utils.dict_from_cookiejar(session.cookies), sessionfile)
+        log("Saved session to %s." % filename, quiet=quiet)
 
-def load_object(filename, quiet=False):
+def load_session(filename, quiet=False):
     if filename is None:
         filename = DEFAULTSESSIONFILE
     if os.path.isfile(filename):
         with open(filename, 'rb') as sessionfile:
-            obj = pickle.load(sessionfile)
+            user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
+                        '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
+            header = {  'Accept-Encoding' : 'gzip, deflate', \
+                        'Accept-Language' : 'en-US,en;q=0.8', \
+                        'Connection' : 'keep-alive', \
+                        'Content-Length' : '0', \
+                        'Host' : 'www.instagram.com', \
+                        'Origin' : 'https://www.instagram.com', \
+                        'Referer' : 'https://www.instagram.com/', \
+                        'User-Agent' : user_agent, \
+                        'X-Instagram-AJAX' : '1', \
+                        'X-Requested-With' : 'XMLHttpRequest'}
+            session = requests.Session()
+            session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
+            session.headers.update(header)
             log("Loaded session from %s." % filename, quiet=quiet)
-            return obj
+            return session
 
 def test_login(user, session):
     if user is None or session is None:
@@ -266,7 +279,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
     # Login, if desired
     session = None
     if username is not None:
-        session = load_object(sessionfile, quiet=quiet)
+        session = load_session(sessionfile, quiet=quiet)
         if not test_login(username, session):
             session = get_logged_in_session(username, password, quiet)
         log("Logged in as %s." % username, quiet=quiet)
@@ -285,7 +298,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
                 ", ".join(failedtargets), file=sys.stderr)
     # Save session if it is useful
     if username is not None:
-        save_object(session, sessionfile, quiet=quiet)
+        save_session(session, sessionfile, quiet=quiet)
 
 def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
