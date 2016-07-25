@@ -196,76 +196,96 @@ def get_session(user, passwd, empty_session_only=False, session=None):
     else:
         raise LoginException('Login error! Connection error!')
 
-def download(name, username = None, password = None, sessionfile = None, \
-    profile_pic_only = False, download_videos = True, fast_update = False, \
-    sleep_min_max=[0.25,2], quiet=False):
-    # pylint:disable=too-many-arguments,too-many-locals,too-many-nested-blocks,too-many-branches
-    # pylint:disable=too-many-statements
-    # We are aware that this function has many arguments, many local variables, many nested blocks
-    # and many branches. But we don't care.
-    session = load_object(sessionfile, quiet=quiet)
+def download(name, session=None, profile_pic_only=False, download_videos=True,
+        fast_update=False, sleep_min_max=[0.25,2], quiet=False):
+    """Download one profile"""
+    # pylint:disable=too-many-arguments
+    # Get profile main page json
     data = get_json(name, session=session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
         raise ProfileNotExistsException("user %s does not exist" % name)
-    else:
-        download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
-                quiet=quiet)
-        time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
-        if not profile_pic_only and data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
-            if not test_login(username, session):
-                if username is None or password is None:
-                    if quiet:
-                        raise LoginRequiredException("user %s requires login" % name)
-                    while True:
-                        if username is None:
-                            username = input('Enter your Instagram username to login: ')
-                        if password is None:
-                            password = getpass.getpass(
-                                prompt='Enter your corresponding Instagram password: ')
-                        try:
-                            session = get_session(username, password, session=session)
-                        except LoginException as err:
-                            print("%s" % err, file=sys.stderr)
-                        else:
-                            break
-                        username = None
-                        password = None
-                else:
-                    session = get_session(username, password, session=session)
-                data = get_json(name, session=session)
-            if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
-                raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
-        if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] \
-            or len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
-                and not profile_pic_only:
-            raise ProfileHasNoPicsException("user %s: no pics found" % name)
+    # Download profile picture
+    download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
+            quiet=quiet)
+    time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+    if profile_pic_only:
+        return
+    # Catch some errors
+    if data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
+        if not session:
+            raise LoginRequiredException("user %s requires login" % name)
+        if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
+            raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
+    if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
+            len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
+                    and not profile_pic_only:
+        raise ProfileHasNoPicsException("user %s: no pics found" % name)
+    # Iterate over pictures and download them
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
-    if not profile_pic_only:
-        count = 1
-        while get_last_id(data) is not None:
-            for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
-                log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
-                count = count + 1
-                downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
-                time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random() + \
-                           abs(sleep_min_max[0]))
-                if "caption" in node:
-                    save_caption(name, node["date"], node["caption"], quiet=quiet)
-                if node["is_video"] and download_videos:
-                    video_data = get_json('p/' + node["code"], session=session)
-                    download_pic(name, \
-                            video_data['entry_data']['PostPage'][0]['media']['video_url'], \
-                            node["date"], 'mp4', quiet=quiet)
-                log(quiet=quiet)
-                if fast_update and not downloaded:
-                    if test_login(username, session):
-                        save_object(session, sessionfile, quiet=quiet)
-                    return username
-            data = get_json(name, get_last_id(data), session)
-            time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
-    if test_login(username, session):
+    count = 1
+    while get_last_id(data) is not None:
+        for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
+            log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
+            count = count + 1
+            downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+            time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random() + \
+                       abs(sleep_min_max[0]))
+            if "caption" in node:
+                save_caption(name, node["date"], node["caption"], quiet=quiet)
+            if node["is_video"] and download_videos:
+                video_data = get_json('p/' + node["code"], session=session)
+                download_pic(name, \
+                        video_data['entry_data']['PostPage'][0]['media']['video_url'], \
+                        node["date"], 'mp4', quiet=quiet)
+            log(quiet=quiet)
+            if fast_update and not downloaded:
+                return
+        data = get_json(name, get_last_id(data), session)
+        time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+
+def get_logged_in_session(username, password=None, quiet=False):
+    """Logs in and returns session"""
+    if password is not None:
+        return get_session(username, password)
+    if quiet:
+        raise LoginRequiredException("Quiet mode requires given password or valid "
+                "session file.")
+    while password is None:
+        password = getpass.getpass(prompt='Enter your Instagram password: ')
+        try:
+            return get_session(username, password)
+        except LoginException as err:
+            print(err, file=sys.stderr)
+            password = None
+
+def download_profiles(targets, username=None, password=None, sessionfile=None,
+        profile_pic_only=False, download_videos=True, fast_update=False,
+        sleep_min_max=[0.25,2], quiet=False):
+    """Download set of profiles and handle sessions"""
+    # pylint:disable=too-many-arguments
+    # Login, if desired
+    session = None
+    if username is not None:
+        session = load_object(sessionfile, quiet=quiet)
+        if not test_login(username, session):
+            session = get_logged_in_session(username, password, quiet)
+        log("Logged in as %s." % username, quiet=quiet)
+    # Iterate through targets list and download them
+    failedtargets = []
+    for target in targets:
+        try:
+            download(target, session, profile_pic_only, download_videos,
+                    fast_update, sleep_min_max, quiet)
+        except (ProfileNotExistsException, ProfileHasNoPicsException,
+                PrivateProfileNotFollowedException, LoginRequiredException) as err:
+            failedtargets.append(target)
+            print(err, file=sys.stderr)
+    if len(targets) > 1 and len(failedtargets) > 0:
+        print("Errors occured (see above) while downloading profiles: %s" %
+                ", ".join(failedtargets), file=sys.stderr)
+    # Save session if it is useful
+    if username is not None:
         save_object(session, sessionfile, quiet=quiet)
-    return username
 
 def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
@@ -289,20 +309,9 @@ def main():
             help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
-    username = args.login
-    failedtargets = []
-    for target in args.targets:
-        try:
-            username = download(target, username, args.password, args.sessionfile,
-                     args.profile_pic_only, not args.skip_videos, args.fast_update,
-                     [0,0] if args.no_sleep else [0.25,2], args.quiet)
-        except (ProfileNotExistsException, ProfileHasNoPicsException,
-                PrivateProfileNotFollowedException, LoginRequiredException) as err:
-            failedtargets.append(target)
-            print("%s" % err, file=sys.stderr)
-    if len(args.targets) > 1 and len(failedtargets) > 0:
-        print("Errors occured (see above) while downloading profiles: %s" %
-                ", ".join(failedtargets), file=sys.stderr)
+    download_profiles(args.targets, args.login, args.password, args.sessionfile,
+            args.profile_pic_only, not args.skip_videos, args.fast_update,
+            [0,0] if args.no_sleep else [0.25,2], args.quiet)
 
 if __name__ == "__main__":
     main()
