@@ -28,9 +28,7 @@ def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
 
-def get_json(name, max_id = 0, session=None, sleep_min_max=[1,5]):
-    if session is None:
-        session = get_session(None, None, True)
+def get_json(name, session, max_id=0, sleep_min_max=[1,5]):
     resp = session.get('http://www.instagram.com/'+name, \
         params={'max_id': max_id})
     time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
@@ -66,7 +64,7 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
     if os.path.isfile(filename):
         log(outputlabel + ' exists', end='  ', flush=True, quiet=quiet)
         return False
-    resp = get_session(None, None, True).get(url, stream=True)
+    resp = get_anonymous_session().get(url, stream=True)
     if resp.status_code == 200:
         log(outputlabel, end='  ', flush=True, quiet=quiet)
         os.makedirs(name.lower(), exist_ok=True)
@@ -116,7 +114,7 @@ def download_profilepic(name, url, quiet=False):
     index = len(match.group(0))-1
     offset = 8 if match.group(0)[-1:] == 's' else 0
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
-    resp = get_session(None, None, True).get(url, stream=True)
+    resp = get_anonymous_session().get(url, stream=True)
     if resp.status_code == 200:
         log(filename, quiet=quiet)
         os.makedirs(name.lower(), exist_ok=True)
@@ -140,21 +138,9 @@ def load_session(filename, quiet=False):
         filename = DEFAULTSESSIONFILE
     if os.path.isfile(filename):
         with open(filename, 'rb') as sessionfile:
-            user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-                        '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
-            header = {  'Accept-Encoding' : 'gzip, deflate', \
-                        'Accept-Language' : 'en-US,en;q=0.8', \
-                        'Connection' : 'keep-alive', \
-                        'Content-Length' : '0', \
-                        'Host' : 'www.instagram.com', \
-                        'Origin' : 'https://www.instagram.com', \
-                        'Referer' : 'https://www.instagram.com/', \
-                        'User-Agent' : user_agent, \
-                        'X-Instagram-AJAX' : '1', \
-                        'X-Requested-With' : 'XMLHttpRequest'}
             session = requests.Session()
             session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-            session.headers.update(header)
+            session.headers.update(default_http_header())
             log("Loaded session from %s." % filename, quiet=quiet)
             return session
 
@@ -165,35 +151,42 @@ def test_login(user, session):
     time.sleep(4 * random.random() + 1)
     return resp.text.find(user.lower()) != -1
 
-def get_session(user, passwd, empty_session_only=False, session=None):
-    def instaheader():
-        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-                    '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
-        header = {  'Accept-Encoding' : 'gzip, deflate', \
-                    'Accept-Language' : 'en-US,en;q=0.8', \
-                    'Connection' : 'keep-alive', \
-                    'Content-Length' : '0', \
-                    'Host' : 'www.instagram.com', \
-                    'Origin' : 'https://www.instagram.com', \
-                    'Referer' : 'https://www.instagram.com/', \
-                    'User-Agent' : user_agent, \
-                    'X-Instagram-AJAX' : '1', \
-                    'X-Requested-With' : 'XMLHttpRequest'}
-        if empty_session_only:
-            del header['Host']
-            del header['Origin']
-            del header['Referer']
-            del header['X-Instagram-AJAX']
-            del header['X-Requested-With']
-        return header
-    if session is None:
-        session = requests.Session()
-        session.cookies.update({'sessionid' : '', 'mid' : '', 'ig_pr' : '1', \
-                                     'ig_vw' : '1920', 'csrftoken' : '', \
-                                           's_network' : '', 'ds_user_id' : ''})
-    session.headers.update(instaheader())
+def default_http_header(empty_session_only=False):
+    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
+                '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
+    header = {  'Accept-Encoding' : 'gzip, deflate', \
+                'Accept-Language' : 'en-US,en;q=0.8', \
+                'Connection' : 'keep-alive', \
+                'Content-Length' : '0', \
+                'Host' : 'www.instagram.com', \
+                'Origin' : 'https://www.instagram.com', \
+                'Referer' : 'https://www.instagram.com/', \
+                'User-Agent' : user_agent, \
+                'X-Instagram-AJAX' : '1', \
+                'X-Requested-With' : 'XMLHttpRequest'}
     if empty_session_only:
-        return session
+        del header['Host']
+        del header['Origin']
+        del header['Referer']
+        del header['X-Instagram-AJAX']
+        del header['X-Requested-With']
+    return header
+
+def get_anonymous_session():
+    session = requests.Session()
+    session.cookies.update({'sessionid' : '', 'mid' : '', 'ig_pr' : '1', \
+                                 'ig_vw' : '1920', 'csrftoken' : '', \
+                                       's_network' : '', 'ds_user_id' : ''})
+    session.headers.update(default_http_header(empty_session_only=True))
+    return session
+
+def get_session(user, passwd):
+    """Log in to instagram with given username and password and return session object"""
+    session = requests.Session()
+    session.cookies.update({'sessionid' : '', 'mid' : '', 'ig_pr' : '1', \
+                                 'ig_vw' : '1920', 'csrftoken' : '', \
+                                       's_network' : '', 'ds_user_id' : ''})
+    session.headers.update(default_http_header())
     resp = session.get('https://www.instagram.com/')
     session.headers.update({'X-CSRFToken':resp.cookies['csrftoken']})
     time.sleep(9 * random.random() + 3)
@@ -209,12 +202,12 @@ def get_session(user, passwd, empty_session_only=False, session=None):
     else:
         raise LoginException('Login error! Connection error!')
 
-def download(name, session=None, profile_pic_only=False, download_videos=True,
+def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, sleep_min_max=[0.25,2], quiet=False):
     """Download one profile"""
     # pylint:disable=too-many-arguments
     # Get profile main page json
-    data = get_json(name, session=session)
+    data = get_json(name, session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
         raise ProfileNotExistsException("user %s does not exist" % name)
     # Download profile picture
@@ -246,18 +239,18 @@ def download(name, session=None, profile_pic_only=False, download_videos=True,
             if "caption" in node:
                 save_caption(name, node["date"], node["caption"], quiet=quiet)
             if node["is_video"] and download_videos:
-                video_data = get_json('p/' + node["code"], session=session)
+                video_data = get_json('p/' + node["code"], session)
                 download_pic(name, \
                         video_data['entry_data']['PostPage'][0]['media']['video_url'], \
                         node["date"], 'mp4', quiet=quiet)
             log(quiet=quiet)
             if fast_update and not downloaded:
                 return
-        data = get_json(name, get_last_id(data), session)
+        data = get_json(name, session, max_id=get_last_id(data))
         time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
 
 def get_logged_in_session(username, password=None, quiet=False):
-    """Logs in and returns session"""
+    """Logs in and returns session, asking user for password if needed"""
     if password is not None:
         return get_session(username, password)
     if quiet:
@@ -277,12 +270,13 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
     """Download set of profiles and handle sessions"""
     # pylint:disable=too-many-arguments
     # Login, if desired
-    session = None
     if username is not None:
         session = load_session(sessionfile, quiet=quiet)
         if not test_login(username, session):
             session = get_logged_in_session(username, password, quiet)
         log("Logged in as %s." % username, quiet=quiet)
+    else:
+        session = get_anonymous_session()
     # Iterate through targets list and download them
     failedtargets = []
     for target in targets:
