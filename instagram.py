@@ -218,7 +218,7 @@ def download(name, session, profile_pic_only=False, download_videos=True,
         return
     # Catch some errors
     if data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
-        if not session:
+        if data["config"]["viewer"] is None:
             raise LoginRequiredException("user %s requires login" % name)
         if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
             raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
