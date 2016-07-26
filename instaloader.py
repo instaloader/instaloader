@@ -268,7 +268,7 @@ def get_logged_in_session(username, password=None, quiet=False):
         raise LoginRequiredException("Quiet mode requires given password or valid "
                 "session file.")
     while password is None:
-        password = getpass.getpass(prompt='Enter your Instagram password: ')
+        password = getpass.getpass(prompt="Enter Instagram password for %s: " % username)
         try:
             return get_session(username, password)
         except BadCredentialsException as err:
