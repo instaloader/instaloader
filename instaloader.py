@@ -293,13 +293,16 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
         session = get_anonymous_session()
     # Iterate through targets list and download them
     failedtargets = []
-    for target in targets:
-        try:
-            download(target, session, profile_pic_only, download_videos,
-                    fast_update, sleep_min_max, quiet)
-        except NonfatalException as err:
-            failedtargets.append(target)
-            print(err, file=sys.stderr)
+    try:
+        for target in targets:
+            try:
+                download(target, session, profile_pic_only, download_videos,
+                        fast_update, sleep_min_max, quiet)
+            except NonfatalException as err:
+                failedtargets.append(target)
+                print(err, file=sys.stderr)
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.", file=sys.stderr)
     if len(targets) > 1 and len(failedtargets) > 0:
         print("Errors occured (see above) while downloading profiles: %s" %
                 ", ".join(failedtargets), file=sys.stderr)
@@ -335,8 +338,6 @@ def main():
                 [0,0] if args.no_sleep else [0.25,2], args.quiet)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
-    except KeyboardInterrupt:
-        print("Interrupted by user.", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
