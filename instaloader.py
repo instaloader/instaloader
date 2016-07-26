@@ -6,23 +6,32 @@ import requests, requests.utils
 
 DEFAULTSESSIONFILE = "/tmp/.instaloadersession"
 
-class DownloaderException(Exception):
+class InstaloaderException(Exception):
+    """Base exception for this script"""
     pass
 
-class ProfileNotExistsException(DownloaderException):
+class NonfatalException(InstaloaderException):
+    """Base exception for errors which should not cause instaloader to stop"""
     pass
 
-class ProfileHasNoPicsException(DownloaderException):
+class ProfileNotExistsException(NonfatalException):
     pass
 
-class PrivateProfileNotFollowedException(DownloaderException):
+class ProfileHasNoPicsException(NonfatalException):
     pass
 
-class LoginRequiredException(DownloaderException):
+class PrivateProfileNotFollowedException(NonfatalException):
     pass
 
-class LoginException(DownloaderException):
+class LoginRequiredException(NonfatalException):
     pass
+
+class BadCredentialsException(InstaloaderException):
+    pass
+
+class ConnectionException(InstaloaderException):
+    pass
+
 
 def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
@@ -74,7 +83,7 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
         return True
     else:
-        raise DownloaderException("file \'" + url + "\' could not be downloaded")
+        raise ConnectionException("file \'" + url + "\' could not be downloaded")
 
 def save_caption(name, date_epoch, caption, quiet=False):
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
@@ -110,7 +119,7 @@ def download_profilepic(name, url, quiet=False):
         return None
     match = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
     if match is None:
-        raise DownloaderException("url \'" + url + "\' could not be processed")
+        raise ConnectionException("url \'" + url + "\' could not be processed")
     index = len(match.group(0))-1
     offset = 8 if match.group(0)[-1:] == 's' else 0
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
@@ -123,7 +132,7 @@ def download_profilepic(name, url, quiet=False):
             shutil.copyfileobj(resp.raw, file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_object.timestamp()))
     else:
-        raise DownloaderException("file \'" + url + "\' could not be downloaded")
+        raise ConnectionException("file \'" + url + "\' could not be downloaded")
 
 def save_session(session, filename, quiet=False):
     if filename is None:
@@ -198,9 +207,9 @@ def get_session(user, passwd):
         if test_login(user, session):
             return session
         else:
-            raise LoginException('Login error! Check your credentials!')
+            raise BadCredentialsException('Login error! Check your credentials!')
     else:
-        raise LoginException('Login error! Connection error!')
+        raise ConnectionException('Login error! Connection error!')
 
 def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, sleep_min_max=[0.25,2], quiet=False):
@@ -260,7 +269,7 @@ def get_logged_in_session(username, password=None, quiet=False):
         password = getpass.getpass(prompt='Enter your Instagram password: ')
         try:
             return get_session(username, password)
-        except LoginException as err:
+        except BadCredentialsException as err:
             print(err, file=sys.stderr)
             password = None
 
@@ -283,8 +292,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
         try:
             download(target, session, profile_pic_only, download_videos,
                     fast_update, sleep_min_max, quiet)
-        except (ProfileNotExistsException, ProfileHasNoPicsException,
-                PrivateProfileNotFollowedException, LoginRequiredException) as err:
+        except NonfatalException as err:
             failedtargets.append(target)
             print(err, file=sys.stderr)
     if len(targets) > 1 and len(failedtargets) > 0:
@@ -316,9 +324,14 @@ def main():
             help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
-    download_profiles(args.targets, args.login, args.password, args.sessionfile,
-            args.profile_pic_only, not args.skip_videos, args.fast_update,
-            [0,0] if args.no_sleep else [0.25,2], args.quiet)
+    try:
+        download_profiles(args.targets, args.login, args.password, args.sessionfile,
+                args.profile_pic_only, not args.skip_videos, args.fast_update,
+                [0,0] if args.no_sleep else [0.25,2], args.quiet)
+    except InstaloaderException as err:
+        raise SystemExit("Fatal error: %s" % err)
+    except KeyboardInterrupt:
+        print("Interrupted by user.", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
