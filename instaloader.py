@@ -217,7 +217,7 @@ def download(name, session, profile_pic_only=False, download_videos=True,
     # Get profile main page json
     data = get_json(name, session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
-        raise ProfileNotExistsException("user %s does not exist" % name)
+        raise ProfileNotExistsException("profile %s does not exist" % name)
     # Download profile picture
     download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
             quiet=quiet)
@@ -227,13 +227,13 @@ def download(name, session, profile_pic_only=False, download_videos=True,
     # Catch some errors
     if data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
         if data["config"]["viewer"] is None:
-            raise LoginRequiredException("user %s requires login" % name)
+            raise LoginRequiredException("profile %s requires login" % name)
         if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
             raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
     if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
             len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                     and not profile_pic_only:
-        raise ProfileHasNoPicsException("user %s: no pics found" % name)
+        raise ProfileHasNoPicsException("profile %s: no pics found" % name)
     # Iterate over pictures and download them
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     count = 1
