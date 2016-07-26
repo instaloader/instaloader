@@ -230,6 +230,9 @@ def download(name, session, profile_pic_only=False, download_videos=True,
             raise LoginRequiredException("profile %s requires login" % name)
         if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
             raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
+    else:
+        if data["config"]["viewer"] is not None:
+            log("profile %s could also be downloaded anonymously." % name, quiet=quiet)
     if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
             len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                     and not profile_pic_only:
