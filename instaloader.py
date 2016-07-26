@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import re, json, datetime, shutil, os, time, random, sys, pickle, getpass
+import re, json, datetime, shutil, os, time, random, sys, pickle, getpass, tempfile
 from argparse import ArgumentParser
 import requests, requests.utils
-
-DEFAULTSESSIONFILE = "/tmp/.instaloadersession"
 
 class InstaloaderException(Exception):
     """Base exception for this script"""
@@ -134,17 +132,26 @@ def download_profilepic(name, url, quiet=False):
     else:
         raise ConnectionException("file \'" + url + "\' could not be downloaded")
 
-def save_session(session, filename, quiet=False):
+def get_default_session_filename(username):
+    dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
+    filename = dirname + "/" + "session-" + username
+    return filename
+
+def save_session(session, username, filename, quiet=False):
     if filename is None:
-        filename = DEFAULTSESSIONFILE
+        filename = get_default_session_filename(username)
+    dirname = os.path.dirname(filename)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        os.chmod(dirname, 0o700)
     with open(filename, 'wb') as sessionfile:
         os.chmod(filename, 0o600)
         pickle.dump(requests.utils.dict_from_cookiejar(session.cookies), sessionfile)
         log("Saved session to %s." % filename, quiet=quiet)
 
-def load_session(filename, quiet=False):
+def load_session(username, filename, quiet=False):
     if filename is None:
-        filename = DEFAULTSESSIONFILE
+        filename = get_default_session_filename(username)
     try:
         with open(filename, 'rb') as sessionfile:
             session = requests.Session()
@@ -285,7 +292,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
     # pylint:disable=too-many-arguments
     # Login, if desired
     if username is not None:
-        session = load_session(sessionfile, quiet=quiet)
+        session = load_session(username, sessionfile, quiet=quiet)
         if not test_login(username, session):
             session = get_logged_in_session(username, password, quiet)
         log("Logged in as %s." % username, quiet=quiet)
@@ -308,7 +315,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
                 ", ".join(failedtargets), file=sys.stderr)
     # Save session if it is useful
     if username is not None:
-        save_session(session, sessionfile, quiet=quiet)
+        save_session(session, username, sessionfile, quiet=quiet)
 
 def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
@@ -319,7 +326,8 @@ def main():
     parser.add_argument('-p', '--password',
             help='Provide password for your Instagram account')
     parser.add_argument('-f', '--sessionfile',
-            help='File to store session key, defaults to '+DEFAULTSESSIONFILE)
+            help='File to store session key, defaults to '+ \
+            get_default_session_filename("<login_name>"))
     parser.add_argument('-P', '--profile-pic-only', action='store_true',
             help='Only download profile picture')
     parser.add_argument('-V', '--skip-videos', action='store_true',
