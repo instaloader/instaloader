@@ -145,13 +145,12 @@ def save_session(session, filename, quiet=False):
 def load_session(filename, quiet=False):
     if filename is None:
         filename = DEFAULTSESSIONFILE
-    if os.path.isfile(filename):
-        with open(filename, 'rb') as sessionfile:
-            session = requests.Session()
-            session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-            session.headers.update(default_http_header())
-            log("Loaded session from %s." % filename, quiet=quiet)
-            return session
+    with open(filename, 'rb') as sessionfile:
+        session = requests.Session()
+        session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
+        session.headers.update(default_http_header())
+        log("Loaded session from %s." % filename, quiet=quiet)
+        return session
 
 def test_login(user, session):
     if user is None or session is None:
