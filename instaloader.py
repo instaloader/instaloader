@@ -157,6 +157,7 @@ def load_session(username, filename=None, quiet=False):
             session = requests.Session()
             session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
             session.headers.update(default_http_header())
+            session.headers.update({'X-CSRFToken':session.cookies.get_dict()['csrftoken']})
             log("Loaded session from %s." % filename, quiet=quiet)
             return session
     except FileNotFoundError:
