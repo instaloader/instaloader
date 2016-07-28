@@ -63,6 +63,55 @@ def get_file_extension(url):
     else:
         return match.group(0)[1:-1]
 
+def get_followees(login, session):
+    tmpsession = copy_session(session)
+    data = get_json(login, tmpsession)
+    profile_id = data['entry_data']['ProfilePage'][0]['user']['id']
+    query = ["q=ig_user(" + profile_id + ")+%7B%0A"
+             "++follows.",
+             str(data['entry_data']['ProfilePage'][0]['user']['follows']['count']) +
+             ")+%7B%0A"
+             "++++count%2C%0A"
+             "++++page_info+%7B%0A"
+             "++++++end_cursor%2C%0A"
+             "++++++has_next_page%0A"
+             "++++%7D%2C%0A"
+             "++++nodes+%7B%0A"
+             "++++++id%2C%0A"
+             "++++++full_name%2C%0A"
+             "++++++username%2C%0A"
+             "++++++followed_by+%7B%0A"
+             "++++++++count%0A"
+             "++++++%7D%0A"
+             "++++%7D%0A"
+             "++%7D%0A"
+             "%7D%0A"
+             "&ref=relationships%3A%3Afollow_list"]
+    tmpsession.headers.update(default_http_header())
+    tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'+login+'/following/'})
+    tmpsession.headers.update({'Content-Type' : 'application/json'})
+    resp = tmpsession.post('https://www.instagram.com/query/', data=query[0]+"first("+query[1])
+    if resp.status_code == 200:
+        data = json.loads(resp.text)
+        followees = []
+        while True:
+            for followee in data['follows']['nodes']:
+                followee['follower_count'] = followee.pop('followed_by')['count']
+                followees = followees + [followee]
+            if data['follows']['page_info']['has_next_page']:
+                resp = tmpsession.post('https://www.instagram.com/query/', data=query[0]
+                                            + "after("
+                                            + data['follows']['page_info']['end_cursor']
+                                            + "%2C+" + query[1] )
+                data = json.loads(resp.text)
+            else:
+                break
+        return followees
+    if test_login(login, tmpsession):
+        raise ConnectionException("ConnectionError("+str(resp.status_code)+"): "
+                                  "unable to gather followees")
+    raise LoginRequiredException("Login required to gather followees")
+
 def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
     # Returns true, if file was actually downloaded, i.e. updated
     if outputlabel is None:
@@ -162,6 +211,13 @@ def load_session(username, filename=None, quiet=False):
             return session
     except FileNotFoundError:
         pass
+
+def copy_session(session):
+    new = requests.Session()
+    new.cookies = \
+            requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
+    new.headers = session.headers
+    return new
 
 def test_login(user, session):
     if user is None or session is None:
