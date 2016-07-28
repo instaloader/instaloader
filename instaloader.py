@@ -398,6 +398,8 @@ def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('targets', nargs='+', help='Names of profiles to download')
+    parser.add_argument('--version', action='version',
+                        version='1.0')
     parser.add_argument('-l', '--login', metavar='login_name',
             help='Provide login name for your Instagram account')
     parser.add_argument('-p', '--password',

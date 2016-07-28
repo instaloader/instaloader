@@ -7,7 +7,7 @@ Simple downloader to fetch all Instagram pictures and captions from a given prof
 Ensure having [Python](https://www.python.org/) (at least version 3.3) and
 [python3-requests](https://pypi.python.org/pypi/requests/) installed.
 
-After having downloaded instaloader.py, you invoke it with
+After having [downloaded instaloader.py](https://github.com/Thammus/instaloader/releases), you invoke it with
 ```
 ./instaloader.py profile [profile ...]
 ```
