@@ -63,9 +63,9 @@ def get_file_extension(url):
     else:
         return match.group(0)[1:-1]
 
-def get_followees(login, session):
+def get_followees(profile, session):
     tmpsession = copy_session(session)
-    data = get_json(login, tmpsession)
+    data = get_json(profile, tmpsession)
     profile_id = data['entry_data']['ProfilePage'][0]['user']['id']
     query = ["q=ig_user(" + profile_id + ")+%7B%0A"
              "++follows.",
@@ -88,7 +88,7 @@ def get_followees(login, session):
              "%7D%0A"
              "&ref=relationships%3A%3Afollow_list"]
     tmpsession.headers.update(default_http_header())
-    tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'+login+'/following/'})
+    tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'+profile+'/following/'})
     tmpsession.headers.update({'Content-Type' : 'application/json'})
     resp = tmpsession.post('https://www.instagram.com/query/', data=query[0]+"first("+query[1])
     if resp.status_code == 200:
@@ -107,7 +107,7 @@ def get_followees(login, session):
             else:
                 break
         return followees
-    if test_login(login, tmpsession):
+    if test_login(tmpsession):
         raise ConnectionException("ConnectionError("+str(resp.status_code)+"): "
                                   "unable to gather followees")
     raise LoginRequiredException("Login required to gather followees")
@@ -219,12 +219,14 @@ def copy_session(session):
     new.headers = session.headers
     return new
 
-def test_login(user, session):
-    if user is None or session is None:
-        return False
-    resp = session.get('https://www.instagram.com/')
+def test_login(session):
+    if session is None:
+        return
+    data = get_json(str(), session)
+    if data['config']['viewer'] is None:
+        return
     time.sleep(4 * random.random() + 1)
-    return resp.text.find(user.lower()) != -1
+    return data['config']['viewer']['username']
 
 def default_http_header(empty_session_only=False):
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
@@ -270,7 +272,7 @@ def get_session(user, passwd):
     session.headers.update({'X-CSRFToken':login.cookies['csrftoken']})
     time.sleep(5 * random.random())
     if login.status_code == 200:
-        if test_login(user, session):
+        if user == test_login(session):
             return session
         else:
             raise BadCredentialsException('Login error! Check your credentials!')
@@ -350,7 +352,7 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
     # Login, if desired
     if username is not None:
         session = load_session(username, sessionfile, quiet=quiet)
-        if not test_login(username, session):
+        if username != test_login(session):
             session = get_logged_in_session(username, password, quiet)
         log("Logged in as %s." % username, quiet=quiet)
     else:
