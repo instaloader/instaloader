@@ -137,7 +137,7 @@ def get_default_session_filename(username):
     filename = dirname + "/" + "session-" + username
     return filename
 
-def save_session(session, username, filename, quiet=False):
+def save_session(session, username, filename=None, quiet=False):
     if filename is None:
         filename = get_default_session_filename(username)
     dirname = os.path.dirname(filename)
@@ -149,7 +149,7 @@ def save_session(session, username, filename, quiet=False):
         pickle.dump(requests.utils.dict_from_cookiejar(session.cookies), sessionfile)
         log("Saved session to %s." % filename, quiet=quiet)
 
-def load_session(username, filename, quiet=False):
+def load_session(username, filename=None, quiet=False):
     if filename is None:
         filename = get_default_session_filename(username)
     try:
