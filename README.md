@@ -45,7 +45,7 @@ import instaloader
 session = instaloader.get_logged_in_session(USERNAME)
 
 # get followees
-followees = instaloader.get_followees(PROFILES, session)
+followees = instaloader.get_followees(PROFILE, session)
 for f in followees:
     print("%i\t%s\t%s" % (f['follower_count'], f['username'], f['full_name']))
 ```
@@ -57,4 +57,11 @@ for f in followees:
         instaloader.download(f['username'], session)
     except instaloader.NonfatalException:
         pass
+```
+
+`get_followees()` also returns unique IDs for all loaded followees. These IDs stay unchanged even
+if a user changes his/her username. To get the current username of a profile, given this unique ID
+`get_username_by_id()` can be used. For example:
+```python
+instaloader.get_username_by_id(session, followees[0]['id'])
 ```

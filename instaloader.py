@@ -53,6 +53,24 @@ def get_last_id(data):
         data = data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
         return int(data[len(data)-1]["id"])
 
+def get_username_by_id(session, profile_id):
+    tempsession = copy_session(session)
+    tempsession.headers.update({'Content-Type' : 'application/json'})
+    resp = tempsession.post('https://www.instagram.com/query/', data='q=ig_user(' +
+                            str(profile_id) +')+%7B%0A++username%0A%7D%0A')
+    if resp.status_code == 200:
+        data = json.loads(resp.text)
+        if 'username' in data:
+            return json.loads(resp.text)['username']
+        raise ProfileNotExistsException("no profile found, the user may have blocked " +
+                                            "you (id: " + str(profile_id) + ")")
+    else:
+        if test_login(session):
+            raise ConnectionException("username could not be determined due to ConnectionError" +
+                                        " (id: "+ str(profile_id) +")")
+        raise LoginRequiredException("Login required to determine username (id: " +
+                                        str(profile_id) + ")")
+
 def epoch_to_string(epoch):
     return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d_%H-%M-%S')
 
