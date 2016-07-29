@@ -303,7 +303,7 @@ def get_session(user, passwd):
 def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, sleep_min_max=[0.25,2], quiet=False):
     """Download one profile"""
-    # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-arguments,too-many-branches
     # Get profile main page json
     data = get_json(name, session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
