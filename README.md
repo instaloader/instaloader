@@ -29,6 +29,11 @@ When invoked like this, it also **stores the session cookies** in a file in `/tm
 reused later when `--login` is given. So you can download private profiles **non-interactively**
 when you already have a valid session cookies file.
 
+If you want to **download all followees of a given profile**, call
+```
+./instaloader.py --login=your_username @profile
+```
+
 The `--quiet` option makes it also **suitable as a cron job**.
 
 To get a list of other helpful flags, run `./instaloader.py --help`.

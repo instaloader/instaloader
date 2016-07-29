@@ -367,11 +367,11 @@ def get_logged_in_session(username, password=None, quiet=False):
             print(err, file=sys.stderr)
             password = None
 
-def download_profiles(targets, username=None, password=None, sessionfile=None,
+def download_profiles(profilelist, username=None, password=None, sessionfile=None,
         profile_pic_only=False, download_videos=True, fast_update=False,
         sleep_min_max=[0.25,2], quiet=False):
     """Download set of profiles and handle sessions"""
-    # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-arguments,too-many-branches,too-many-locals
     # Login, if desired
     if username is not None:
         session = load_session(username, sessionfile, quiet=quiet)
@@ -380,9 +380,23 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
         log("Logged in as %s." % username, quiet=quiet)
     else:
         session = get_anonymous_session()
-    # Iterate through targets list and download them
+    # Try block for KeyboardInterrupt (save session on ^C)
     failedtargets = []
+    targets = set()
     try:
+        # Generate set of targets
+        for pentry in profilelist:
+            if pentry[0] == '@':
+                log("Retrieving followees of %s..." % pentry[1:], quiet=quiet)
+                followees = get_followees(pentry[1:], session)
+                targets.update([followee['username'] for followee in followees])
+            else:
+                targets.add(pentry)
+        if len(targets) == 0:
+            log("No profiles to download given.", quiet=quiet)
+        elif len(targets) > 1:
+            log("Downloading %i profiles..." % len(targets), quiet=quiet)
+        # Iterate through targets list and download them
         for target in targets:
             try:
                 download(target, session, profile_pic_only, download_videos,
@@ -402,7 +416,9 @@ def download_profiles(targets, username=None, password=None, sessionfile=None,
 def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
-    parser.add_argument('targets', nargs='+', help='Names of profiles to download')
+    parser.add_argument('profile', nargs='*',
+            help='Name of profile to download, or @<profile> to download all followees of '\
+                    '<profile>')
     parser.add_argument('--version', action='version',
                         version='1.0')
     parser.add_argument('-l', '--login', metavar='login_name',
@@ -425,7 +441,7 @@ def main():
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        download_profiles(args.targets, args.login, args.password, args.sessionfile,
+        download_profiles(args.profile, args.login, args.password, args.sessionfile,
                 args.profile_pic_only, not args.skip_videos, args.fast_update,
                 [0,0] if args.no_sleep else [0.25,2], args.quiet)
     except InstaloaderException as err:
