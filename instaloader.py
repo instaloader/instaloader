@@ -62,14 +62,14 @@ def get_username_by_id(session, profile_id):
         data = json.loads(resp.text)
         if 'username' in data:
             return json.loads(resp.text)['username']
-        raise ProfileNotExistsException("no profile found, the user may have blocked " +
-                                            "you (id: " + str(profile_id) + ")")
+        raise ProfileNotExistsException("No profile found, the user may have blocked " +
+                                            "you (id: " + str(profile_id) + ").")
     else:
         if test_login(session):
-            raise ConnectionException("username could not be determined due to ConnectionError" +
-                                        " (id: "+ str(profile_id) +")")
+            raise ConnectionException("Username could not be determined due to connection error" +
+                                        " (id: "+ str(profile_id) +").")
         raise LoginRequiredException("Login required to determine username (id: " +
-                                        str(profile_id) + ")")
+                                        str(profile_id) + ").")
 
 def epoch_to_string(epoch):
     return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d_%H-%M-%S')
@@ -127,8 +127,8 @@ def get_followees(profile, session):
         return followees
     if test_login(tmpsession):
         raise ConnectionException("ConnectionError("+str(resp.status_code)+"): "
-                                  "unable to gather followees")
-    raise LoginRequiredException("Login required to gather followees")
+                                  "unable to gather followees.")
+    raise LoginRequiredException("Login required to gather followees.")
 
 def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
     # Returns true, if file was actually downloaded, i.e. updated
@@ -148,7 +148,7 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
         return True
     else:
-        raise ConnectionException("file \'" + url + "\' could not be downloaded")
+        raise ConnectionException("File \'" + url + "\' could not be downloaded.")
 
 def save_caption(name, date_epoch, caption, quiet=False):
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
@@ -187,7 +187,7 @@ def download_profilepic(name, url, quiet=False):
         return None
     match = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
     if match is None:
-        raise ConnectionException("url \'" + url + "\' could not be processed")
+        raise ConnectionException("URL \'" + url + "\' could not be processed.")
     index = len(match.group(0))-1
     offset = 8 if match.group(0)[-1:] == 's' else 0
     url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index+offset:]
@@ -200,7 +200,7 @@ def download_profilepic(name, url, quiet=False):
             shutil.copyfileobj(resp.raw, file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_object.timestamp()))
     else:
-        raise ConnectionException("file \'" + url + "\' could not be downloaded")
+        raise ConnectionException("File \'" + url + "\' could not be downloaded.")
 
 def get_default_session_filename(username):
     dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
@@ -307,7 +307,7 @@ def download(name, session, profile_pic_only=False, download_videos=True,
     # Get profile main page json
     data = get_json(name, session)
     if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
-        raise ProfileNotExistsException("profile %s does not exist" % name)
+        raise ProfileNotExistsException("Profile %s does not exist." % name)
     # Download profile picture
     download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
             quiet=quiet)
@@ -319,14 +319,14 @@ def download(name, session, profile_pic_only=False, download_videos=True,
         if data["config"]["viewer"] is None:
             raise LoginRequiredException("profile %s requires login" % name)
         if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
-            raise PrivateProfileNotFollowedException("user %s: private but not followed" % name)
+            raise PrivateProfileNotFollowedException("Profile %s: private but not followed." % name)
     else:
         if data["config"]["viewer"] is not None:
             log("profile %s could also be downloaded anonymously." % name, quiet=quiet)
     if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
             len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
                     and not profile_pic_only:
-        raise ProfileHasNoPicsException("profile %s: no pics found" % name)
+        raise ProfileHasNoPicsException("Profile %s: no pics found." % name)
     # Iterate over pictures and download them
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     count = 1
@@ -407,7 +407,7 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     if len(targets) > 1 and len(failedtargets) > 0:
-        print("Errors occured (see above) while downloading profiles: %s" %
+        print("Errors occured (see above) while downloading profiles: %s." %
                 ", ".join(failedtargets), file=sys.stderr)
     # Save session if it is useful
     if username is not None:
@@ -421,10 +421,15 @@ def main():
                     '<profile>')
     parser.add_argument('--version', action='version',
                         version='1.0')
-    parser.add_argument('-l', '--login', metavar='login_name',
-            help='Provide login name for your Instagram account')
-    parser.add_argument('-p', '--password',
-            help='Provide password for your Instagram account')
+    parser.add_argument('-l', '--login', metavar='YOUR-USERNAME',
+            help='Login name for your Instagram account. Not needed to download public '\
+                    'profiles, but if you want to download private profiles or all followees of '\
+                    'some profile, you have to specify a username used to login.')
+    parser.add_argument('-p', '--password', metavar='YOUR-PASSWORD',
+            help='Password for your Instagram account. If --login is given and there is '\
+                    'not yet a valid session file, you\'ll be prompted for your password if '\
+                    '--password is not given. Specifying this option without --login has no '\
+                    'effect.')
     parser.add_argument('-f', '--sessionfile',
             help='File to store session key, defaults to '+ \
             get_default_session_filename("<login_name>"))
