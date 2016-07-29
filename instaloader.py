@@ -136,11 +136,11 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
         outputlabel = epoch_to_string(date_epoch)
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.' + get_file_extension(url)
     if os.path.isfile(filename):
-        log(outputlabel + ' exists', end='  ', flush=True, quiet=quiet)
+        log(outputlabel + ' exists', end=' ', flush=True, quiet=quiet)
         return False
     resp = get_anonymous_session().get(url, stream=True)
     if resp.status_code == 200:
-        log(outputlabel, end='  ', flush=True, quiet=quiet)
+        log(outputlabel, end=' ', flush=True, quiet=quiet)
         os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as file:
             resp.raw.decode_content = True
@@ -152,11 +152,14 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
 
 def save_caption(name, date_epoch, caption, quiet=False):
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
+    pcaption = caption.replace('\n', ' ').strip()
+    output = '[' + ((pcaption[:26]+"…") if len(pcaption)>28 else pcaption) + ']'
     if os.path.isfile(filename):
         with open(filename, 'r') as file:
             file_caption = file.read()
         if file_caption == caption:
-            log('txt unchanged', end=' ', flush=True, quiet=quiet)
+            output = output + ' unchanged'
+            log(output, end=' ', flush=True, quiet=quiet)
             return None
         else:
             def get_filename(index):
@@ -167,8 +170,8 @@ def save_caption(name, date_epoch, caption, quiet=False):
                 i = i + 1
             for index in range(i, 0, -1):
                 os.rename(get_filename(index-1), get_filename(index))
-            log('txt updated', end=' ', flush=True, quiet=quiet)
-    log('txt', end=' ', flush=True, quiet=quiet)
+            output = output + ' updated'
+    log(output, end=' ', flush=True, quiet=quiet)
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'w') as text_file:
         text_file.write(caption)
@@ -336,6 +339,8 @@ def download(name, session, profile_pic_only=False, download_videos=True,
                        abs(sleep_min_max[0]))
             if "caption" in node:
                 save_caption(name, node["date"], node["caption"], quiet=quiet)
+            else:
+                log("<no caption>", end=' ', flush=True, quiet=quiet)
             if node["is_video"] and download_videos:
                 video_data = get_json('p/' + node["code"], session)
                 download_pic(name, \
