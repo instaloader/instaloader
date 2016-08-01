@@ -433,7 +433,7 @@ def main():
             help='Name of profile to download, or @<profile> to download all followees of '\
                     '<profile>')
     parser.add_argument('--version', action='version',
-                        version='1.0')
+                        version='1.0.1')
     parser.add_argument('-l', '--login', metavar='YOUR-USERNAME',
             help='Login name for your Instagram account. Not needed to download public '\
                     'profiles, but if you want to download private profiles or all followees of '\
