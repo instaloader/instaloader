@@ -3,6 +3,15 @@
 import re, json, datetime, shutil, os, time, random, sys, pickle, getpass, tempfile
 from argparse import ArgumentParser
 import requests, requests.utils
+from io import BytesIO
+
+try:
+    import win_unicode_console
+except ImportError:
+    WINUNICODE = False
+else:
+    win_unicode_console.enable()
+    WINUNICODE = True
 
 class InstaloaderException(Exception):
     """Base exception for this script"""
@@ -153,11 +162,15 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
 def save_caption(name, date_epoch, caption, quiet=False):
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
     pcaption = caption.replace('\n', ' ').strip()
-    output = '[' + ((pcaption[:26]+"…") if len(pcaption)>28 else pcaption) + ']'
+    caption = caption.encode("UTF-8")
+    if os.name in ['nt', 'ce'] and not WINUNICODE:
+        output = str()
+    else:
+        output = '[' + ((pcaption[:26]+"…") if len(pcaption)>28 else pcaption) + ']'
     if os.path.isfile(filename):
-        with open(filename, 'r') as file:
+        with open(filename, 'rb') as file:
             file_caption = file.read()
-        if file_caption == caption:
+        if file_caption.replace(b'\r\n', b'\n') == caption.replace(b'\r\n', b'\n'):
             output = output + ' unchanged'
             log(output, end=' ', flush=True, quiet=quiet)
             return None
@@ -173,8 +186,8 @@ def save_caption(name, date_epoch, caption, quiet=False):
             output = output + ' updated'
     log(output, end=' ', flush=True, quiet=quiet)
     os.makedirs(name.lower(), exist_ok=True)
-    with open(filename, 'w') as text_file:
-        text_file.write(caption)
+    with open(filename, 'wb') as text_file:
+        shutil.copyfileobj(BytesIO(caption), text_file)
     os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
 def download_profilepic(name, url, quiet=False):
