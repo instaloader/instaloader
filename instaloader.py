@@ -313,14 +313,48 @@ def get_session(user, passwd):
     else:
         raise ConnectionException('Login error! Connection error!')
 
+def check_id(profile, session, json_data, quiet):
+    profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
+    is_logged_in = json_data["config"]["viewer"] is not None
+    if os.path.isfile(profile + "/id"):
+        with open(profile + "/id", 'rb') as id_file:
+            profile_id = int(id_file.read())
+        if (not profile_exists) or \
+            (profile_id != int(json_data['entry_data']['ProfilePage'][0]['user']['id'])):
+            if is_logged_in:
+                newname = get_username_by_id(session, profile_id)
+                log("Profile {0} has changed its name to {1}.".format(profile, newname),
+                    quiet=quiet)
+                os.rename(profile, newname)
+                return newname
+            if profile_exists:
+                raise ProfileNotExistsException("Profile {0} does not match the stored "
+                                                "unique ID {1}.".format(profile, profile_id))
+            raise ProfileNotExistsException("Profile {0} does not exist. Please login to "
+                                            "update profile name. Unique ID: {1}."
+                                            .format(profile, profile_id))
+        return profile
+    if profile_exists:
+        os.makedirs(profile.lower(), exist_ok=True)
+        with open(profile + "/id", 'w') as text_file:
+            profile_id = json_data['entry_data']['ProfilePage'][0]['user']['id']
+            text_file.write(profile_id)
+            log("Stored ID {0} for profile {1}.".format(profile_id, profile), quiet=quiet)
+        return profile
+    raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
+
 def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, sleep_min_max=[0.25,2], quiet=False):
     """Download one profile"""
     # pylint:disable=too-many-arguments,too-many-branches
     # Get profile main page json
     data = get_json(name, session)
-    if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
-        raise ProfileNotExistsException("Profile %s does not exist." % name)
+    # check if profile does exist or name has changed since last download
+    # and update name and json data if necessary
+    name_updated = check_id(name, session, data, quiet=quiet)
+    if name_updated != name:
+        name = name_updated
+        data = get_json(name, session)
     # Download profile picture
     download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
             quiet=quiet)
