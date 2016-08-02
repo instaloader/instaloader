@@ -2,8 +2,8 @@
 
 import re, json, datetime, shutil, os, time, random, sys, pickle, getpass, tempfile
 from argparse import ArgumentParser
-import requests, requests.utils
 from io import BytesIO
+import requests, requests.utils
 
 try:
     import win_unicode_console
