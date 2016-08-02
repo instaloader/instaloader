@@ -10,7 +10,8 @@ Ensure having [Python](https://www.python.org/) (at least version 3.3) and
 If you intend to use this tool under Windows, it is highly recommended to first install
 [win-unicode-console](https://github.com/Drekin/win-unicode-console).
 
-After having [downloaded instaloader.py](https://github.com/Thammus/instaloader/releases), you invoke it with
+After having [downloaded instaloader.py](https://github.com/Thammus/instaloader/releases), you
+invoke it with
 ```
 ./instaloader.py profile [profile ...]
 ```
@@ -67,8 +68,14 @@ for f in followees:
         pass
 ```
 
-`get_followees()` also returns unique IDs for all loaded followees. These IDs stay unchanged even
-if a user changes his/her username. To get the current username of a profile, given this unique ID
+Each Instagram profile has its own unique ID which stays unmodified even if a user changes his/her
+username. To get said ID, given the profile's name, you may call
+```python
+instaloader.get_id_by_username(PROFILE_NAME)
+```
+
+`get_followees()` also returns unique IDs for all loaded followees. To get the current username of a
+profile, given this unique ID
 `get_username_by_id()` can be used. For example:
 ```python
 instaloader.get_username_by_id(session, followees[0]['id'])

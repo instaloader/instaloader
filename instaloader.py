@@ -80,6 +80,12 @@ def get_username_by_id(session, profile_id):
         raise LoginRequiredException("Login required to determine username (id: " +
                                         str(profile_id) + ").")
 
+def get_id_by_username(profile):
+    data = get_json(profile, get_anonymous_session())
+    if len(data["entry_data"]) == 0 or "ProfilePage" not in data("entry_data"):
+        raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
+    return int(data['entry_data']['ProfilePage'][0]['user']['id'])
+
 def epoch_to_string(epoch):
     return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d_%H-%M-%S')
 
