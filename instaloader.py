@@ -173,7 +173,7 @@ def save_caption(name, date_epoch, caption, quiet=False):
         output = str()
     else:
         output = '[' + ((pcaption[:26]+"…") if len(pcaption)>28 else pcaption) + ']'
-    if os.path.isfile(filename):
+    try:
         with open(filename, 'rb') as file:
             file_caption = file.read()
         if file_caption.replace(b'\r\n', b'\n') == caption.replace(b'\r\n', b'\n'):
@@ -190,6 +190,8 @@ def save_caption(name, date_epoch, caption, quiet=False):
             for index in range(i, 0, -1):
                 os.rename(get_filename(index-1), get_filename(index))
             output = output + ' updated'
+    except FileNotFoundError:
+        pass
     log(output, end=' ', flush=True, quiet=quiet)
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'wb') as text_file:
@@ -322,7 +324,7 @@ def get_session(user, passwd):
 def check_id(profile, session, json_data, quiet):
     profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
     is_logged_in = json_data["config"]["viewer"] is not None
-    if os.path.isfile(profile + "/id"):
+    try:
         with open(profile + "/id", 'rb') as id_file:
             profile_id = int(id_file.read())
         if (not profile_exists) or \
@@ -340,6 +342,8 @@ def check_id(profile, session, json_data, quiet):
                                             "update profile name. Unique ID: {1}."
                                             .format(profile, profile_id))
         return profile
+    except FileNotFoundError:
+        pass
     if profile_exists:
         os.makedirs(profile.lower(), exist_ok=True)
         with open(profile + "/id", 'w') as text_file:
