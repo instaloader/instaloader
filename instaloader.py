@@ -44,10 +44,11 @@ def log(*msg, sep='', end='\n', flush=False, quiet=False):
     if not quiet:
         print(*msg, sep=sep, end=end, flush=flush)
 
-def get_json(name, session, max_id=0, sleep_min_max=[1,5]):
+def get_json(name, session, max_id=0, sleep=True):
     resp = session.get('http://www.instagram.com/'+name, \
         params={'max_id': max_id})
-    time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+    if sleep:
+        time.sleep(4 * random.random() + 1)
     match = re.search('window\._sharedData = .*<', resp.text)
     if match is None:
         return None
@@ -354,21 +355,22 @@ def check_id(profile, session, json_data, quiet):
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
 def download(name, session, profile_pic_only=False, download_videos=True,
-        fast_update=False, sleep_min_max=[0.25,2], quiet=False):
+        fast_update=False, sleep=True, quiet=False):
     """Download one profile"""
     # pylint:disable=too-many-arguments,too-many-branches
     # Get profile main page json
-    data = get_json(name, session)
+    data = get_json(name, session, sleep=sleep)
     # check if profile does exist or name has changed since last download
     # and update name and json data if necessary
     name_updated = check_id(name, session, data, quiet=quiet)
     if name_updated != name:
         name = name_updated
-        data = get_json(name, session)
+        data = get_json(name, session, sleep=sleep)
     # Download profile picture
     download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"],
             quiet=quiet)
-    time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+    if sleep:
+        time.sleep(1.75 * random.random() + 0.25)
     if profile_pic_only:
         return
     # Catch some errors
@@ -392,22 +394,21 @@ def download(name, session, profile_pic_only=False, download_videos=True,
             log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
             count = count + 1
             downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
-            time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random() + \
-                       abs(sleep_min_max[0]))
+            if sleep:
+                time.sleep(1.75 * random.random() + 0.25)
             if "caption" in node:
                 save_caption(name, node["date"], node["caption"], quiet=quiet)
             else:
                 log("<no caption>", end=' ', flush=True, quiet=quiet)
             if node["is_video"] and download_videos:
-                video_data = get_json('p/' + node["code"], session)
+                video_data = get_json('p/' + node["code"], session, sleep=sleep)
                 download_pic(name, \
                         video_data['entry_data']['PostPage'][0]['media']['video_url'], \
                         node["date"], 'mp4', quiet=quiet)
             log(quiet=quiet)
             if fast_update and not downloaded:
                 return
-        data = get_json(name, session, max_id=get_last_id(data))
-        time.sleep(abs(sleep_min_max[1]-sleep_min_max[0])*random.random()+abs(sleep_min_max[0]))
+        data = get_json(name, session, max_id=get_last_id(data), sleep=sleep)
 
 def get_logged_in_session(username, password=None, quiet=False):
     """Logs in and returns session, asking user for password if needed"""
@@ -426,7 +427,7 @@ def get_logged_in_session(username, password=None, quiet=False):
 
 def download_profiles(profilelist, username=None, password=None, sessionfile=None,
         profile_pic_only=False, download_videos=True, fast_update=False,
-        sleep_min_max=[0.25,2], quiet=False):
+        sleep=True, quiet=False):
     """Download set of profiles and handle sessions"""
     # pylint:disable=too-many-arguments,too-many-branches,too-many-locals
     # Login, if desired
@@ -457,7 +458,7 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
         for target in targets:
             try:
                 download(target, session, profile_pic_only, download_videos,
-                        fast_update, sleep_min_max, quiet)
+                        fast_update, sleep, quiet)
             except NonfatalException as err:
                 failedtargets.append(target)
                 print(err, file=sys.stderr)
@@ -505,7 +506,7 @@ def main():
     try:
         download_profiles(args.profile, args.login, args.password, args.sessionfile,
                 args.profile_pic_only, not args.skip_videos, args.fast_update,
-                [0,0] if args.no_sleep else [0.25,2], args.quiet)
+                not args.no_sleep, args.quiet)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 
