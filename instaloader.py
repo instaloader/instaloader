@@ -344,7 +344,7 @@ def check_id(profile, session, json_data, quiet):
         os.makedirs(profile.lower(), exist_ok=True)
         with open(profile + "/id", 'w') as text_file:
             profile_id = json_data['entry_data']['ProfilePage'][0]['user']['id']
-            text_file.write(profile_id)
+            text_file.write(profile_id+"\n")
             log("Stored ID {0} for profile {1}.".format(profile_id, profile), quiet=quiet)
         return profile
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
