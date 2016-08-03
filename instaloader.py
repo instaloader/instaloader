@@ -49,7 +49,7 @@ def get_json(name, session, max_id=0, sleep=True):
         params={'max_id': max_id})
     if sleep:
         time.sleep(4 * random.random() + 1)
-    match = re.search('window\._sharedData = .*<', resp.text)
+    match = re.search('window\\._sharedData = .*<', resp.text)
     if match is None:
         return None
     else:
@@ -91,7 +91,7 @@ def epoch_to_string(epoch):
     return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d_%H-%M-%S')
 
 def get_file_extension(url):
-    match = re.search('\.[a-z]*\?', url)
+    match = re.search('\\.[a-z]*\\?', url)
     if match is None:
         return url[-3:]
     else:
@@ -207,7 +207,7 @@ def download_profilepic(name, url, quiet=False):
     if os.path.isfile(filename):
         log(filename + ' already exists', quiet=quiet)
         return None
-    match = re.search('http.*://.*instagram.*[^/]*\.(com|net)/[^/]+/.', url)
+    match = re.search('http.*://.*instagram.*[^/]*\\.(com|net)/[^/]+/.', url)
     if match is None:
         raise ConnectionException("URL \'" + url + "\' could not be processed.")
     index = len(match.group(0))-1
