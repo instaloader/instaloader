@@ -166,20 +166,22 @@ def download_pic(name, url, date_epoch, outputlabel=None, quiet=False):
     else:
         raise ConnectionException("File \'" + url + "\' could not be downloaded.")
 
-def save_caption(name, date_epoch, caption, quiet=False):
+def save_caption(name, date_epoch, caption, shorter_output=False, quiet=False):
     filename = name.lower() + '/' + epoch_to_string(date_epoch) + '.txt'
     pcaption = caption.replace('\n', ' ').strip()
     caption = caption.encode("UTF-8")
-    if os.name in ['nt', 'ce'] and not WINUNICODE:
-        output = str()
+    if shorter_output:
+        pcaption = "txt"
     else:
-        output = '[' + ((pcaption[:26]+"…") if len(pcaption)>28 else pcaption) + ']'
+        pcaption = '[' + ((pcaption[:29]+u"\u2026") if len(pcaption)>31 else pcaption) + ']'
     try:
         with open(filename, 'rb') as file:
             file_caption = file.read()
         if file_caption.replace(b'\r\n', b'\n') == caption.replace(b'\r\n', b'\n'):
-            output = output + ' unchanged'
-            log(output, end=' ', flush=True, quiet=quiet)
+            try:
+                log(pcaption + ' unchanged', end=' ', flush=True, quiet=quiet)
+            except UnicodeEncodeError:
+                log('txt unchanged', end=' ', flush=True, quiet=quiet)
             return None
         else:
             def get_filename(index):
@@ -190,10 +192,16 @@ def save_caption(name, date_epoch, caption, quiet=False):
                 i = i + 1
             for index in range(i, 0, -1):
                 os.rename(get_filename(index-1), get_filename(index))
-            output = output + ' updated'
+            try:
+                log(pcaption + ' updated', end=' ', flush=True, quiet=quiet)
+            except UnicodeEncodeError:
+                log('txt updated', end=' ', flush=True, quiet=quiet)
     except FileNotFoundError:
         pass
-    log(output, end=' ', flush=True, quiet=quiet)
+    try:
+        log(pcaption, end=' ', flush=True, quiet=quiet)
+    except UnicodeEncodeError:
+        log('txt', end=' ', flush=True, quiet=quiet)
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'wb') as text_file:
         shutil.copyfileobj(BytesIO(caption), text_file)
@@ -355,7 +363,7 @@ def check_id(profile, session, json_data, quiet):
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
 def download(name, session, profile_pic_only=False, download_videos=True,
-        fast_update=False, sleep=True, quiet=False):
+        fast_update=False, shorter_output=False, sleep=True, quiet=False):
     """Download one profile"""
     # pylint:disable=too-many-arguments,too-many-branches
     # Get profile main page json
@@ -397,7 +405,7 @@ def download(name, session, profile_pic_only=False, download_videos=True,
             if sleep:
                 time.sleep(1.75 * random.random() + 0.25)
             if "caption" in node:
-                save_caption(name, node["date"], node["caption"], quiet=quiet)
+                save_caption(name, node["date"], node["caption"], shorter_output, quiet)
             else:
                 log("<no caption>", end=' ', flush=True, quiet=quiet)
             if node["is_video"] and download_videos:
@@ -427,7 +435,7 @@ def get_logged_in_session(username, password=None, quiet=False):
 
 def download_profiles(profilelist, username=None, password=None, sessionfile=None,
         profile_pic_only=False, download_videos=True, fast_update=False,
-        sleep=True, quiet=False):
+        sleep=True, shorter_output=False, quiet=False):
     """Download set of profiles and handle sessions"""
     # pylint:disable=too-many-arguments,too-many-branches,too-many-locals
     # Login, if desired
@@ -458,7 +466,7 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
         for target in targets:
             try:
                 download(target, session, profile_pic_only, download_videos,
-                        fast_update, sleep, quiet)
+                        fast_update, shorter_output, sleep, quiet)
             except NonfatalException as err:
                 failedtargets.append(target)
                 print(err, file=sys.stderr)
@@ -499,6 +507,8 @@ def main():
             help='Abort at encounter of first already-downloaded picture')
     parser.add_argument('-S', '--no-sleep', action='store_true',
             help='Do not sleep between actual downloads of pictures')
+    parser.add_argument('-O', '--shorter-output', action='store_true',
+            help='Do not display captions while downloading')
     parser.add_argument('-q', '--quiet', action='store_true',
             help='Disable user interaction, i.e. do not print messages (except errors) and fail ' \
                     'if login credentials are needed but not given.')
@@ -506,7 +516,7 @@ def main():
     try:
         download_profiles(args.profile, args.login, args.password, args.sessionfile,
                 args.profile_pic_only, not args.skip_videos, args.fast_update,
-                not args.no_sleep, args.quiet)
+                not args.no_sleep, args.shorter_output, args.quiet)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 
