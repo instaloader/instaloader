@@ -13,6 +13,16 @@ else:
     win_unicode_console.enable()
     WINUNICODE = True
 
+# List of public objects which are provided by `import instaloader`.
+__all__ = ['BadCredentialsException', 'ConnectionException', 'InstaloaderException',
+        'LoginRequiredException', 'NonfatalException', 'PrivateProfileNotFollowedException',
+        'ProfileHasNoPicsException', 'ProfileNotExistsException', 'check_id', 'copy_session',
+        'default_http_header', 'download', 'download_pic', 'download_profilepic',
+        'download_profiles', 'epoch_to_string', 'get_anonymous_session',
+        'get_default_session_filename', 'get_file_extension', 'get_followees', 'get_id_by_username',
+        'get_json', 'get_last_id', 'get_logged_in_session', 'get_session', 'get_username_by_id',
+        'load_session', 'log', 'main', 'save_caption', 'save_session', 'test_login']
+
 class InstaloaderException(Exception):
     """Base exception for this script"""
     pass
