@@ -68,6 +68,12 @@ for f in followees:
         pass
 ```
 
+You could also download your last 20 liked pics with
+```python
+instaloader.download_feed_pics(session, max_count=20, fast_update=True,
+                               filter_func=lambda node: not node["likes"]["viewer_has_liked"])
+```
+
 Each Instagram profile has its own unique ID which stays unmodified even if a user changes his/her
 username. To get said ID, given the profile's name, you may call
 ```python

@@ -18,7 +18,8 @@ __all__ = ['BadCredentialsException', 'ConnectionException', 'InstaloaderExcepti
         'LoginRequiredException', 'NonfatalException', 'PrivateProfileNotFollowedException',
         'ProfileHasNoPicsException', 'ProfileNotExistsException', 'check_id', 'copy_session',
         'default_http_header', 'download', 'download_pic', 'download_profilepic',
-        'download_profiles', 'epoch_to_string', 'get_anonymous_session',
+        'download_profiles', 'get_feed_json', 'download_feed_pics', 'epoch_to_string',
+        'get_anonymous_session',
         'get_default_session_filename', 'get_file_extension', 'get_followees', 'get_id_by_username',
         'get_json', 'get_last_id', 'get_logged_in_session', 'get_session', 'get_username_by_id',
         'load_session', 'log', 'main', 'save_caption', 'save_session', 'test_login']
@@ -371,6 +372,102 @@ def check_id(profile, session, json_data, quiet):
             log("Stored ID {0} for profile {1}.".format(profile_id, profile), quiet=quiet)
         return profile
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
+
+
+def get_feed_json(session, end_cursor=None, sleep=True):
+    """
+    Get JSON of the user's feed.
+
+    :param session: Session belonging to a user, i.e. not an anonymous session
+    :param end_cursor: The end cursor, as from json["feed"]["media"]["page_info"]["end_cursor"]
+    :param sleep: Sleep between requests to instagram server
+    :return: JSON
+    """
+    if end_cursor is None:
+        return get_json(str(), session, sleep=sleep)["entry_data"]["FeedPage"][0]
+    tmpsession = copy_session(session)
+    query = "q=ig_me()+%7B%0A++feed+%7B%0A++++media.after(" + end_cursor + "%2C+12)+%7B%0A"+\
+            "++++++nodes+%7B%0A++++++++id%2C%0A++++++++caption%2C%0A++++++++code%2C%0A++++++++"+\
+            "comments.last(4)+%7B%0A++++++++++count%2C%0A++++++++++nodes+%7B%0A++++++++++++"+\
+            "id%2C%0A++++++++++++created_at%2C%0A++++++++++++text%2C%0A++++++++++++"+\
+            "user+%7B%0A++++++++++++++id%2C%0A++++++++++++++profile_pic_url%2C%0A++++++++++++++"+\
+            "username%0A++++++++++++%7D%0A++++++++++%7D%2C%0A++++++++++"+\
+            "page_info%0A++++++++%7D%2C%0A++++++++comments_disabled%2C%0A++++++++"+\
+            "date%2C%0A++++++++dimensions+%7B%0A++++++++++height%2C%0A++++++++++"+\
+            "width%0A++++++++%7D%2C%0A++++++++display_src%2C%0A++++++++is_video%2C%0A++++++++"+\
+            "likes+%7B%0A++++++++++count%2C%0A++++++++++nodes+%7B%0A++++++++++++"+\
+            "user+%7B%0A++++++++++++++id%2C%0A++++++++++++++profile_pic_url%2C%0A++++++++++++++"+\
+            "username%0A++++++++++++%7D%0A++++++++++%7D%2C%0A++++++++++"+\
+            "viewer_has_liked%0A++++++++%7D%2C%0A++++++++location+%7B%0A++++++++++"+\
+            "id%2C%0A++++++++++has_public_page%2C%0A++++++++++name%0A++++++++%7D%2C%0A++++++++"+\
+            "owner+%7B%0A++++++++++id%2C%0A++++++++++blocked_by_viewer%2C%0A++++++++++"+\
+            "followed_by_viewer%2C%0A++++++++++full_name%2C%0A++++++++++"+\
+            "has_blocked_viewer%2C%0A++++++++++is_private%2C%0A++++++++++"+\
+            "profile_pic_url%2C%0A++++++++++requested_by_viewer%2C%0A++++++++++"+\
+            "username%0A++++++++%7D%2C%0A++++++++usertags+%7B%0A++++++++++"+\
+            "nodes+%7B%0A++++++++++++user+%7B%0A++++++++++++++"+\
+            "username%0A++++++++++++%7D%2C%0A++++++++++++x%2C%0A++++++++++++y%0A++++++++++"+\
+            "%7D%0A++++++++%7D%2C%0A++++++++video_url%2C%0A++++++++"+\
+            "video_views%0A++++++%7D%2C%0A++++++page_info%0A++++%7D%0A++%7D%2C%0A++id%2C%0A++"+\
+            "profile_pic_url%2C%0A++username%0A%7D%0A&ref=feed::show"
+    tmpsession.headers.update(default_http_header())
+    tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'})
+    tmpsession.headers.update({'Content-Type' : 'application/json'})
+    resp = tmpsession.post('https://www.instagram.com/query/', data=query)
+    if sleep:
+        time.sleep(4 * random.random() + 1)
+    return json.loads(resp.text)
+
+
+def download_feed_pics(session, max_count=None, fast_update=False, filter_func=None,
+                       download_videos=True, shorter_output=False, sleep=True, quiet=False):
+    """
+    Download pictures from the user's feed.
+
+    Example to download up to the 20 pics the user last liked:
+    >>> download_feed_pics(load_session('USER'), max_count=20, fast_update=True,
+    >>>                    filter_func=lambda node: not node["likes"]["viewer_has_liked"])
+
+    :param session: Session belonging to a user, i.e. not an anonymous session
+    :param max_count: Maximum count of pictures to download
+    :param fast_update: If true, abort when first already-downloaded picture is encountered
+    :param filter_func: function(node), which returns True if given picture should not be downloaded
+    :param download_videos: True, if videos should be downloaded
+    :param shorter_output: Shorten log output by not printing captions
+    :param sleep: Sleep between requests to instagram server
+    :param quiet: Suppress output
+    """
+    # pylint:disable=too-many-arguments
+    data = get_feed_json(session, sleep=sleep)
+    count = 1
+    while data["feed"]["media"]["page_info"]["has_next_page"]:
+        for node in data["feed"]["media"]["nodes"]:
+            if max_count is not None and count > max_count:
+                return
+            name = node["owner"]["username"]
+            if filter_func is not None and filter_func(node):
+                log("<pic by %s skipped>" % name, flush=True, quiet=quiet)
+                continue
+            log("[%3i] %s " % (count, name), end="", flush=True, quiet=quiet)
+            count += 1
+            downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+            if sleep:
+                time.sleep(1.75 * random.random() + 0.25)
+            if "caption" in node:
+                save_caption(name, node["date"], node["caption"], shorter_output, quiet)
+            else:
+                log("<no caption>", end=' ', flush=True, quiet=quiet)
+            if node["is_video"] and download_videos:
+                video_data = get_json('p/' + node["code"], session, sleep=sleep)
+                download_pic(name,
+                             video_data['entry_data']['PostPage'][0]['media']['video_url'],
+                             node["date"], 'mp4', quiet=quiet)
+            log(quiet=quiet)
+            if fast_update and not downloaded:
+                return
+        data = get_feed_json(session, end_cursor=data["feed"]["media"]["page_info"]["end_cursor"],
+                             sleep=sleep)
+
 
 def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, shorter_output=False, sleep=True, quiet=False):
