@@ -38,6 +38,11 @@ If you want to **download all followees of a given profile**, call
 ./instaloader.py --login=your_username @profile
 ```
 
+To **download all the pictures which you have liked**, call
+```
+./instaloader.py --login=your_username :feed-liked
+```
+
 The `--quiet` option makes it also **suitable as a cron job**.
 
 To get a list of other helpful flags, run `./instaloader.py --help`.

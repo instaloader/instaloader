@@ -563,6 +563,17 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
                 log("Retrieving followees of %s..." % pentry[1:], quiet=quiet)
                 followees = get_followees(pentry[1:], session)
                 targets.update([followee['username'] for followee in followees])
+            elif pentry == ":feed-all" and username is not None:
+                log("Retrieving pictures from your feed...", quiet=quiet)
+                download_feed_pics(session, fast_update=fast_update,
+                                   download_videos=download_videos, shorter_output=shorter_output,
+                                   sleep=sleep, quiet=quiet)
+            elif pentry == ":feed-liked" and username is not None:
+                log("Retrieving pictures you liked from your feed...", quiet=quiet)
+                download_feed_pics(session, fast_update=fast_update,
+                                   filter_func=lambda node: not node["likes"]["viewer_has_liked"],
+                                   download_videos=download_videos, shorter_output=shorter_output,
+                                   sleep=sleep, quiet=quiet)
             else:
                 targets.add(pentry)
         if len(targets) == 0:
@@ -590,8 +601,10 @@ def main():
     parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
                                         'captions from a given profile')
     parser.add_argument('profile', nargs='*',
-            help='Name of profile to download, or @<profile> to download all followees of '\
-                    '<profile>')
+                        help='Name of profile to download; @<profile> to download all followees of '
+                             '<profile>; or the special targets :feed-all or :feed-liked to '
+                             'download pictures from your feed if --login is given (using '
+                             '--fast-update is recommended).')
     parser.add_argument('--version', action='version',
                         version='1.0.1')
     parser.add_argument('-l', '--login', metavar='YOUR-USERNAME',
