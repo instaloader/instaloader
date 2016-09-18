@@ -420,6 +420,37 @@ def get_feed_json(session, end_cursor=None, sleep=True):
     return json.loads(resp.text)
 
 
+def download_node(node, session, name,
+                  download_videos=True, sleep=True, shorter_output=False, quiet=False):
+    """
+    Download everything associated with one instagram node, i.e. picture, caption and video.
+
+    :param node: Node, as from media->nodes list in instagram's JSONs
+    :param session: Session
+    :param name: Name of profile to which this node belongs
+    :param download_videos: True, if videos should be downloaded
+    :param sleep: Sleep between requests to instagram server
+    :param shorter_output: Shorten log output by not printing captions
+    :param quiet: Suppress output
+    :return: True if something was downloaded, False otherwise, i.e. file was already there
+    """
+    # pylint:disable=too-many-arguments
+    downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+    if sleep:
+        time.sleep(1.75 * random.random() + 0.25)
+    if "caption" in node:
+        save_caption(name, node["date"], node["caption"], shorter_output, quiet)
+    else:
+        log("<no caption>", end=' ', flush=True, quiet=quiet)
+    if node["is_video"] and download_videos:
+        video_data = get_json('p/' + node["code"], session, sleep=sleep)
+        download_pic(name,
+                     video_data['entry_data']['PostPage'][0]['media']['video_url'],
+                     node["date"], 'mp4', quiet=quiet)
+    log(quiet=quiet)
+    return downloaded
+
+
 def download_feed_pics(session, max_count=None, fast_update=False, filter_func=None,
                        download_videos=True, shorter_output=False, sleep=True, quiet=False):
     """
@@ -451,19 +482,9 @@ def download_feed_pics(session, max_count=None, fast_update=False, filter_func=N
                 continue
             log("[%3i] %s " % (count, name), end="", flush=True, quiet=quiet)
             count += 1
-            downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
-            if sleep:
-                time.sleep(1.75 * random.random() + 0.25)
-            if "caption" in node:
-                save_caption(name, node["date"], node["caption"], shorter_output, quiet)
-            else:
-                log("<no caption>", end=' ', flush=True, quiet=quiet)
-            if node["is_video"] and download_videos:
-                video_data = get_json('p/' + node["code"], session, sleep=sleep)
-                download_pic(name,
-                             video_data['entry_data']['PostPage'][0]['media']['video_url'],
-                             node["date"], 'mp4', quiet=quiet)
-            log(quiet=quiet)
+            downloaded = download_node(node, session, name,
+                                       download_videos=download_videos, sleep=sleep,
+                                       shorter_output=shorter_output, quiet=quiet)
             if fast_update and not downloaded:
                 return
         data = get_feed_json(session, end_cursor=data["feed"]["media"]["page_info"]["end_cursor"],
@@ -508,20 +529,10 @@ def download(name, session, profile_pic_only=False, download_videos=True,
     while get_last_id(data) is not None:
         for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
             log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
-            count = count + 1
-            downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
-            if sleep:
-                time.sleep(1.75 * random.random() + 0.25)
-            if "caption" in node:
-                save_caption(name, node["date"], node["caption"], shorter_output, quiet)
-            else:
-                log("<no caption>", end=' ', flush=True, quiet=quiet)
-            if node["is_video"] and download_videos:
-                video_data = get_json('p/' + node["code"], session, sleep=sleep)
-                download_pic(name, \
-                        video_data['entry_data']['PostPage'][0]['media']['video_url'], \
-                        node["date"], 'mp4', quiet=quiet)
-            log(quiet=quiet)
+            count += 1
+            downloaded = download_node(node, session, name,
+                                       download_videos=download_videos, sleep=sleep,
+                                       shorter_output=shorter_output, quiet=quiet)
             if fast_update and not downloaded:
                 return
         data = get_json(name, session, max_id=get_last_id(data), sleep=sleep)
