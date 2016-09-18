@@ -1,2 +1,4 @@
 __pycache__/
-.idea
+build/
+dist/
+instaloader.egg-info/

@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 
+"""Download pictures and captions from Instagram"""
+
 import re, json, datetime, shutil, os, time, random, sys, pickle, getpass, tempfile
 from argparse import ArgumentParser
 from io import BytesIO
 import requests, requests.utils
 
+# To get version from setup.py for instaloader --version
+import pkg_resources
 try:
+    # pylint:disable=no-member
+    __version__ = pkg_resources.get_distribution('instaloader').version
+except pkg_resources.DistributionNotFound:
+    __version__ = 'Run ./setup.py --version'
+
+try:
+    # pylint:disable=wrong-import-position
     import win_unicode_console
 except ImportError:
     WINUNICODE = False
@@ -13,16 +24,6 @@ else:
     win_unicode_console.enable()
     WINUNICODE = True
 
-# List of public objects which are provided by `import instaloader`.
-__all__ = ['BadCredentialsException', 'ConnectionException', 'InstaloaderException',
-        'LoginRequiredException', 'NonfatalException', 'PrivateProfileNotFollowedException',
-        'ProfileHasNoPicsException', 'ProfileNotExistsException', 'check_id', 'copy_session',
-        'default_http_header', 'download', 'download_pic', 'download_profilepic',
-        'download_profiles', 'get_feed_json', 'download_feed_pics', 'epoch_to_string',
-        'get_anonymous_session',
-        'get_default_session_filename', 'get_file_extension', 'get_followees', 'get_id_by_username',
-        'get_json', 'get_last_id', 'get_logged_in_session', 'get_session', 'get_username_by_id',
-        'load_session', 'log', 'main', 'save_caption', 'save_session', 'test_login']
 
 class InstaloaderException(Exception):
     """Base exception for this script"""
@@ -598,15 +599,14 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
         save_session(session, username, sessionfile, quiet=quiet)
 
 def main():
-    parser = ArgumentParser(description='Simple downloader to fetch all Instagram pics and '\
-                                        'captions from a given profile')
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument('profile', nargs='*',
                         help='Name of profile to download; @<profile> to download all followees of '
                              '<profile>; or the special targets :feed-all or :feed-liked to '
                              'download pictures from your feed if --login is given (using '
                              '--fast-update is recommended).')
     parser.add_argument('--version', action='version',
-                        version='1.0.1')
+                        version=__version__)
     parser.add_argument('-l', '--login', metavar='YOUR-USERNAME',
             help='Login name for your Instagram account. Not needed to download public '\
                     'profiles, but if you want to download private profiles or all followees of '\
