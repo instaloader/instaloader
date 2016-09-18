@@ -10,7 +10,8 @@ setup(
     license='MIT',
     author='Alexander Graf, André Koch-Kramer',
     author_email='mail@agraf.me, koch-kramer@web.de',
-    description='Download pictures and captions from Instagram',
+    description='Tool to download pictures (or videos) and captions from Instagram, from a given '
+                'set of profiles, from your feed or from all followees of a given profile.',
     install_requires=['requests>=2.4'],
     python_requires='>=3.3',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},

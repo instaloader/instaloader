@@ -1,6 +1,6 @@
 # instaloader
 
-Simple tool to download pictures (or videos) and captions from Instagram, from a given set
+Tool to download pictures (or videos) and captions from Instagram, from a given set
 of profiles, from your feed or from all followees of a given profile.
 
 ## Usage
