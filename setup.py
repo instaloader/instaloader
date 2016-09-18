@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='instaloader',
-    version='1.0.1',
+    version='1.1',
     py_modules=['instaloader'],
     url='https://github.com/Thammus/instaloader',
     license='MIT',
