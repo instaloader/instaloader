@@ -434,7 +434,6 @@ def download_node(node, session, name,
     :param quiet: Suppress output
     :return: True if something was downloaded, False otherwise, i.e. file was already there
     """
-    # pylint:disable=too-many-arguments
     downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
     if sleep:
         time.sleep(1.75 * random.random() + 0.25)
@@ -469,7 +468,6 @@ def download_feed_pics(session, max_count=None, fast_update=False, filter_func=N
     :param sleep: Sleep between requests to instagram server
     :param quiet: Suppress output
     """
-    # pylint:disable=too-many-arguments
     data = get_feed_json(session, sleep=sleep)
     count = 1
     while data["feed"]["media"]["page_info"]["has_next_page"]:
@@ -494,7 +492,7 @@ def download_feed_pics(session, max_count=None, fast_update=False, filter_func=N
 def download(name, session, profile_pic_only=False, download_videos=True,
         fast_update=False, shorter_output=False, sleep=True, quiet=False):
     """Download one profile"""
-    # pylint:disable=too-many-arguments,too-many-branches
+    # pylint:disable=too-many-branches
     # Get profile main page json
     data = get_json(name, session, sleep=sleep)
     # check if profile does exist or name has changed since last download
@@ -556,7 +554,7 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
         profile_pic_only=False, download_videos=True, fast_update=False,
         sleep=True, shorter_output=False, quiet=False):
     """Download set of profiles and handle sessions"""
-    # pylint:disable=too-many-arguments,too-many-branches,too-many-locals
+    # pylint:disable=too-many-branches,too-many-locals
     # Login, if desired
     if username is not None:
         session = load_session(username, sessionfile, quiet=quiet)
