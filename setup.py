@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
+import sys
 from setuptools import setup
+
+if sys.version_info < (3,3):
+    sys.exit('Instaloader requires Python >= 3.3.')
 
 setup(
     name='instaloader',
