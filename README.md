@@ -1,6 +1,7 @@
 # instaloader
 
-Simple downloader to fetch all Instagram pictures and captions from a given profile.
+Simple tool to download pictures (or videos) and captions from Instagram, from a given set
+of profiles, from your feed or from all followees of a given profile.
 
 ## Usage
 
@@ -8,7 +9,7 @@ instaloader is written in Python, thus ensure having
 [Python](https://www.python.org/) (at least version 3.3) installed.
 
 If you intend to use this tool under Windows, it is highly recommended to first install
-[win-unicode-console](https://github.com/Drekin/win-unicode-console).
+[win-unicode-console](https://pypi.python.org/pypi/win_unicode_console).
 
 After having [downloaded instaloader](https://github.com/Thammus/instaloader/releases), unzip it and
 invoke bundled `setup.py` (requiring [setuptools](https://pypi.python.org/pypi/setuptools)) to
