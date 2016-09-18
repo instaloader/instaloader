@@ -11,7 +11,13 @@ instaloader is written in Python, thus ensure having
 If you intend to use this tool under Windows, it is highly recommended to first install
 [win-unicode-console](https://pypi.python.org/pypi/win_unicode_console).
 
-After having [downloaded instaloader](https://github.com/Thammus/instaloader/releases), unzip it and
+If you have [pip](https://pypi.python.org/pypi/pip) installed, you may install instaloader using
+```
+pip3 install instaloader
+```
+
+Alternatively, you may
+[download instaloader from github](https://github.com/Thammus/instaloader/releases), unzip it and
 invoke bundled `setup.py` (requiring [setuptools](https://pypi.python.org/pypi/setuptools)) to
 install it:
 ```
