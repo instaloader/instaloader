@@ -17,6 +17,7 @@ setup(
     description='Tool to download pictures (or videos) and captions from Instagram, from a given '
                 'set of profiles (even if private), from your feed or from all followees of a '
                 'given profile.',
+    long_description=open('README.rst').read(),
     install_requires=['requests>=2.4'],
     python_requires='>=3.3',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
