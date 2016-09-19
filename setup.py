@@ -3,7 +3,7 @@
 import sys
 from setuptools import setup
 
-if sys.version_info < (3,3):
+if sys.version_info < (3, 3):
     sys.exit('Instaloader requires Python >= 3.3.')
 
 setup(
@@ -15,7 +15,8 @@ setup(
     author='Alexander Graf, André Koch-Kramer',
     author_email='mail@agraf.me, koch-kramer@web.de',
     description='Tool to download pictures (or videos) and captions from Instagram, from a given '
-                'set of profiles, from your feed or from all followees of a given profile.',
+                'set of profiles (even if private), from your feed or from all followees of a '
+                'given profile.',
     install_requires=['requests>=2.4'],
     python_requires='>=3.3',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
@@ -24,12 +25,15 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
+        'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Topic :: Internet'
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: Internet',
+        'Topic :: Multimedia :: Graphics'
     ]
 )

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """Tool to download pictures (or videos) and captions from Instagram, from a given set
-of profiles, from your feed or from all followees of a given profile."""
+of profiles (even if private), from your feed or from all followees of a given profile."""
 
 import re, json, datetime, shutil, os, time, random, sys, pickle, getpass, tempfile
 from argparse import ArgumentParser

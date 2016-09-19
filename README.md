@@ -1,7 +1,7 @@
-# instaloader
+# Instaloader
 
 Tool to download pictures (or videos) and captions from Instagram, from a given set
-of profiles, from your feed or from all followees of a given profile.
+of profiles (even if private), from your feed or from all followees of a given profile.
 
 ## Usage
 
@@ -24,6 +24,7 @@ install it:
 ./setup.py install [--user]
 ```
 (pass `--user` to install it for your user only instead of globally)
+
 instaloader requires [python3-requests](https://pypi.python.org/pypi/requests/), which will be
 installed automatically by setup.py, if not already installed.
 
