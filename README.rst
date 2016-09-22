@@ -1,18 +1,15 @@
 Instaloader
 ===========
 
-Tool to download pictures (or videos) and captions from Instagram, from
-a given set of profiles (even if private), from your feed or from all
-followees of a given profile.
 
-Usage
------
+Installation
+------------
 
 instaloader is written in Python, thus ensure having
 `Python <https://www.python.org/>`__ (at least version 3.3) installed.
 
-If you intend to use this tool under Windows, it is highly recommended
-to first install
+If you intend to use this tool under Windows, it is recommended
+to install
 `win-unicode-console <https://pypi.python.org/pypi/win_unicode_console>`__.
 
 If you have `pip <https://pypi.python.org/pypi/pip>`__ installed, you
@@ -29,15 +26,18 @@ and invoke bundled ``setup.py`` (requiring
 
 ::
 
-    ./setup.py install [--user]
+    python3 setup.py install [--user]
 
 (pass ``--user`` to install it for your user only instead of globally)
 
 instaloader requires
-`python3-requests <https://pypi.python.org/pypi/requests/>`__, which
+`requests <https://pypi.python.org/pypi/requests>`__, which
 will be installed automatically by setup.py, if not already installed.
 
-Now, to download a set of profiles, do
+How to automatically download pictures from Instagram
+-----------------------------------------------------
+
+To download a set of profiles, do
 
 ::
 
@@ -65,7 +65,7 @@ invoke it with
 When invoked like this, it also **stores the session cookies** in a file
 in ``/tmp``, which will be reused later when ``--login`` is given. So
 you can download private profiles **non-interactively** when you already
-have a valid session cookies file.
+have a valid session cookie file.
 
 If you want to **download all followees of a given profile**, call
 
@@ -73,7 +73,7 @@ If you want to **download all followees of a given profile**, call
 
     instaloader --login=your_username @profile
 
-To **download all the pictures which you have liked**, call
+To **download all the pictures from your feed which you have liked**, call
 
 ::
 
