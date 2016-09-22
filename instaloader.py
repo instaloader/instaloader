@@ -60,7 +60,7 @@ def _log(*msg, sep='', end='\n', flush=False, quiet=False):
 
 def get_json(name, session, max_id=0, sleep=True):
     """Return JSON of a profile"""
-    resp = session.get('http://www.instagram.com/'+name, \
+    resp = session.get('http://www.instagram.com/'+name,
         params={'max_id': max_id})
     if sleep:
         time.sleep(4 * random.random() + 1)
@@ -206,7 +206,7 @@ def save_caption(name, date_epoch, caption, shorter_output=False, quiet=False):
             return None
         else:
             def get_filename(index):
-                return filename if index==0 else (filename[:-4] + '_old_' + \
+                return filename if index==0 else (filename[:-4] + '_old_' +
                         (str(0) if index<10 else str()) + str(index) + filename[-4:])
             i = 0
             while os.path.isfile(get_filename(i)):
@@ -226,6 +226,17 @@ def save_caption(name, date_epoch, caption, shorter_output=False, quiet=False):
     os.makedirs(name.lower(), exist_ok=True)
     with open(filename, 'wb') as text_file:
         shutil.copyfileobj(BytesIO(caption), text_file)
+    os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
+
+
+def save_location(name, location_json, date_epoch):
+    filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_location.txt'
+    location_string = location_json["name"]+"\n" + \
+                      "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n" \
+                          .format(location_json["lat"], location_json["lng"])
+    os.makedirs(name.lower(), exist_ok=True)
+    with open(filename, 'wb') as text_file:
+        shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
     os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
 
@@ -414,8 +425,18 @@ def get_feed_json(session, end_cursor=None, sleep=True):
     return json.loads(resp.text)
 
 
+def get_location(node, session, sleep=True):
+    pic_json = get_json("p/" + node["code"], session, sleep=sleep)
+    if pic_json["entry_data"]["PostPage"][0]["media"]["location"] is not None:
+        location_json = get_json("explore/locations/" +
+                                 pic_json["entry_data"]["PostPage"][0]["media"]["location"]["id"],
+                                 session, sleep=sleep)
+        return location_json["entry_data"]["LocationsPage"][0]["location"]
+
+
 def download_node(node, session, name,
-                  download_videos=True, sleep=True, shorter_output=False, quiet=False):
+                  download_videos=True, geotags=False,
+                  sleep=True, shorter_output=False, quiet=False):
     """
     Download everything associated with one instagram node, i.e. picture, caption and video.
 
@@ -440,12 +461,17 @@ def download_node(node, session, name,
         download_pic(name,
                      video_data['entry_data']['PostPage'][0]['media']['video_url'],
                      node["date"], 'mp4', quiet=quiet)
+    if geotags:
+        location = get_location(node, session, sleep)
+        if location:
+            save_location(name, location, node["date"])
     _log(quiet=quiet)
     return downloaded
 
 
 def download_feed_pics(session, max_count=None, fast_update=False, filter_func=None,
-                       download_videos=True, shorter_output=False, sleep=True, quiet=False):
+                       download_videos=True, geotags=False,
+                       shorter_output=False, sleep=True, quiet=False):
     """
     Download pictures from the user's feed.
 
@@ -475,8 +501,8 @@ def download_feed_pics(session, max_count=None, fast_update=False, filter_func=N
             _log("[%3i] %s " % (count, name), end="", flush=True, quiet=quiet)
             count += 1
             downloaded = download_node(node, session, name,
-                                       download_videos=download_videos, sleep=sleep,
-                                       shorter_output=shorter_output, quiet=quiet)
+                                       download_videos=download_videos, geotags=geotags,
+                                       sleep=sleep, shorter_output=shorter_output, quiet=quiet)
             if fast_update and not downloaded:
                 return
         data = get_feed_json(session, end_cursor=data["feed"]["media"]["page_info"]["end_cursor"],
@@ -520,10 +546,10 @@ def check_id(profile, session, json_data, quiet=False):
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
 
-def download(name, session, profile_pic_only=False, download_videos=True,
+def download(name, session, profile_pic_only=False, download_videos=True, geotags=False,
         fast_update=False, shorter_output=False, sleep=True, quiet=False):
     """Download one profile"""
-    # pylint:disable=too-many-branches
+    # pylint:disable=too-many-branches,too-many-locals
     # Get profile main page json
     data = get_json(name, session, sleep=sleep)
     # check if profile does exist or name has changed since last download
@@ -567,8 +593,8 @@ def download(name, session, profile_pic_only=False, download_videos=True,
             _log("[%3i/%3i] " % (count, totalcount), end="", flush=True, quiet=quiet)
             count += 1
             downloaded = download_node(node, session, name,
-                                       download_videos=download_videos, sleep=sleep,
-                                       shorter_output=shorter_output, quiet=quiet)
+                                       download_videos=download_videos, geotags=geotags,
+                                       sleep=sleep, shorter_output=shorter_output, quiet=quiet)
             if fast_update and not downloaded:
                 return
         data = get_json(name, session, max_id=get_last_id(data), sleep=sleep)
@@ -589,7 +615,7 @@ def get_logged_in_session(username, password=None, quiet=False):
             password = None
 
 def download_profiles(profilelist, username=None, password=None, sessionfile=None,
-        profile_pic_only=False, download_videos=True, fast_update=False,
+        profile_pic_only=False, download_videos=True, geotags=False, fast_update=False,
         sleep=True, shorter_output=False, quiet=False):
     """Download set of profiles and handle sessions"""
     # pylint:disable=too-many-branches,too-many-locals
@@ -614,14 +640,14 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
             elif pentry == ":feed-all" and username is not None:
                 _log("Retrieving pictures from your feed...", quiet=quiet)
                 download_feed_pics(session, fast_update=fast_update,
-                                   download_videos=download_videos, shorter_output=shorter_output,
-                                   sleep=sleep, quiet=quiet)
+                                   download_videos=download_videos, geotags=geotags,
+                                   shorter_output=shorter_output, sleep=sleep, quiet=quiet)
             elif pentry == ":feed-liked" and username is not None:
                 _log("Retrieving pictures you liked from your feed...", quiet=quiet)
                 download_feed_pics(session, fast_update=fast_update,
                                    filter_func=lambda node: not node["likes"]["viewer_has_liked"],
-                                   download_videos=download_videos, shorter_output=shorter_output,
-                                   sleep=sleep, quiet=quiet)
+                                   download_videos=download_videos, geotags=geotags,
+                                   shorter_output=shorter_output, sleep=sleep, quiet=quiet)
             else:
                 targets.add(pentry)
         if len(targets) == 0:
@@ -632,7 +658,7 @@ def download_profiles(profilelist, username=None, password=None, sessionfile=Non
         for target in targets:
             try:
                 download(target, session, profile_pic_only, download_videos,
-                        fast_update, shorter_output, sleep, quiet)
+                        geotags, fast_update, shorter_output, sleep, quiet)
             except NonfatalException as err:
                 failedtargets.append(target)
                 print(err, file=sys.stderr)
@@ -670,6 +696,8 @@ def main():
             help='Only download profile picture')
     parser.add_argument('-V', '--skip-videos', action='store_true',
             help='Do not download videos')
+    parser.add_argument('-G', '--geotags', action='store_true',
+            help='Store geotags when available')
     parser.add_argument('-F', '--fast-update', action='store_true',
             help='Abort at encounter of first already-downloaded picture')
     parser.add_argument('-S', '--no-sleep', action='store_true',
@@ -682,7 +710,7 @@ def main():
     args = parser.parse_args()
     try:
         download_profiles(args.profile, args.login, args.password, args.sessionfile,
-                args.profile_pic_only, not args.skip_videos, args.fast_update,
+                args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
                 not args.no_sleep, args.shorter_output, args.quiet)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
