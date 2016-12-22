@@ -474,7 +474,7 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
 
 
 def download_feed_pics(session: requests.Session, max_count: int = None, fast_update: bool = False,
-                       filter_func: Optional[Callable[Dict[str, Dict[str, Any]], bool]] = None,
+                       filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
                        download_videos: bool = True, geotags: bool = False,
                        shorter_output: bool = False, sleep: bool = True, quiet: bool = False) -> None:
     """
