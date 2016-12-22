@@ -3,8 +3,8 @@
 import sys
 from setuptools import setup
 
-if sys.version_info < (3, 3):
-    sys.exit('Instaloader requires Python >= 3.3.')
+if sys.version_info < (3, 5):
+    sys.exit('Instaloader requires Python >= 3.5.')
 
 setup(
     name='instaloader',
@@ -29,8 +29,6 @@ setup(
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3 :: Only',
