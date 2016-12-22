@@ -4,8 +4,9 @@ python:
  - "3.4"
  - "3.5"
  - "3.5-dev"
+ - "3.6-dev"
  - "nightly"
 install:
  - pip install pylint requests
 script:
- - python3 -m pylint -r n -d bad-whitespace,bad-continuation,missing-docstring,multiple-imports,too-many-arguments,locally-disabled instaloader
+ - python3 -m pylint -r n -d bad-whitespace,bad-continuation,missing-docstring,multiple-imports,too-many-arguments,locally-disabled,line-too-long,invalid-sequence-index instaloader
