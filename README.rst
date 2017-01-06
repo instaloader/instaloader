@@ -52,7 +52,7 @@ To later update your local copy of that profile, you may run
 
     instaloader --fast-update profile [profile ...]
 
-When ``--fast-update`` is given, instaloder terminates when arriving at
+When ``--fast-update`` is given, Instaloader terminates when arriving at
 the first already-downloaded picture.
 
 Instaloader can also be used to **download private profiles**. To do so,
