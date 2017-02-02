@@ -64,7 +64,7 @@ def _log(*msg, sep='', end='\n', flush=False, quiet=False):
 def get_json(name: str, session: requests.Session, max_id: int = 0, sleep: bool = True) -> Optional[Dict[str, Any]]:
     """Return JSON of a profile"""
     resp = session.get('http://www.instagram.com/'+name,
-        params={'max_id': max_id})
+        params={'max-age': max_id})
     if sleep:
         time.sleep(4 * random.random() + 1)
     match = re.search('window\\._sharedData = .*<', resp.text)
