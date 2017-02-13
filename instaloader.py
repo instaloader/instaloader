@@ -101,7 +101,7 @@ def get_id_by_username(profile: str) -> int:
     """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
     his/her username. To get said ID, given the profile's name, you may call this function."""
     data = get_json(profile, get_anonymous_session())
-    if len(data["entry_data"]) == 0 or "ProfilePage" not in data("entry_data"):
+    if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
     return int(data['entry_data']['ProfilePage'][0]['user']['id'])
 
