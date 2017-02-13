@@ -685,7 +685,8 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
         save_session(session, username, sessionfile, quiet=quiet)
 
 def main():
-    parser = ArgumentParser(description=__doc__)
+    parser = ArgumentParser(description=__doc__,
+                            epilog="Report issues at https://github.com/Thammus/instaloader/issues.")
     parser.add_argument('profile', nargs='*',
                         help='Name of profile to download; @<profile> to download all followees of '
                              '<profile>; or the special targets :feed-all or :feed-liked to '

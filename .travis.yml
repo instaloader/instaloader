@@ -2,7 +2,9 @@ language: python
 python:
  - "3.5"
  - "3.5-dev"
+ - "3.6"
  - "3.6-dev"
+ - "3.7-dev"
  - "nightly"
 install:
  - pip install pylint requests

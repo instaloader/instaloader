@@ -19,7 +19,7 @@ setup(
                 'profile.',
     long_description=open('README.rst').read(),
     install_requires=['requests>=2.4'],
-    python_requires='>=3.3',
+    python_requires='>=3.5',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
     zip_safe=True,
     keywords='instagram downloader',

@@ -6,7 +6,7 @@ Installation
 ------------
 
 instaloader is written in Python, thus ensure having
-`Python <https://www.python.org/>`__ (at least version 3.3) installed.
+`Python <https://www.python.org/>`__ (at least version 3.5) installed.
 
 If you intend to use this tool under Windows, it is recommended
 to install
