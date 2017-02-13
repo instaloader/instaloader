@@ -5,7 +5,7 @@ Instaloader
 Installation
 ------------
 
-instaloader is written in Python, thus ensure having
+Instaloader is written in Python, thus ensure having
 `Python <https://www.python.org/>`__ (at least version 3.5) installed.
 
 If you intend to use this tool under Windows, it is recommended
@@ -13,14 +13,14 @@ to install
 `win-unicode-console <https://pypi.python.org/pypi/win_unicode_console>`__.
 
 If you have `pip <https://pypi.python.org/pypi/pip>`__ installed, you
-may install instaloader using
+may install Instaloader using
 
 ::
 
     pip3 install instaloader
 
-Alternatively, you may `download instaloader from
-github <https://github.com/Thammus/instaloader/releases>`__, unzip it
+Alternatively, you may `download Instaloader from
+GitHub <https://github.com/Thammus/instaloader/releases>`__, unzip it
 and invoke bundled ``setup.py`` (requiring
 `setuptools <https://pypi.python.org/pypi/setuptools>`__) to install it:
 
@@ -30,7 +30,7 @@ and invoke bundled ``setup.py`` (requiring
 
 (pass ``--user`` to install it for your user only instead of globally)
 
-instaloader requires
+Instaloader requires
 `requests <https://pypi.python.org/pypi/requests>`__, which
 will be installed automatically by setup.py, if not already installed.
 
@@ -86,7 +86,7 @@ To get a list of other helpful flags, run ``instaloader --help``.
 Usage as library
 ----------------
 
-You may also use parts of instaloader as library to do other interesting
+You may also use parts of Instaloader as library to do other interesting
 things.
 
 For example, to get a list of all followers of a profile as well as
