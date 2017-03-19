@@ -19,20 +19,16 @@ may install Instaloader using
 
     pip3 install instaloader
 
-Alternatively, you may `download Instaloader from
-GitHub <https://github.com/Thammus/instaloader/releases>`__, unzip it
-and invoke bundled ``setup.py`` (requiring
-`setuptools <https://pypi.python.org/pypi/setuptools>`__) to install it:
+Alternatively, to get the most current version of Instaloader from our
+`Git repository <https://github.com/Thammus/instaloader>`__:
 
 ::
 
-    python3 setup.py install [--user]
-
-(pass ``--user`` to install it for your user only instead of globally)
+    pip3 install git+https://github.com/Thammus/instaloader
 
 Instaloader requires
 `requests <https://pypi.python.org/pypi/requests>`__, which
-will be installed automatically by setup.py, if not already installed.
+will be installed automatically, if it is not already installed.
 
 How to automatically download pictures from Instagram
 -----------------------------------------------------
