@@ -646,7 +646,7 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
     try:
         # Generate set of targets
         for pentry in profilelist:
-            if pentry[0] == '@':
+            if pentry[0] == '@' and username is not None:
                 _log("Retrieving followees of %s..." % pentry[1:], quiet=quiet)
                 followees = get_followees(pentry[1:], session)
                 targets.update([followee['username'] for followee in followees])
@@ -688,9 +688,9 @@ def main():
     parser = ArgumentParser(description=__doc__,
                             epilog="Report issues at https://github.com/Thammus/instaloader/issues.")
     parser.add_argument('profile', nargs='*',
-                        help='Name of profile to download; @<profile> to download all followees of '
+                        help='Name of profile to download; If --login is given: @<profile> to download all followees of '
                              '<profile>; or the special targets :feed-all or :feed-liked to '
-                             'download pictures from your feed if --login is given (using '
+                             'download pictures from your feed (using '
                              '--fast-update is recommended).')
     parser.add_argument('--version', action='version',
                         version=__version__)
