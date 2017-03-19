@@ -670,8 +670,16 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
         # Iterate through targets list and download them
         for target in targets:
             try:
-                download(target, session, profile_pic_only, download_videos,
-                        geotags, fast_update, shorter_output, sleep, quiet)
+                try:
+                    download(target, session, profile_pic_only, download_videos,
+                             geotags, fast_update, shorter_output, sleep, quiet)
+                except ProfileNotExistsException as err:
+                    if username is not None:
+                        _log("\"Profile not exists\" - Trying again anonymously, helps in case you are just blocked")
+                        download(target, get_anonymous_session(), profile_pic_only, download_videos,
+                                 geotags, fast_update, shorter_output, sleep, quiet)
+                    else:
+                        raise err
             except NonfatalException as err:
                 failedtargets.append(target)
                 print(err, file=sys.stderr)
