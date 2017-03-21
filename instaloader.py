@@ -284,7 +284,7 @@ def save_session(session: requests.Session, username: str, filename: Optional[st
     if filename is None:
         filename = get_default_session_filename(username)
     dirname = os.path.dirname(filename)
-    if not os.path.exists(dirname):
+    if dirname != '' and not os.path.exists(dirname):
         os.makedirs(dirname)
         os.chmod(dirname, 0o700)
     with open(filename, 'wb') as sessionfile:
