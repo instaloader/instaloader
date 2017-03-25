@@ -167,14 +167,18 @@ def get_followees(profile: str, session: requests.Session) -> List[Dict[str, Any
     raise LoginRequiredException("Login required to gather followees.")
 
 
-def download_pic(name: str, url: str, date_epoch: Real, outputlabel: Optional[str] = None, quiet: bool = False) -> bool:
+def download_pic(name: str, url: str, date_epoch: Real, outputlabel: Optional[str] = None, quiet: bool = False,
+                 filename_suffix: Optional[str] = None) -> bool:
     """Downloads and saves picture with given url under given directory with given timestamp.
     Returns true, if file was actually downloaded, i.e. updated."""
     if outputlabel is None:
         outputlabel = _epoch_to_string(date_epoch)
     urlmatch = re.search('\\.[a-z]*\\?', url)
     file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
-    filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '.' + file_extension
+    filename = name.lower() + '/' + _epoch_to_string(date_epoch)
+    if filename_suffix is not None:
+        filename += '_' + filename_suffix
+    filename += '.' + file_extension
     if os.path.isfile(filename):
         _log(outputlabel + ' exists', end=' ', flush=True, quiet=quiet)
         return False
@@ -455,9 +459,23 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
     :param quiet: Suppress output
     :return: True if something was downloaded, False otherwise, i.e. file was already there
     """
-    downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
-    if sleep:
-        time.sleep(1.75 * random.random() + 0.25)
+    if node['__typename'] == 'GraphSidecar':
+        sidecar_data = session.get('https://www.instagram.com/p/' + node['code'] + '/', params={'__a': 1}).json()
+        edge_number = 1
+        downloaded = False
+        for edge in sidecar_data['media']['edge_sidecar_to_children']['edges']:
+            edge_downloaded = download_pic(name, edge['node']['display_url'], node['date'],
+                                           filename_suffix=str(edge_number), quiet=quiet,
+                                           outputlabel=(str(edge_number) if edge_number != 1 else None))
+            downloaded = downloaded or edge_downloaded
+            edge_number += 1
+            if sleep:
+                time.sleep(1.75 * random.random() + 0.25)
+    else:
+        # Node is image or video.
+        downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+        if sleep:
+            time.sleep(1.75 * random.random() + 0.25)
     if "caption" in node:
         save_caption(name, node["date"], node["caption"], shorter_output, quiet)
     else:
