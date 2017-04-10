@@ -40,6 +40,9 @@ class NonfatalException(InstaloaderException):
 class ProfileNotExistsException(NonfatalException):
     pass
 
+class ProfileAccessDeniedException(NonfatalException):
+    pass
+
 class ProfileHasNoPicsException(NonfatalException):
     pass
 
@@ -91,8 +94,8 @@ def get_username_by_id(session: requests.Session, profile_id: int) -> str:
                                             "you (id: " + str(profile_id) + ").")
     else:
         if test_login(session):
-            raise ConnectionException("Username could not be determined due to connection error" +
-                                        " (id: "+ str(profile_id) +").")
+            raise ProfileAccessDeniedException("Username could not be determined due to error {0} (id: {1})."
+                                               .format(str(resp.status_code), str(profile_id)))
         raise LoginRequiredException("Login required to determine username (id: " +
                                         str(profile_id) + ").")
 
