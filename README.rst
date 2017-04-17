@@ -51,6 +51,12 @@ To later update your local copy of that profile, you may run
 When ``--fast-update`` is given, Instaloader terminates when arriving at
 the first already-downloaded picture.
 
+You may also download the most recent pictures with one hashtag:
+
+::
+
+    instaloader #hashtag
+
 Instaloader can also be used to **download private profiles**. To do so,
 invoke it with
 
@@ -116,6 +122,12 @@ You could also download your last 20 liked pics with
 
     instaloader.download_feed_pics(session, max_count=20, fast_update=True,
                                    filter_func=lambda node: not node["likes"]["viewer_has_liked"])
+
+To download the last 20 pictures with hashtag #cat, do
+
+.. code:: python
+
+    instaloader.download_hashtag('cat', session=instaloader.get_anonymous_session(), max_count=20)
 
 Each Instagram profile has its own unique ID which stays unmodified even
 if a user changes his/her username. To get said ID, given the profile's

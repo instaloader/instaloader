@@ -64,9 +64,10 @@ def _log(*msg, sep='', end='\n', flush=False, quiet=False):
         print(*msg, sep=sep, end=end, flush=flush)
 
 
-def get_json(name: str, session: requests.Session, max_id: int = 0, sleep: bool = True) -> Optional[Dict[str, Any]]:
+def get_json(name: str, session: requests.Session,
+             max_id: Optional[int] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
     """Return JSON of a profile"""
-    if max_id == 0:
+    if not max_id:
         resp = session.get('https://www.instagram.com/'+name)
     else:
         resp = session.get('https://www.instagram.com/'+name, params={'max_id': max_id})
@@ -462,7 +463,7 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
     :param quiet: Suppress output
     :return: True if something was downloaded, False otherwise, i.e. file was already there
     """
-    if node['__typename'] == 'GraphSidecar':
+    if '__typename' in node and node['__typename'] == 'GraphSidecar':
         sidecar_data = session.get('https://www.instagram.com/p/' + node['code'] + '/', params={'__a': 1}).json()
         edge_number = 1
         downloaded = False
@@ -538,6 +539,56 @@ def download_feed_pics(session: requests.Session, max_count: int = None, fast_up
                              sleep=sleep)
 
 
+def get_hashtag_json(hashtag: str, session: requests.Session,
+                     max_id: Optional[int] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
+    """Return JSON of a #hashtag"""
+    return get_json(name='explore/tags/{0}/'.format(hashtag), session=session, max_id=max_id, sleep=sleep)
+
+
+def download_hashtag(hashtag: str, session: requests.Session,
+                     max_count: Optional[int] = None,
+                     filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
+                     fast_update: bool = False, download_videos: bool = True, geotags: bool = False,
+                     shorter_output: bool = False, sleep: bool = True, quiet: bool = False) -> None:
+    """Download pictures of one hashtag.
+
+    To download the last 30 pictures with hashtag #cat, do
+    >>> download_hashtag('cat', session=get_anonymous_session(), max_count=30)
+
+    :param hashtag: Hashtag to download, without leading '#'
+    :param session: Session belonging to a user, i.e. not an anonymous session
+    :param max_count: Maximum count of pictures to download
+    :param filter_func: function(node), which returns True if given picture should not be downloaded
+    :param fast_update: If true, abort when first already-downloaded picture is encountered
+    :param download_videos: True, if videos should be downloaded
+    :param geotags: Download geotags
+    :param shorter_output: Shorten log output by not printing captions
+    :param sleep: Sleep between requests to instagram server
+    :param quiet: Suppress output
+    """
+    data = get_hashtag_json(hashtag, session, sleep=sleep)
+    count = 1
+    while data:
+        for node in data['entry_data']['TagPage'][0]['tag']['media']['nodes']:
+            if max_count is not None and count > max_count:
+                return
+            _log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True, quiet=quiet)
+            count += 1
+            if filter_func is not None and filter_func(node):
+                _log('<skipped>', quiet=quiet)
+                continue
+            downloaded = download_node(node, session, '#{0}'.format(hashtag),
+                                       download_videos=download_videos, geotags=geotags, sleep=sleep,
+                                       shorter_output=shorter_output, quiet=quiet)
+            if fast_update and not downloaded:
+                return
+        if data['entry_data']['TagPage'][0]['tag']['media']['page_info']['has_next_page']:
+            data = get_hashtag_json(hashtag, session, sleep=sleep,
+                                    max_id=data['entry_data']['TagPage'][0]['tag']['media']['page_info']['end_cursor'])
+        else:
+            break
+
+
 def check_id(profile: str, session: requests.Session, json_data: Dict[str, Any], quiet: bool = False) -> str:
     """
     Consult locally stored ID of profile with given name, check whether ID matches and whether name
@@ -575,9 +626,10 @@ def check_id(profile: str, session: requests.Session, json_data: Dict[str, Any],
     raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
 
-def download(name: str, session: requests.Session, profile_pic_only: bool = False, download_videos: bool = True,
-             geotags: bool = False,
-             fast_update: bool = False, shorter_output: bool = False, sleep: bool = True, quiet: bool = False) -> None:
+def download(name: str, session: requests.Session,
+             profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
+             fast_update: bool = False, shorter_output: bool = False, sleep: bool = True,
+             quiet: bool = False) -> None:
     """Download one profile"""
     # pylint:disable=too-many-branches,too-many-locals
     # Get profile main page json
@@ -667,7 +719,12 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
     try:
         # Generate set of targets
         for pentry in profilelist:
-            if pentry[0] == '@' and username is not None:
+            if pentry[0] == '#':
+                _log("Retrieving pictures with hashtag {0}".format(pentry), quiet=quiet)
+                download_hashtag(hashtag=pentry[1:], session=session, fast_update=fast_update,
+                                 download_videos=download_videos, geotags=geotags, shorter_output=shorter_output,
+                                 sleep=sleep, quiet=quiet)
+            elif pentry[0] == '@' and username is not None:
                 _log("Retrieving followees of %s..." % pentry[1:], quiet=quiet)
                 followees = get_followees(pentry[1:], session)
                 targets.update([followee['username'] for followee in followees])
@@ -684,9 +741,7 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
                                    shorter_output=shorter_output, sleep=sleep, quiet=quiet)
             else:
                 targets.add(pentry)
-        if len(targets) == 0:
-            _log("No profiles to download given.", quiet=quiet)
-        elif len(targets) > 1:
+        if len(targets) > 1:
             _log("Downloading %i profiles..." % len(targets), quiet=quiet)
         # Iterate through targets list and download them
         for target in targets:
@@ -716,8 +771,9 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
 def main():
     parser = ArgumentParser(description=__doc__,
                             epilog="Report issues at https://github.com/Thammus/instaloader/issues.")
-    parser.add_argument('profile', nargs='*',
-                        help='Name of profile to download; If --login is given: @<profile> to download all followees of '
+    parser.add_argument('profile', nargs='*', metavar='profile|#hashtag',
+                        help='Name of profile or #hashtag to download. '
+                             'Alternatively, if --login is given: @<profile> to download all followees of '
                              '<profile>; or the special targets :feed-all or :feed-liked to '
                              'download pictures from your feed (using '
                              '--fast-update is recommended).')
