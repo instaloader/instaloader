@@ -65,7 +65,7 @@ def _log(*msg, sep='', end='\n', flush=False, quiet=False):
 
 
 def get_json(name: str, session: requests.Session,
-             max_id: Optional[int] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
+             max_id: Optional[str] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
     """Return JSON of a profile"""
     if not max_id:
         resp = session.get('https://www.instagram.com/'+name)
@@ -74,9 +74,7 @@ def get_json(name: str, session: requests.Session,
     if sleep:
         time.sleep(4 * random.random() + 1)
     match = re.search('window\\._sharedData = .*<', resp.text)
-    if match is None:
-        return None
-    else:
+    if match is not None:
         return json.loads(match.group(0)[21:-2])
 
 
@@ -105,7 +103,7 @@ def get_id_by_username(profile: str) -> int:
     """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
     his/her username. To get said ID, given the profile's name, you may call this function."""
     data = get_json(profile, get_anonymous_session())
-    if len(data["entry_data"]) == 0 or "ProfilePage" not in data["entry_data"]:
+    if "ProfilePage" not in data["entry_data"]:
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
     return int(data['entry_data']['ProfilePage'][0]['user']['id'])
 
@@ -567,7 +565,7 @@ def download_feed_pics(session: requests.Session, max_count: int = None, fast_up
 
 
 def get_hashtag_json(hashtag: str, session: requests.Session,
-                     max_id: Optional[int] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
+                     max_id: Optional[str] = None, sleep: bool = True) -> Optional[Dict[str, Any]]:
     """Return JSON of a #hashtag"""
     return get_json(name='explore/tags/{0}/'.format(hashtag), session=session, max_id=max_id, sleep=sleep)
 
@@ -684,17 +682,13 @@ def download(name: str, session: requests.Session,
         if data["config"]["viewer"] is not None:
             _log("profile %s could also be downloaded anonymously." % name, quiet=quiet)
     if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
-            len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0) \
+            not data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) \
                     and not profile_pic_only:
         raise ProfileHasNoPicsException("Profile %s: no pics found." % name)
     # Iterate over pictures and download them
     def get_last_id(data):
-        if len(data["entry_data"]) == 0 or \
-                        len(data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) == 0:
-            return None
-        else:
-            data = data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
-            return int(data[len(data) - 1]["id"])
+        if data["entry_data"] and data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
+            return data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"][-1]["id"]
     totalcount = data["entry_data"]["ProfilePage"][0]["user"]["media"]["count"]
     count = 1
     while get_last_id(data) is not None:
@@ -788,7 +782,7 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
                 print(err, file=sys.stderr)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
-    if len(targets) > 1 and len(failedtargets) > 0:
+    if len(targets) > 1 and failedtargets:
         print("Errors occured (see above) while downloading profiles: %s." %
                 ", ".join(failedtargets), file=sys.stderr)
     # Save session if it is useful
