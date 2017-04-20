@@ -487,7 +487,7 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
     if node["is_video"] and download_videos:
         video_data = get_json('p/' + node["code"], session, sleep=sleep)
         download_pic(name,
-                     video_data['entry_data']['PostPage'][0]['media']['video_url'],
+                     video_data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['video_url'],
                      node["date"], 'mp4', quiet=quiet)
     if geotags:
         location = get_location(node, session, sleep)
