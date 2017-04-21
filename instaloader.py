@@ -478,8 +478,9 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
                 edge_number += 1
                 if sleep:
                     time.sleep(1.75 * random.random() + 0.25)
-        elif node['__typename'] == 'GraphImage':
-            downloaded = download_pic(name, node["display_url"], date, quiet=quiet)
+        elif node['__typename'] in ['GraphImage', 'GraphVideo']:
+            downloaded = download_pic(name, node["display_url"] if "display_url" in node else node["display_src"],
+                                      date, quiet=quiet)
             if sleep:
                 time.sleep(1.75 * random.random() + 0.25)
         else:
