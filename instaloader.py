@@ -84,7 +84,7 @@ def get_username_by_id(session: requests.Session, profile_id: int) -> str:
     """To get the current username of a profile, given its unique ID, this function can be used.
     session is required to be a logged-in (i.e. non-anonymous) session."""
     tempsession = copy_session(session)
-    tempsession.headers.update({'Content-Type' : 'application/json'})
+    tempsession.headers.update({'Content-Type' : 'application/x-www-form-urlencoded'})
     resp = tempsession.post('https://www.instagram.com/query/', data='q=ig_user(' +
                             str(profile_id) +')+%7B%0A++username%0A%7D%0A')
     if resp.status_code == 200:
@@ -147,7 +147,7 @@ def get_followees(profile: str, session: requests.Session) -> List[Dict[str, Any
              "&ref=relationships%3A%3Afollow_list"]
     tmpsession.headers.update(default_http_header())
     tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'+profile+'/following/'})
-    tmpsession.headers.update({'Content-Type' : 'application/json'})
+    tmpsession.headers.update({'Content-Type' : 'application/x-www-form-urlencoded'})
     resp = tmpsession.post('https://www.instagram.com/query/', data=query[0]+"first("+query[1])
     if resp.status_code == 200:
         data = json.loads(resp.text)
@@ -431,7 +431,7 @@ def get_feed_json(session: requests.Session, end_cursor: str = None, sleep: bool
             "profile_pic_url%2C%0A++username%0A%7D%0A&ref=feed::show"
     tmpsession.headers.update(default_http_header())
     tmpsession.headers.update({'Referer' : 'https://www.instagram.com/'})
-    tmpsession.headers.update({'Content-Type' : 'application/json'})
+    tmpsession.headers.update({'Content-Type' : 'application/x-www-form-urlencoded'})
     resp = tmpsession.post('https://www.instagram.com/query/', data=query)
     if sleep:
         time.sleep(4 * random.random() + 1)
@@ -463,36 +463,51 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
     :param quiet: Suppress output
     :return: True if something was downloaded, False otherwise, i.e. file was already there
     """
-    if '__typename' in node and node['__typename'] == 'GraphSidecar':
-        sidecar_data = session.get('https://www.instagram.com/p/' + node['code'] + '/', params={'__a': 1}).json()
-        edge_number = 1
-        downloaded = False
-        for edge in sidecar_data['media']['edge_sidecar_to_children']['edges']:
-            edge_downloaded = download_pic(name, edge['node']['display_url'], node['date'],
-                                           filename_suffix=str(edge_number), quiet=quiet,
-                                           outputlabel=(str(edge_number) if edge_number != 1 else None))
-            downloaded = downloaded or edge_downloaded
-            edge_number += 1
+    # pylint:disable=too-many-branches,too-many-locals
+    date = node["date"] if "date" in node else node["taken_at_timestamp"]
+    if '__typename' in node:
+        if node['__typename'] == 'GraphSidecar':
+            sidecar_data = session.get('https://www.instagram.com/p/' + node['code'] + '/', params={'__a': 1}).json()
+            edge_number = 1
+            downloaded = False
+            for edge in sidecar_data['media']['edge_sidecar_to_children']['edges']:
+                edge_downloaded = download_pic(name, edge['node']['display_url'],date,
+                                               filename_suffix=str(edge_number), quiet=quiet,
+                                               outputlabel=(str(edge_number) if edge_number != 1 else None))
+                downloaded = downloaded or edge_downloaded
+                edge_number += 1
+                if sleep:
+                    time.sleep(1.75 * random.random() + 0.25)
+        elif node['__typename'] == 'GraphImage':
+            downloaded = download_pic(name, node["display_url"], date, quiet=quiet)
             if sleep:
                 time.sleep(1.75 * random.random() + 0.25)
+        else:
+            _log("Warning: Unknown typename discovered:" + node['__typename'])
+            downloaded = False
     else:
-        # Node is image or video.
-        downloaded = download_pic(name, node["display_src"], node["date"], quiet=quiet)
+        # Node is an old image or video.
+        downloaded = download_pic(name, node["display_src"], date, quiet=quiet)
         if sleep:
             time.sleep(1.75 * random.random() + 0.25)
-    if "caption" in node:
-        save_caption(name, node["date"], node["caption"], shorter_output, quiet)
+    if "edge_media_to_caption" in node and node["edge_media_to_caption"]["edges"]:
+        save_caption(name, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"], shorter_output, quiet)
+    elif "caption" in node:
+        save_caption(name, date, node["caption"], shorter_output, quiet)
     else:
         _log("<no caption>", end=' ', flush=True, quiet=quiet)
     if node["is_video"] and download_videos:
-        video_data = get_json('p/' + node["code"], session, sleep=sleep)
+        if "shortcode" in node:
+            video_data = get_json('p/' + node["shortcode"], session, sleep=sleep)
+        else:
+            video_data = get_json('p/' + node["code"], session, sleep=sleep)
         download_pic(name,
                      video_data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['video_url'],
-                     node["date"], 'mp4', quiet=quiet)
+                     date, 'mp4', quiet=quiet)
     if geotags:
         location = get_location(node, session, sleep)
         if location:
-            save_location(name, location, node["date"])
+            save_location(name, location, date)
     _log(quiet=quiet)
     return downloaded
 
@@ -506,7 +521,8 @@ def download_feed_pics(session: requests.Session, max_count: int = None, fast_up
 
     Example to download up to the 20 pics the user last liked:
     >>> download_feed_pics(load_session('USER'), max_count=20, fast_update=True,
-    >>>                    filter_func=lambda node: not node["likes"]["viewer_has_liked"])
+    >>>                    filter_func=lambda node:
+    >>>                    not node["likes"]["viewer_has_liked"] if "likes" in node else not node["viewer_has_liked"])
 
     :param session: Session belonging to a user, i.e. not an anonymous session
     :param max_count: Maximum count of pictures to download
@@ -518,12 +534,20 @@ def download_feed_pics(session: requests.Session, max_count: int = None, fast_up
     :param sleep: Sleep between requests to instagram server
     :param quiet: Suppress output
     """
+    # pylint:disable=too-many-locals
     data = get_feed_json(session, sleep=sleep)
     count = 1
-    while data["feed"]["media"]["page_info"]["has_next_page"]:
-        for node in data["feed"]["media"]["nodes"]:
+    while True:
+        if "graphql" in data:
+            is_edge = True
+            feed = data["graphql"]["user"]["edge_web_feed_timeline"]
+        else:
+            is_edge = False
+            feed = data["feed"]["media"]
+        for edge_or_node in feed["edges"] if is_edge else feed["nodes"]:
             if max_count is not None and count > max_count:
                 return
+            node = edge_or_node["node"] if is_edge else edge_or_node
             name = node["owner"]["username"]
             if filter_func is not None and filter_func(node):
                 _log("<pic by %s skipped>" % name, flush=True, quiet=quiet)
@@ -535,8 +559,9 @@ def download_feed_pics(session: requests.Session, max_count: int = None, fast_up
                                        sleep=sleep, shorter_output=shorter_output, quiet=quiet)
             if fast_update and not downloaded:
                 return
-        data = get_feed_json(session, end_cursor=data["feed"]["media"]["page_info"]["end_cursor"],
-                             sleep=sleep)
+        if not feed["page_info"]["has_next_page"]:
+            break
+        data = get_feed_json(session, end_cursor=feed["page_info"]["end_cursor"], sleep=sleep)
 
 
 def get_hashtag_json(hashtag: str, session: requests.Session,

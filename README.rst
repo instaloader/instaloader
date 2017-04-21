@@ -55,7 +55,7 @@ You may also download the most recent pictures with one hashtag:
 
 ::
 
-    instaloader #hashtag
+    instaloader "#hashtag"
 
 Instaloader can also be used to **download private profiles**. To do so,
 invoke it with
@@ -121,7 +121,8 @@ You could also download your last 20 liked pics with
 .. code:: python
 
     instaloader.download_feed_pics(session, max_count=20, fast_update=True,
-                                   filter_func=lambda node: not node["likes"]["viewer_has_liked"])
+                                   filter_func=lambda node:
+                                   not node["likes"]["viewer_has_liked"] if "likes" in node else not node["viewer_has_liked"])
 
 To download the last 20 pictures with hashtag #cat, do
 
