@@ -757,7 +757,10 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
             elif pentry == ":feed-liked" and username is not None:
                 _log("Retrieving pictures you liked from your feed...", quiet=quiet)
                 download_feed_pics(session, fast_update=fast_update, max_count=max_count,
-                                   filter_func=lambda node: not node["likes"]["viewer_has_liked"],
+                                   filter_func=lambda node:
+                                                        not node["likes"]["viewer_has_liked"]
+                                                        if "likes" in node
+                                                        else not node["viewer_has_liked"],
                                    download_videos=download_videos, geotags=geotags,
                                    shorter_output=shorter_output, sleep=sleep, quiet=quiet)
             else:
