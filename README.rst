@@ -1,6 +1,8 @@
 Instaloader
 ===========
 
+Tool to automatically download pictures (or videos) of given profiles
+from Instagram.
 
 Installation
 ------------
@@ -26,6 +28,8 @@ Alternatively, to get the most current version of Instaloader from our
 
     pip3 install git+https://github.com/Thammus/instaloader
 
+(pass ``--upgrade`` to upgrade if Instaloader is already installed)
+
 Instaloader requires
 `requests <https://pypi.python.org/pypi/requests>`__, which
 will be installed automatically, if it is not already installed.
@@ -33,7 +37,8 @@ will be installed automatically, if it is not already installed.
 How to automatically download pictures from Instagram
 -----------------------------------------------------
 
-To download a set of profiles, do
+To **download all pictures and videos of a profile**, as well as the
+**profile picture**, do
 
 ::
 
@@ -42,20 +47,14 @@ To download a set of profiles, do
 where ``profile`` is the name of a profile you want to download. Instead
 of only one profile, you may also specify a list of profiles.
 
-To later update your local copy of that profile, you may run
+To later update your local copy of that profiles, you may run
 
 ::
 
     instaloader --fast-update profile [profile ...]
 
-When ``--fast-update`` is given, Instaloader terminates when arriving at
+When ``--fast-update`` is given, Instaloader stops when arriving at
 the first already-downloaded picture.
-
-You may also download the most recent pictures with one hashtag:
-
-::
-
-    instaloader "#hashtag"
 
 Instaloader can also be used to **download private profiles**. To do so,
 invoke it with
@@ -65,9 +64,16 @@ invoke it with
     instaloader --login=your_username profile [profile ...]
 
 When invoked like this, it also **stores the session cookies** in a file
-in ``/tmp``, which will be reused later when ``--login`` is given. So
+in your temporary directory, which will be reused later when ``--login`` is given. So
 you can download private profiles **non-interactively** when you already
 have a valid session cookie file.
+
+Instead of download all posts of a profile, you may also download
+**the most recent pictures by hashtag**:
+
+::
+
+    instaloader "#hashtag"
 
 If you want to **download all followees of a given profile**, call
 
@@ -81,17 +87,46 @@ To **download all the pictures from your feed which you have liked**, call
 
     instaloader --login=your_username :feed-liked
 
-The ``--quiet`` option makes it also **suitable as a cron job**.
+or to **download all pictures from your feed**:
 
-To get a list of other helpful flags, run ``instaloader --help``.
+::
 
-Usage as library
+    instaloader --login=your_username :feed-all
+
+Advanced Options
 ----------------
+
+The following flags can be given to Instaloader to specify how profiles should
+be downloaded.
+
+--fast-update        Stop when encountering the first already-downloaded post
+                     of a profile.
+--profile-pic-only   Only download profile pictures. Per default, the current
+                     profile picture and all the profile's posts are downloaded.
+--skip-videos        Skip posts which are videos.
+--geotags            Also **download geotags** and store Google Maps links in
+                     separate textfiles.
+--quiet              Do not output any messages except warnings and errors. This
+                     option makes Instaloader **suitable as a cron job**.
+--no-sleep           Normally, Instaloader waits a few seconds between requests
+                     to the Instagram servers. This flag inhibits this behavior.
+--password PASSWORD  If used with ``--login``, use parameter as password if no
+                     valid session file is found, instead of asking
+                     interactively.
+--sessionfile FILE   Specify an alternative place for loading and storing the
+                     session cookies. Per default, they are stored in a path
+                     within your temporary directory, encoding your local
+                     username and your instagram profile name.
+
+To get a list of all flags, run ``instaloader --help``.
+
+Usage as Python module
+----------------------
 
 You may also use parts of Instaloader as library to do other interesting
 things.
 
-For example, to get a list of all followers of a profile as well as
+For example, to get a list of all followees of a profile as well as
 their follower count, do
 
 .. code:: python
