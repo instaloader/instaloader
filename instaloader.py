@@ -469,12 +469,13 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
         if node['__typename'] == 'GraphSidecar':
             sidecar_data = session.get('https://www.instagram.com/p/' + node['code'] + '/', params={'__a': 1}).json()
             edge_number = 1
-            downloaded = False
-            for edge in sidecar_data['media']['edge_sidecar_to_children']['edges']:
+            downloaded = True
+            media = sidecar_data["graphql"]["shortcode_media"] if "graphql" in sidecar_data else sidecar_data["media"]
+            for edge in media['edge_sidecar_to_children']['edges']:
                 edge_downloaded = download_pic(name, edge['node']['display_url'],date,
                                                filename_suffix=str(edge_number), quiet=quiet,
                                                outputlabel=(str(edge_number) if edge_number != 1 else None))
-                downloaded = downloaded or edge_downloaded
+                downloaded = downloaded and edge_downloaded
                 edge_number += 1
                 if sleep:
                     time.sleep(1.75 * random.random() + 0.25)
