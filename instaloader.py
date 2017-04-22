@@ -598,10 +598,10 @@ def download_hashtag(hashtag: str, session: requests.Session,
             if max_count is not None and count > max_count:
                 return
             _log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True, quiet=quiet)
-            count += 1
             if filter_func is not None and filter_func(node):
                 _log('<skipped>', quiet=quiet)
                 continue
+            count += 1
             downloaded = download_node(node, session, '#{0}'.format(hashtag),
                                        download_videos=download_videos, geotags=geotags, sleep=sleep,
                                        shorter_output=shorter_output, quiet=quiet)
@@ -824,7 +824,7 @@ def main():
     parser.add_argument('-F', '--fast-update', action='store_true',
             help='Abort at encounter of first already-downloaded picture')
     parser.add_argument('-c', '--count',
-                        help='Do not download more than COUNT posts. '
+                        help='Do not attempt to download more than COUNT posts. '
                              'Applies only to #hashtag, :feed-all and :feed-liked.')
     parser.add_argument('-S', '--no-sleep', action='store_true',
             help='Do not sleep between actual downloads of pictures')
@@ -835,7 +835,7 @@ def main():
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        download_profiles(args.profile, args.login, args.password, args.sessionfile, args.count,
+        download_profiles(args.profile, args.login, args.password, args.sessionfile, int(args.count),
                 args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
                 not args.no_sleep, args.shorter_output, args.quiet)
     except InstaloaderException as err:
