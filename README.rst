@@ -47,7 +47,7 @@ To **download all pictures and videos of a profile**, as well as the
 where ``profile`` is the name of a profile you want to download. Instead
 of only one profile, you may also specify a list of profiles.
 
-To later update your local copy of that profiles, you may run
+To later **update your local copy** of that profiles, you may run
 
 ::
 
@@ -68,7 +68,7 @@ in your temporary directory, which will be reused later when ``--login`` is give
 you can download private profiles **non-interactively** when you already
 have a valid session cookie file.
 
-Instead of download all posts of a profile, you may also download
+You may also download
 **the most recent pictures by hashtag**:
 
 ::
@@ -101,7 +101,7 @@ be downloaded.
 
 --fast-update        Stop when encountering the first already-downloaded post
                      of a profile.
---profile-pic-only   Only download profile pictures. Per default, the current
+--profile-pic-only   Only download profile pictures. Without this flag, the current
                      profile picture and all the profile's posts are downloaded.
 --skip-videos        Skip posts which are videos.
 --geotags            Also **download geotags** and store Google Maps links in
@@ -114,7 +114,7 @@ be downloaded.
                      valid session file is found, instead of asking
                      interactively.
 --sessionfile FILE   Specify an alternative place for loading and storing the
-                     session cookies. Per default, they are stored in a path
+                     session cookies. Without this flag, they are stored in a path
                      within your temporary directory, encoding your local
                      username and your instagram profile name.
 
