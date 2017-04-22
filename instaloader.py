@@ -720,7 +720,7 @@ def get_logged_in_session(username: str, password: Optional[str] = None, quiet: 
 
 
 def download_profiles(profilelist: List[str], username: Optional[str] = None, password: Optional[str] = None,
-                      sessionfile: Optional[str] = None,
+                      sessionfile: Optional[str] = None, max_count: Optional[int] = None,
                       profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                       fast_update: bool = False,
                       sleep: bool = True, shorter_output: bool = False, quiet: bool = False) -> None:
@@ -742,7 +742,7 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
         for pentry in profilelist:
             if pentry[0] == '#':
                 _log("Retrieving pictures with hashtag {0}".format(pentry), quiet=quiet)
-                download_hashtag(hashtag=pentry[1:], session=session, fast_update=fast_update,
+                download_hashtag(hashtag=pentry[1:], session=session, max_count=max_count, fast_update=fast_update,
                                  download_videos=download_videos, geotags=geotags, shorter_output=shorter_output,
                                  sleep=sleep, quiet=quiet)
             elif pentry[0] == '@' and username is not None:
@@ -751,12 +751,12 @@ def download_profiles(profilelist: List[str], username: Optional[str] = None, pa
                 targets.update([followee['username'] for followee in followees])
             elif pentry == ":feed-all" and username is not None:
                 _log("Retrieving pictures from your feed...", quiet=quiet)
-                download_feed_pics(session, fast_update=fast_update,
+                download_feed_pics(session, fast_update=fast_update, max_count=max_count,
                                    download_videos=download_videos, geotags=geotags,
                                    shorter_output=shorter_output, sleep=sleep, quiet=quiet)
             elif pentry == ":feed-liked" and username is not None:
                 _log("Retrieving pictures you liked from your feed...", quiet=quiet)
-                download_feed_pics(session, fast_update=fast_update,
+                download_feed_pics(session, fast_update=fast_update, max_count=max_count,
                                    filter_func=lambda node: not node["likes"]["viewer_has_liked"],
                                    download_videos=download_videos, geotags=geotags,
                                    shorter_output=shorter_output, sleep=sleep, quiet=quiet)
@@ -820,6 +820,9 @@ def main():
             help='Store geotags when available')
     parser.add_argument('-F', '--fast-update', action='store_true',
             help='Abort at encounter of first already-downloaded picture')
+    parser.add_argument('-c', '--count',
+                        help='Do not download more than COUNT posts. '
+                             'Applies only to #hashtag, :feed-all and :feed-liked.')
     parser.add_argument('-S', '--no-sleep', action='store_true',
             help='Do not sleep between actual downloads of pictures')
     parser.add_argument('-O', '--shorter-output', action='store_true',
@@ -829,7 +832,7 @@ def main():
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        download_profiles(args.profile, args.login, args.password, args.sessionfile,
+        download_profiles(args.profile, args.login, args.password, args.sessionfile, args.count,
                 args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
                 not args.no_sleep, args.shorter_output, args.quiet)
     except InstaloaderException as err:

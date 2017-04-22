@@ -106,6 +106,8 @@ be downloaded.
 --skip-videos        Skip posts which are videos.
 --geotags            Also **download geotags** and store Google Maps links in
                      separate textfiles.
+--count COUNT        If used with ``#hashtag``, ``:feed-all`` or
+                     ``:feed-liked``: Do not download more than COUNT posts.
 --quiet              Do not output any messages except warnings and errors. This
                      option makes Instaloader **suitable as a cron job**.
 --no-sleep           Normally, Instaloader waits a few seconds between requests
