@@ -240,7 +240,7 @@ def save_caption(name: str, date_epoch: Real, caption: str, shorter_output: bool
     os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
 
-def save_location(name: str, location_json: Dict[str, str], date_epoch: Real) -> None:
+def save_location(name: str, location_json: Dict[str, str], date_epoch: Real, quiet: bool = False) -> None:
     filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_location.txt'
     location_string = location_json["name"]+"\n" + \
                       "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n" \
@@ -249,6 +249,7 @@ def save_location(name: str, location_json: Dict[str, str], date_epoch: Real) ->
     with open(filename, 'wb') as text_file:
         shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
     os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
+    _log('geo', end=' ', flush=True, quiet=quiet)
 
 
 def download_profilepic(name: str, url: str, quiet: bool = False) -> None:
@@ -436,11 +437,14 @@ def get_feed_json(session: requests.Session, end_cursor: str = None, sleep: bool
     return json.loads(resp.text)
 
 
-def get_location(node: Dict[str, str], session: requests.Session, sleep: bool = True) -> Dict[str, str]:
-    pic_json = get_json("p/" + node["code"], session, sleep=sleep)
-    if pic_json["entry_data"]["PostPage"][0]["media"]["location"] is not None:
+def get_location(session: requests.Session, node_code: str, sleep: bool = True) -> Dict[str, str]:
+    pic_json = get_json("p/" + node_code, session, sleep=sleep)
+    media = pic_json["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"] \
+        if "graphql" in pic_json["entry_data"]["PostPage"][0] \
+        else pic_json["entry_data"]["PostPage"][0]["media"]
+    if media["location"] is not None:
         location_json = get_json("explore/locations/" +
-                                 pic_json["entry_data"]["PostPage"][0]["media"]["location"]["id"],
+                                 media["location"]["id"],
                                  session, sleep=sleep)
         return location_json["entry_data"]["LocationsPage"][0]["location"]
 
@@ -496,18 +500,16 @@ def download_node(node: Dict[str, Any], session: requests.Session, name: str,
         save_caption(name, date, node["caption"], shorter_output, quiet)
     else:
         _log("<no caption>", end=' ', flush=True, quiet=quiet)
+    node_code = node['shortcode'] if 'shortcode' in node else node['code']
     if node["is_video"] and download_videos:
-        if "shortcode" in node:
-            video_data = get_json('p/' + node["shortcode"], session, sleep=sleep)
-        else:
-            video_data = get_json('p/' + node["code"], session, sleep=sleep)
+        video_data = get_json('p/' + node_code, session, sleep=sleep)
         download_pic(name,
                      video_data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['video_url'],
                      date, 'mp4', quiet=quiet)
     if geotags:
-        location = get_location(node, session, sleep)
+        location = get_location(session, node_code, sleep)
         if location:
-            save_location(name, location, date)
+            save_location(name, location, date, quiet=quiet)
     _log(quiet=quiet)
     return downloaded
 
@@ -835,9 +837,10 @@ def main():
                     'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        download_profiles(args.profile, args.login, args.password, args.sessionfile, int(args.count),
-                args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
-                not args.no_sleep, args.shorter_output, args.quiet)
+        download_profiles(args.profile, args.login, args.password, args.sessionfile,
+                          int(args.count) if args.count is not None else None,
+                          args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
+                          not args.no_sleep, args.shorter_output, args.quiet)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 
