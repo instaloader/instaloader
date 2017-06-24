@@ -136,11 +136,14 @@ their follower count, do
 
     import instaloader
 
-    # login
-    session = instaloader.get_logged_in_session(USERNAME)
+    # Get instance
+    loader = instaloader.Instaloader()
 
-    # get followees
-    followees = instaloader.get_followees(PROFILE, session)
+    # Login
+    loader.interactive_login(USERNAME)
+
+    # Retrieve followees
+    followees = loader.get_followees(PROFILE)
     for f in followees:
         print("%i\t%s\t%s" % (f['follower_count'], f['username'], f['full_name']))
 
@@ -150,7 +153,7 @@ Then, you may download all pictures of all followees with
 
     for f in followees:
         try:
-            instaloader.download(f['username'], session)
+            loader.download(f['username'])
         except instaloader.NonfatalException:
             pass
 
@@ -158,15 +161,15 @@ You could also download your last 20 liked pics with
 
 .. code:: python
 
-    instaloader.download_feed_pics(session, max_count=20, fast_update=True,
-                                   filter_func=lambda node:
+    oader.download_feed_pics(max_count=20, fast_update=True,
+                             filter_func=lambda node:
                                    not node["likes"]["viewer_has_liked"] if "likes" in node else not node["viewer_has_liked"])
 
 To download the last 20 pictures with hashtag #cat, do
 
 .. code:: python
 
-    instaloader.download_hashtag('cat', session=instaloader.get_anonymous_session(), max_count=20)
+    loader.download_hashtag('cat', max_count=20)
 
 Each Instagram profile has its own unique ID which stays unmodified even
 if a user changes his/her username. To get said ID, given the profile's
@@ -174,7 +177,7 @@ name, you may call
 
 .. code:: python
 
-    instaloader.get_id_by_username(PROFILE_NAME)
+    loader.get_id_by_username(PROFILE_NAME)
 
 ``get_followees()`` also returns unique IDs for all loaded followees. To
 get the current username of a profile, given this unique ID
@@ -182,4 +185,4 @@ get the current username of a profile, given this unique ID
 
 .. code:: python
 
-    instaloader.get_username_by_id(session, followees[0]['id'])
+    loader.get_username_by_id(followees[0]['id'])
