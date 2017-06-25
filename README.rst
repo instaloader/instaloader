@@ -120,6 +120,9 @@ be downloaded.
                      session cookies. Without this flag, they are stored in a path
                      within your temporary directory, encoding your local
                      username and your instagram profile name.
+--no-profile-subdir  Instead of creating a subdirectory for each profile and
+                     storing pictures there, store pictures in files named
+                     PROFILE__DATE_TIME.jpg.'
 
 To get a list of all flags, run ``instaloader --help``.
 

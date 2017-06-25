@@ -133,12 +133,13 @@ def get_anonymous_session() -> requests.Session:
 
 class Instaloader:
     def __init__(self,
-                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False):
+                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False, profile_subdirs: bool = True):
         self.session = get_anonymous_session()
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
         self.shorter_output = shorter_output
+        self.profile_subdirs = profile_subdirs
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         if not self.quiet:
@@ -250,7 +251,10 @@ class Instaloader:
             outputlabel = _epoch_to_string(date_epoch)
         urlmatch = re.search('\\.[a-z]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
-        filename = name.lower() + '/' + _epoch_to_string(date_epoch)
+        if self.profile_subdirs:
+            filename = name.lower() + '/' + _epoch_to_string(date_epoch)
+        else:
+            filename = name.lower() + '__' + _epoch_to_string(date_epoch)
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
@@ -260,7 +264,8 @@ class Instaloader:
         resp = get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
             self._log(outputlabel, end=' ', flush=True)
-            os.makedirs(name.lower(), exist_ok=True)
+            if self.profile_subdirs:
+                os.makedirs(name.lower(), exist_ok=True)
             with open(filename, 'wb') as file:
                 resp.raw.decode_content = True
                 shutil.copyfileobj(resp.raw, file)
@@ -271,7 +276,11 @@ class Instaloader:
 
     def save_caption(self, name: str, date_epoch: float, caption: str) -> None:
         """Updates picture caption"""
-        filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '.txt'
+        # pylint:disable=too-many-branches
+        if self.profile_subdirs:
+            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '.txt'
+        else:
+            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
         if self.shorter_output:
@@ -307,17 +316,22 @@ class Instaloader:
             self._log(pcaption, end=' ', flush=True)
         except UnicodeEncodeError:
             self._log('txt', end=' ', flush=True)
-        os.makedirs(name.lower(), exist_ok=True)
+        if self.profile_subdirs:
+            os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as text_file:
             shutil.copyfileobj(BytesIO(caption), text_file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
     def save_location(self, name: str, location_json: Dict[str, str], date_epoch: float) -> None:
-        filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_location.txt'
+        if self.profile_subdirs:
+            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_location.txt'
+        else:
+            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '_location.txt'
         location_string = (location_json["name"] + "\n" +
                            "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location_json["lat"],
                                                                                         location_json["lng"]))
-        os.makedirs(name.lower(), exist_ok=True)
+        if self.profile_subdirs:
+            os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as text_file:
             shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
@@ -327,7 +341,10 @@ class Instaloader:
         """Downloads and saves profile pic with given url."""
         date_object = datetime.datetime.strptime(requests.head(url).headers["Last-Modified"],
                                                  '%a, %d %b %Y %H:%M:%S GMT')
-        filename = name.lower() + '/' + _epoch_to_string(date_object.timestamp()) + '_UTC_profile_pic.' + url[-3:]
+        if self.profile_subdirs:
+            filename = name.lower() + '/' + _epoch_to_string(date_object.timestamp()) + '_UTC_profile_pic.' + url[-3:]
+        else:
+            filename = name.lower() + '__' + _epoch_to_string(date_object.timestamp()) + '_UTC_profile_pic.' + url[-3:]
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
@@ -340,7 +357,8 @@ class Instaloader:
         resp = get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
             self._log(filename)
-            os.makedirs(name.lower(), exist_ok=True)
+            if self.profile_subdirs:
+                os.makedirs(name.lower(), exist_ok=True)
             with open(filename, 'wb') as file:
                 resp.raw.decode_content = True
                 shutil.copyfileobj(resp.raw, file)
@@ -622,8 +640,12 @@ class Instaloader:
         """
         profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
         is_logged_in = json_data["config"]["viewer"] is not None
+        if self.profile_subdirs:
+            id_filename = profile + "/id"
+        else:
+            id_filename = profile + "__id"
         try:
-            with open(profile + "/id", 'rb') as id_file:
+            with open(id_filename, 'rb') as id_file:
                 profile_id = int(id_file.read())
             if (not profile_exists) or \
                     (profile_id != int(json_data['entry_data']['ProfilePage'][0]['user']['id'])):
@@ -642,8 +664,9 @@ class Instaloader:
         except FileNotFoundError:
             pass
         if profile_exists:
-            os.makedirs(profile.lower(), exist_ok=True)
-            with open(profile + "/id", 'w') as text_file:
+            if self.profile_subdirs:
+                os.makedirs(profile.lower(), exist_ok=True)
+            with open(id_filename, 'w') as text_file:
                 profile_id = json_data['entry_data']['ProfilePage'][0]['user']['id']
                 text_file.write(profile_id + "\n")
                 self._log("Stored ID {0} for profile {1}.".format(profile_id, profile))
@@ -817,6 +840,9 @@ def main():
     parser.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
                              'Applies only to #hashtag, :feed-all and :feed-liked.')
+    parser.add_argument('--no-profile-subdir', action='store_true',
+                        help='Instead of creating a subdirectory for each profile and storing pictures there, store '
+                             'pictures in files named PROFILE__DATE_TIME.jpg.')
     parser.add_argument('-S', '--no-sleep', action='store_true',
                         help='Do not sleep between actual downloads of pictures')
     parser.add_argument('-O', '--shorter-output', action='store_true',
@@ -826,7 +852,7 @@ def main():
                              'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        loader = Instaloader(not args.no_sleep, args.quiet, args.shorter_output)
+        loader = Instaloader(not args.no_sleep, args.quiet, args.shorter_output, not args.no_profile_subdir)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update)
