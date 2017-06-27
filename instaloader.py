@@ -468,11 +468,15 @@ class Instaloader:
             time.sleep(4 * random.random() + 1)
         return json.loads(resp.text)
 
-    def get_location(self, node_code: str) -> Dict[str, str]:
+    def get_node_metadata(self, node_code: str) -> Dict[str, Any]:
         pic_json = self.get_json("p/" + node_code)
         media = pic_json["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"] \
             if "graphql" in pic_json["entry_data"]["PostPage"][0] \
             else pic_json["entry_data"]["PostPage"][0]["media"]
+        return media
+
+    def get_location(self, node_code: str) -> Dict[str, str]:
+        media = self.get_node_metadata(node_code)
         if media["location"] is not None:
             location_json = self.get_json("explore/locations/" +
                                           media["location"]["id"])
@@ -597,7 +601,8 @@ class Instaloader:
     def download_hashtag(self, hashtag: str,
                          max_count: Optional[int] = None,
                          filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
-                         fast_update: bool = False, download_videos: bool = True, geotags: bool = False) -> None:
+                         fast_update: bool = False, download_videos: bool = True, geotags: bool = False,
+                         lookup_username: bool = False) -> None:
         """Download pictures of one hashtag.
 
         To download the last 30 pictures with hashtag #cat, do
@@ -610,6 +615,7 @@ class Instaloader:
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
+        :param lookup_username: Lookup username to encode it in the downloaded file's path, rather than the hashtag
         """
         data = self.get_hashtag_json(hashtag)
         count = 1
@@ -617,12 +623,17 @@ class Instaloader:
             for node in data['entry_data']['TagPage'][0]['tag']['media']['nodes']:
                 if max_count is not None and count > max_count:
                     return
-                self._log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True)
+                if lookup_username:
+                    metadata = self.get_node_metadata(node['shortcode'] if 'shortcode' in node else node['code'])
+                    pathname = metadata['owner']['username']
+                else:
+                    pathname = '#{0}'.format(hashtag)
+                self._log('[{0:3d}] #{1} {2}/'.format(count, hashtag, pathname), end='', flush=True)
                 if filter_func is not None and filter_func(node):
                     self._log('<skipped>')
                     continue
                 count += 1
-                downloaded = self.download_node(node, '#{0}'.format(hashtag),
+                downloaded = self.download_node(node, pathname,
                                                 download_videos=download_videos, geotags=geotags)
                 if fast_update and not downloaded:
                     return
@@ -740,7 +751,7 @@ class Instaloader:
     def download_profiles(self, profilelist: List[str], username: Optional[str] = None, password: Optional[str] = None,
                           sessionfile: Optional[str] = None, max_count: Optional[int] = None,
                           profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
-                          fast_update: bool = False) -> None:
+                          fast_update: bool = False, hashtag_lookup_username: bool = False) -> None:
         """Download set of profiles and handle sessions"""
         # pylint:disable=too-many-branches,too-many-locals
         # Login, if desired
@@ -758,7 +769,8 @@ class Instaloader:
                 if pentry[0] == '#':
                     self._log("Retrieving pictures with hashtag {0}".format(pentry))
                     self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update,
-                                          download_videos=download_videos, geotags=geotags)
+                                          download_videos=download_videos, geotags=geotags,
+                                          lookup_username=hashtag_lookup_username)
                 elif pentry[0] == '@' and username is not None:
                     self._log("Retrieving followees of %s..." % pentry[1:])
                     followees = self.get_followees(pentry[1:])
@@ -834,7 +846,8 @@ def main():
     parser.add_argument('-V', '--skip-videos', action='store_true',
                         help='Do not download videos')
     parser.add_argument('-G', '--geotags', action='store_true',
-                        help='Store geotags when available')
+                        help='Store geotags when available. This requires an additional request to the Instagram '
+                             'server for each picture, which is why it is disabled by default.')
     parser.add_argument('-F', '--fast-update', action='store_true',
                         help='Abort at encounter of first already-downloaded picture')
     parser.add_argument('-c', '--count',
@@ -843,6 +856,11 @@ def main():
     parser.add_argument('--no-profile-subdir', action='store_true',
                         help='Instead of creating a subdirectory for each profile and storing pictures there, store '
                              'pictures in files named PROFILE__DATE_TIME.jpg.')
+    parser.add_argument('--hashtag-username', action='store_true',
+                        help='Lookup username of pictures when downloading by #hashtag and encode it in the downlaoded '
+                             'file\'s path or filename (if --no-profile-subdir). Without this option, the #hashtag is '
+                             'used instead. This requires an additional request to the Instagram server for each '
+                             'picture, which is why it is disabled by default.')
     parser.add_argument('-S', '--no-sleep', action='store_true',
                         help='Do not sleep between actual downloads of pictures')
     parser.add_argument('-O', '--shorter-output', action='store_true',
@@ -855,7 +873,8 @@ def main():
         loader = Instaloader(not args.no_sleep, args.quiet, args.shorter_output, not args.no_profile_subdir)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
-                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update)
+                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
+                                 args.hashtag_username)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

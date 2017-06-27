@@ -122,7 +122,10 @@ be downloaded.
                      username and your instagram profile name.
 --no-profile-subdir  Instead of creating a subdirectory for each profile and
                      storing pictures there, store pictures in files named
-                     PROFILE__DATE_TIME.jpg.'
+                     'PROFILE__DATE_TIME.jpg.'
+--hashtag-username   When downloading by #hashtag, lookup the picture's username
+                     to decide in which directory to store, rather than storing
+                     all pictures in directory '#hashtag'.
 
 To get a list of all flags, run ``instaloader --help``.
 
