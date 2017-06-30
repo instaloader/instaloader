@@ -382,16 +382,22 @@ class Instaloader:
     def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
         """Returns loaded requests.Session object, or None if not found."""
         self.username = username
+        using_default_session = False
         if filename is None:
             filename = get_default_session_filename(username)
-        with open(filename, 'rb') as sessionfile:
-            session = requests.Session()
-            session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-            session.headers.update(default_http_header())
-            session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
-            self._log("Loaded session from %s." % filename)
-            self.session = session
-            self.username = username
+            using_default_session = True
+        try:
+            with open(filename, 'rb') as sessionfile:
+                session = requests.Session()
+                session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
+                session.headers.update(default_http_header())
+                session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
+                self._log("Loaded session from %s." % filename)
+                self.session = session
+                self.username = username
+        except FileNotFoundError as err:
+            if not using_default_session:
+                print(err, file=sys.stderr)
 
     def test_login(self, session: requests.Session) -> Optional[str]:
         """Returns the Instagram username to which given requests.Session object belongs, or None."""
@@ -404,7 +410,7 @@ class Instaloader:
         return data['config']['viewer']['username']
 
     def login(self, user: str, passwd: str) -> None:
-        """Log in to instagram with given username and password and return session object"""
+        """Log in to instagram with given username and password and internally store session object"""
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
@@ -738,6 +744,7 @@ class Instaloader:
         """Logs in and returns session, asking user for password if needed"""
         if password is not None:
             self.login(username, password)
+            return
         if self.quiet:
             raise LoginRequiredException("Quiet mode requires given password or valid session file.")
         while password is None:
