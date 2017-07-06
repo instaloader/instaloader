@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 from argparse import ArgumentParser
+from base64 import b64decode, b64encode
 from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
 
@@ -129,6 +130,21 @@ def get_anonymous_session() -> requests.Session:
                             's_network': '', 'ds_user_id': ''})
     session.headers.update(default_http_header(empty_session_only=True))
     return session
+
+
+def shortcode_to_mediaid(code: str) -> int:
+    if len(code) > 11:
+        print("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code), file = sys.stderr)
+        return
+    code = 'A' * (12 - len(code)) + code
+    return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
+
+
+def mediaid_to_shortcode(mediaid: int) -> str:
+    if mediaid.bit_length() > 64:
+        print("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)), file = sys.stderr)
+        return
+    return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ','A')
 
 
 class Instaloader:
