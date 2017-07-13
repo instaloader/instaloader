@@ -71,6 +71,10 @@ class LoginRequiredException(NonfatalException):
     pass
 
 
+class InvalidArgumentException(NonfatalException):
+    pass
+
+
 class BadCredentialsException(InstaloaderException):
     pass
 
@@ -134,16 +138,14 @@ def get_anonymous_session() -> requests.Session:
 
 def shortcode_to_mediaid(code: str) -> int:
     if len(code) > 11:
-        print("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code), file = sys.stderr)
-        return
+        raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
     code = 'A' * (12 - len(code)) + code
     return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
 
 
 def mediaid_to_shortcode(mediaid: int) -> str:
     if mediaid.bit_length() > 64:
-        print("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)), file = sys.stderr)
-        return
+        raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
     return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ','A')
 
 
@@ -519,7 +521,8 @@ class Instaloader:
         date = node["date"] if "date" in node else node["taken_at_timestamp"]
         if '__typename' in node:
             if node['__typename'] == 'GraphSidecar':
-                sidecar_data = self.session.get('https://www.instagram.com/p/' + node['code'] + '/',
+                sidecar_data = self.session.get('https://www.instagram.com/p/' +
+                                                mediaid_to_shortcode(int(node['id'])) + '/',
                                                 params={'__a': 1}).json()
                 edge_number = 1
                 downloaded = True
@@ -553,7 +556,8 @@ class Instaloader:
             self.save_caption(name, date, node["caption"])
         else:
             self._log("<no caption>", end=' ', flush=True)
-        node_code = node['shortcode'] if 'shortcode' in node else node['code']
+        node_id = node['id'] if 'id' in node else node['media_id']
+        node_code = mediaid_to_shortcode(int(node_id))
         if node["is_video"] and download_videos:
             video_data = self.get_json('p/' + node_code)
             self.download_pic(name,
@@ -646,7 +650,8 @@ class Instaloader:
                 if max_count is not None and count > max_count:
                     return
                 if lookup_username:
-                    metadata = self.get_node_metadata(node['shortcode'] if 'shortcode' in node else node['code'])
+                    node_id = node['id'] if 'id' in node else node['media_id']
+                    metadata = self.get_node_metadata(mediaid_to_shortcode(int(node_id)))
                     pathname = metadata['owner']['username']
                 else:
                     pathname = '#{0}'.format(hashtag)
