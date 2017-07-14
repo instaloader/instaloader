@@ -179,24 +179,33 @@ class Instaloader:
             return json.loads(match.group(0)[21:-2])
 
     def get_username_by_id(self, profile_id: int) -> str:
-        """To get the current username of a profile, given its unique ID, this function can be used.
-        session is required to be a logged-in (i.e. non-anonymous) session."""
-        tempsession = copy_session(self.session)
-        tempsession.headers.update({'Content-Type': 'application/x-www-form-urlencoded'})
-        resp = tempsession.post('https://www.instagram.com/query/',
-                                data='q=ig_user(' + str(profile_id) + ')+%7B%0A++username%0A%7D%0A')
+        """To get the current username of a profile, given its unique ID, this function can be used."""
+        tmpsession = copy_session(self.session)
+        tmpsession.headers.update(default_http_header())
+        del tmpsession.headers['Referer']
+        del tmpsession.headers['X-Instagram-AJAX']
+        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                              params={'query_id': '17862015703145017',
+                                      'variables': '{"id":"' + str(profile_id) + '","first":1}'})
         if resp.status_code == 200:
-            data = json.loads(resp.text)
-            if 'username' in data:
-                return json.loads(resp.text)['username']
-            raise ProfileNotExistsException("No profile found, the user may have blocked " +
-                                            "you (id: " + str(profile_id) + ").")
+            data = json.loads(resp.text)["data"]["user"]
+            if data:
+                data = data["edge_owner_to_timeline_media"]
+            else:
+                raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
+                                                 str(profile_id) + ").")
+            if not data['edges']:
+                if data['count'] == 0:
+                    raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
+                else:
+                    raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
+            else:
+                shortcode = mediaid_to_shortcode(int(data['edges'][0]["node"]["id"]))
+                data = self.get_json("p/" + shortcode)
+                return data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['owner']['username']
         else:
-            if self.test_login(self.session):
-                raise ProfileAccessDeniedException("Username could not be determined due to error {0} (id: {1})."
-                                                   .format(str(resp.status_code), str(profile_id)))
-            raise LoginRequiredException("Login required to determine username (id: " +
-                                         str(profile_id) + ").")
+            raise ProfileAccessDeniedException("Username could not be determined due to error {0} (ID: {1})."
+                                               .format(str(resp.status_code), str(profile_id)))
 
     def get_id_by_username(self, profile: str) -> int:
         """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
@@ -687,17 +696,14 @@ class Instaloader:
                 profile_id = int(id_file.read())
             if (not profile_exists) or \
                     (profile_id != int(json_data['entry_data']['ProfilePage'][0]['user']['id'])):
-                if is_logged_in:
-                    newname = self.get_username_by_id(profile_id)
-                    self._log("Profile {0} has changed its name to {1}.".format(profile, newname))
-                    os.rename(profile, newname)
-                    return newname
                 if profile_exists:
-                    raise ProfileNotExistsException("Profile {0} does not match the stored "
-                                                    "unique ID {1}.".format(profile, profile_id))
-                raise ProfileNotExistsException("Profile {0} does not exist. Please login to "
-                                                "update profile name. Unique ID: {1}."
-                                                .format(profile, profile_id))
+                    self._log("Profile {0} does not match the stored unique ID {1}.".format(profile, profile_id))
+                else:
+                    self._log("Trying to find profile {0} using its unique ID {1}.".format(profile, profile_id))
+                newname = self.get_username_by_id(profile_id)
+                self._log("Profile {0} has changed its name to {1}.".format(profile, newname))
+                os.rename(profile, newname)
+                return newname
             return profile
         except FileNotFoundError:
             pass
@@ -827,8 +833,9 @@ class Instaloader:
                                       geotags, fast_update)
                     except ProfileNotExistsException as err:
                         if username is not None:
+                            self._log(err)
                             self._log(
-                                "\"Profile not exists\" - Trying again anonymously, helps in case you are just blocked")
+                                "Trying again anonymously, helps in case you are just blocked.")
                             anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output)
                             anonymous_loader.download(target, profile_pic_only, download_videos,
                                                       geotags, fast_update)
