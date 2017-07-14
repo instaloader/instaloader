@@ -407,24 +407,22 @@ class Instaloader:
             self._log("Saved session to %s." % filename)
 
     def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
-        """Returns loaded requests.Session object, or None if not found."""
-        self.username = username
-        using_default_session = False
+        """Internally stores requests.Session object loaded from file.
+
+        If filename is None, the file with the default session path is loaded.
+
+        :raises FileNotFoundError; If the file does not exist.
+        """
         if filename is None:
             filename = get_default_session_filename(username)
-            using_default_session = True
-        try:
-            with open(filename, 'rb') as sessionfile:
-                session = requests.Session()
-                session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-                session.headers.update(default_http_header())
-                session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
-                self._log("Loaded session from %s." % filename)
-                self.session = session
-                self.username = username
-        except FileNotFoundError as err:
-            if not using_default_session:
-                print(err, file=sys.stderr)
+        with open(filename, 'rb') as sessionfile:
+            session = requests.Session()
+            session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
+            session.headers.update(default_http_header())
+            session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
+            self._log("Loaded session from %s." % filename)
+            self.session = session
+            self.username = username
 
     def test_login(self, session: requests.Session) -> Optional[str]:
         """Returns the Instagram username to which given requests.Session object belongs, or None."""
@@ -766,13 +764,13 @@ class Instaloader:
                     return
             data = self.get_json(name, max_id=get_last_id(data))
 
-    def interactive_login(self, username: str, password: Optional[str] = None) -> None:
-        """Logs in and returns session, asking user for password if needed"""
-        if password is not None:
-            self.login(username, password)
-            return
+    def interactive_login(self, username: str) -> None:
+        """Logs in and internally stores session, asking user for password interactively.
+
+        :raises LoginRequiredException: when in quiet mode."""
         if self.quiet:
             raise LoginRequiredException("Quiet mode requires given password or valid session file.")
+        password = None
         while password is None:
             password = getpass.getpass(prompt="Enter Instagram password for %s: " % username)
             try:
@@ -786,12 +784,20 @@ class Instaloader:
                           profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                           fast_update: bool = False, hashtag_lookup_username: bool = False) -> None:
         """Download set of profiles and handle sessions"""
-        # pylint:disable=too-many-branches,too-many-locals
+        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         # Login, if desired
         if username is not None:
-            self.load_session_from_file(username, sessionfile)
+            try:
+                self.load_session_from_file(username, sessionfile)
+            except FileNotFoundError as err:
+                if sessionfile is not None:
+                    print(err, file=sys.stderr)
+                self._log("Session file does not exist yet - Logging in.")
             if username != self.test_login(self.session):
-                self.interactive_login(username, password)
+                if password is not None:
+                    self.login(username, password)
+                else:
+                    self.interactive_login(username)
             self._log("Logged in as %s." % username)
         # Try block for KeyboardInterrupt (save session on ^C)
         failedtargets = []
@@ -804,22 +810,31 @@ class Instaloader:
                     self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update,
                                           download_videos=download_videos, geotags=geotags,
                                           lookup_username=hashtag_lookup_username)
-                elif pentry[0] == '@' and username is not None:
-                    self._log("Retrieving followees of %s..." % pentry[1:])
-                    followees = self.get_followees(pentry[1:])
-                    targets.update([followee['username'] for followee in followees])
-                elif pentry == ":feed-all" and username is not None:
-                    self._log("Retrieving pictures from your feed...")
-                    self.download_feed_pics(fast_update=fast_update, max_count=max_count,
-                                            download_videos=download_videos, geotags=geotags)
-                elif pentry == ":feed-liked" and username is not None:
-                    self._log("Retrieving pictures you liked from your feed...")
-                    self.download_feed_pics(fast_update=fast_update, max_count=max_count,
-                                            filter_func=lambda node:
-                                            not node["likes"]["viewer_has_liked"]
-                                            if "likes" in node
-                                            else not node["viewer_has_liked"],
-                                            download_videos=download_videos, geotags=geotags)
+                elif pentry[0] == '@':
+                    if username is not None:
+                        self._log("Retrieving followees of %s..." % pentry[1:])
+                        followees = self.get_followees(pentry[1:])
+                        targets.update([followee['username'] for followee in followees])
+                    else:
+                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                elif pentry == ":feed-all":
+                    if username is not None:
+                        self._log("Retrieving pictures from your feed...")
+                        self.download_feed_pics(fast_update=fast_update, max_count=max_count,
+                                                download_videos=download_videos, geotags=geotags)
+                    else:
+                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                elif pentry == ":feed-liked":
+                    if username is not None:
+                        self._log("Retrieving pictures you liked from your feed...")
+                        self.download_feed_pics(fast_update=fast_update, max_count=max_count,
+                                                filter_func=lambda node:
+                                                not node["likes"]["viewer_has_liked"]
+                                                if "likes" in node
+                                                else not node["viewer_has_liked"],
+                                                download_videos=download_videos, geotags=geotags)
+                    else:
+                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 else:
                     targets.add(pentry)
             if len(targets) > 1:
@@ -869,7 +884,8 @@ def main():
                              'profiles, but if you want to download private profiles or all followees of '
                              'some profile, you have to specify a username used to login.')
     parser.add_argument('-p', '--password', metavar='YOUR-PASSWORD',
-                        help='Password for your Instagram account. If --login is given and there is '
+                        help='Note that specifying passwords on command line is considered insecure! '
+                             'Password for your Instagram account. If --login is given and there is '
                              'not yet a valid session file, you\'ll be prompted for your password if '
                              '--password is not given. Specifying this option without --login has no '
                              'effect.')
