@@ -193,7 +193,7 @@ class Instaloader:
                 data = data["edge_owner_to_timeline_media"]
             else:
                 raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                                 str(profile_id) + ").")
+                                                str(profile_id) + ").")
             if not data['edges']:
                 if data['count'] == 0:
                     raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
@@ -686,7 +686,6 @@ class Instaloader:
         has changed and return current name of the profile, and store ID of profile.
         """
         profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
-        is_logged_in = json_data["config"]["viewer"] is not None
         if self.profile_subdirs:
             id_filename = profile + "/id"
         else:
