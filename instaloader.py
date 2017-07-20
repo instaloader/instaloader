@@ -90,7 +90,7 @@ def get_default_session_filename(username: str) -> str:
     """Returns default session filename for given username."""
     dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
     filename = dirname + "/" + "session-" + username
-    return filename
+    return filename.lower()
 
 
 def copy_session(session: requests.Session) -> requests.Session:
@@ -711,9 +711,9 @@ class Instaloader:
         """
         profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
         if self.profile_subdirs:
-            id_filename = profile + "/id"
+            id_filename = profile.lower() + "/id"
         else:
-            id_filename = profile + "__id"
+            id_filename = profile.lower() + "__id"
         try:
             with open(id_filename, 'rb') as id_file:
                 profile_id = int(id_file.read())
