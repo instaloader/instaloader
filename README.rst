@@ -126,6 +126,8 @@ be downloaded.
 --hashtag-username   When downloading by #hashtag, lookup the picture's username
                      to decide in which directory to store, rather than storing
                      all pictures in directory '#hashtag'.
+--user-agent STRING  Change User Agent for HTTP requests to STRING, rather than
+                     our default user agent (Chrome 51).
 
 To get a list of all flags, run ``instaloader --help``.
 

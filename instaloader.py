@@ -103,37 +103,9 @@ def copy_session(session: requests.Session) -> requests.Session:
     return new
 
 
-def default_http_header(empty_session_only: bool = False) -> Dict[str, str]:
-    """Returns default HTTP header we use for requests."""
-    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-                 '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
-    header = {'Accept-Encoding': 'gzip, deflate',
-              'Accept-Language': 'en-US,en;q=0.8',
-              'Connection': 'keep-alive',
-              'Content-Length': '0',
-              'Host': 'www.instagram.com',
-              'Origin': 'https://www.instagram.com',
-              'Referer': 'https://www.instagram.com/',
-              'User-Agent': user_agent,
-              'X-Instagram-AJAX': '1',
-              'X-Requested-With': 'XMLHttpRequest'}
-    if empty_session_only:
-        del header['Host']
-        del header['Origin']
-        del header['Referer']
-        del header['X-Instagram-AJAX']
-        del header['X-Requested-With']
-    return header
-
-
-def get_anonymous_session() -> requests.Session:
-    """Returns our default anonymous requests.Session object."""
-    session = requests.Session()
-    session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
-                            'ig_vw': '1920', 'csrftoken': '',
-                            's_network': '', 'ds_user_id': ''})
-    session.headers.update(default_http_header(empty_session_only=True))
-    return session
+def default_user_agent() -> str:
+    return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
+           '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
 
 
 def shortcode_to_mediaid(code: str) -> int:
@@ -151,8 +123,10 @@ def mediaid_to_shortcode(mediaid: int) -> str:
 
 class Instaloader:
     def __init__(self,
-                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False, profile_subdirs: bool = True):
-        self.session = get_anonymous_session()
+                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False, profile_subdirs: bool = True,
+                 user_agent: Optional[str] = None):
+        self.user_agent = user_agent if user_agent is not None else default_user_agent()
+        self.session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
@@ -178,10 +152,39 @@ class Instaloader:
         if match is not None:
             return json.loads(match.group(0)[21:-2])
 
+    def default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
+        """Returns default HTTP header we use for requests."""
+        header = {'Accept-Encoding': 'gzip, deflate',
+                  'Accept-Language': 'en-US,en;q=0.8',
+                  'Connection': 'keep-alive',
+                  'Content-Length': '0',
+                  'Host': 'www.instagram.com',
+                  'Origin': 'https://www.instagram.com',
+                  'Referer': 'https://www.instagram.com/',
+                  'User-Agent': self.user_agent,
+                  'X-Instagram-AJAX': '1',
+                  'X-Requested-With': 'XMLHttpRequest'}
+        if empty_session_only:
+            del header['Host']
+            del header['Origin']
+            del header['Referer']
+            del header['X-Instagram-AJAX']
+            del header['X-Requested-With']
+        return header
+
+    def get_anonymous_session(self) -> requests.Session:
+        """Returns our default anonymous requests.Session object."""
+        session = requests.Session()
+        session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
+                                'ig_vw': '1920', 'csrftoken': '',
+                                's_network': '', 'ds_user_id': ''})
+        session.headers.update(self.default_http_header(empty_session_only=True))
+        return session
+
     def get_username_by_id(self, profile_id: int) -> str:
         """To get the current username of a profile, given its unique ID, this function can be used."""
         tmpsession = copy_session(self.session)
-        tmpsession.headers.update(default_http_header())
+        tmpsession.headers.update(self.default_http_header())
         del tmpsession.headers['Referer']
         del tmpsession.headers['X-Instagram-AJAX']
         resp = tmpsession.get('https://www.instagram.com/graphql/query/',
@@ -210,7 +213,7 @@ class Instaloader:
     def get_id_by_username(self, profile: str) -> int:
         """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
         his/her username. To get said ID, given the profile's name, you may call this function."""
-        data = self.get_json(profile, session=get_anonymous_session())
+        data = self.get_json(profile, session=self.get_anonymous_session())
         if "ProfilePage" not in data["entry_data"]:
             raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
         return int(data['entry_data']['ProfilePage'][0]['user']['id'])
@@ -245,7 +248,7 @@ class Instaloader:
                  "++%7D%0A"
                  "%7D%0A"
                  "&ref=relationships%3A%3Afollow_list"]
-        tmpsession.headers.update(default_http_header())
+        tmpsession.headers.update(self.default_http_header())
         tmpsession.headers.update({'Referer': 'https://www.instagram.com/' + profile + '/following/'})
         tmpsession.headers.update({'Content-Type': 'application/x-www-form-urlencoded'})
         resp = tmpsession.post('https://www.instagram.com/query/', data=query[0] + "first(" + query[1])
@@ -288,7 +291,7 @@ class Instaloader:
         if os.path.isfile(filename):
             self._log(outputlabel + ' exists', end=' ', flush=True)
             return False
-        resp = get_anonymous_session().get(url, stream=True)
+        resp = self.get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
             self._log(outputlabel, end=' ', flush=True)
             if self.profile_subdirs:
@@ -381,7 +384,7 @@ class Instaloader:
         index = len(match.group(0)) - 1
         offset = 8 if match.group(0)[-1:] == 's' else 0
         url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index + offset:]
-        resp = get_anonymous_session().get(url, stream=True)
+        resp = self.get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
             self._log(filename)
             if self.profile_subdirs:
@@ -418,7 +421,7 @@ class Instaloader:
         with open(filename, 'rb') as sessionfile:
             session = requests.Session()
             session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-            session.headers.update(default_http_header())
+            session.headers.update(self.default_http_header())
             session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
             self._log("Loaded session from %s." % filename)
             self.session = session
@@ -440,7 +443,7 @@ class Instaloader:
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
-        session.headers.update(default_http_header())
+        session.headers.update(self.default_http_header())
         resp = session.get('https://www.instagram.com/')
         session.headers.update({'X-CSRFToken': resp.cookies['csrftoken']})
         time.sleep(9 * random.random() + 3)
@@ -491,7 +494,7 @@ class Instaloader:
                 "%7D%0A++++++++%7D%2C%0A++++++++video_url%2C%0A++++++++" + \
                 "video_views%0A++++++%7D%2C%0A++++++page_info%0A++++%7D%0A++%7D%2C%0A++id%2C%0A++" + \
                 "profile_pic_url%2C%0A++username%0A%7D%0A&ref=feed::show"
-        tmpsession.headers.update(default_http_header())
+        tmpsession.headers.update(self.default_http_header())
         tmpsession.headers.update({'Referer': 'https://www.instagram.com/'})
         tmpsession.headers.update({'Content-Type': 'application/x-www-form-urlencoded'})
         resp = tmpsession.post('https://www.instagram.com/query/', data=query)
@@ -908,6 +911,8 @@ def main():
                              'file\'s path or filename (if --no-profile-subdir). Without this option, the #hashtag is '
                              'used instead. This requires an additional request to the Instagram server for each '
                              'picture, which is why it is disabled by default.')
+    parser.add_argument('--user-agent',
+                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     parser.add_argument('-S', '--no-sleep', action='store_true',
                         help='Do not sleep between actual downloads of pictures')
     parser.add_argument('-O', '--shorter-output', action='store_true',
@@ -917,7 +922,8 @@ def main():
                              'if login credentials are needed but not given.')
     args = parser.parse_args()
     try:
-        loader = Instaloader(not args.no_sleep, args.quiet, args.shorter_output, not args.no_profile_subdir)
+        loader = Instaloader(sleep = not args.no_sleep, quiet = args.quiet, shorter_output = args.shorter_output,
+                             profile_subdirs = not args.no_profile_subdir, user_agent = args.user_agent)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
