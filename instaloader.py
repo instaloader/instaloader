@@ -847,9 +847,9 @@ class Instaloader:
                     except ProfileNotExistsException as err:
                         if username is not None:
                             self._log(err)
-                            self._log(
-                                "Trying again anonymously, helps in case you are just blocked.")
-                            anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output)
+                            self._log("Trying again anonymously, helps in case you are just blocked.")
+                            anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output,
+                                                           self.profile_subdirs, self.user_agent)
                             anonymous_loader.download(target, profile_pic_only, download_videos,
                                                       geotags, fast_update)
                         else:
