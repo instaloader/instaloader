@@ -900,8 +900,11 @@ def main():
 
     g_what = parser.add_argument_group('What to Download',
                                        'Specify a list of profiles or #hashtags. For each of these, Instaloader '
+                                       'creates a folder and '
                                        'downloads all posts along with the pictures\'s '
-                                       'captions and the current profile picture.')
+                                       'captions and the current profile picture. '
+                                       'If an already-downloaded profile has been renamed, Instaloader automatically '
+                                       'finds it by its unique ID and renames the folder likewise.')
     g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
                         help='Name of profile or #hashtag to download. '
                              'Alternatively, if --login is given: @<profile> to download all followees of '
@@ -929,8 +932,7 @@ def main():
                              'Applies only to #hashtag, :feed-all and :feed-liked.')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
-                                        'Instaloader can login to Instagram. This allows downloading private profiles '
-                                        'and automatically finding profiles by their ID if they have been renamed. '
+                                        'Instaloader can login to Instagram. This allows downloading private profiles. '
                                         'To login, pass the --login option. Your session cookie (not your password!) '
                                         'will be saved to a local file to be reused next time you want Instaloader '
                                         'to login.')

@@ -106,8 +106,10 @@ What to Download
 ^^^^^^^^^^^^^^^^
 
 Specify a list of profiles or #hashtags. For each of these, Instaloader
-downloads all posts along with the pictures's captions and the current
-**profile picture**.
+creates a folder and downloads all posts along with the pictures's
+captions and the current **profile picture**. If an already-downloaded profile
+has been renamed, Instaloader automatically **finds it by its unique ID** and
+renames the folder likewise.
 
 --profile-pic-only         Only download profile picture.
 --skip-videos              Do not download videos.
@@ -135,8 +137,7 @@ Login (Download Private Profiles)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Instaloader can **login to Instagram**. This allows downloading private
-profiles and automatically **finding profiles by their ID** if they have been
-renamed. To login, pass the ``--login`` option. Your session cookie (not your
+profiles. To login, pass the ``--login`` option. Your session cookie (not your
 password!) will be saved to a local file to be reused next time you want
 Instaloader to login.
 
