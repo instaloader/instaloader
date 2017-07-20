@@ -249,7 +249,7 @@ class Instaloader:
                 if page_info['has_next_page']:
                     resp = tmpsession.get('https://www.instagram.com/graphql/query/',
                                           params={'query_id': 17851374694183129,
-                                                  'variables': '{"id":"' + str(profile_id) + '","first":500},"after":"' +
+                                                  'variables': '{"id":"' + str(profile_id) + '","first":500,"after":"' +
                                                                page_info['end_cursor'] + '"}'})
                     data = resp.json()
                 else:
@@ -290,7 +290,7 @@ class Instaloader:
                 if page_info['has_next_page']:
                     resp = tmpsession.get('https://www.instagram.com/graphql/query/',
                                           params={'query_id': 17874545323001329,
-                                                  'variables': '{"id":"' + str(profile_id) + '","first":500},"after":"' +
+                                                  'variables': '{"id":"' + str(profile_id) + '","first":500,"after":"' +
                                                                page_info['end_cursor'] + '"}'})
                     data = resp.json()
                 else:
@@ -298,6 +298,38 @@ class Instaloader:
         else:
             raise ConnectionException("ConnectionError({0}): unable to gather followees.".format(resp.status_code))
         return followees
+
+    def get_comments(self, shortcode: str) -> List[Dict[str, Any]]:
+        tmpsession = copy_session(self.session)
+        header = self.default_http_header(empty_session_only=True)
+        del header['Connection']
+        del header['Content-Length']
+        header['authority'] = 'www.instagram.com'
+        header['scheme'] = 'https'
+        header['accept'] = '*/*'
+        header['referer'] = 'https://www.instagram.com/p/' + shortcode + '/'
+        tmpsession.headers = header
+        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                              params={'query_id': 17852405266163336,
+                                      'variables': '{"shortcode":"' + shortcode + '","first":500}'})
+        if resp.status_code == 200:
+            data = resp.json()
+            comments = []
+            while True:
+                edge_media_to_comment = data['data']['shortcode_media']['edge_media_to_comment']
+                comments.extend([comment['node'] for comment in edge_media_to_comment['edges']])
+                page_info = edge_media_to_comment['page_info']
+                if page_info['has_next_page']:
+                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                                          params={'query_id': 17852405266163336,
+                                                  'variables': '{"shortcode":"' + shortcode + '","first":500,"after":"'
+                                                               + page_info['end_cursor'] + '"}'})
+                    data = resp.json()
+                else:
+                    break
+        else:
+            raise ConnectionException("ConnectionError({0}): unable to gather comments.".format(resp.status_code))
+        return comments
 
     def download_pic(self, name: str, url: str, date_epoch: float, outputlabel: Optional[str] = None,
                      filename_suffix: Optional[str] = None) -> bool:
@@ -329,6 +361,32 @@ class Instaloader:
             return True
         else:
             raise ConnectionException("File \'" + url + "\' could not be downloaded.")
+
+    def update_comments(self, name: str, shortcode: str, date_epoch: float) -> None:
+        if self.profile_subdirs:
+            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_comments.json'
+        else:
+            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '_comments.json'
+        try:
+            comments = json.load(open(filename))
+        except FileNotFoundError:
+            comments = list()
+        comments.extend(self.get_comments(shortcode))
+        if comments:
+            with open(filename, 'w') as file:
+                comments_list = sorted(sorted(list(comments), key=lambda t: t['id']),
+                                       key=lambda t: t['created_at'], reverse=True)
+                unique_comments_list = [comments_list[0]]
+                #for comment in comments_list:
+                #    if unique_comments_list[-1]['id'] != comment['id']:
+                #        unique_comments_list.append(comment)
+                #file.write(json.dumps(unique_comments_list, indent=4))
+                #pylint:disable=invalid-name
+                for x, y in zip(comments_list[:-1], comments_list[1:]):
+                    if x['id'] != y['id']:
+                        unique_comments_list.append(y)
+                file.write(json.dumps(unique_comments_list, indent=4))
+            self._log('comments', end=' ', flush=True)
 
     def save_caption(self, name: str, date_epoch: float, caption: str) -> None:
         """Updates picture caption"""
@@ -543,7 +601,7 @@ class Instaloader:
             return location_json["entry_data"]["LocationsPage"][0]["location"]
 
     def download_node(self, node: Dict[str, Any], name: str,
-                      download_videos: bool = True, geotags: bool = False) -> bool:
+                      download_videos: bool = True, geotags: bool = False, download_comments: bool = False) -> bool:
         """
         Download everything associated with one instagram node, i.e. picture, caption and video.
 
@@ -551,6 +609,7 @@ class Instaloader:
         :param name: Name of profile to which this node belongs
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
+        :param download_comments: Update comments
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
         # pylint:disable=too-many-branches,too-many-locals
@@ -601,12 +660,15 @@ class Instaloader:
             location = self.get_location(node_code)
             if location:
                 self.save_location(name, location, date)
+        if download_comments:
+            self.update_comments(name, node_code, date)
         self._log()
         return downloaded
 
     def download_feed_pics(self, max_count: int = None, fast_update: bool = False,
                            filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
-                           download_videos: bool = True, geotags: bool = False) -> None:
+                           download_videos: bool = True, geotags: bool = False,
+                           download_comments: bool = False) -> None:
         """
         Download pictures from the user's feed.
 
@@ -624,6 +686,7 @@ class Instaloader:
         :param filter_func: function(node), which returns True if given picture should not be downloaded
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
+        :param download_comments: Update comments
         """
         # pylint:disable=too-many-locals
         data = self.get_feed_json()
@@ -646,7 +709,8 @@ class Instaloader:
                 self._log("[%3i] %s " % (count, name), end="", flush=True)
                 count += 1
                 downloaded = self.download_node(node, name,
-                                                download_videos=download_videos, geotags=geotags)
+                                                download_videos=download_videos, geotags=geotags,
+                                                download_comments=download_comments)
                 if fast_update and not downloaded:
                     return
             if not feed["page_info"]["has_next_page"]:
@@ -662,6 +726,7 @@ class Instaloader:
                          max_count: Optional[int] = None,
                          filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
                          fast_update: bool = False, download_videos: bool = True, geotags: bool = False,
+                         download_comments: bool = False,
                          lookup_username: bool = False) -> None:
         """Download pictures of one hashtag.
 
@@ -675,6 +740,7 @@ class Instaloader:
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
+        :param download_comments: Update comments
         :param lookup_username: Lookup username to encode it in the downloaded file's path, rather than the hashtag
         """
         data = self.get_hashtag_json(hashtag)
@@ -694,7 +760,8 @@ class Instaloader:
                     continue
                 count += 1
                 downloaded = self.download_node(node, pathname,
-                                                download_videos=download_videos, geotags=geotags)
+                                                download_videos=download_videos, geotags=geotags,
+                                                download_comments=download_comments)
                 if fast_update and not downloaded:
                     return
             if data['entry_data']['TagPage'][0]['tag']['media']['page_info']['has_next_page']:
@@ -742,7 +809,7 @@ class Instaloader:
 
     def download(self, name: str,
                  profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
-                 fast_update: bool = False) -> None:
+                 download_comments: bool = False, fast_update: bool = False) -> None:
         """Download one profile"""
         # pylint:disable=too-many-branches,too-many-locals
         # Get profile main page json
@@ -785,7 +852,8 @@ class Instaloader:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 downloaded = self.download_node(node, name,
-                                                download_videos=download_videos, geotags=geotags)
+                                                download_videos=download_videos, geotags=geotags,
+                                                download_comments=download_comments)
                 if fast_update and not downloaded:
                     return
             data = self.get_json(name, max_id=get_last_id(data))
@@ -808,6 +876,7 @@ class Instaloader:
     def download_profiles(self, profilelist: List[str], username: Optional[str] = None, password: Optional[str] = None,
                           sessionfile: Optional[str] = None, max_count: Optional[int] = None,
                           profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
+                          download_comments: bool = False,
                           fast_update: bool = False, hashtag_lookup_username: bool = False) -> None:
         """Download set of profiles and handle sessions"""
         # pylint:disable=too-many-branches,too-many-locals,too-many-statements
@@ -835,7 +904,7 @@ class Instaloader:
                     self._log("Retrieving pictures with hashtag {0}".format(pentry))
                     self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update,
                                           download_videos=download_videos, geotags=geotags,
-                                          lookup_username=hashtag_lookup_username)
+                                          download_comments=download_comments, lookup_username=hashtag_lookup_username)
                 elif pentry[0] == '@':
                     if username is not None:
                         self._log("Retrieving followees of %s..." % pentry[1:])
@@ -847,7 +916,8 @@ class Instaloader:
                     if username is not None:
                         self._log("Retrieving pictures from your feed...")
                         self.download_feed_pics(fast_update=fast_update, max_count=max_count,
-                                                download_videos=download_videos, geotags=geotags)
+                                                download_videos=download_videos, geotags=geotags,
+                                                download_comments=download_comments)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 elif pentry == ":feed-liked":
@@ -858,7 +928,8 @@ class Instaloader:
                                                 not node["likes"]["viewer_has_liked"]
                                                 if "likes" in node
                                                 else not node["viewer_has_liked"],
-                                                download_videos=download_videos, geotags=geotags)
+                                                download_videos=download_videos, geotags=geotags,
+                                                download_comments=download_comments)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 else:
@@ -870,7 +941,7 @@ class Instaloader:
                 try:
                     try:
                         self.download(target, profile_pic_only, download_videos,
-                                      geotags, fast_update)
+                                      geotags, download_comments, fast_update)
                     except ProfileNotExistsException as err:
                         if username is not None:
                             self._log(err)
@@ -878,7 +949,7 @@ class Instaloader:
                             anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output,
                                                            self.profile_subdirs, self.user_agent)
                             anonymous_loader.download(target, profile_pic_only, download_videos,
-                                                      geotags, fast_update)
+                                                      geotags, download_comments, fast_update)
                         else:
                             raise err
                 except NonfatalException as err:
@@ -920,6 +991,10 @@ def main():
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
                              'server for each picture, which is why it is disabled by default.')
+    g_what.add_argument('-C', '--comments', action='store_true',
+                        help='Download and update comments for each post. '
+                             'This requires an additional request to the Instagram '
+                             'server for each post, which is why it is disabled by default.')
 
     g_stop = parser.add_argument_group('When to Stop Downloading',
                                        'If none of these options are given, Instaloader goes through all pictures '
@@ -978,8 +1053,8 @@ def main():
                              profile_subdirs=not args.no_profile_subdir, user_agent=args.user_agent)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
-                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,
-                                 args.hashtag_username)
+                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.download_comments,
+                                 args.fast_update, args.hashtag_username)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

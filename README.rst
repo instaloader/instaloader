@@ -118,6 +118,9 @@ renames the folder likewise.
                            link. This requires an additional request to the
                            Instagram server for each picture, which is why it is
                            disabled by default.
+--comments                 Download and update comments for each post. This
+                           requires an additional request to the Instagram server
+                           for each post, which is why it is disabled by default.
 
 When to Stop Downloading
 ^^^^^^^^^^^^^^^^^^^^^^^^
