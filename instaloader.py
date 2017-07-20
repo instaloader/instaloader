@@ -217,60 +217,87 @@ class Instaloader:
             raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
         return int(data['entry_data']['ProfilePage'][0]['user']['id'])
 
-    def get_followees(self, profile: str) -> List[Dict[str, Any]]:
+    def get_followers(self, profile: str) -> List[Dict[str, Any]]:
         """
-        Retrieve list of followees of given profile
+        Retrieve list of followers of given profile.
+        To use this, one needs to be logged in and private profiles has to be followed,
+        otherwise this returns an empty list.
 
-        :param profile: Name of profile to lookup followees
-        :return: List of followees (list of dictionaries), as returned by instagram server
+        :param profile: Name of profile to lookup followers.
+        :return: List of followers (list of dictionaries).
         """
         tmpsession = copy_session(self.session)
-        data = self.get_json(profile, session=tmpsession)
-        profile_id = data['entry_data']['ProfilePage'][0]['user']['id']
-        query = ["q=ig_user(" + profile_id + ")+%7B%0A"
-                                             "++follows.",
-                 str(data['entry_data']['ProfilePage'][0]['user']['follows']['count']) +
-                 ")+%7B%0A"
-                 "++++count%2C%0A"
-                 "++++page_info+%7B%0A"
-                 "++++++end_cursor%2C%0A"
-                 "++++++has_next_page%0A"
-                 "++++%7D%2C%0A"
-                 "++++nodes+%7B%0A"
-                 "++++++id%2C%0A"
-                 "++++++full_name%2C%0A"
-                 "++++++username%2C%0A"
-                 "++++++followed_by+%7B%0A"
-                 "++++++++count%0A"
-                 "++++++%7D%0A"
-                 "++++%7D%0A"
-                 "++%7D%0A"
-                 "%7D%0A"
-                 "&ref=relationships%3A%3Afollow_list"]
-        tmpsession.headers.update(self.default_http_header())
-        tmpsession.headers.update({'Referer': 'https://www.instagram.com/' + profile + '/following/'})
-        tmpsession.headers.update({'Content-Type': 'application/x-www-form-urlencoded'})
-        resp = tmpsession.post('https://www.instagram.com/query/', data=query[0] + "first(" + query[1])
+        header = self.default_http_header(empty_session_only=True)
+        del header['Connection']
+        del header['Content-Length']
+        header['authority'] = 'www.instagram.com'
+        header['scheme'] = 'https'
+        header['accept'] = '*/*'
+        header['referer'] = 'https://www.instagram.com/' + profile + '/'
+        tmpsession.headers = header
+        profile_id = self.get_id_by_username(profile)
+        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                              params={'query_id': 17851374694183129,
+                                      'variables': '{"id":"' + str(profile_id) + '","first":500}'})
         if resp.status_code == 200:
-            data = json.loads(resp.text)
-            followees = []
+            data = resp.json()
+            followers = []
             while True:
-                for followee in data['follows']['nodes']:
-                    followee['follower_count'] = followee.pop('followed_by')['count']
-                    followees = followees + [followee]
-                if data['follows']['page_info']['has_next_page']:
-                    resp = tmpsession.post('https://www.instagram.com/query/',
-                                           data="{0}after({1}%2C+{2}".format(query[0],
-                                                                             data['follows']['page_info']['end_cursor'],
-                                                                             query[1]))
-                    data = json.loads(resp.text)
+                edge_followed_by = data['data']['user']['edge_followed_by']
+                followers.extend([follower['node'] for follower in edge_followed_by['edges']])
+                page_info = edge_followed_by['page_info']
+                if page_info['has_next_page']:
+                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                                          params={'query_id': 17851374694183129,
+                                                  'variables': '{"id":"' + str(profile_id) + '","first":500},"after":"' +
+                                                               page_info['end_cursor'] + '"}'})
+                    data = resp.json()
                 else:
                     break
-            return followees
-        if self.test_login(tmpsession):
-            raise ConnectionException("ConnectionError(" + str(resp.status_code) + "): "
-                                                                                   "unable to gather followees.")
-        raise LoginRequiredException("Login required to gather followees.")
+        else:
+            raise ConnectionException("ConnectionError({0}): unable to gather followers.".format(resp.status_code))
+        return followers
+
+    def get_followees(self, profile: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve list of followees (followings) of given profile.
+        To use this, one needs to be logged in and private profiles has to be followed,
+        otherwise this returns an empty list.
+
+        :param profile: Name of profile to lookup followers.
+        :return: List of followees (list of dictionaries).
+        """
+        tmpsession = copy_session(self.session)
+        header = self.default_http_header(empty_session_only=True)
+        del header['Connection']
+        del header['Content-Length']
+        header['authority'] = 'www.instagram.com'
+        header['scheme'] = 'https'
+        header['accept'] = '*/*'
+        header['referer'] = 'https://www.instagram.com/' + profile + '/'
+        tmpsession.headers = header
+        profile_id = self.get_id_by_username(profile)
+        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                              params={'query_id': 17874545323001329,
+                                      'variables': '{"id":"' + str(profile_id) + '","first":500}'})
+        if resp.status_code == 200:
+            data = resp.json()
+            followees = []
+            while True:
+                edge_follow = data['data']['user']['edge_follow']
+                followees.extend([followee['node'] for followee in edge_follow['edges']])
+                page_info = edge_follow['page_info']
+                if page_info['has_next_page']:
+                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
+                                          params={'query_id': 17874545323001329,
+                                                  'variables': '{"id":"' + str(profile_id) + '","first":500},"after":"' +
+                                                               page_info['end_cursor'] + '"}'})
+                    data = resp.json()
+                else:
+                    break
+        else:
+            raise ConnectionException("ConnectionError({0}): unable to gather followees.".format(resp.status_code))
+        return followees
 
     def download_pic(self, name: str, url: str, date_epoch: float, outputlabel: Optional[str] = None,
                      filename_suffix: Optional[str] = None) -> bool:

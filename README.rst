@@ -182,8 +182,7 @@ Usage as Python module
 You may also use parts of Instaloader as library to do other interesting
 things.
 
-For example, to get a list of all followees of a profile as well as
-their follower count, do
+For example, to get a list of all followees and a list of all followers of a profile, do
 
 .. code:: python
 
@@ -197,8 +196,15 @@ their follower count, do
 
     # Retrieve followees
     followees = loader.get_followees(PROFILE)
+    print(PROFILE + " follows these profiles:")
     for f in followees:
-        print("%i\t%s\t%s" % (f['follower_count'], f['username'], f['full_name']))
+        print("\t%s\t%s" % (f['username'], f['full_name']))
+
+    # Retrieve followers
+    followers = loader.get_followers(PROFILE)
+    print("Followers of " + PROFILE + ":")
+    for f in followers:
+        print("\t%s\t%s" % (f['username'], f['full_name']))
 
 Then, you may download all pictures of all followees with
 
