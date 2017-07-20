@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""Tool to download pictures (or videos) and captions from Instagram, from a given set
-of profiles (even if private), from your feed or from all followees of a given profile."""
+"""Download pictures (or videos) along with their captions and other metadata from Instagram."""
 
 import datetime
 import getpass
@@ -869,61 +868,85 @@ class Instaloader:
 
 
 def main():
-    parser = ArgumentParser(description=__doc__,
+    parser = ArgumentParser(description=__doc__, add_help=False,
                             epilog="Report issues at https://github.com/Thammus/instaloader/issues.")
-    parser.add_argument('profile', nargs='*', metavar='profile|#hashtag',
+
+    g_what = parser.add_argument_group('What to Download',
+                                       'Specify a list of profiles or #hashtags. For each of these, Instaloader '
+                                       'downloads all posts along with the pictures\'s '
+                                       'captions and the current profile picture.')
+    g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
                         help='Name of profile or #hashtag to download. '
                              'Alternatively, if --login is given: @<profile> to download all followees of '
                              '<profile>; or the special targets :feed-all or :feed-liked to '
                              'download pictures from your feed (using '
                              '--fast-update is recommended).')
-    parser.add_argument('--version', action='version',
-                        version=__version__)
-    parser.add_argument('-l', '--login', metavar='YOUR-USERNAME',
-                        help='Login name for your Instagram account. Not needed to download public '
-                             'profiles, but if you want to download private profiles or all followees of '
-                             'some profile, you have to specify a username used to login.')
-    parser.add_argument('-p', '--password', metavar='YOUR-PASSWORD',
-                        help='Note that specifying passwords on command line is considered insecure! '
-                             'Password for your Instagram account. If --login is given and there is '
-                             'not yet a valid session file, you\'ll be prompted for your password if '
-                             '--password is not given. Specifying this option without --login has no '
-                             'effect.')
-    parser.add_argument('-f', '--sessionfile',
-                        help='File to store session key, defaults to ' + get_default_session_filename("<login_name>"))
-    parser.add_argument('-P', '--profile-pic-only', action='store_true',
-                        help='Only download profile picture')
-    parser.add_argument('-V', '--skip-videos', action='store_true',
-                        help='Do not download videos')
-    parser.add_argument('-G', '--geotags', action='store_true',
-                        help='Store geotags when available. This requires an additional request to the Instagram '
+    g_what.add_argument('-P', '--profile-pic-only', action='store_true',
+                        help='Only download profile picture.')
+    g_what.add_argument('-V', '--skip-videos', action='store_true',
+                        help='Do not download videos.')
+    g_what.add_argument('-G', '--geotags', action='store_true',
+                        help='Download geotags when available. Geotags are stored as a '
+                             'text file with the location\'s name and a Google Maps link. '
+                             'This requires an additional request to the Instagram '
                              'server for each picture, which is why it is disabled by default.')
-    parser.add_argument('-F', '--fast-update', action='store_true',
-                        help='Abort at encounter of first already-downloaded picture')
-    parser.add_argument('-c', '--count',
+
+    g_stop = parser.add_argument_group('When to Stop Downloading',
+                                       'If none of these options are given, Instaloader goes through all pictures '
+                                       'matching the specified targets.')
+    g_stop.add_argument('-F', '--fast-update', action='store_true',
+                        help='For each target, stop when encountering the first already-downloaded picture. This '
+                             'flag is recommended when you use Instaloader to update your personal Instagram archive.')
+    g_stop.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
                              'Applies only to #hashtag, :feed-all and :feed-liked.')
-    parser.add_argument('--no-profile-subdir', action='store_true',
-                        help='Instead of creating a subdirectory for each profile and storing pictures there, store '
-                             'pictures in files named PROFILE__DATE_TIME.jpg.')
-    parser.add_argument('--hashtag-username', action='store_true',
-                        help='Lookup username of pictures when downloading by #hashtag and encode it in the downlaoded '
-                             'file\'s path or filename (if --no-profile-subdir). Without this option, the #hashtag is '
-                             'used instead. This requires an additional request to the Instagram server for each '
-                             'picture, which is why it is disabled by default.')
-    parser.add_argument('--user-agent',
-                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
-    parser.add_argument('-S', '--no-sleep', action='store_true',
-                        help='Do not sleep between actual downloads of pictures')
-    parser.add_argument('-O', '--shorter-output', action='store_true',
-                        help='Do not display captions while downloading')
-    parser.add_argument('-q', '--quiet', action='store_true',
+
+    g_login = parser.add_argument_group('Login (Download Private Profiles)',
+                                        'Instaloader can login to Instagram. This allows downloading private profiles '
+                                        'and automatically finding profiles by their ID if they have been renamed. '
+                                        'To login, pass the --login option. Your session cookie (not your password!) '
+                                        'will be saved to a local file to be reused next time you want Instaloader '
+                                        'to login.')
+    g_login.add_argument('-l', '--login', metavar='YOUR-USERNAME',
+                         help='Login name (profile name) for your Instagram account.')
+    g_login.add_argument('-f', '--sessionfile',
+                         help='Path for loading and storing session key file. '
+                              'Defaults to ' + get_default_session_filename("<login_name>"))
+    g_login.add_argument('-p', '--password', metavar='YOUR-PASSWORD',
+                         help='Password for your Instagram account. Without this option, '
+                              'you\'ll be prompted for your password interactively if '
+                              'there is not yet a valid session file.')
+
+    g_how = parser.add_argument_group('How to Download')
+    g_how.add_argument('--no-profile-subdir', action='store_true',
+                       help='Instead of creating a subdirectory for each profile and storing pictures there, store '
+                            'pictures in files named PROFILE__DATE_TIME.jpg.')
+    g_how.add_argument('--hashtag-username', action='store_true',
+                       help='Lookup username of pictures when downloading by #hashtag and encode it in the downlaoded '
+                            'file\'s path or filename (if --no-profile-subdir). Without this option, the #hashtag is '
+                            'used instead. This requires an additional request to the Instagram server for each '
+                            'picture, which is why it is disabled by default.')
+    g_how.add_argument('--user-agent',
+                       help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
+    g_how.add_argument('-S', '--no-sleep', action='store_true',
+                       help='Do not sleep between requests to Instagram\'s servers. This makes downloading faster, but '
+                            'may be suspicious.')
+
+    g_misc = parser.add_argument_group('Miscellaneous Options')
+    g_misc.add_argument('-O', '--shorter-output', action='store_true',
+                        help='Do not display captions while downloading.')
+    g_misc.add_argument('-q', '--quiet', action='store_true',
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
-                             'if login credentials are needed but not given.')
+                             'if login credentials are needed but not given. This makes Instaloader suitable as a '
+                             'cron job.')
+    g_misc.add_argument('-h', '--help', action='help', help='Show this help message and exit.')
+    g_misc.add_argument('--version', action='version', help='Show version number and exit.',
+                        version=__version__)
+
     args = parser.parse_args()
     try:
-        loader = Instaloader(sleep = not args.no_sleep, quiet = args.quiet, shorter_output = args.shorter_output,
-                             profile_subdirs = not args.no_profile_subdir, user_agent = args.user_agent)
+        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
+                             profile_subdirs=not args.no_profile_subdir, user_agent=args.user_agent)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.fast_update,

@@ -99,37 +99,82 @@ Advanced Options
 The following flags can be given to Instaloader to specify how profiles should
 be downloaded.
 
---fast-update        Stop when encountering the first already-downloaded post
-                     of a profile.
---profile-pic-only   Only download profile pictures. Without this flag, the current
-                     profile picture and all the profile's posts are downloaded.
---skip-videos        Skip posts which are videos.
---geotags            Also **download geotags** and store Google Maps links in
-                     separate textfiles.
---count COUNT        If used with ``#hashtag``, ``:feed-all`` or
-                     ``:feed-liked``: Do not attempt to download more than COUNT
-                     posts.
---quiet              Do not output any messages except warnings and errors. This
-                     option makes Instaloader **suitable as a cron job**.
---no-sleep           Normally, Instaloader waits a few seconds between requests
-                     to the Instagram servers. This flag inhibits this behavior.
---password PASSWORD  If used with ``--login``, use parameter as password if no
-                     valid session file is found, instead of asking
-                     interactively.
---sessionfile FILE   Specify an alternative place for loading and storing the
-                     session cookies. Without this flag, they are stored in a path
-                     within your temporary directory, encoding your local
-                     username and your instagram profile name.
---no-profile-subdir  Instead of creating a subdirectory for each profile and
-                     storing pictures there, store pictures in files named
-                     'PROFILE__DATE_TIME.jpg.'
---hashtag-username   When downloading by #hashtag, lookup the picture's username
-                     to decide in which directory to store, rather than storing
-                     all pictures in directory '#hashtag'.
---user-agent STRING  Change User Agent for HTTP requests to STRING, rather than
-                     our default user agent (Chrome 51).
+To get a list of all flags, their abbreviations and their descriptions, you may
+run ``instaloader --help``.
 
-To get a list of all flags, run ``instaloader --help``.
+What to Download
+^^^^^^^^^^^^^^^^
+
+Specify a list of profiles or #hashtags. For each of these, Instaloader
+downloads all posts along with the pictures's captions and the current
+**profile picture**.
+
+--profile-pic-only         Only download profile picture.
+--skip-videos              Do not download videos.
+--geotags                  **Download geotags** when available. Geotags are stored as
+                           a text file with the location's name and a Google Maps
+                           link. This requires an additional request to the
+                           Instagram server for each picture, which is why it is
+                           disabled by default.
+
+When to Stop Downloading
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+If none of these options are given, Instaloader goes through all pictures
+matching the specified targets.
+
+--fast-update              For each target, stop when encountering the first
+                           already-downloaded picture. This flag is recommended
+                           when you use Instaloader to update your personal
+                           Instagram archive.
+--count COUNT              Do not attempt to download more than COUNT posts.
+                           Applies only to ``#hashtag``, ``:feed-all`` and ``:feed-liked``.
+
+
+Login (Download Private Profiles)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Instaloader can **login to Instagram**. This allows downloading private
+profiles and automatically **finding profiles by their ID** if they have been
+renamed. To login, pass the ``--login`` option. Your session cookie (not your
+password!) will be saved to a local file to be reused next time you want
+Instaloader to login.
+
+--login YOUR-USERNAME      Login name (profile name) for your Instagram account.
+--sessionfile SESSIONFILE  Path for loading and storing session key file.
+                           Defaults to a path
+                           within your temporary directory, encoding your local
+                           username and your Instagram profile name.
+--password YOUR-PASSWORD   Password for your Instagram account. Without this
+                           option, you'll be prompted for your password
+                           interactively if there is not yet a valid session
+                           file.
+
+How to Download
+^^^^^^^^^^^^^^^
+
+--no-profile-subdir        Instead of creating a subdirectory for each profile
+                           and storing pictures there, store pictures in files
+                           named ``PROFILE__DATE_TIME.jpg``.
+--hashtag-username         Lookup username of pictures when downloading by
+                           #hashtag and encode it in the downlaoded file's path
+                           or filename (if ``--no-profile-subdir``). Without this
+                           option, the #hashtag is used instead. This requires an
+                           additional request to the Instagram server for each
+                           picture, which is why it is disabled by default.
+--user-agent USER_AGENT    User Agent to use for HTTP requests. Per default,
+                           Instaloader pretends being Chrome/51.
+--no-sleep                 Do not sleep between requests to Instagram's servers.
+                           This makes downloading faster, but may be suspicious.
+
+Miscellaneous Options
+^^^^^^^^^^^^^^^^^^^^^
+
+--shorter-output           Do not display captions while downloading.
+--quiet                    Disable user interaction, i.e. do not print messages
+                           (except errors) and fail if login credentials are
+                           needed but not given. This makes Instaloader
+                           **suitable as a cron job**.
 
 Usage as Python module
 ----------------------
