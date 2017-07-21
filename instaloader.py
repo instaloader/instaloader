@@ -1053,7 +1053,7 @@ def main():
                              profile_subdirs=not args.no_profile_subdir, user_agent=args.user_agent)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
-                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.download_comments,
+                                 args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
                                  args.fast_update, args.hashtag_username)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
