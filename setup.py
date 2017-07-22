@@ -8,7 +8,7 @@ if sys.version_info < (3, 5):
 
 setup(
     name='instaloader',
-    version='1.3',
+    version='2.0',
     py_modules=['instaloader'],
     url='https://github.com/Thammus/instaloader',
     license='MIT',
