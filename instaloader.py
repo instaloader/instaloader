@@ -180,34 +180,49 @@ class Instaloader:
         session.headers.update(self.default_http_header(empty_session_only=True))
         return session
 
+    def graphql_query(self, query_id: int, variables: Dict[str, Any],
+                      referer: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Do a GraphQL Query.
+
+        :param query_id: Query ID.
+        :param variables: Variables for the Query.
+        :param referer: HTTP Referer, or None.
+        :return: The server's response dictionary.
+        """
+        tmpsession = copy_session(self.session)
+        tmpsession.headers.update(self.default_http_header(empty_session_only=True))
+        del tmpsession.headers['Connection']
+        del tmpsession.headers['Content-Length']
+        tmpsession.headers['authority'] = 'www.instagram.com'
+        tmpsession.headers['scheme'] = 'https'
+        tmpsession.headers['accept'] = '*/*'
+        if referer is not None:
+            tmpsession.headers['referer'] = referer
+        response = tmpsession.get('https://www.instagram.com/graphql/query',
+                                  params={'query_id': query_id,
+                                          'variables': json.dumps(variables, separators=(',', ':'))})
+        if response.status_code != 200:
+            raise ConnectionException("GraphQL query returned HTTP error code {}.".format(response.status_code))
+        return response.json()
+
     def get_username_by_id(self, profile_id: int) -> str:
         """To get the current username of a profile, given its unique ID, this function can be used."""
-        tmpsession = copy_session(self.session)
-        tmpsession.headers.update(self.default_http_header())
-        del tmpsession.headers['Referer']
-        del tmpsession.headers['X-Instagram-AJAX']
-        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                              params={'query_id': '17862015703145017',
-                                      'variables': '{"id":"' + str(profile_id) + '","first":1}'})
-        if resp.status_code == 200:
-            data = json.loads(resp.text)["data"]["user"]
-            if data:
-                data = data["edge_owner_to_timeline_media"]
-            else:
-                raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                                str(profile_id) + ").")
-            if not data['edges']:
-                if data['count'] == 0:
-                    raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
-                else:
-                    raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-            else:
-                shortcode = mediaid_to_shortcode(int(data['edges'][0]["node"]["id"]))
-                data = self.get_json("p/" + shortcode)
-                return data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['owner']['username']
+        data = self.graphql_query(17862015703145017, {'id': str(profile_id), 'first': 1})['data']['user']
+        if data:
+            data = data["edge_owner_to_timeline_media"]
         else:
-            raise ProfileAccessDeniedException("Username could not be determined due to error {0} (ID: {1})."
-                                               .format(str(resp.status_code), str(profile_id)))
+            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
+                                            str(profile_id) + ").")
+        if not data['edges']:
+            if data['count'] == 0:
+                raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
+            else:
+                raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
+        else:
+            shortcode = mediaid_to_shortcode(int(data['edges'][0]["node"]["id"]))
+            data = self.get_json("p/" + shortcode)
+            return data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['owner']['username']
 
     def get_id_by_username(self, profile: str) -> int:
         """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
@@ -226,36 +241,22 @@ class Instaloader:
         :param profile: Name of profile to lookup followers.
         :return: List of followers (list of dictionaries).
         """
-        tmpsession = copy_session(self.session)
-        header = self.default_http_header(empty_session_only=True)
-        del header['Connection']
-        del header['Content-Length']
-        header['authority'] = 'www.instagram.com'
-        header['scheme'] = 'https'
-        header['accept'] = '*/*'
-        header['referer'] = 'https://www.instagram.com/' + profile + '/'
-        tmpsession.headers = header
         profile_id = self.get_id_by_username(profile)
-        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                              params={'query_id': 17851374694183129,
-                                      'variables': '{"id":"' + str(profile_id) + '","first":500}'})
-        if resp.status_code == 200:
-            data = resp.json()
-            followers = []
-            while True:
-                edge_followed_by = data['data']['user']['edge_followed_by']
-                followers.extend([follower['node'] for follower in edge_followed_by['edges']])
-                page_info = edge_followed_by['page_info']
-                if page_info['has_next_page']:
-                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                                          params={'query_id': 17851374694183129,
-                                                  'variables': '{"id":"' + str(profile_id) + '","first":500,"after":"' +
-                                                               page_info['end_cursor'] + '"}'})
-                    data = resp.json()
-                else:
-                    break
-        else:
-            raise ConnectionException("ConnectionError({0}): unable to gather followers.".format(resp.status_code))
+        data = self.graphql_query(17851374694183129, {'id': str(profile_id),
+                                                      'first': 500},
+                                  referer='https://www.instagram.com/' + profile + '/')
+        followers = []
+        while True:
+            edge_followed_by = data['data']['user']['edge_followed_by']
+            followers.extend([follower['node'] for follower in edge_followed_by['edges']])
+            page_info = edge_followed_by['page_info']
+            if page_info['has_next_page']:
+                data = self.graphql_query(17851374694183129, {'id': str(profile_id),
+                                                              'first': 500,
+                                                              'after': page_info['end_cursor']},
+                                          referer='https://www.instagram.com/' + profile + '/')
+            else:
+                break
         return followers
 
     def get_followees(self, profile: str) -> List[Dict[str, Any]]:
@@ -267,68 +268,41 @@ class Instaloader:
         :param profile: Name of profile to lookup followers.
         :return: List of followees (list of dictionaries).
         """
-        tmpsession = copy_session(self.session)
-        header = self.default_http_header(empty_session_only=True)
-        del header['Connection']
-        del header['Content-Length']
-        header['authority'] = 'www.instagram.com'
-        header['scheme'] = 'https'
-        header['accept'] = '*/*'
-        header['referer'] = 'https://www.instagram.com/' + profile + '/'
-        tmpsession.headers = header
         profile_id = self.get_id_by_username(profile)
-        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                              params={'query_id': 17874545323001329,
-                                      'variables': '{"id":"' + str(profile_id) + '","first":500}'})
-        if resp.status_code == 200:
-            data = resp.json()
-            followees = []
-            while True:
-                edge_follow = data['data']['user']['edge_follow']
-                followees.extend([followee['node'] for followee in edge_follow['edges']])
-                page_info = edge_follow['page_info']
-                if page_info['has_next_page']:
-                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                                          params={'query_id': 17874545323001329,
-                                                  'variables': '{"id":"' + str(profile_id) + '","first":500,"after":"' +
-                                                               page_info['end_cursor'] + '"}'})
-                    data = resp.json()
-                else:
-                    break
-        else:
-            raise ConnectionException("ConnectionError({0}): unable to gather followees.".format(resp.status_code))
+        data = self.graphql_query(17874545323001329, {'id': profile_id,
+                                                      'first': 500},
+                                  referer='https://www.instagram.com/' + profile + '/')
+        followees = []
+        while True:
+            edge_follow = data['data']['user']['edge_follow']
+            followees.extend([followee['node'] for followee in edge_follow['edges']])
+            page_info = edge_follow['page_info']
+            if page_info['has_next_page']:
+                data = self.graphql_query(17874545323001329, {'id': profile_id,
+                                                              'first': 500,
+                                                              'after': page_info['end_cursor']},
+                                          referer='https://www.instagram.com/' + profile + '/')
+            else:
+                break
         return followees
 
     def get_comments(self, shortcode: str) -> List[Dict[str, Any]]:
-        tmpsession = copy_session(self.session)
-        header = self.default_http_header(empty_session_only=True)
-        del header['Connection']
-        del header['Content-Length']
-        header['authority'] = 'www.instagram.com'
-        header['scheme'] = 'https'
-        header['accept'] = '*/*'
-        header['referer'] = 'https://www.instagram.com/p/' + shortcode + '/'
-        tmpsession.headers = header
-        resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                              params={'query_id': 17852405266163336,
-                                      'variables': '{"shortcode":"' + shortcode + '","first":500}'})
-        if resp.status_code == 200:
-            data = resp.json()
-            comments = []
-            while True:
-                edge_media_to_comment = data['data']['shortcode_media']['edge_media_to_comment']
-                comments.extend([comment['node'] for comment in edge_media_to_comment['edges']])
-                page_info = edge_media_to_comment['page_info']
-                if page_info['has_next_page']:
-                    resp = tmpsession.get('https://www.instagram.com/graphql/query/',
-                                          params={'query_id': 17852405266163336,
-                                                  'variables': '{"shortcode":"' + shortcode + '","first":500,"after":"'
-                                                               + page_info['end_cursor'] + '"}'})
-                    data = resp.json()
-                else:
-                    break
-        else:
-            raise ConnectionException("ConnectionError({0}): unable to gather comments.".format(resp.status_code))
+        """Retrieve comments of node with given shortcode."""
+        data = self.graphql_query(17852405266163336, {'shortcode': shortcode,
+                                                      'first': 500},
+                                  referer='https://www.instagram.com/p/' + shortcode + '/')
+        comments = []
+        while True:
+            edge_media_to_comment = data['data']['shortcode_media']['edge_media_to_comment']
+            comments.extend([comment['node'] for comment in edge_media_to_comment['edges']])
+            page_info = edge_media_to_comment['page_info']
+            if page_info['has_next_page']:
+                data = self.graphql_query(17852405266163336, {'shortcode': shortcode,
+                                                              'first': 500,
+                                                              'after': page_info['end_cursor']},
+                                          referer='https://www.instagram.com/p/' + shortcode + '/')
+            else:
+                break
         return comments
 
     def download_pic(self, name: str, url: str, date_epoch: float, outputlabel: Optional[str] = None,
