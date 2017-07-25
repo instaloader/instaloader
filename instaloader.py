@@ -10,6 +10,7 @@ import pickle
 import random
 import re
 import shutil
+import string
 import sys
 import tempfile
 import time
@@ -120,17 +121,28 @@ def mediaid_to_shortcode(mediaid: int) -> str:
     return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ','A')
 
 
+def format_string_contains_key(format_string: str, key: str) -> bool:
+    # pylint:disable=unused-variable
+    for literal_text, field_name, format_spec, conversion in string.Formatter().parse(format_string):
+        if field_name == key:
+            return True
+    return False
+
+
 class Instaloader:
     def __init__(self,
-                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False, profile_subdirs: bool = True,
-                 user_agent: Optional[str] = None):
+                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False,
+                 user_agent: Optional[str] = None,
+                 dirname_pattern: Optional[str] = None,
+                 filename_pattern: Optional[str] = None):
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
         self.shorter_output = shorter_output
-        self.profile_subdirs = profile_subdirs
+        self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
+        self.filename_pattern = filename_pattern if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         if not self.quiet:
@@ -305,29 +317,21 @@ class Instaloader:
                 break
         return comments
 
-    def download_pic(self, name: str, url: str, date_epoch: float, outputlabel: Optional[str] = None,
+    def download_pic(self, filename: str, url: str, date_epoch: float,
                      filename_suffix: Optional[str] = None) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
-        if outputlabel is None:
-            outputlabel = _epoch_to_string(date_epoch)
         urlmatch = re.search('\\.[a-z]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
-        if self.profile_subdirs:
-            filename = name.lower() + '/' + _epoch_to_string(date_epoch)
-        else:
-            filename = name.lower() + '__' + _epoch_to_string(date_epoch)
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
         if os.path.isfile(filename):
-            self._log(outputlabel + ' exists', end=' ', flush=True)
+            self._log(filename + ' exists', end=' ', flush=True)
             return False
         resp = self.get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
-            self._log(outputlabel, end=' ', flush=True)
-            if self.profile_subdirs:
-                os.makedirs(name.lower(), exist_ok=True)
+            self._log(filename, end=' ', flush=True)
             with open(filename, 'wb') as file:
                 resp.raw.decode_content = True
                 shutil.copyfileobj(resp.raw, file)
@@ -336,11 +340,8 @@ class Instaloader:
         else:
             raise ConnectionException("File \'" + url + "\' could not be downloaded.")
 
-    def update_comments(self, name: str, shortcode: str, date_epoch: float) -> None:
-        if self.profile_subdirs:
-            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_comments.json'
-        else:
-            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '_comments.json'
+    def update_comments(self, filename: str, shortcode: str) -> None:
+        filename += '_comments.json'
         try:
             comments = json.load(open(filename))
         except FileNotFoundError:
@@ -362,13 +363,10 @@ class Instaloader:
                 file.write(json.dumps(unique_comments_list, indent=4))
             self._log('comments', end=' ', flush=True)
 
-    def save_caption(self, name: str, date_epoch: float, caption: str) -> None:
+    def save_caption(self, filename: str, date_epoch: float, caption: str) -> None:
         """Updates picture caption"""
         # pylint:disable=too-many-branches
-        if self.profile_subdirs:
-            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '.txt'
-        else:
-            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '.txt'
+        filename += '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
         if self.shorter_output:
@@ -404,22 +402,15 @@ class Instaloader:
             self._log(pcaption, end=' ', flush=True)
         except UnicodeEncodeError:
             self._log('txt', end=' ', flush=True)
-        if self.profile_subdirs:
-            os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as text_file:
             shutil.copyfileobj(BytesIO(caption), text_file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
 
-    def save_location(self, name: str, location_json: Dict[str, str], date_epoch: float) -> None:
-        if self.profile_subdirs:
-            filename = name.lower() + '/' + _epoch_to_string(date_epoch) + '_location.txt'
-        else:
-            filename = name.lower() + '__' + _epoch_to_string(date_epoch) + '_location.txt'
+    def save_location(self, filename: str, location_json: Dict[str, str], date_epoch: float) -> None:
+        filename += '_location.txt'
         location_string = (location_json["name"] + "\n" +
                            "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location_json["lat"],
                                                                                         location_json["lng"]))
-        if self.profile_subdirs:
-            os.makedirs(name.lower(), exist_ok=True)
         with open(filename, 'wb') as text_file:
             shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
         os.utime(filename, (datetime.datetime.now().timestamp(), date_epoch))
@@ -429,10 +420,14 @@ class Instaloader:
         """Downloads and saves profile pic with given url."""
         date_object = datetime.datetime.strptime(requests.head(url).headers["Last-Modified"],
                                                  '%a, %d %b %Y %H:%M:%S GMT')
-        if self.profile_subdirs:
-            filename = name.lower() + '/' + _epoch_to_string(date_object.timestamp()) + '_UTC_profile_pic.' + url[-3:]
+        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target'))):
+            filename = '{0}/{1}_UTC_profile_pic.{2}'.format(self.dirname_pattern.format(profile=name.lower(),
+                                                                                        target=name.lower()),
+                                                            _epoch_to_string(date_object.timestamp()), url[-3:])
         else:
-            filename = name.lower() + '__' + _epoch_to_string(date_object.timestamp()) + '_UTC_profile_pic.' + url[-3:]
+            filename = '{0}/{1}_{2}_UTC_profile_pic.{3}'.format(self.dirname_pattern.format(), name.lower(),
+                                                                _epoch_to_string(date_object.timestamp()), url[-3:])
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
@@ -445,8 +440,6 @@ class Instaloader:
         resp = self.get_anonymous_session().get(url, stream=True)
         if resp.status_code == 200:
             self._log(filename)
-            if self.profile_subdirs:
-                os.makedirs(name.lower(), exist_ok=True)
             with open(filename, 'wb') as file:
                 resp.raw.decode_content = True
                 shutil.copyfileobj(resp.raw, file)
@@ -574,20 +567,39 @@ class Instaloader:
                                           media["location"]["id"])
             return location_json["entry_data"]["LocationsPage"][0]["location"]
 
-    def download_node(self, node: Dict[str, Any], name: str,
+    def download_node(self, node: Dict[str, Any], profile: Optional[str], target: str,
                       download_videos: bool = True, geotags: bool = False, download_comments: bool = False) -> bool:
         """
         Download everything associated with one instagram node, i.e. picture, caption and video.
 
         :param node: Node, as from media->nodes list in instagram's JSONs
-        :param name: Name of profile to which this node belongs
+        :param profile: Name of profile to which this node belongs
+        :param target: Target name, i.e. profile name, #hashtag, :feed; for filename.
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
         :param download_comments: Update comments
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
-        # pylint:disable=too-many-branches,too-many-locals
+        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
+        already_has_profilename = profile is not None or ('owner' in node and 'username' in node['owner'])
+        needs_profilename = (format_string_contains_key(self.dirname_pattern, 'profile') or
+                             format_string_contains_key(self.filename_pattern, 'profile'))
+        shortcode = node['shortcode'] if 'shortcode' in node else node['code']
+        if needs_profilename:
+            if already_has_profilename:
+                profilename = profile if profile is not None else node['owner']['username']
+            else:
+                metadata = self.get_node_metadata(shortcode)
+                profilename = metadata['owner']['username']
+        else:
+            profilename = None
+        profilename = profilename.lower() if profilename else None
         date = node["date"] if "date" in node else node["taken_at_timestamp"]
+        dirname = self.dirname_pattern.format(profile=profilename, target=target.lower())
+        filename = dirname + '/' + self.filename_pattern.format(profile=profilename, target=target.lower(),
+                                                                date=datetime.datetime.fromtimestamp(date),
+                                                                shortcode=shortcode)
+        os.makedirs(dirname, exist_ok=True)
         if '__typename' in node:
             if node['__typename'] == 'GraphSidecar':
                 sidecar_data = self.session.get('https://www.instagram.com/p/' + node['code'] + '/',
@@ -597,17 +609,19 @@ class Instaloader:
                 media = sidecar_data["graphql"]["shortcode_media"] if "graphql" in sidecar_data else sidecar_data[
                     "media"]
                 for edge in media['edge_sidecar_to_children']['edges']:
-                    edge_downloaded = self.download_pic(name, edge['node']['display_url'], date,
-                                                        filename_suffix=str(edge_number),
-                                                        outputlabel=(str(edge_number) if edge_number != 1 else None))
+                    edge_downloaded = self.download_pic(filename=filename,
+                                                        url=edge['node']['display_url'],
+                                                        date_epoch=date,
+                                                        filename_suffix=str(edge_number))
                     downloaded = downloaded and edge_downloaded
                     edge_number += 1
                     if self.sleep:
                         time.sleep(1.75 * random.random() + 0.25)
             elif node['__typename'] in ['GraphImage', 'GraphVideo']:
-                downloaded = self.download_pic(name,
-                                               node["display_url"] if "display_url" in node else node["display_src"],
-                                               date)
+                url = node["display_url"] if "display_url" in node else node["display_src"]
+                downloaded = self.download_pic(filename=filename,
+                                               url=url,
+                                               date_epoch=date)
                 if self.sleep:
                     time.sleep(1.75 * random.random() + 0.25)
             else:
@@ -615,27 +629,26 @@ class Instaloader:
                 downloaded = False
         else:
             # Node is an old image or video.
-            downloaded = self.download_pic(name, node["display_src"], date)
+            downloaded = self.download_pic(filename=filename, url=node["display_src"], date_epoch=date)
             if self.sleep:
                 time.sleep(1.75 * random.random() + 0.25)
         if "edge_media_to_caption" in node and node["edge_media_to_caption"]["edges"]:
-            self.save_caption(name, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+            self.save_caption(filename, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in node:
-            self.save_caption(name, date, node["caption"])
+            self.save_caption(filename, date, node["caption"])
         else:
             self._log("<no caption>", end=' ', flush=True)
-        node_code = node['shortcode'] if 'shortcode' in node else node['code']
         if node["is_video"] and download_videos:
-            video_data = self.get_json('p/' + node_code)
-            self.download_pic(name,
-                              video_data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['video_url'],
-                              date, 'mp4')
+            video_data = self.get_json('p/' + shortcode)
+            self.download_pic(filename=filename,
+                              url=video_data['entry_data']['PostPage'][0]['graphql']['shortcode_media']['video_url'],
+                              date_epoch=date)
         if geotags:
-            location = self.get_location(node_code)
+            location = self.get_location(shortcode)
             if location:
-                self.save_location(name, location, date)
+                self.save_location(filename, location, date)
         if download_comments:
-            self.update_comments(name, node_code, date)
+            self.update_comments(filename, shortcode)
         self._log()
         return downloaded
 
@@ -682,7 +695,7 @@ class Instaloader:
                     continue
                 self._log("[%3i] %s " % (count, name), end="", flush=True)
                 count += 1
-                downloaded = self.download_node(node, name,
+                downloaded = self.download_node(node, profile=name, target=':feed',
                                                 download_videos=download_videos, geotags=geotags,
                                                 download_comments=download_comments)
                 if fast_update and not downloaded:
@@ -700,8 +713,7 @@ class Instaloader:
                          max_count: Optional[int] = None,
                          filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
                          fast_update: bool = False, download_videos: bool = True, geotags: bool = False,
-                         download_comments: bool = False,
-                         lookup_username: bool = False) -> None:
+                         download_comments: bool = False) -> None:
         """Download pictures of one hashtag.
 
         To download the last 30 pictures with hashtag #cat, do
@@ -715,7 +727,6 @@ class Instaloader:
         :param download_videos: True, if videos should be downloaded
         :param geotags: Download geotags
         :param download_comments: Update comments
-        :param lookup_username: Lookup username to encode it in the downloaded file's path, rather than the hashtag
         """
         data = self.get_hashtag_json(hashtag)
         count = 1
@@ -723,17 +734,12 @@ class Instaloader:
             for node in data['entry_data']['TagPage'][0]['tag']['media']['nodes']:
                 if max_count is not None and count > max_count:
                     return
-                if lookup_username:
-                    metadata = self.get_node_metadata(node['shortcode'] if 'shortcode' in node else node['code'])
-                    pathname = metadata['owner']['username']
-                else:
-                    pathname = '#{0}'.format(hashtag)
-                self._log('[{0:3d}] #{1} {2}/'.format(count, hashtag, pathname), end='', flush=True)
+                self._log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True)
                 if filter_func is not None and filter_func(node):
                     self._log('<skipped>')
                     continue
                 count += 1
-                downloaded = self.download_node(node, pathname,
+                downloaded = self.download_node(node=node, profile=None, target='#'+hashtag,
                                                 download_videos=download_videos, geotags=geotags,
                                                 download_comments=download_comments)
                 if fast_update and not downloaded:
@@ -750,11 +756,13 @@ class Instaloader:
         Consult locally stored ID of profile with given name, check whether ID matches and whether name
         has changed and return current name of the profile, and store ID of profile.
         """
-        profile_exists = len(json_data["entry_data"]) > 0 and "ProfilePage" in json_data["entry_data"]
-        if self.profile_subdirs:
-            id_filename = profile.lower() + "/id"
+        profile_exists = "ProfilePage" in json_data["entry_data"]
+        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target'))):
+            id_filename = '{0}/id'.format(self.dirname_pattern.format(profile=profile.lower(),
+                                                                      target=profile.lower()))
         else:
-            id_filename = profile.lower() + "__id"
+            id_filename = '{0}/{1}_id'.format(self.dirname_pattern.format(), profile.lower())
         try:
             with open(id_filename, 'rb') as id_file:
                 profile_id = int(id_file.read())
@@ -766,14 +774,22 @@ class Instaloader:
                     self._log("Trying to find profile {0} using its unique ID {1}.".format(profile, profile_id))
                 newname = self.get_username_by_id(profile_id)
                 self._log("Profile {0} has changed its name to {1}.".format(profile, newname))
-                os.rename(profile, newname)
+                if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+                     format_string_contains_key(self.dirname_pattern, 'target'))):
+                    os.rename(self.dirname_pattern.format(profile=profile.lower(),
+                                                          target=profile.lower()),
+                              self.dirname_pattern.format(profile=newname.lower(),
+                                                          target=newname.lower()))
+                else:
+                    os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile.lower()),
+                              '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
                 return newname
             return profile
         except FileNotFoundError:
             pass
         if profile_exists:
-            if self.profile_subdirs:
-                os.makedirs(profile.lower(), exist_ok=True)
+            os.makedirs(self.dirname_pattern.format(profile=profile.lower(),
+                                                    target=profile.lower()), exist_ok=True)
             with open(id_filename, 'w') as text_file:
                 profile_id = json_data['entry_data']['ProfilePage'][0]['user']['id']
                 text_file.write(profile_id + "\n")
@@ -825,7 +841,7 @@ class Instaloader:
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
-                downloaded = self.download_node(node, name,
+                downloaded = self.download_node(node=node, profile=name, target=name,
                                                 download_videos=download_videos, geotags=geotags,
                                                 download_comments=download_comments)
                 if fast_update and not downloaded:
@@ -851,7 +867,7 @@ class Instaloader:
                           sessionfile: Optional[str] = None, max_count: Optional[int] = None,
                           profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                           download_comments: bool = False,
-                          fast_update: bool = False, hashtag_lookup_username: bool = False) -> None:
+                          fast_update: bool = False) -> None:
         """Download set of profiles and handle sessions"""
         # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         # Login, if desired
@@ -878,7 +894,7 @@ class Instaloader:
                     self._log("Retrieving pictures with hashtag {0}".format(pentry))
                     self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update,
                                           download_videos=download_videos, geotags=geotags,
-                                          download_comments=download_comments, lookup_username=hashtag_lookup_username)
+                                          download_comments=download_comments)
                 elif pentry[0] == '@':
                     if username is not None:
                         self._log("Retrieving followees of %s..." % pentry[1:])
@@ -921,7 +937,7 @@ class Instaloader:
                             self._log(err)
                             self._log("Trying again anonymously, helps in case you are just blocked.")
                             anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output,
-                                                           self.profile_subdirs, self.user_agent)
+                                                           self.user_agent, self.dirname_pattern, self.filename_pattern)
                             anonymous_loader.download(target, profile_pic_only, download_videos,
                                                       geotags, download_comments, fast_update)
                         else:
@@ -996,14 +1012,16 @@ def main():
                               'there is not yet a valid session file.')
 
     g_how = parser.add_argument_group('How to Download')
-    g_how.add_argument('--no-profile-subdir', action='store_true',
-                       help='Instead of creating a subdirectory for each profile and storing pictures there, store '
-                            'pictures in files named PROFILE__DATE_TIME.jpg.')
-    g_how.add_argument('--hashtag-username', action='store_true',
-                       help='Lookup username of pictures when downloading by #hashtag and encode it in the downlaoded '
-                            'file\'s path or filename (if --no-profile-subdir). Without this option, the #hashtag is '
-                            'used instead. This requires an additional request to the Instagram server for each '
-                            'picture, which is why it is disabled by default.')
+    g_how.add_argument('--dirname-pattern',
+                       help='Name of directory where to store posts. {profile} is replaced by the profile name, '
+                            '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
+                            'profile name. Defaults to \'{target}\'.')
+    g_how.add_argument('--filename-pattern',
+                       help='Prefix of filenames. Posts are stored in the directory whose pattern is given with '
+                            '--dirname-pattern. {profile} is replaced by the profile name, '
+                            '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
+                            'profile name. Also, the fields date and shortcode can be specified. Defaults to '
+                            '\'{date:%%Y-%%m-%%d_%%H-%%M-%%S}\'.')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true',
@@ -1024,11 +1042,12 @@ def main():
     args = parser.parse_args()
     try:
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
-                             profile_subdirs=not args.no_profile_subdir, user_agent=args.user_agent)
+                             user_agent=args.user_agent,
+                             dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
-                                 args.fast_update, args.hashtag_username)
+                                 args.fast_update)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

@@ -9,4 +9,4 @@ python:
 install:
  - pip install pylint requests
 script:
- - python3 -m pylint -r n -d bad-whitespace,missing-docstring,too-many-arguments,locally-disabled,line-too-long,too-many-public-methods,too-many-lines instaloader
+ - python3 -m pylint -r n -d bad-whitespace,missing-docstring,too-many-arguments,locally-disabled,line-too-long,too-many-public-methods,too-many-lines,too-many-instance-attributes instaloader

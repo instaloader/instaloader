@@ -157,15 +157,19 @@ Instaloader to login.
 How to Download
 ^^^^^^^^^^^^^^^
 
---no-profile-subdir        Instead of creating a subdirectory for each profile
-                           and storing pictures there, store pictures in files
-                           named ``PROFILE__DATE_TIME.jpg``.
---hashtag-username         Lookup username of pictures when downloading by
-                           #hashtag and encode it in the downlaoded file's path
-                           or filename (if ``--no-profile-subdir``). Without this
-                           option, the #hashtag is used instead. This requires an
-                           additional request to the Instagram server for each
-                           picture, which is why it is disabled by default.
+--dirname-pattern DIRNAME_PATTERN
+                           Name of directory where to store posts. {profile}
+                           is replaced by the profile name, {target} is replaced
+                           by the target you specified, i.e. either :feed,
+                           #hashtag or the profile name. Defaults to '{target}'.
+--filename-pattern FILENAME_PATTERN
+                           Prefix of filenames. Posts are stored in the
+                           directory whose pattern is given with --dirname-pattern.
+                           {profile} is replaced by the profile name,
+                           {target} is replaced by the target you specified, i.e.
+                           either :feed, #hashtag or the profile name. Also, the
+                           fields date and shortcode can be specified. Defaults
+                           to '{date:%Y-%m-%d_%H-%M-%S}'.
 --user-agent USER_AGENT    User Agent to use for HTTP requests. Per default,
                            Instaloader pretends being Chrome/51.
 --no-sleep                 Do not sleep between requests to Instagram's servers.
