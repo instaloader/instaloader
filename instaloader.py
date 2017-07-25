@@ -520,38 +520,10 @@ class Instaloader:
         """
         if end_cursor is None:
             return self.get_json(str())["entry_data"]["FeedPage"][0]
-        tmpsession = copy_session(self.session)
-        query = "q=ig_me()+%7B%0A++feed+%7B%0A++++media.after(" + end_cursor + "%2C+12)+%7B%0A" + \
-                "++++++nodes+%7B%0A++++++++id%2C%0A++++++++caption%2C%0A++++++++code%2C%0A++++++++" + \
-                "comments.last(4)+%7B%0A++++++++++count%2C%0A++++++++++nodes+%7B%0A++++++++++++" + \
-                "id%2C%0A++++++++++++created_at%2C%0A++++++++++++text%2C%0A++++++++++++" + \
-                "user+%7B%0A++++++++++++++id%2C%0A++++++++++++++profile_pic_url%2C%0A++++++++++++++" + \
-                "username%0A++++++++++++%7D%0A++++++++++%7D%2C%0A++++++++++" + \
-                "page_info%0A++++++++%7D%2C%0A++++++++comments_disabled%2C%0A++++++++" + \
-                "date%2C%0A++++++++dimensions+%7B%0A++++++++++height%2C%0A++++++++++" + \
-                "width%0A++++++++%7D%2C%0A++++++++display_src%2C%0A++++++++is_video%2C%0A++++++++" + \
-                "likes+%7B%0A++++++++++count%2C%0A++++++++++nodes+%7B%0A++++++++++++" + \
-                "user+%7B%0A++++++++++++++id%2C%0A++++++++++++++profile_pic_url%2C%0A++++++++++++++" + \
-                "username%0A++++++++++++%7D%0A++++++++++%7D%2C%0A++++++++++" + \
-                "viewer_has_liked%0A++++++++%7D%2C%0A++++++++location+%7B%0A++++++++++" + \
-                "id%2C%0A++++++++++has_public_page%2C%0A++++++++++name%0A++++++++%7D%2C%0A++++++++" + \
-                "owner+%7B%0A++++++++++id%2C%0A++++++++++blocked_by_viewer%2C%0A++++++++++" + \
-                "followed_by_viewer%2C%0A++++++++++full_name%2C%0A++++++++++" + \
-                "has_blocked_viewer%2C%0A++++++++++is_private%2C%0A++++++++++" + \
-                "profile_pic_url%2C%0A++++++++++requested_by_viewer%2C%0A++++++++++" + \
-                "username%0A++++++++%7D%2C%0A++++++++usertags+%7B%0A++++++++++" + \
-                "nodes+%7B%0A++++++++++++user+%7B%0A++++++++++++++" + \
-                "username%0A++++++++++++%7D%2C%0A++++++++++++x%2C%0A++++++++++++y%0A++++++++++" + \
-                "%7D%0A++++++++%7D%2C%0A++++++++video_url%2C%0A++++++++" + \
-                "video_views%0A++++++%7D%2C%0A++++++page_info%0A++++%7D%0A++%7D%2C%0A++id%2C%0A++" + \
-                "profile_pic_url%2C%0A++username%0A%7D%0A&ref=feed::show"
-        tmpsession.headers.update(self.default_http_header())
-        tmpsession.headers.update({'Referer': 'https://www.instagram.com/'})
-        tmpsession.headers.update({'Content-Type': 'application/x-www-form-urlencoded'})
-        resp = tmpsession.post('https://www.instagram.com/query/', data=query)
-        if self.sleep:
-            time.sleep(4 * random.random() + 1)
-        return json.loads(resp.text)
+        return self.graphql_query(17863003771166879, {'fetch_media_item_count': 12,
+                                                      'fetch_media_item_cursor': end_cursor,
+                                                      'fetch_comment_count': 4,
+                                                      'fetch_like': 10})
 
     def get_node_metadata(self, node_code: str) -> Dict[str, Any]:
         pic_json = self.get_json("p/" + node_code)
@@ -602,7 +574,7 @@ class Instaloader:
         os.makedirs(dirname, exist_ok=True)
         if '__typename' in node:
             if node['__typename'] == 'GraphSidecar':
-                sidecar_data = self.session.get('https://www.instagram.com/p/' + node['code'] + '/',
+                sidecar_data = self.session.get('https://www.instagram.com/p/' + shortcode + '/',
                                                 params={'__a': 1}).json()
                 edge_number = 1
                 downloaded = True
@@ -682,6 +654,9 @@ class Instaloader:
             if "graphql" in data:
                 is_edge = True
                 feed = data["graphql"]["user"]["edge_web_feed_timeline"]
+            elif "data" in data:
+                is_edge = True
+                feed = data["data"]["user"]["edge_web_feed_timeline"]
             else:
                 is_edge = False
                 feed = data["feed"]["media"]
