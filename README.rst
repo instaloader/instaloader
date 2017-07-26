@@ -75,6 +75,15 @@ You may also download
 
     instaloader "#hashtag"
 
+This downloads the requested posts into a directory named according to the specified
+hashtag and the filenames correspond to the timestamp of the posts.
+As with all download tasks, this behavior can easily be customized, for example
+encode the poster's profile name in the filenames:
+
+::
+
+    instaloader --filename-pattern={date}_{profile} "#hashtag"
+
 If you want to **download all followees of a given profile**, call
 
 ::
@@ -158,18 +167,18 @@ How to Download
 ^^^^^^^^^^^^^^^
 
 --dirname-pattern DIRNAME_PATTERN
-                           Name of directory where to store posts. {profile}
-                           is replaced by the profile name, {target} is replaced
-                           by the target you specified, i.e. either :feed,
-                           #hashtag or the profile name. Defaults to '{target}'.
+                           Name of directory where to store posts. ``{profile}``
+                           is replaced by the profile name, ``{target}`` is replaced
+                           by the target you specified, i.e. either ``:feed``,
+                           ``#hashtag`` or the profile name. Defaults to ``{target}``.
 --filename-pattern FILENAME_PATTERN
                            Prefix of filenames. Posts are stored in the
-                           directory whose pattern is given with --dirname-pattern.
-                           {profile} is replaced by the profile name,
-                           {target} is replaced by the target you specified, i.e.
-                           either :feed, #hashtag or the profile name. Also, the
-                           fields date and shortcode can be specified. Defaults
-                           to '{date:%Y-%m-%d_%H-%M-%S}'.
+                           directory whose pattern is given with ``--dirname-pattern``.
+                           ``{profile}`` is replaced by the profile name,
+                           ``{target}`` is replaced by the target you specified, i.e.
+                           either ``:feed``, ``#hashtag`` or the profile name. Also, the
+                           fields ``{date}`` and ``{shortcode}`` can be specified.
+                           Defaults to ``{date:%Y-%m-%d_%H-%M-%S}``.
 --user-agent USER_AGENT    User Agent to use for HTTP requests. Per default,
                            Instaloader pretends being Chrome/51.
 --no-sleep                 Do not sleep between requests to Instagram's servers.

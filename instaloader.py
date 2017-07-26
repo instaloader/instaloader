@@ -142,7 +142,8 @@ class Instaloader:
         self.quiet = quiet
         self.shorter_output = shorter_output
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
-        self.filename_pattern = filename_pattern if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
+        self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
+            if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         if not self.quiet:
