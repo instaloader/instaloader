@@ -1,7 +1,7 @@
 Instaloader
 ===========
 
-Tool to automatically download pictures (or videos) of given profiles
+Download pictures (or videos) along with their captions and other metadata
 from Instagram.
 
 Installation
