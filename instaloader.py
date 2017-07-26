@@ -148,17 +148,21 @@ class Instaloader:
         if not self.quiet:
             print(*msg, sep=sep, end=end, flush=flush)
 
+    def _sleep(self):
+        """Sleep a short, random time if self.sleep is set. Called before each request to the instagram.com."""
+        if self.sleep:
+            time.sleep(random.uniform(0.25, 2.0))
+
     def get_json(self, name: str, session: requests.Session = None,
                  max_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Return JSON of a profile"""
         if session is None:
             session = self.session
+        self._sleep()
         if not max_id:
             resp = session.get('https://www.instagram.com/' + name)
         else:
             resp = session.get('https://www.instagram.com/' + name, params={'max_id': max_id})
-        if self.sleep:
-            time.sleep(4 * random.random() + 1)
         match = re.search('window\\._sharedData = .*<', resp.text)
         if match is not None:
             return json.loads(match.group(0)[21:-2])
@@ -211,6 +215,7 @@ class Instaloader:
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
             tmpsession.headers['referer'] = referer
+        self._sleep()
         response = tmpsession.get('https://www.instagram.com/graphql/query',
                                   params={'query_id': query_id,
                                           'variables': json.dumps(variables, separators=(',', ':'))})
@@ -485,7 +490,6 @@ class Instaloader:
         data = self.get_json(str(), session=session)
         if data['config']['viewer'] is None:
             return
-        time.sleep(4 * random.random() + 1)
         return data['config']['viewer']['username']
 
     def login(self, user: str, passwd: str) -> None:
@@ -495,13 +499,13 @@ class Instaloader:
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self.default_http_header())
+        self._sleep()
         resp = session.get('https://www.instagram.com/')
         session.headers.update({'X-CSRFToken': resp.cookies['csrftoken']})
-        time.sleep(9 * random.random() + 3)
+        self._sleep()
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'password': passwd, 'username': user}, allow_redirects=True)
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
-        time.sleep(5 * random.random())
         if login.status_code == 200:
             if user == self.test_login(session):
                 self.username = user
@@ -574,6 +578,7 @@ class Instaloader:
         os.makedirs(dirname, exist_ok=True)
         if '__typename' in node:
             if node['__typename'] == 'GraphSidecar':
+                self._sleep()
                 sidecar_data = self.session.get('https://www.instagram.com/p/' + shortcode + '/',
                                                 params={'__a': 1}).json()
                 edge_number = 1
@@ -587,23 +592,17 @@ class Instaloader:
                                                         filename_suffix=str(edge_number))
                     downloaded = downloaded and edge_downloaded
                     edge_number += 1
-                    if self.sleep:
-                        time.sleep(1.75 * random.random() + 0.25)
             elif node['__typename'] in ['GraphImage', 'GraphVideo']:
                 url = node["display_url"] if "display_url" in node else node["display_src"]
                 downloaded = self.download_pic(filename=filename,
                                                url=url,
                                                date_epoch=date)
-                if self.sleep:
-                    time.sleep(1.75 * random.random() + 0.25)
             else:
                 self._log("Warning: Unknown typename discovered:" + node['__typename'])
                 downloaded = False
         else:
             # Node is an old image or video.
             downloaded = self.download_pic(filename=filename, url=node["display_src"], date_epoch=date)
-            if self.sleep:
-                time.sleep(1.75 * random.random() + 0.25)
         if "edge_media_to_caption" in node and node["edge_media_to_caption"]["edges"]:
             self.save_caption(filename, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in node:
@@ -787,8 +786,6 @@ class Instaloader:
             data = self.get_json(name)
         # Download profile picture
         self.download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
-        if self.sleep:
-            time.sleep(1.75 * random.random() + 0.25)
         if profile_pic_only:
             return
         # Catch some errors
