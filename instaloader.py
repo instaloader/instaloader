@@ -375,7 +375,6 @@ class Instaloader:
 
     def save_caption(self, filename: str, date_epoch: float, caption: str) -> None:
         """Updates picture caption"""
-        # pylint:disable=too-many-branches
         filename += '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
@@ -561,7 +560,6 @@ class Instaloader:
         :param download_comments: Update comments
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
-        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         already_has_profilename = profile is not None or ('owner' in node and 'username' in node['owner'])
         needs_profilename = (format_string_contains_key(self.dirname_pattern, 'profile') or
                              format_string_contains_key(self.filename_pattern, 'profile'))
@@ -737,7 +735,6 @@ class Instaloader:
         :param geotags: Download geotags
         :param download_comments: Update comments
         """
-        # pylint:disable=too-many-locals
         data = self.get_feed_json()
         count = 1
         while True:
@@ -866,7 +863,6 @@ class Instaloader:
                  profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                  download_comments: bool = False, fast_update: bool = False) -> None:
         """Download one profile"""
-        # pylint:disable=too-many-branches,too-many-locals
         # Get profile main page json
         data = self.get_json(name)
         # check if profile does exist or name has changed since last download
@@ -932,7 +928,6 @@ class Instaloader:
                           download_comments: bool = False,
                           fast_update: bool = False) -> None:
         """Download set of profiles and handle sessions"""
-        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         # Login, if desired
         if username is not None:
             try:
