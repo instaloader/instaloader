@@ -624,6 +624,93 @@ class Instaloader:
         self._log()
         return downloaded
 
+
+    def download_stories(self,
+                         username: str,
+                         sessionfile: str,
+                         download_videos: bool = True,
+                         fast_update: bool = False) -> None:
+        """
+        Download 'unseen' stories from user followees. Does not mark stories as seen.
+
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param download_videos: True, if videos should be downloaded
+        """
+
+        self.load_session_from_file(username, sessionfile)
+
+        header = self.session.headers
+        header['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) AppleWebKit/420+'
+        del header['Host']
+        del header['Origin']
+        del header['X-Instagram-AJAX']
+        del header['X-Requested-With']
+
+        self._log("Logged in as %s." % username)
+        url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
+        resp = self.session.get(url)
+
+        if resp.status_code != 200:
+            raise ConnectionException('Failed to fetch stories.')
+
+        data = json.loads(resp.text)
+
+        if not 'tray' in data:
+            raise InstaloaderException('Bad story reel JSON.')
+
+        totalcount = sum([len(us["items"]) if "items" in us else 0 for us in data["tray"]])
+        count = 1
+        for user_stories in data["tray"]:
+            if "items" not in user_stories:
+                continue
+            name = user_stories["user"]["username"].lower()
+            for item in user_stories["items"]:
+                self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                count += 1
+
+                self._sleep()
+                shortcode = item["code"] if "code" in item else "no_code"
+
+                date = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
+                try:
+                    date_stamp = datetime.datetime.fromtimestamp(date)
+                except ValueError:
+                    # device_timestamp seems to sometime be in milliseconds
+                    date /= 1000
+                    date_stamp = datetime.datetime.fromtimestamp(date)
+
+                dirname = self.dirname_pattern.format(profile=name, target=name)
+                filename = dirname + '/' + self.filename_pattern.format(profile=name, target=name,
+                                                                        date=date_stamp,
+                                                                        shortcode=shortcode)
+                os.makedirs(dirname, exist_ok=True)
+                if "image_versions2" in item:
+                    url = item["image_versions2"]["candidates"][0]["url"]
+                    downloaded = self.download_pic(filename=filename,
+                                                   url=url,
+                                                   date_epoch=date)
+                else:
+                    self._log("Warning: Unable to find story image.")
+                    downloaded = False
+                if "caption" in item and item["caption"] is not None:
+                    self.save_caption(filename, date, item["caption"])
+                else:
+                    self._log("<no caption>", end=' ', flush=True)
+                if "video_versions" in item and download_videos:
+                    self.download_pic(filename=filename,
+                                      url=item["video_versions"][0]["url"],
+                                      date_epoch=date)
+                    if "video_duration" in item and self.sleep:
+                        time.sleep(item["video_duration"])
+                if len(item["story_locations"]) > 0:
+                    location = item["story_locations"][0]["location"]
+                    if location:
+                        self.save_location(filename, location, date)
+                self._log()
+                if fast_update and not downloaded:
+                    break
+
+
     def download_feed_pics(self, max_count: int = None, fast_update: bool = False,
                            filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
                            download_videos: bool = True, geotags: bool = False,
