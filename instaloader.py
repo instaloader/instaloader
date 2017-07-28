@@ -75,6 +75,10 @@ class InvalidArgumentException(NonfatalException):
     pass
 
 
+class BadResponseException(NonfatalException):
+    pass
+
+
 class BadCredentialsException(InstaloaderException):
     pass
 
@@ -371,7 +375,6 @@ class Instaloader:
 
     def save_caption(self, filename: str, date_epoch: float, caption: str) -> None:
         """Updates picture caption"""
-        # pylint:disable=too-many-branches
         filename += '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
@@ -557,7 +560,6 @@ class Instaloader:
         :param download_comments: Update comments
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
-        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         already_has_profilename = profile is not None or ('owner' in node and 'username' in node['owner'])
         needs_profilename = (format_string_contains_key(self.dirname_pattern, 'profile') or
                              format_string_contains_key(self.filename_pattern, 'profile'))
@@ -624,6 +626,107 @@ class Instaloader:
         self._log()
         return downloaded
 
+    def download_stories(self,
+                         userids: List[Any] = [],
+                         download_videos: bool = True,
+                         fast_update: bool = False) -> None:
+        """
+        Download 'unseen' stories from user followees. Or all stories of users whose ID are give.
+        Does not mark stories as seen.
+
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param download_videos: True, if videos should be downloaded
+        """
+
+        if self.username is None:
+            raise LoginRequiredException('Login required to download stories')
+
+        tempsession = copy_session(self.session)
+        header = tempsession.headers
+        header['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) ' \
+                               'AppleWebKit/420+'
+        del header['Host']
+        del header['Origin']
+        del header['X-Instagram-AJAX']
+        del header['X-Requested-With']
+
+        def _user_stories():
+            def _get(url):
+                self._sleep()
+                resp = tempsession.get(url)
+                if resp.status_code != 200:
+                    raise ConnectionException('Failed to fetch stories.')
+                print(resp.text)
+                return json.loads(resp.text)
+            if userids:
+                for id in userids:
+                    if type(id) == str:
+                        id = get_id_by_username(id)
+                    url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(id)
+                    yield _get(url)
+            else:
+                url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
+                data = _get(url)
+                if not 'tray' in data:
+                    raise BadResponseException('Bad story reel JSON.')
+                for user in data["tray"]:
+                    yield user
+
+        for user_stories in _user_stories():
+            if "items" not in user_stories:
+                continue
+            name = user_stories["user"]["username"].lower()
+            totalcount = len(user_stories["items"]) if "items" in user_stories else 0
+            count = 1
+            for item in user_stories["items"]:
+                self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                count += 1
+
+                self._sleep()
+                shortcode = item["code"] if "code" in item else "no_code"
+
+                date = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
+                try:
+                    date_stamp = datetime.datetime.fromtimestamp(date)
+                except ValueError:
+                    # device_timestamp seems to sometime be in milliseconds
+                    date /= 1000
+                    date_stamp = datetime.datetime.fromtimestamp(date)
+
+                dirname = self.dirname_pattern.format(profile=name, target=':stories')
+                filename = dirname + '/' + self.filename_pattern.format(profile=name, target=':stories',
+                                                                        date=date_stamp,
+                                                                        shortcode=shortcode)
+                os.makedirs(dirname, exist_ok=True)
+                if "image_versions2" in item:
+                    url = item["image_versions2"]["candidates"][0]["url"]
+                    downloaded = self.download_pic(filename=filename,
+                                                   url=url,
+                                                   date_epoch=date)
+                else:
+                    self._log("Warning: Unable to find story image.")
+                    downloaded = False
+                if "caption" in item and item["caption"] is not None:
+                    caption = item["caption"]
+                    if isinstance(caption, dict) and "text" in caption:
+                        caption = caption["text"]
+                    self.save_caption(filename, date, caption)
+                else:
+                    self._log("<no caption>", end=' ', flush=True)
+                if "video_versions" in item and download_videos:
+                    downloaded = self.download_pic(filename=filename,
+                                                   url=item["video_versions"][0]["url"],
+                                                   date_epoch=date)
+                    if "video_duration" in item and self.sleep and downloaded:
+                        time.sleep(item["video_duration"])
+                if item["story_locations"]:
+                    location = item["story_locations"][0]["location"]
+                    if location:
+                        self.save_location(filename, location, date)
+                self._log()
+                if fast_update and not downloaded:
+                    break
+
     def download_feed_pics(self, max_count: int = None, fast_update: bool = False,
                            filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
                            download_videos: bool = True, geotags: bool = False,
@@ -647,7 +750,6 @@ class Instaloader:
         :param geotags: Download geotags
         :param download_comments: Update comments
         """
-        # pylint:disable=too-many-locals
         data = self.get_feed_json()
         count = 1
         while True:
@@ -776,7 +878,6 @@ class Instaloader:
                  profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                  download_comments: bool = False, fast_update: bool = False) -> None:
         """Download one profile"""
-        # pylint:disable=too-many-branches,too-many-locals
         # Get profile main page json
         data = self.get_json(name)
         # check if profile does exist or name has changed since last download
@@ -842,7 +943,6 @@ class Instaloader:
                           download_comments: bool = False,
                           fast_update: bool = False) -> None:
         """Download set of profiles and handle sessions"""
-        # pylint:disable=too-many-branches,too-many-locals,too-many-statements
         # Login, if desired
         if username is not None:
             try:

@@ -247,6 +247,12 @@ To download the last 20 pictures with hashtag #cat, do
 
     loader.download_hashtag('cat', max_count=20)
 
+If logged in, Instaloader is also able to download user stories:
+
+.. code:: python
+
+    loader.download_stories()
+
 Each Instagram profile has its own unique ID which stays unmodified even
 if a user changes his/her username. To get said ID, given the profile's
 name, you may call
