@@ -627,15 +627,16 @@ class Instaloader:
         return downloaded
 
     def download_stories(self,
-                         userids: List[int] = [],
+                         userids: Optional[List[int]] = None,
                          download_videos: bool = True,
                          fast_update: bool = False) -> None:
         """
-        Download 'unseen' stories from user followees. Or all stories of users whose ID are give.
+        Download 'unseen' stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
 
-        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param userids: List of user IDs to be processed in terms of downloading their stories
         :param download_videos: True, if videos should be downloaded
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
         """
 
         if self.username is None:
@@ -656,11 +657,10 @@ class Instaloader:
                 resp = tempsession.get(url)
                 if resp.status_code != 200:
                     raise ConnectionException('Failed to fetch stories.')
-                print(resp.text)
                 return json.loads(resp.text)
-            if userids:
-                for id in userids:
-                    url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(id)
+            if userids is not None:
+                for userid in userids:
+                    url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(userid)
                     yield _get(url)
             else:
                 url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
