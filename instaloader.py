@@ -627,7 +627,7 @@ class Instaloader:
         return downloaded
 
     def download_stories(self,
-                         userids: List[int] = [],
+                         userids: List[Any] = [],
                          download_videos: bool = True,
                          fast_update: bool = False) -> None:
         """
@@ -660,6 +660,8 @@ class Instaloader:
                 return json.loads(resp.text)
             if userids:
                 for id in userids:
+                    if type(id) == str:
+                        id = get_id_by_username(id)
                     url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(id)
                     yield _get(url)
             else:
