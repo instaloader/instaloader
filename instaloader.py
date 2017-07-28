@@ -103,7 +103,7 @@ def copy_session(session: requests.Session) -> requests.Session:
     new = requests.Session()
     new.cookies = \
         requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
-    new.headers = session.headers
+    new.headers = session.headers.copy()
     return new
 
 
