@@ -578,7 +578,7 @@ class Instaloader:
         filename = dirname + '/' + self.filename_pattern.format(profile=profilename, target=target.lower(),
                                                                 date=datetime.datetime.fromtimestamp(date),
                                                                 shortcode=shortcode)
-        os.makedirs(dirname, exist_ok=True)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         if '__typename' in node:
             if node['__typename'] == 'GraphSidecar':
                 self._sleep()
@@ -695,7 +695,7 @@ class Instaloader:
                 filename = dirname + '/' + self.filename_pattern.format(profile=name, target=':stories',
                                                                         date=date_stamp,
                                                                         shortcode=shortcode)
-                os.makedirs(dirname, exist_ok=True)
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
                 if "image_versions2" in item:
                     url = item["image_versions2"]["candidates"][0]["url"]
                     downloaded = self.download_pic(filename=filename,
