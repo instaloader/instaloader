@@ -627,10 +627,12 @@ class Instaloader:
         return downloaded
 
     def download_stories(self,
+                         userids: List[int] = [],
                          download_videos: bool = True,
                          fast_update: bool = False) -> None:
         """
-        Download 'unseen' stories from user followees. Does not mark stories as seen.
+        Download 'unseen' stories from user followees. Or all stories of users whose ID are give.
+        Does not mark stories as seen.
 
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param download_videos: True, if videos should be downloaded
@@ -648,24 +650,32 @@ class Instaloader:
         del header['X-Instagram-AJAX']
         del header['X-Requested-With']
 
-        self._sleep()
-        url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
-        resp = tempsession.get(url)
+        def _user_stories():
+            def _get(url):
+                self._sleep()
+                resp = tempsession.get(url)
+                if resp.status_code != 200:
+                    raise ConnectionException('Failed to fetch stories.')
+                print(resp.text)
+                return json.loads(resp.text)
+            if userids:
+                for id in userids:
+                    url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(id)
+                    yield _get(url)
+            else:
+                url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
+                data = _get(url)
+                if not 'tray' in data:
+                    raise BadResponseException('Bad story reel JSON.')
+                for user in data["tray"]:
+                    yield user
 
-        if resp.status_code != 200:
-            raise ConnectionException('Failed to fetch stories.')
-
-        data = json.loads(resp.text)
-
-        if not 'tray' in data:
-            raise BadResponseException('Bad story reel JSON.')
-
-        totalcount = sum([len(us["items"]) if "items" in us else 0 for us in data["tray"]])
-        count = 1
-        for user_stories in data["tray"]:
+        for user_stories in _user_stories():
             if "items" not in user_stories:
                 continue
             name = user_stories["user"]["username"].lower()
+            totalcount = len(user_stories["items"]) if "items" in user_stories else 0
+            count = 1
             for item in user_stories["items"]:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
@@ -695,14 +705,17 @@ class Instaloader:
                     self._log("Warning: Unable to find story image.")
                     downloaded = False
                 if "caption" in item and item["caption"] is not None:
-                    self.save_caption(filename, date, item["caption"])
+                    caption = item["caption"]
+                    if isinstance(caption, dict) and "text" in caption:
+                        caption = caption["text"]
+                    self.save_caption(filename, date, caption)
                 else:
                     self._log("<no caption>", end=' ', flush=True)
                 if "video_versions" in item and download_videos:
-                    self.download_pic(filename=filename,
-                                      url=item["video_versions"][0]["url"],
-                                      date_epoch=date)
-                    if "video_duration" in item and self.sleep:
+                    downloaded = self.download_pic(filename=filename,
+                                                   url=item["video_versions"][0]["url"],
+                                                   date_epoch=date)
+                    if "video_duration" in item and self.sleep and downloaded:
                         time.sleep(item["video_duration"])
                 if item["story_locations"]:
                     location = item["story_locations"][0]["location"]
