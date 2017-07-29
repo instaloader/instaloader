@@ -72,6 +72,7 @@ Besides downloading private profiles, being logged in allows to
 **download stories**:
 
 ::
+
     instaloader --login=your_username --stories profile [profile ...]
 
 You may also download
