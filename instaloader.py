@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from base64 import b64decode, b64encode
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 import requests.utils
@@ -629,7 +629,8 @@ class Instaloader:
     def download_stories(self,
                          userids: Optional[List[int]] = None,
                          download_videos: bool = True,
-                         fast_update: bool = False) -> None:
+                         fast_update: bool = False,
+                         filename_target: str = ':stories') -> None:
         """
         Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
@@ -638,6 +639,7 @@ class Instaloader:
         :param userids: List of user IDs to be processed in terms of downloading their stories
         :param download_videos: True, if videos should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
         """
 
         if self.username is None:
@@ -675,6 +677,7 @@ class Instaloader:
             if "items" not in user_stories:
                 continue
             name = user_stories["user"]["username"].lower()
+            self._log("Retrieving stories from profile {}.".format(name))
             totalcount = len(user_stories["items"]) if "items" in user_stories else 0
             count = 1
             for item in user_stories["items"]:
@@ -692,8 +695,8 @@ class Instaloader:
                     date_float /= 1000
                     date = datetime.fromtimestamp(date_float)
 
-                dirname = self.dirname_pattern.format(profile=name, target=':stories')
-                filename = dirname + '/' + self.filename_pattern.format(profile=name, target=':stories',
+                dirname = self.dirname_pattern.format(profile=name, target=filename_target)
+                filename = dirname + '/' + self.filename_pattern.format(profile=name, target=filename_target,
                                                                         date=date,
                                                                         shortcode=shortcode)
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -827,10 +830,12 @@ class Instaloader:
             else:
                 break
 
-    def check_id(self, profile: str, json_data: Dict[str, Any]) -> str:
+    def check_id(self, profile: str, json_data: Dict[str, Any]) -> Tuple[str, int]:
         """
         Consult locally stored ID of profile with given name, check whether ID matches and whether name
         has changed and return current name of the profile, and store ID of profile.
+
+        :return: current profile name, profile id
         """
         profile_exists = "ProfilePage" in json_data["entry_data"]
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -859,8 +864,8 @@ class Instaloader:
                 else:
                     os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile.lower()),
                               '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
-                return newname
-            return profile
+                return newname, profile_id
+            return profile, profile_id
         except FileNotFoundError:
             pass
         if profile_exists:
@@ -870,18 +875,19 @@ class Instaloader:
                 profile_id = json_data['entry_data']['ProfilePage'][0]['user']['id']
                 text_file.write(profile_id + "\n")
                 self._log("Stored ID {0} for profile {1}.".format(profile_id, profile))
-            return profile
+            return profile, profile_id
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
     def download(self, name: str,
                  profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
-                 download_comments: bool = False, fast_update: bool = False) -> None:
+                 download_comments: bool = False, fast_update: bool = False,
+                 download_stories: bool = False, download_stories_only: bool = False) -> None:
         """Download one profile"""
         # Get profile main page json
         data = self.get_json(name)
         # check if profile does exist or name has changed since last download
         # and update name and json data if necessary
-        name_updated = self.check_id(name, data)
+        name_updated, profile_id = self.check_id(name, data)
         if name_updated != name:
             name = name_updated
             data = self.get_json(name)
@@ -896,14 +902,20 @@ class Instaloader:
             if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
                 raise PrivateProfileNotFollowedException("Profile %s: private but not followed." % name)
         else:
-            if data["config"]["viewer"] is not None:
+            if data["config"]["viewer"] is not None and not (download_stories or download_stories_only):
                 self._log("profile %s could also be downloaded anonymously." % name)
+        if download_stories or download_stories_only:
+            self.download_stories(userids=[profile_id], filename_target=name,
+                                  download_videos=download_videos, fast_update=fast_update)
+        if download_stories_only:
+            return
         if ("nodes" not in data["entry_data"]["ProfilePage"][0]["user"]["media"] or
                 not data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]) \
                 and not profile_pic_only:
             raise ProfileHasNoPicsException("Profile %s: no pics found." % name)
 
         # Iterate over pictures and download them
+        self._log("Retrieving posts from profile {}.".format(name))
         def get_last_id(data):
             if data["entry_data"] and data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
                 return data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"][-1]["id"]
@@ -940,7 +952,8 @@ class Instaloader:
                           sessionfile: Optional[str] = None, max_count: Optional[int] = None,
                           profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
                           download_comments: bool = False,
-                          fast_update: bool = False) -> None:
+                          fast_update: bool = False,
+                          stories: bool = False, stories_only: bool = False) -> None:
         """Download set of profiles and handle sessions"""
         # Login, if desired
         if username is not None:
@@ -994,6 +1007,11 @@ class Instaloader:
                                                 download_comments=download_comments)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                elif pentry == ":stories":
+                    if username is not None:
+                        self.download_stories(download_videos=download_videos, fast_update=fast_update)
+                    else:
+                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 else:
                     targets.add(pentry)
             if len(targets) > 1:
@@ -1003,7 +1021,7 @@ class Instaloader:
                 try:
                     try:
                         self.download(target, profile_pic_only, download_videos,
-                                      geotags, download_comments, fast_update)
+                                      geotags, download_comments, fast_update, stories, stories_only)
                     except ProfileNotExistsException as err:
                         if username is not None:
                             self._log(err)
@@ -1041,9 +1059,9 @@ def main():
     g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
                         help='Name of profile or #hashtag to download. '
                              'Alternatively, if --login is given: @<profile> to download all followees of '
-                             '<profile>; or the special targets :feed-all or :feed-liked to '
-                             'download pictures from your feed (using '
-                             '--fast-update is recommended).')
+                             '<profile>; the special targets :feed-all or :feed-liked to '
+                             'download pictures from your feed; or :stories to download the stories of your '
+                             'followees.')
     g_what.add_argument('-P', '--profile-pic-only', action='store_true',
                         help='Only download profile picture.')
     g_what.add_argument('-V', '--skip-videos', action='store_true',
@@ -1057,6 +1075,11 @@ def main():
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
                              'server for each post, which is why it is disabled by default.')
+    g_what.add_argument('-s', '--stories', action='store_true',
+                        help='Also download stories of each profile that is downloaded. Requires --login.')
+    g_what.add_argument('--stories-only', action='store_true',
+                        help='Rather than downloading regular posts of each specified profile, only download '
+                             'stories. Requires --login.')
 
     g_stop = parser.add_argument_group('When to Stop Downloading',
                                        'If none of these options are given, Instaloader goes through all pictures '
@@ -1113,13 +1136,18 @@ def main():
 
     args = parser.parse_args()
     try:
+        if args.login is None and (args.stories or args.stories_only):
+            print("--login=USERNAME required to download stories.", file=sys.stderr)
+            args.stories = False
+            if args.stories_only:
+                raise SystemExit(1)
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern)
         loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
-                                 args.fast_update)
+                                 args.fast_update, args.stories, args.stories_only)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

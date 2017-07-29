@@ -68,6 +68,12 @@ in your temporary directory, which will be reused later when ``--login`` is give
 you can download private profiles **non-interactively** when you already
 have a valid session cookie file.
 
+Besides downloading private profiles, being logged in allows to
+**download stories**:
+
+::
+    instaloader --login=your_username --stories profile [profile ...]
+
 You may also download
 **the most recent pictures by hashtag**:
 
@@ -102,6 +108,12 @@ or to **download all pictures from your feed**:
 
     instaloader --login=your_username :feed-all
 
+**Download all stories** from the profiles you follow:
+
+::
+
+    instaloader --login=your_username --filename-pattern={date}_{profile} :stories
+
 Advanced Options
 ----------------
 
@@ -120,6 +132,11 @@ captions and the current **profile picture**. If an already-downloaded profile
 has been renamed, Instaloader automatically **finds it by its unique ID** and
 renames the folder likewise.
 
+Instead of a *profile* or a *#hashtag*, the special targets
+``:feed-all`` (pictures from your feed),
+``:feed-liked`` (pictures from your feed which you liked), and
+``:stories`` (stories of your followees) can be specified.
+
 --profile-pic-only         Only download profile picture.
 --skip-videos              Do not download videos.
 --geotags                  **Download geotags** when available. Geotags are stored as
@@ -130,6 +147,11 @@ renames the folder likewise.
 --comments                 Download and update comments for each post. This
                            requires an additional request to the Instagram server
                            for each post, which is why it is disabled by default.
+--stories                  Also **download stories** of each profile that is
+                           downloaded. Requires ``--login``.
+--stories-only             Rather than downloading regular posts of each
+                           specified profile, only download stories.
+                           Requires ``--login``.
 
 When to Stop Downloading
 ^^^^^^^^^^^^^^^^^^^^^^^^
