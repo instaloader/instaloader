@@ -631,8 +631,9 @@ class Instaloader:
                          download_videos: bool = True,
                          fast_update: bool = False) -> None:
         """
-        Download 'unseen' stories from user followees or all stories of users whose ID are given.
+        Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
+        To use this, one needs to be logged in
 
         :param userids: List of user IDs to be processed in terms of downloading their stories
         :param download_videos: True, if videos should be downloaded
@@ -658,17 +659,17 @@ class Instaloader:
                 if resp.status_code != 200:
                     raise ConnectionException('Failed to fetch stories.')
                 return json.loads(resp.text)
+            url_reel_media = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'
+            url_reels_tray = 'https://i.instagram.com/api/v1/feed/reels_tray/'
             if userids is not None:
                 for userid in userids:
-                    url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'.format(userid)
-                    yield _get(url)
+                    yield _get(url_reel_media.format(userid))
             else:
-                url = 'https://i.instagram.com/api/v1/feed/reels_tray/'
-                data = _get(url)
+                data = _get(url_reels_tray)
                 if not 'tray' in data:
                     raise BadResponseException('Bad story reel JSON.')
                 for user in data["tray"]:
-                    yield user
+                    yield user if "items" in user else _get(url_reel_media.format(user['user']['pk']))
 
         for user_stories in _user_stories():
             if "items" not in user_stories:
