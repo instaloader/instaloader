@@ -237,7 +237,7 @@ You could also download your last 20 liked pics with
 
 .. code:: python
 
-    oader.download_feed_pics(max_count=20, fast_update=True,
+    loader.download_feed_pics(max_count=20, fast_update=True,
                              filter_func=lambda node:
                                    not node["likes"]["viewer_has_liked"] if "likes" in node else not node["viewer_has_liked"])
 
@@ -268,3 +268,9 @@ get the current username of a profile, given this unique ID
 .. code:: python
 
     loader.get_username_by_id(followees[0]['id'])
+
+Disclaimer
+----------
+
+This code is in no way affiliated with, authorized, maintained or endorsed by Instagram or any of its affiliates or
+subsidiaries. This is an independent and unofficial project. Use at your own risk.
