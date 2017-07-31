@@ -910,7 +910,8 @@ class Instaloader:
         if data["entry_data"]["ProfilePage"][0]["user"]["is_private"]:
             if data["config"]["viewer"] is None:
                 raise LoginRequiredException("profile %s requires login" % name)
-            if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"]:
+            if not data["entry_data"]["ProfilePage"][0]["user"]["followed_by_viewer"] and \
+                    self.username != data["entry_data"]["ProfilePage"][0]["user"]["username"]:
                 raise PrivateProfileNotFollowedException("Profile %s: private but not followed." % name)
         else:
             if data["config"]["viewer"] is not None and not (download_stories or download_stories_only):
@@ -1155,7 +1156,7 @@ def main():
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern)
-        loader.download_profiles(args.profile, args.login, args.password, args.sessionfile,
+        loader.download_profiles(args.profile, args.login.lower(), args.password, args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
                                  args.fast_update, args.stories, args.stories_only)
