@@ -154,6 +154,23 @@ class Instaloader:
         if self.sleep:
             time.sleep(random.uniform(0.25, 2.0))
 
+    def _get_and_write_raw(self, url: str, filename: str, tries: int = 3) -> None:
+        try:
+            resp = self.get_anonymous_session().get(url, stream=True)
+            if resp.status_code == 200:
+                self._log(filename, end=' ', flush=True)
+                with open(filename, 'wb') as file:
+                    resp.raw.decode_content = True
+                    shutil.copyfileobj(resp.raw, file)
+            else:
+                raise ConnectionException("Request returned HTTP error code {}.".format(resp.status_code))
+        except (ConnectionResetError, ConnectionException) as err:
+            print("URL: " + url + "\n" + err, file=sys.stderr)
+            if tries <= 1:
+                raise err
+            self._sleep()
+            self._get_and_write_raw(url, filename, tries - 1)
+
     def get_json(self, name: str, session: requests.Session = None,
                  max_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Return JSON of a profile"""
@@ -335,16 +352,9 @@ class Instaloader:
         if os.path.isfile(filename):
             self._log(filename + ' exists', end=' ', flush=True)
             return False
-        resp = self.get_anonymous_session().get(url, stream=True)
-        if resp.status_code == 200:
-            self._log(filename, end=' ', flush=True)
-            with open(filename, 'wb') as file:
-                resp.raw.decode_content = True
-                shutil.copyfileobj(resp.raw, file)
-            os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
-            return True
-        else:
-            raise ConnectionException("File \'" + url + "\' could not be downloaded.")
+        self._get_and_write_raw(url, filename)
+        os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
+        return True
 
     def update_comments(self, filename: str, shortcode: str) -> None:
         filename += '_comments.json'
@@ -446,15 +456,8 @@ class Instaloader:
         index = len(match.group(0)) - 1
         offset = 8 if match.group(0)[-1:] == 's' else 0
         url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index + offset:]
-        resp = self.get_anonymous_session().get(url, stream=True)
-        if resp.status_code == 200:
-            self._log(filename)
-            with open(filename, 'wb') as file:
-                resp.raw.decode_content = True
-                shutil.copyfileobj(resp.raw, file)
-            os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
-        else:
-            raise ConnectionException("File \'" + url + "\' could not be downloaded.")
+        self._get_and_write_raw(url, filename)
+        os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
 
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
         """Saves requests.Session object."""
@@ -533,11 +536,19 @@ class Instaloader:
                                                       'fetch_comment_count': 4,
                                                       'fetch_like': 10})
 
-    def get_node_metadata(self, node_code: str) -> Dict[str, Any]:
+    def get_node_metadata(self, node_code: str, tries: int = 3) -> Dict[str, Any]:
         pic_json = self.get_json("p/" + node_code)
-        media = pic_json["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"] \
-            if "graphql" in pic_json["entry_data"]["PostPage"][0] \
-            else pic_json["entry_data"]["PostPage"][0]["media"]
+        try:
+            media = pic_json["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"] \
+                if "graphql" in pic_json["entry_data"]["PostPage"][0] \
+                else pic_json["entry_data"]["PostPage"][0]["media"]
+        except KeyError as err:
+            print(err, file=sys.stderr)
+            print(json.dumps(pic_json, indent=4), file=sys.stderr)
+            if tries <= 1:
+                raise err
+            self._sleep()
+            media = self.get_node_metadata(node_code, tries - 1)
         return media
 
     def get_location(self, node_code: str) -> Dict[str, str]:
