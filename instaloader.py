@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 import requests.utils
+import urllib3
 
 
 # To get version from setup.py for instaloader --version
@@ -164,7 +165,7 @@ class Instaloader:
                     shutil.copyfileobj(resp.raw, file)
             else:
                 raise ConnectionException("Request returned HTTP error code {}.".format(resp.status_code))
-        except (ConnectionResetError, ConnectionException) as err:
+        except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
             print("URL: " + url + "\n" + err, file=sys.stderr)
             if tries <= 1:
                 raise err
