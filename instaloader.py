@@ -1157,7 +1157,8 @@ def main():
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern)
-        loader.download_profiles(args.profile, args.login.lower(), args.password, args.sessionfile,
+        loader.download_profiles(args.profile, args.login.lower() if args.login is not None else None, args.password,
+                                 args.sessionfile,
                                  int(args.count) if args.count is not None else None,
                                  args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
                                  args.fast_update, args.stories, args.stories_only)
