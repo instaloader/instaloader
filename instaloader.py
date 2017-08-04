@@ -80,6 +80,10 @@ class BadResponseException(NonfatalException):
     pass
 
 
+class NodeUnavailableException(NonfatalException):
+    pass
+
+
 class BadCredentialsException(InstaloaderException):
     pass
 
@@ -166,9 +170,9 @@ class Instaloader:
             else:
                 raise ConnectionException("Request returned HTTP error code {}.".format(resp.status_code))
         except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
-            print("URL: " + url + "\n" + err, file=sys.stderr)
+            print("URL: {}\n{}".format(url, err), file=sys.stderr)
             if tries <= 1:
-                raise err
+                raise NodeUnavailableException
             self._sleep()
             self._get_and_write_raw(url, filename, tries - 1)
 
@@ -547,13 +551,18 @@ class Instaloader:
             print(err, file=sys.stderr)
             print(json.dumps(pic_json, indent=4), file=sys.stderr)
             if tries <= 1:
-                raise err
+                raise NodeUnavailableException
             self._sleep()
             media = self.get_node_metadata(node_code, tries - 1)
         return media
 
     def get_location(self, node_code: str) -> Dict[str, str]:
-        media = self.get_node_metadata(node_code)
+        try:
+            media = self.get_node_metadata(node_code)
+        except NodeUnavailableException:
+            print("Unable to lookup location for node \"https://www.instagram.com/p/{}/\".".format(node_code),
+                  sys.stderr)
+            return dict()
         if media["location"] is not None:
             location_json = self.get_json("explore/locations/" +
                                           media["location"]["id"])
@@ -580,8 +589,13 @@ class Instaloader:
             if already_has_profilename:
                 profilename = profile if profile is not None else node['owner']['username']
             else:
-                metadata = self.get_node_metadata(shortcode)
-                profilename = metadata['owner']['username']
+                try:
+                    metadata = self.get_node_metadata(shortcode)
+                    profilename = metadata['owner']['username']
+                except NodeUnavailableException:
+                    print("Unable to gather profilename for node "
+                          "\"https://www.instagram.com/p/{}/\".".format(shortcode), sys.stderr)
+                    profilename = 'UNKNOWN'
         else:
             profilename = None
         profilename = profilename.lower() if profilename else None
@@ -712,27 +726,32 @@ class Instaloader:
                                                                         date=date,
                                                                         shortcode=shortcode)
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
-                if "image_versions2" in item:
-                    url = item["image_versions2"]["candidates"][0]["url"]
-                    downloaded = self.download_pic(filename=filename,
-                                                   url=url,
-                                                   mtime=date)
-                else:
-                    self._log("Warning: Unable to find story image.")
-                    downloaded = False
-                if "caption" in item and item["caption"] is not None:
-                    caption = item["caption"]
-                    if isinstance(caption, dict) and "text" in caption:
-                        caption = caption["text"]
-                    self.save_caption(filename, date, caption)
-                else:
-                    self._log("<no caption>", end=' ', flush=True)
-                if "video_versions" in item and download_videos:
-                    downloaded = self.download_pic(filename=filename,
-                                                   url=item["video_versions"][0]["url"],
-                                                   mtime=date)
-                    if "video_duration" in item and self.sleep and downloaded:
-                        time.sleep(item["video_duration"])
+                try:
+                    if "image_versions2" in item:
+                        url = item["image_versions2"]["candidates"][0]["url"]
+                        downloaded = self.download_pic(filename=filename,
+                                                       url=url,
+                                                       mtime=date)
+                    else:
+                        self._log("Warning: Unable to find story image.")
+                        downloaded = False
+                    if "caption" in item and item["caption"] is not None:
+                        caption = item["caption"]
+                        if isinstance(caption, dict) and "text" in caption:
+                            caption = caption["text"]
+                        self.save_caption(filename, date, caption)
+                    else:
+                        self._log("<no caption>", end=' ', flush=True)
+                    if "video_versions" in item and download_videos:
+                        downloaded = self.download_pic(filename=filename,
+                                                       url=item["video_versions"][0]["url"],
+                                                       mtime=date)
+                        if "video_duration" in item and self.sleep and downloaded:
+                            time.sleep(item["video_duration"])
+                except NodeUnavailableException:
+                    print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {} from stories."
+                          .format(shortcode, name), sys.stderr)
+                    continue
                 if item["story_locations"]:
                     location = item["story_locations"][0]["location"]
                     if location:
@@ -786,9 +805,14 @@ class Instaloader:
                     continue
                 self._log("[%3i] %s " % (count, name), end="", flush=True)
                 count += 1
-                downloaded = self.download_node(node, profile=name, target=':feed',
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                try:
+                    downloaded = self.download_node(node, profile=name, target=':feed',
+                                                    download_videos=download_videos, geotags=geotags,
+                                                    download_comments=download_comments)
+                except NodeUnavailableException:
+                    print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {} from feed."
+                          .format(node['shortcode'], name), sys.stderr)
+                    continue
                 if fast_update and not downloaded:
                     return
             if not feed["page_info"]["has_next_page"]:
@@ -830,9 +854,14 @@ class Instaloader:
                     self._log('<skipped>')
                     continue
                 count += 1
-                downloaded = self.download_node(node=node, profile=None, target='#'+hashtag,
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                try:
+                    downloaded = self.download_node(node=node, profile=None, target='#'+hashtag,
+                                                    download_videos=download_videos, geotags=geotags,
+                                                    download_comments=download_comments)
+                except NodeUnavailableException:
+                    print("Unable to download node \"https://www.instagram.com/p/{}/\" "
+                          "while downloading hashtag \"{}\".".format(node['shortcode'], hashtag), sys.stderr)
+                    continue
                 if fast_update and not downloaded:
                     return
             if data['entry_data']['TagPage'][0]['tag']['media']['page_info']['has_next_page']:
@@ -904,7 +933,10 @@ class Instaloader:
             name = name_updated
             data = self.get_json(name)
         # Download profile picture
-        self.download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
+        try:
+            self.download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
+        except NodeUnavailableException:
+            print("Unable to download profilepic of user {}.".format(name), sys.stderr)
         if profile_pic_only:
             return
         # Catch some errors
@@ -939,9 +971,14 @@ class Instaloader:
             for node in data["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
-                downloaded = self.download_node(node=node, profile=name, target=name,
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                try:
+                    downloaded = self.download_node(node=node, profile=name, target=name,
+                                                    download_videos=download_videos, geotags=geotags,
+                                                    download_comments=download_comments)
+                except NodeUnavailableException:
+                    print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {}."
+                          .format(node['shortcode'], name), sys.stderr)
+                    continue
                 if fast_update and not downloaded:
                     return
             data = self.get_json(name, max_id=get_last_id(data))
