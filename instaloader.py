@@ -561,7 +561,7 @@ class Instaloader:
             media = self.get_node_metadata(node_code)
         except NodeUnavailableException:
             print("Unable to lookup location for node \"https://www.instagram.com/p/{}/\".".format(node_code),
-                  sys.stderr)
+                  file=sys.stderr)
             return dict()
         if media["location"] is not None:
             location_json = self.get_json("explore/locations/" +
@@ -594,7 +594,7 @@ class Instaloader:
                     profilename = metadata['owner']['username']
                 except NodeUnavailableException:
                     print("Unable to gather profilename for node "
-                          "\"https://www.instagram.com/p/{}/\".".format(shortcode), sys.stderr)
+                          "\"https://www.instagram.com/p/{}/\".".format(shortcode), file=sys.stderr)
                     profilename = 'UNKNOWN'
         else:
             profilename = None
@@ -750,7 +750,7 @@ class Instaloader:
                             time.sleep(item["video_duration"])
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {} from stories."
-                          .format(shortcode, name), sys.stderr)
+                          .format(shortcode, name), file=sys.stderr)
                     continue
                 if item["story_locations"]:
                     location = item["story_locations"][0]["location"]
@@ -811,7 +811,7 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {} from feed."
-                          .format(node['shortcode'], name), sys.stderr)
+                          .format(node['shortcode'], name), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
@@ -860,7 +860,7 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" "
-                          "while downloading hashtag \"{}\".".format(node['shortcode'], hashtag), sys.stderr)
+                          "while downloading hashtag \"{}\".".format(node['shortcode'], hashtag), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
@@ -936,7 +936,7 @@ class Instaloader:
         try:
             self.download_profilepic(name, data["entry_data"]["ProfilePage"][0]["user"]["profile_pic_url"])
         except NodeUnavailableException:
-            print("Unable to download profilepic of user {}.".format(name), sys.stderr)
+            print("Unable to download profilepic of user {}.".format(name), file=sys.stderr)
         if profile_pic_only:
             return
         # Catch some errors
@@ -977,7 +977,7 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {}."
-                          .format(node['shortcode'], name), sys.stderr)
+                          .format(node['shortcode'], name), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
