@@ -235,15 +235,13 @@ For example, to get a list of all followees and a list of all followers of a pro
     loader.interactive_login(USERNAME)
 
     # Retrieve followees
-    followees = loader.get_followees(PROFILE)
     print(PROFILE + " follows these profiles:")
-    for f in followees:
+    for f in loader.get_followees(PROFILE):
         print("\t%s\t%s" % (f['username'], f['full_name']))
 
     # Retrieve followers
-    followers = loader.get_followers(PROFILE)
     print("Followers of " + PROFILE + ":")
-    for f in followers:
+    for f in loader.get_followers(PROFILE):
         print("\t%s\t%s" % (f['username'], f['full_name']))
 
 Then, you may download all pictures of all followees with
@@ -252,7 +250,7 @@ Then, you may download all pictures of all followees with
 
     for f in followees:
         try:
-            loader.download(f['username'])
+            loader.download_profile(f['username'])
         except instaloader.NonfatalException:
             pass
 
@@ -260,9 +258,11 @@ You could also download your last 20 liked pics with
 
 .. code:: python
 
-    loader.download_feed_pics(max_count=20, fast_update=True,
-                             filter_func=lambda node:
-                                   not node["likes"]["viewer_has_liked"] if "likes" in node else not node["viewer_has_liked"])
+    loader.download_feed_posts(max_count=20, fast_update=True,
+                               filter_func=lambda node:
+                                           not node["likes"]["viewer_has_liked"]
+                                           if "likes" in node else
+                                           not node["viewer_has_liked"])
 
 To download the last 20 pictures with hashtag #cat, do
 
