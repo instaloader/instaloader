@@ -547,7 +547,7 @@ class Instaloader:
             media = pic_json["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"] \
                 if "graphql" in pic_json["entry_data"]["PostPage"][0] \
                 else pic_json["entry_data"]["PostPage"][0]["media"]
-        except KeyError as err:
+        except (KeyError, TypeError) as err:
             print(err, file=sys.stderr)
             print(json.dumps(pic_json, indent=4), file=sys.stderr)
             if tries <= 1:
