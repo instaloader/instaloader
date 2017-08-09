@@ -714,9 +714,9 @@ class Instaloader:
                 shortcode = item["code"] if "code" in item else "no_code"
 
                 date_float = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
-                try:
+                if date_float < 10000000000:
                     date = datetime.fromtimestamp(date_float)
-                except ValueError:
+                else:
                     # device_timestamp seems to sometime be in milliseconds
                     date_float /= 1000
                     date = datetime.fromtimestamp(date_float)
