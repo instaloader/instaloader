@@ -234,12 +234,12 @@ For example, to get a list of all followees and a list of all followers of a pro
     # Login
     loader.interactive_login(USERNAME)
 
-    # Retrieve followees
+    # Print followees
     print(PROFILE + " follows these profiles:")
     for f in loader.get_followees(PROFILE):
         print("\t%s\t%s" % (f['username'], f['full_name']))
 
-    # Retrieve followers
+    # Print followers
     print("Followers of " + PROFILE + ":")
     for f in loader.get_followers(PROFILE):
         print("\t%s\t%s" % (f['username'], f['full_name']))
@@ -248,11 +248,8 @@ Then, you may download all pictures of all followees with
 
 .. code:: python
 
-    for f in followees:
-        try:
-            loader.download_profile(f['username'])
-        except instaloader.NonfatalException:
-            pass
+    for f in loader.get_followers(PROFILE):
+        loader.download_profile(f['username'])
 
 You could also download your last 20 liked pics with
 
@@ -297,3 +294,5 @@ Disclaimer
 
 This code is in no way affiliated with, authorized, maintained or endorsed by Instagram or any of its affiliates or
 subsidiaries. This is an independent and unofficial project. Use at your own risk.
+
+Instaloader is licensed under an MIT license. Refer to ``LICENSE`` file for more information.

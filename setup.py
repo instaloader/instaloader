@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 from setuptools import setup
+
+
+def get_version():
+    with open('instaloader.py') as f:
+        for line in f:
+            m = re.match("__version__ = '(.*)'", line)
+            if m:
+                return m.group(1)
+    raise SystemExit("Could not find version string.")
+
 
 if sys.version_info < (3, 5):
     sys.exit('Instaloader requires Python >= 3.5.')
 
 setup(
     name='instaloader',
-    version='2.2.2',
+    version=get_version(),
     py_modules=['instaloader'],
     url='https://github.com/Thammus/instaloader',
     license='MIT',

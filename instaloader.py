@@ -25,13 +25,8 @@ import requests.utils
 import urllib3
 
 
-# To get version from setup.py for instaloader --version
-import pkg_resources
-try:
-    # pylint:disable=no-member
-    __version__ = pkg_resources.get_distribution('instaloader').version
-except pkg_resources.DistributionNotFound:
-    __version__ = 'Run ./setup.py --version'
+__version__ = '3.0-rc0'
+
 
 try:
     # pylint:disable=wrong-import-position
@@ -48,40 +43,35 @@ class InstaloaderException(Exception):
     pass
 
 
-class NonfatalException(InstaloaderException):
-    """Base exception for errors which should not cause instaloader to stop"""
-    pass
-
-
 class QueryReturnedNotFoundException(InstaloaderException):
     pass
 
 
-class ProfileNotExistsException(NonfatalException):
+class ProfileNotExistsException(InstaloaderException):
     pass
 
 
-class ProfileHasNoPicsException(NonfatalException):
+class ProfileHasNoPicsException(InstaloaderException):
     pass
 
 
-class PrivateProfileNotFollowedException(NonfatalException):
+class PrivateProfileNotFollowedException(InstaloaderException):
     pass
 
 
-class LoginRequiredException(NonfatalException):
+class LoginRequiredException(InstaloaderException):
     pass
 
 
-class InvalidArgumentException(NonfatalException):
+class InvalidArgumentException(InstaloaderException):
     pass
 
 
-class BadResponseException(NonfatalException):
+class BadResponseException(InstaloaderException):
     pass
 
 
-class NodeUnavailableException(NonfatalException):
+class NodeUnavailableException(InstaloaderException):
     pass
 
 
@@ -89,7 +79,7 @@ class BadCredentialsException(InstaloaderException):
     pass
 
 
-class ConnectionException(NonfatalException):
+class ConnectionException(InstaloaderException):
     pass
 
 
@@ -142,7 +132,7 @@ class Instaloader:
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None):
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
-        self.session = self.get_anonymous_session()
+        self.session = self._get_anonymous_session()
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
@@ -157,7 +147,7 @@ class Instaloader:
         if not self.quiet:
             print(*msg, sep=sep, end=end, flush=flush)
 
-    def _error(self, msg: str):
+    def _error(self, msg):
         """Log a non-fatal error message to stderr, which is repeated at program termination."""
         print(msg, file=sys.stderr)
         self.error_log.append(msg)
@@ -165,12 +155,12 @@ class Instaloader:
     @contextmanager
     def _error_catcher(self, extra_info: Optional[str] = None):
         """
-        Context manager to catch, output and record NonfatalExceptions.
+        Context manager to catch, print and record InstaloaderExceptions.
 
         :param extra_info: String to prefix error message with."""
         try:
             yield
-        except NonfatalException as err:
+        except InstaloaderException as err:
             if extra_info:
                 self._error('{}: {}'.format(extra_info, err))
             else:
@@ -186,7 +176,7 @@ class Instaloader:
 
         :raises ConnectionException: When download repeatedly failed."""
         try:
-            resp = self.get_anonymous_session().get(url, stream=True)
+            resp = self._get_anonymous_session().get(url, stream=True)
             if resp.status_code == 200:
                 self._log(filename, end=' ', flush=True)
                 with open(filename, 'wb') as file:
@@ -199,7 +189,7 @@ class Instaloader:
             if tries <= 1:
                 raise ConnectionException(error_string)
             else:
-                self._error(error_string)
+                self._error(error_string + " [retrying]")
             self._sleep()
             self._get_and_write_raw(url, filename, tries - 1)
 
@@ -227,11 +217,11 @@ class Instaloader:
             if tries <= 1:
                 raise ConnectionException(error_string)
             else:
-                self._error(error_string)
+                self._error(error_string + " [retrying]")
             self._sleep()
             self._get_json(url, params, sess, tries - 1)
 
-    def default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
+    def _default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
         """Returns default HTTP header we use for requests."""
         header = {'Accept-Encoding': 'gzip, deflate',
                   'Accept-Language': 'en-US,en;q=0.8',
@@ -251,13 +241,13 @@ class Instaloader:
             del header['X-Requested-With']
         return header
 
-    def get_anonymous_session(self) -> requests.Session:
+    def _get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
-        session.headers.update(self.default_http_header(empty_session_only=True))
+        session.headers.update(self._default_http_header(empty_session_only=True))
         return session
 
     def graphql_query(self, query_id: int, variables: Dict[str, Any],
@@ -271,7 +261,7 @@ class Instaloader:
         :return: The server's response dictionary.
         """
         tmpsession = copy_session(self.session)
-        tmpsession.headers.update(self.default_http_header(empty_session_only=True))
+        tmpsession.headers.update(self._default_http_header(empty_session_only=True))
         del tmpsession.headers['Connection']
         del tmpsession.headers['Content-Length']
         tmpsession.headers['authority'] = 'www.instagram.com'
@@ -492,7 +482,7 @@ class Instaloader:
         with open(filename, 'rb') as sessionfile:
             session = requests.Session()
             session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
-            session.headers.update(self.default_http_header())
+            session.headers.update(self._default_http_header())
             session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
             self._log("Loaded session from %s." % filename)
             self.session = session
@@ -510,7 +500,7 @@ class Instaloader:
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
-        session.headers.update(self.default_http_header())
+        session.headers.update(self._default_http_header())
         self._sleep()
         resp = session.get('https://www.instagram.com/')
         session.headers.update({'X-CSRFToken': resp.cookies['csrftoken']})
@@ -534,13 +524,14 @@ class Instaloader:
         pic_json = self._get_json("p/{0}/".format(shortcode), params={'__a': 1})
         try:
             media = pic_json["graphql"]["shortcode_media"] if "graphql" in pic_json else pic_json["media"]
-        except KeyError as err:
+        except (KeyError, TypeError) as err:
+            # It appears the returned JSON is sometimes empty - trying again might help
             print(json.dumps(pic_json, indent=4), file=sys.stderr)
             error_string = "Post {}: {}".format(shortcode, err)
             if tries <= 1:
                 raise NodeUnavailableException(error_string)
             else:
-                self._error(error_string)
+                self._error(error_string + " [retrying]")
             self._sleep()
             media = self.get_post_metadata(shortcode, tries - 1)
         return media
@@ -577,7 +568,7 @@ class Instaloader:
                 try:
                     post_metadata = self.get_post_metadata(shortcode)
                     profilename = post_metadata['owner']['username'].lower()
-                except (NonfatalException, KeyError) as err:
+                except (InstaloaderException, KeyError, TypeError) as err:
                     self._error("Unable to get owner name of post {}: {} -- using \'UNKNOWN\'.".format(shortcode, err))
                     profilename = 'UNKNOWN'
         else:
@@ -703,9 +694,9 @@ class Instaloader:
                 shortcode = item["code"] if "code" in item else "no_code"
 
                 date_float = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
-                try:
+                if date_float < 10000000000:
                     date = datetime.fromtimestamp(date_float)
-                except ValueError:
+                else:
                     # device_timestamp seems to sometime be in milliseconds
                     date_float /= 1000
                     date = datetime.fromtimestamp(date_float)
@@ -915,6 +906,8 @@ class Instaloader:
         has_next_page = profile_metadata['user']['media']['page_info']['has_next_page']
         end_cursor = profile_metadata['user']['media']['page_info']['end_cursor']
         while has_next_page:
+            # We do not use self.graphql_node_list() here, because profile_metadata
+            # lets us obtain the first 12 nodes 'for free'
             data = self.graphql_query(17888483320059182, {'id': profile_metadata['user']['id'],
                                                           'first': 500,
                                                           'after': end_cursor},
@@ -934,7 +927,7 @@ class Instaloader:
         profile_metadata = None
         with suppress(ProfileNotExistsException):
             # ProfileNotExistsException is raised again later in check_profile_id() when we search the profile, so we
-            # must suppress it.
+            # must suppress it here.
             profile_metadata = self.get_profile_metadata(name)
 
         # check if profile does exist or name has changed since last download
@@ -1007,7 +1000,7 @@ class Instaloader:
              download_comments: bool = False,
              fast_update: bool = False,
              stories: bool = False, stories_only: bool = False) -> None:
-        """Download set of profiles and handle sessions"""
+        """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
         # Login, if desired
         if username is not None:
             try:
