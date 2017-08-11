@@ -2,11 +2,15 @@
 
 import re
 import sys
+import os
 from setuptools import setup
 
 
+SRC = os.path.abspath(os.path.dirname(__file__))
+
+
 def get_version():
-    with open('instaloader.py') as f:
+    with open(os.path.join(SRC, 'instaloader.py')) as f:
         for line in f:
             m = re.match("__version__ = '(.*)'", line)
             if m:
@@ -27,7 +31,7 @@ setup(
     author_email='mail@agraf.me, koch-kramer@web.de',
     description='Download pictures (or videos) along with their captions and other metadata '
                 'from Instagram.',
-    long_description=open('README.rst').read(),
+    long_description=open(os.path.join(SRC, 'README.rst')).read(),
     install_requires=['requests>=2.4'],
     python_requires='>=3.5',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
