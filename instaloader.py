@@ -17,6 +17,8 @@ from argparse import ArgumentParser
 from base64 import b64decode, b64encode
 from contextlib import contextmanager, suppress
 from datetime import datetime
+from enum import Enum
+
 from io import BytesIO
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
@@ -125,12 +127,30 @@ def format_string_contains_key(format_string: str, key: str) -> bool:
     return False
 
 
+class Tristate(Enum):
+    """Tri-state to encode whether we should save certain information, i.e. videos, captions, comments or geotags.
+
+    never: Do not save, even if the information is available without any additional request,
+    no_extra_query: Save if and only if available without doing additional queries,
+    always: Save (and query, if neccessary).
+    """
+    never = 0
+    no_extra_query = 1
+    always = 2
+
+
 class Instaloader:
     def __init__(self,
                  sleep: bool = True, quiet: bool = False, shorter_output: bool = False,
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
-                 filename_pattern: Optional[str] = None):
+                 filename_pattern: Optional[str] = None,
+                 download_videos: Tristate = Tristate.always,
+                 download_geotags: Tristate = Tristate.no_extra_query,
+                 download_captions: Tristate = Tristate.no_extra_query,
+                 download_comments: Tristate = Tristate.no_extra_query):
+
+        # configuration parameters
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.session = self._get_anonymous_session()
         self.username = None
@@ -140,7 +160,23 @@ class Instaloader:
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
             if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
+        self.download_videos = download_videos
+        self.download_geotags = download_geotags
+        self.download_captions = download_captions
+        self.download_comments = download_comments
+
+        # error log, filled with _error() and printed at the end of Instaloader.main()
         self.error_log = []
+
+    @contextmanager
+    def anonymous_copy(self):
+        """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
+        new_loader = Instaloader(self.sleep, self.quiet, self.shorter_output, self.user_agent,
+                                 self.dirname_pattern, self.filename_pattern,
+                                 self.download_videos, self.download_geotags,
+                                 self.download_captions, self.download_comments)
+        yield new_loader
+        self.error_log.extend(new_loader.error_log)
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
@@ -542,17 +578,13 @@ class Instaloader:
                                            params={'__a': 1})
             return location_json["location"]
 
-    def download_post(self, node: Dict[str, Any], profile: Optional[str], target: str,
-                      download_videos: bool = True, geotags: bool = False, download_comments: bool = False) -> bool:
+    def download_post(self, node: Dict[str, Any], profile: Optional[str], target: str) -> bool:
         """
         Download everything associated with one instagram post node, i.e. picture, caption and video.
 
         :param node: Node, as from media->nodes list in instagram's JSONs
         :param profile: Name of profile to which this node belongs
         :param target: Target name, i.e. profile name, #hashtag, :feed; for filename.
-        :param download_videos: True, if videos should be downloaded
-        :param geotags: Download geotags
-        :param download_comments: Update comments
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
         already_has_profilename = profile is not None or ('owner' in node and 'username' in node['owner'])
@@ -603,25 +635,26 @@ class Instaloader:
         else:
             # Node is an old image or video.
             downloaded = self.download_pic(filename=filename, url=url, mtime=date)
-        if "edge_media_to_caption" in node and node["edge_media_to_caption"]["edges"]:
-            self.save_caption(filename, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"])
-        elif "caption" in node:
-            self.save_caption(filename, date, node["caption"])
-        else:
-            self._log("<no caption>", end=' ', flush=True)
-        if node["is_video"] and download_videos:
+        if self.download_captions is not Tristate.never:
+            if "edge_media_to_caption" in node and node["edge_media_to_caption"]["edges"]:
+                self.save_caption(filename, date, node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+            elif "caption" in node:
+                self.save_caption(filename, date, node["caption"])
+            else:
+                self._log("<no caption>", end=' ', flush=True)
+        if node["is_video"] and self.download_videos is Tristate.always:
             if not post_metadata:
                 post_metadata = self.get_post_metadata(shortcode)
             self.download_pic(filename=filename,
                               url=post_metadata['video_url'],
                               mtime=date)
-        if geotags:
+        if self.download_geotags is Tristate.always:
             if not post_metadata:
                 post_metadata = self.get_post_metadata(shortcode)
             location = self.get_location(post_metadata)
             if location:
                 self.save_location(filename, location, date)
-        if download_comments:
+        if self.download_comments is Tristate.always:
             self.update_comments(filename, shortcode)
         self._log()
         return downloaded
@@ -663,7 +696,6 @@ class Instaloader:
 
     def download_stories(self,
                          userids: Optional[List[int]] = None,
-                         download_videos: bool = True,
                          fast_update: bool = False,
                          filename_target: str = ':stories') -> None:
         """
@@ -672,7 +704,6 @@ class Instaloader:
         To use this, one needs to be logged in
 
         :param userids: List of user IDs to be processed in terms of downloading their stories
-        :param download_videos: True, if videos should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
         """
@@ -715,18 +746,19 @@ class Instaloader:
                     else:
                         self._log("Warning: Unable to find story image.")
                         downloaded = False
-                    if "caption" in item and item["caption"] is not None:
+                    if "caption" in item and item["caption"] is not None and \
+                                    self.download_captions is not Tristate.never:
                         caption = item["caption"]
                         if isinstance(caption, dict) and "text" in caption:
                             caption = caption["text"]
                         self.save_caption(filename, date, caption)
                     else:
                         self._log("<no caption>", end=' ', flush=True)
-                    if "video_versions" in item and download_videos:
+                    if "video_versions" in item and self.download_videos is Tristate.always:
                         downloaded = self.download_pic(filename=filename,
                                                        url=item["video_versions"][0]["url"],
                                                        mtime=date)
-                    if item["story_locations"]:
+                    if item["story_locations"] and self.download_geotags is not Tristate.never:
                         location = item["story_locations"][0]["location"]
                         if location:
                             self.save_location(filename, location, date)
@@ -763,9 +795,7 @@ class Instaloader:
                                                           'fetch_like': 10})
 
     def download_feed_posts(self, max_count: int = None, fast_update: bool = False,
-                            filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
-                            download_videos: bool = True, geotags: bool = False,
-                            download_comments: bool = False) -> None:
+                            filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None) -> None:
         """
         Download pictures from the user's feed.
 
@@ -781,9 +811,6 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filter_func: function(post), which returns True if given picture should not be downloaded
-        :param download_videos: True, if videos should be downloaded
-        :param geotags: Download geotags
-        :param download_comments: Update comments
         """
         count = 1
         for post in self.get_feed_posts():
@@ -796,9 +823,7 @@ class Instaloader:
             self._log("[%3i] %s " % (count, name), end="", flush=True)
             count += 1
             with self._error_catcher('Download feed'):
-                downloaded = self.download_post(post, profile=name, target=':feed',
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                downloaded = self.download_post(post, profile=name, target=':feed')
                 if fast_update and not downloaded:
                     break
 
@@ -811,8 +836,7 @@ class Instaloader:
     def download_hashtag(self, hashtag: str,
                          max_count: Optional[int] = None,
                          filter_func: Optional[Callable[[Dict[str, Dict[str, Any]]], bool]] = None,
-                         fast_update: bool = False, download_videos: bool = True, geotags: bool = False,
-                         download_comments: bool = False) -> None:
+                         fast_update: bool = False) -> None:
         """Download pictures of one hashtag.
 
         To download the last 30 pictures with hashtag #cat, do
@@ -823,9 +847,6 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param filter_func: function(post), which returns True if given picture should not be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
-        :param download_videos: True, if videos should be downloaded
-        :param geotags: Download geotags
-        :param download_comments: Update comments
         """
         count = 1
         for post in self.get_hashtag_posts(hashtag):
@@ -837,9 +858,7 @@ class Instaloader:
                 continue
             count += 1
             with self._error_catcher('Download hashtag #{}'.format(hashtag)):
-                downloaded = self.download_post(node=post, profile=None, target='#' + hashtag,
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                downloaded = self.download_post(node=post, profile=None, target='#' + hashtag)
                 if fast_update and not downloaded:
                     break
 
@@ -918,8 +937,7 @@ class Instaloader:
             end_cursor = media['page_info']['end_cursor']
 
     def download_profile(self, name: str,
-                         profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
-                         download_comments: bool = False, fast_update: bool = False,
+                         profile_pic_only: bool = False, fast_update: bool = False,
                          download_stories: bool = False, download_stories_only: bool = False) -> None:
         """Download one profile"""
 
@@ -956,8 +974,7 @@ class Instaloader:
 
         # Download stories, if requested
         if download_stories or download_stories_only:
-            self.download_stories(userids=[profile_id], filename_target=name,
-                                  download_videos=download_videos, fast_update=fast_update)
+            self.download_stories(userids=[profile_id], filename_target=name, fast_update=fast_update)
         if download_stories_only:
             return
 
@@ -973,9 +990,7 @@ class Instaloader:
             self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
             count += 1
             with self._error_catcher('Download profile {}'.format(name)):
-                downloaded = self.download_post(node=post, profile=name, target=name,
-                                                download_videos=download_videos, geotags=geotags,
-                                                download_comments=download_comments)
+                downloaded = self.download_post(node=post, profile=name, target=name)
                 if fast_update and not downloaded:
                     break
 
@@ -996,9 +1011,7 @@ class Instaloader:
 
     def main(self, profilelist: List[str], username: Optional[str] = None, password: Optional[str] = None,
              sessionfile: Optional[str] = None, max_count: Optional[int] = None,
-             profile_pic_only: bool = False, download_videos: bool = True, geotags: bool = False,
-             download_comments: bool = False,
-             fast_update: bool = False,
+             profile_pic_only: bool = False, fast_update: bool = False,
              stories: bool = False, stories_only: bool = False) -> None:
         """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
         # Login, if desired
@@ -1023,9 +1036,7 @@ class Instaloader:
                 if pentry[0] == '#':
                     self._log("Retrieving pictures with hashtag {0}".format(pentry))
                     with self._error_catcher():
-                        self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update,
-                                              download_videos=download_videos, geotags=geotags,
-                                              download_comments=download_comments)
+                        self.download_hashtag(hashtag=pentry[1:], max_count=max_count, fast_update=fast_update)
                 elif pentry[0] == '@':
                     if username is not None:
                         self._log("Retrieving followees of %s..." % pentry[1:])
@@ -1038,9 +1049,7 @@ class Instaloader:
                     if username is not None:
                         self._log("Retrieving pictures from your feed...")
                         with self._error_catcher():
-                            self.download_feed_posts(fast_update=fast_update, max_count=max_count,
-                                                     download_videos=download_videos, geotags=geotags,
-                                                     download_comments=download_comments)
+                            self.download_feed_posts(fast_update=fast_update, max_count=max_count)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 elif pentry == ":feed-liked":
@@ -1052,15 +1061,13 @@ class Instaloader:
                             return not node["viewer_has_liked"]
                         with self._error_catcher():
                             self.download_feed_posts(fast_update=fast_update, max_count=max_count,
-                                                     filter_func=liked_filter,
-                                                     download_videos=download_videos, geotags=geotags,
-                                                     download_comments=download_comments)
+                                                     filter_func=liked_filter)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 elif pentry == ":stories":
                     if username is not None:
                         with self._error_catcher():
-                            self.download_stories(download_videos=download_videos, fast_update=fast_update)
+                            self.download_stories(fast_update=fast_update)
                     else:
                         print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
                 else:
@@ -1071,18 +1078,14 @@ class Instaloader:
             for target in targets:
                 with self._error_catcher():
                     try:
-                        self.download_profile(target, profile_pic_only, download_videos,
-                                              geotags, download_comments, fast_update, stories, stories_only)
+                        self.download_profile(target, profile_pic_only, fast_update, stories, stories_only)
                     except ProfileNotExistsException as err:
                         if username is not None:
                             self._log(err)
                             self._log("Trying again anonymously, helps in case you are just blocked.")
-                            anonymous_loader = Instaloader(self.sleep, self.quiet, self.shorter_output,
-                                                           self.user_agent, self.dirname_pattern, self.filename_pattern)
-                            anonymous_loader.error_log = self.error_log
-                            with self._error_catcher():
-                                anonymous_loader.download_profile(target, profile_pic_only, download_videos,
-                                                                  geotags, download_comments, fast_update)
+                            with self.anonymous_copy() as anonymous_loader:
+                                with self._error_catcher():
+                                    anonymous_loader.download_profile(target, profile_pic_only, fast_update)
                         else:
                             raise err
         except KeyboardInterrupt:
@@ -1122,10 +1125,14 @@ def main():
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
                              'server for each picture, which is why it is disabled by default.')
+    g_what.add_argument('--no-geotags', action='store_true',
+                        help='Do not store geotags, even if they can be obtained without any additional request.')
     g_what.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
                              'server for each post, which is why it is disabled by default.')
+    g_what.add_argument('--no-captions', action='store_true',
+                        help='Do not store media captions, although no additional request is needed to obtain them.')
     g_what.add_argument('-s', '--stories', action='store_true',
                         help='Also download stories of each profile that is downloaded. Requires --login.')
     g_what.add_argument('--stories-only', action='store_true',
@@ -1192,14 +1199,29 @@ def main():
             args.stories = False
             if args.stories_only:
                 raise SystemExit(1)
+
+        download_videos = Tristate.always if not args.skip_videos else Tristate.no_extra_query
+        download_comments = Tristate.always if args.comments else Tristate.no_extra_query
+        download_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
+
+        if args.geotags and args.no_geotags:
+            raise SystemExit("--geotags and --no-geotags given. I am confused and refuse to work.")
+        elif args.geotags:
+            download_geotags = Tristate.always
+        elif args.no_geotags:
+            download_geotags = Tristate.never
+        else:
+            download_geotags = Tristate.no_extra_query
+
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
                              user_agent=args.user_agent,
-                             dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern)
+                             dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
+                             download_videos=download_videos, download_geotags=download_geotags,
+                             download_captions=download_captions, download_comments=download_comments)
         loader.main(args.profile, args.login.lower() if args.login is not None else None, args.password,
                     args.sessionfile,
                     int(args.count) if args.count is not None else None,
-                    args.profile_pic_only, not args.skip_videos, args.geotags, args.comments,
-                    args.fast_update, args.stories, args.stories_only)
+                    args.profile_pic_only, args.fast_update, args.stories, args.stories_only)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

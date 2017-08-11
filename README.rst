@@ -145,9 +145,13 @@ Instead of a *profile* or a *#hashtag*, the special targets
                            link. This requires an additional request to the
                            Instagram server for each picture, which is why it is
                            disabled by default.
+--no-geotags               Do not store geotags, even if they can be obtained
+                           without any additional request.
 --comments                 Download and update comments for each post. This
                            requires an additional request to the Instagram server
                            for each post, which is why it is disabled by default.
+--no-captions              Do not store media captions, although no additional
+                           request is needed to obtain them.
 --stories                  Also **download stories** of each profile that is
                            downloaded. Requires ``--login``.
 --stories-only             Rather than downloading regular posts of each
