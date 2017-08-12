@@ -326,14 +326,25 @@ class Instaloader:
                 break
         return followees
 
-    def get_comments(self, shortcode: str) -> List[Dict[str, Any]]:
+    def get_comments(self, shortcode: str, tries: int = 3) -> List[Dict[str, Any]]:
         """Retrieve comments of node with given shortcode."""
+        data = self.get_node_metadata(shortcode)
+        if data['edge_media_to_comment']['count'] == len(data['edge_media_to_comment']['edges']):
+            return [comment['node'] for comment in data['edge_media_to_comment']['edges']]
         data = self.graphql_query(17852405266163336, {'shortcode': shortcode,
                                                       'first': 500},
                                   referer='https://www.instagram.com/p/' + shortcode + '/')
         comments = []
         while True:
-            edge_media_to_comment = data['data']['shortcode_media']['edge_media_to_comment']
+            try:
+                edge_media_to_comment = data['data']['shortcode_media']['edge_media_to_comment']
+            except KeyError as err:
+                print('Missing key {} in response of GraphQL query for retrieving comments for node \'{}\'.'
+                      .format(err, shortcode), file=sys.stderr)
+                if tries <= 1:
+                    raise BadResponseException('GraphQL query returned strange JSON for shortcode {}:\n{}'.format(shortcode, data))
+                self._sleep()
+                return self.get_comments(shortcode, tries - 1)
             comments.extend([comment['node'] for comment in edge_media_to_comment['edges']])
             page_info = edge_media_to_comment['page_info']
             if page_info['has_next_page']:
