@@ -149,6 +149,7 @@ class Instaloader:
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
             if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
+        self.previous_queries = dict()
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         if not self.quiet:
@@ -220,13 +221,14 @@ class Instaloader:
         return session
 
     def graphql_query(self, query_id: int, variables: Dict[str, Any],
-                      referer: Optional[str] = None) -> Dict[str, Any]:
+                      referer: Optional[str] = None, tries: int = 3) -> Dict[str, Any]:
         """
         Do a GraphQL Query.
 
         :param query_id: Query ID.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
+        :param tries: Number of total tries. Retries if a RequestException occurs.
         :return: The server's response dictionary.
         """
         tmpsession = copy_session(self.session)
@@ -238,13 +240,57 @@ class Instaloader:
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
             tmpsession.headers['referer'] = referer
+        sliding_window = 660
+        def graphql_query_waittime(query_id: int) -> int:
+            timestamp_list = self.previous_queries.get(query_id)
+            if not timestamp_list:
+                return 0
+            current_time = datetime.now().timestamp()
+            timestamp_list = list(filter(lambda t: t > current_time - sliding_window, timestamp_list))
+            self.previous_queries[query_id] = timestamp_list
+            if len(timestamp_list) < 100:
+                return 0
+            return round(min(timestamp_list) + sliding_window - current_time) + 6
+        waittime = graphql_query_waittime(query_id)
+        if waittime > 0:
+            self._log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime), flush=True)
+            time.sleep(waittime)
         self._sleep()
-        response = tmpsession.get('https://www.instagram.com/graphql/query',
-                                  params={'query_id': query_id,
-                                          'variables': json.dumps(variables, separators=(',', ':'))})
-        if response.status_code != 200:
-            raise ConnectionException("GraphQL query returned HTTP error code {}.".format(response.status_code))
-        return response.json()
+        try:
+            response = tmpsession.get('https://www.instagram.com/graphql/query',
+                                      params={'query_id': query_id,
+                                              'variables': json.dumps(variables, separators=(',', ':'))})
+        except requests.exceptions.RequestException as err:
+            print(err, file=sys.stderr)
+            if tries <= 1:
+                raise ConnectionException('GraphQL query {} failed multiple times with following variables:\n{}'
+                                          .format(query_id, json.dumps(variables, indent=4)))
+            self._sleep()
+            return self.graphql_query(query_id, variables, referer, tries - 1)
+        else:
+            if response.status_code != 200:
+                if response.status_code == 429:
+                    print('GraphQL query returned HTTP error code 429 because too many queries occured '
+                          'in the last time.', file=sys.stderr)
+                    waittime = round(min(self.previous_queries.get(query_id))
+                                     + sliding_window - datetime.now().timestamp()) + 6 \
+                        if self.previous_queries.get(query_id) else sliding_window
+                    if waittime > 0:
+                        sys.stderr.flush()
+                        self._log('Please do not use Instagram in your browser or run multiple instances '
+                                  'of Instaloader in parallel while using options that require GraphQL '
+                                  'queries.\nNeed to wait {} seconds.'.format(waittime), flush=True)
+                        time.sleep(waittime)
+                    return self.graphql_query(query_id, variables, referer, tries)
+                else:
+                    raise ConnectionException("GraphQL query returned HTTP error code {}.".format(response.status_code))
+            return response.json()
+        finally:
+            timestamp_list = self.previous_queries.get(query_id)
+            if timestamp_list:
+                self.previous_queries.get(query_id).append(datetime.now().timestamp())
+            else:
+                self.previous_queries[query_id] = [datetime.now().timestamp()]
 
     def get_username_by_id(self, profile_id: int) -> str:
         """To get the current username of a profile, given its unique ID, this function can be used."""
