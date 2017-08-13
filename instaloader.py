@@ -868,7 +868,7 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {} from feed."
-                          .format(node['shortcode'], name), file=sys.stderr)
+                          .format(node['shortcode'] if 'shortcode' in node else node['code'], name), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
@@ -917,7 +917,8 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" "
-                          "while downloading hashtag \"{}\".".format(node['shortcode'], hashtag), file=sys.stderr)
+                          "while downloading hashtag \"{}\"."
+                          .format(node['shortcode'] if 'shortcode' in node else node['code'], hashtag), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
@@ -1034,7 +1035,7 @@ class Instaloader:
                                                     download_comments=download_comments)
                 except NodeUnavailableException:
                     print("Unable to download node \"https://www.instagram.com/p/{}/\" of user {}."
-                          .format(node['shortcode'], name), file=sys.stderr)
+                          .format(node['shortcode'] if 'shortcode' in node else node['code'], name), file=sys.stderr)
                     continue
                 if fast_update and not downloaded:
                     return
