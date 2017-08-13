@@ -73,10 +73,6 @@ class BadResponseException(InstaloaderException):
     pass
 
 
-class NodeUnavailableException(InstaloaderException):
-    pass
-
-
 class BadCredentialsException(InstaloaderException):
     pass
 
@@ -210,6 +206,7 @@ class Instaloader:
     def _get_and_write_raw(self, url: str, filename: str, tries: int = 3) -> None:
         """Downloads raw data.
 
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When download repeatedly failed."""
         try:
             resp = self._get_anonymous_session().get(url, stream=True)
@@ -219,6 +216,9 @@ class Instaloader:
                     resp.raw.decode_content = True
                     shutil.copyfileobj(resp.raw, file)
             else:
+                if resp.status_code == 404:
+                    # 404 not worth retrying.
+                    raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
         except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
             error_string = "URL {}: {}".format(url, err)
@@ -238,6 +238,8 @@ class Instaloader:
         :param session: Session to use, or None to use self.session
         :param tries: Maximum number of attempts until a exception is raised
         :return: Decoded response dictionary
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises ConnectionException: When query repeatedly failed.
         """
         sess = session if session else self.session
         try:
@@ -563,9 +565,7 @@ class Instaloader:
             raise ConnectionException('Login error! Connection error!')
 
     def get_post_metadata(self, shortcode: str) -> Dict[str, Any]:
-        """Get full metadata of the post associated with given shortcode.
-
-        :raises NodeUnavailableException: If the data cannot be retrieved."""
+        """Get full metadata of the post associated with given shortcode."""
         pic_json = self._get_json("p/{0}/".format(shortcode), params={'__a': 1})
         media = pic_json["graphql"]["shortcode_media"] if "graphql" in pic_json else pic_json["media"]
         return media
