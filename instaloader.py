@@ -247,7 +247,14 @@ class Instaloader:
                 raise QueryReturnedNotFoundException("404")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
-            return resp.json()
+            resp_json = resp.json()
+            if 'status' in resp_json and resp_json['status'] != "ok":
+                if 'message' in resp_json:
+                    raise ConnectionException("Returned \"{}\" status, message \"{}\".".format(resp_json['status'],
+                                                                                               resp_json['message']))
+                else:
+                    raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
+            return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError) as err:
             error_string = "JSON Query to {}: {}".format(url, err)
             if tries <= 1:
@@ -305,10 +312,12 @@ class Instaloader:
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
             tmpsession.headers['referer'] = referer
-        return self._get_json('graphql/query',
-                              params={'query_id': query_id,
-                                      'variables': json.dumps(variables, separators=(',', ':'))},
-                              session=tmpsession)
+        resp_json = self._get_json('graphql/query', params={'query_id': query_id,
+                                                            'variables': json.dumps(variables, separators=(',', ':'))},
+                                   session=tmpsession)
+        if 'status' not in resp_json:
+            self._error("GraphQL response did not contain a \"status\" field.")
+        return resp_json
 
     def get_username_by_id(self, profile_id: int) -> str:
         """To get the current username of a profile, given its unique ID, this function can be used."""
@@ -553,23 +562,12 @@ class Instaloader:
         else:
             raise ConnectionException('Login error! Connection error!')
 
-    def get_post_metadata(self, shortcode: str, tries: int = 3) -> Dict[str, Any]:
+    def get_post_metadata(self, shortcode: str) -> Dict[str, Any]:
         """Get full metadata of the post associated with given shortcode.
 
         :raises NodeUnavailableException: If the data cannot be retrieved."""
         pic_json = self._get_json("p/{0}/".format(shortcode), params={'__a': 1})
-        try:
-            media = pic_json["graphql"]["shortcode_media"] if "graphql" in pic_json else pic_json["media"]
-        except (KeyError, TypeError) as err:
-            # It appears the returned JSON is sometimes empty - trying again might help
-            print(json.dumps(pic_json, indent=4), file=sys.stderr)
-            error_string = "Post {}: {}".format(shortcode, err)
-            if tries <= 1:
-                raise NodeUnavailableException(error_string)
-            else:
-                self._error(error_string + " [retrying]")
-            self._sleep()
-            media = self.get_post_metadata(shortcode, tries - 1)
+        media = pic_json["graphql"]["shortcode_media"] if "graphql" in pic_json else pic_json["media"]
         return media
 
     def get_location(self, post_metadata: Dict[str, Any]) -> Optional[Dict[str, str]]:
@@ -1022,7 +1020,7 @@ class Instaloader:
                 if sessionfile is not None:
                     print(err, file=sys.stderr)
                 self._log("Session file does not exist yet - Logging in.")
-            if username != self.test_login(self.session):
+            if self.username is None or username != self.test_login(self.session):
                 if password is not None:
                     self.login(username, password)
                 else:
