@@ -494,12 +494,7 @@ class Instaloader:
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
-        match = re.search('http.*://.*instagram.*[^/]*\\.(com|net)/[^/]+/.', url)
-        if match is None:
-            raise ConnectionException("URL \'" + url + "\' could not be processed.")
-        index = len(match.group(0)) - 1
-        offset = 8 if match.group(0)[-1:] == 's' else 0
-        url = url[:index] + 's2048x2048' + ('/' if offset == 0 else str()) + url[index + offset:]
+        url = re.sub(r'/s([1-9][0-9]{2})x\1/', '/s2048x2048/', url)
         self._get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self._log('') # log output of _get_and_write_raw() does not produce \n
