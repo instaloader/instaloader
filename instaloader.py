@@ -14,6 +14,7 @@ import string
 import sys
 import tempfile
 import time
+import urllib.parse
 from argparse import ArgumentParser
 from base64 import b64decode, b64encode
 from contextlib import contextmanager, suppress
@@ -507,7 +508,7 @@ class Instaloader:
         tmpsession.headers['scheme'] = 'https'
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
-            tmpsession.headers['referer'] = referer
+            tmpsession.headers['referer'] = urllib.parse.quote(referer)
         resp_json = self.get_json('graphql/query', params={'query_id': query_id,
                                                            'variables': json.dumps(variables, separators=(',', ':'))},
                                   session=tmpsession)
