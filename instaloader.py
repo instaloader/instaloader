@@ -616,7 +616,7 @@ class Instaloader:
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
 
-        date_object = datetime.strptime(requests.head(url).headers["Last-Modified"],
+        date_object = datetime.strptime(self._get_anonymous_session().head(url).headers["Last-Modified"],
                                         '%a, %d %b %Y %H:%M:%S GMT')
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
