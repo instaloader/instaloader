@@ -993,6 +993,7 @@ class Instaloader:
         :param filter_func: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         """
+        hashtag = hashtag.lower()
         count = 1
         for post in self.get_hashtag_posts(hashtag):
             if max_count is not None and count > max_count:
@@ -1087,6 +1088,7 @@ class Instaloader:
                          download_stories: bool = False, download_stories_only: bool = False,
                          filter_func: Optional[Callable[[Post], bool]] = None) -> None:
         """Download one profile"""
+        name = name.lower()
 
         # Get profile main page json
         profile_metadata = None
