@@ -97,17 +97,26 @@ If you want to **download all followees of a given profile**, call
 
     instaloader --login=your_username @profile
 
-To **download all the pictures from your feed which you have liked**, call
+To **download all pictures from your feed**:
 
 ::
 
-    instaloader --login=your_username :feed-liked
+    instaloader --login=your_username :feed
 
-or to **download all pictures from your feed**:
+
+or to **download all the pictures from your feed that you have liked**, call
 
 ::
 
-    instaloader --login=your_username :feed-all
+    instaloader --login=your_username --only-if=viewer_has_liked :feed
+
+The ``--only-if`` option allows to **filter media by custom criterias**. For
+example you might only want to download posts that you either liked or were
+liked and commented by many others:
+
+::
+
+    instaloader --login=your_username --only-if="viewer_has_liked or (likes>1500 and comments>10)" profile
 
 **Download all stories** from the profiles you follow:
 
@@ -134,8 +143,7 @@ has been renamed, Instaloader automatically **finds it by its unique ID** and
 renames the folder likewise.
 
 Instead of a *profile* or a *#hashtag*, the special targets
-``:feed-all`` (pictures from your feed),
-``:feed-liked`` (pictures from your feed which you liked), and
+``:feed`` (pictures from your feed) and
 ``:stories`` (stories of your followees) can be specified.
 
 --profile-pic-only         Only download profile picture.
@@ -157,6 +165,12 @@ Instead of a *profile* or a *#hashtag*, the special targets
 --stories-only             Rather than downloading regular posts of each
                            specified profile, only download stories.
                            Requires ``--login``.
+--only-if filter           Expression that, if given, must evaluate to True for each post to
+                           be downloaded. Must be a syntactically valid python
+                           expression. Variables are evaluated to
+                           ``instaloader.Post`` attributes.
+                           Example: ``--only-if=viewer_has_liked``.
+
 
 When to Stop Downloading
 ^^^^^^^^^^^^^^^^^^^^^^^^
