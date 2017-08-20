@@ -874,7 +874,7 @@ class Instaloader:
                 yield _get(url_reel_media.format(userid))
         else:
             data = _get(url_reels_tray)
-            if not 'tray' in data:
+            if 'tray' not in data:
                 raise BadResponseException('Bad story reel JSON.')
             for user in data["tray"]:
                 yield user if "items" in user else _get(url_reel_media.format(user['user']['pk']))
@@ -898,10 +898,10 @@ class Instaloader:
 
         for user_stories in self.get_stories(userids):
             if "items" not in user_stories:
-                continue
+                raise BadResponseException('Bad reel media JSON.')
             name = user_stories["user"]["username"].lower()
             self._log("Retrieving stories from profile {}.".format(name))
-            totalcount = len(user_stories["items"]) if "items" in user_stories else 0
+            totalcount = len(user_stories["items"])
             count = 1
             for item in user_stories["items"]:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
@@ -910,12 +910,10 @@ class Instaloader:
                 shortcode = item["code"] if "code" in item else "no_code"
 
                 date_float = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
-                if date_float < 10000000000:
-                    date = datetime.fromtimestamp(date_float)
-                else:
-                    # device_timestamp seems to sometime be in milliseconds
+                if date_float > 10000000000:
+                    # device_timestamp seems to sometimes be in milliseconds
                     date_float /= 1000
-                    date = datetime.fromtimestamp(date_float)
+                date = datetime.fromtimestamp(date_float)
 
                 dirname = self.dirname_pattern.format(profile=name, target=filename_target)
                 filename = dirname + '/' + self.filename_pattern.format(profile=name, target=filename_target,
