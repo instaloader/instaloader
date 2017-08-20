@@ -7,12 +7,12 @@ import getpass
 import json
 import os
 import pickle
-import random
 import re
 import shutil
 import string
 import sys
 import tempfile
+import textwrap
 import time
 import urllib.parse
 from argparse import ArgumentParser, SUPPRESS
@@ -80,6 +80,10 @@ class BadCredentialsException(InstaloaderException):
 
 
 class ConnectionException(InstaloaderException):
+    pass
+
+
+class TooManyRequests(ConnectionException):
     pass
 
 
@@ -468,6 +472,8 @@ class Instaloader:
             resp = sess.get('https://www.instagram.com/' + url, params=params)
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException("404")
+            if resp.status_code == 429:
+                raise TooManyRequests("429 - Too Many Requests")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             resp_json = resp.json()
@@ -482,8 +488,13 @@ class Instaloader:
             error_string = "JSON Query to {}: {}".format(url, err)
             if tries <= 1:
                 raise ConnectionException(error_string)
-            else:
-                self.error(error_string + " [retrying]")
+            self.error(error_string + " [retrying]")
+            if isinstance(err, TooManyRequests):
+                text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
+                                "Please do not use Instagram in your browser or run multiple instances of Instaloader "
+                                "in parallel. The request is retried in about four minutes.")
+                print(textwrap.fill(text_for_429), file=sys.stderr)
+                time.sleep(660/3)
             self._sleep()
             self.get_json(url, params, sess, tries - 1)
 
