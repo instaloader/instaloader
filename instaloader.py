@@ -222,11 +222,19 @@ class Post:
                 self._full_metadata_dict = pic_json["media"]
         return self._full_metadata_dict
 
-    def __getitem__(self, item):
-        """Implements self[item]. This must not be used from outside of Post. Use the properties instead."""
-        if item in self._node:
-            return self._node[item]
-        return self._full_metadata[item]
+    def _field(self, *keys) -> Any:
+        """Lookups given fields in _node, and if not found in _full_metadata. Raises KeyError if not found anywhere."""
+        # pylint:disable=invalid-name
+        try:
+            d = self._node
+            for key in keys:
+                d = d[key]
+            return d
+        except KeyError:
+            d = self._full_metadata
+            for key in keys:
+                d = d[key]
+            return d
 
     @property
     def owner_username(self) -> str:
@@ -234,7 +242,7 @@ class Post:
         try:
             if self._profile:
                 return self._profile.lower()
-            return self['owner']['username'].lower()
+            return self._field('owner', 'username').lower()
         except (InstaloaderException, KeyError, TypeError) as err:
             self._instaloader.error("Get owner name of {}: {} -- using \'UNKNOWN\'.".format(self, err))
             return 'UNKNOWN'
@@ -255,9 +263,8 @@ class Post:
         # if __typename is not in node, it is an old image or video
         return 'GraphImage'
 
-    @property
-    def sidecar_edges(self) -> List[Dict[str, Any]]:
-        return self['edge_sidecar_to_children']['edges']
+    def get_sidecar_edges(self) -> List[Dict[str, Any]]:
+        return self._field('edge_sidecar_to_children', 'edges')
 
     @property
     def caption(self) -> Optional[str]:
@@ -271,43 +278,45 @@ class Post:
         return self._node['is_video']
 
     @property
-    def video_url(self) -> str:
-        return self['video_url']
+    def video_url(self) -> Optional[str]:
+        if self.is_video:
+            return self._field('video_url')
 
     @property
-    def viewer_has_liked(self) -> bool:
-        """Whether the viewer has liked the post.
-
-        :raises LoginRequiredException: if not logged in."""
+    def viewer_has_liked(self) -> Optional[bool]:
+        """Whether the viewer has liked the post, or None if not logged in."""
         if not self._instaloader.is_logged_in:
-            raise LoginRequiredException("Login required to obtain whether viewer has liked {}.".format(self))
+            return None
         if 'likes' in self._node and 'viewer_has_liked' in self._node['likes']:
             return self._node['likes']['viewer_has_liked']
-        return self['viewer_has_liked']
+        return self._field('viewer_has_liked')
 
     @property
     def likes(self) -> int:
         """Likes count"""
-        return self['edge_media_preview_like']['count']
+        return self._field('edge_media_preview_like', 'count')
 
     @property
     def comments(self) -> int:
         """Comment count"""
-        return self['edge_media_to_comment']['count']
+        return self._field('edge_media_to_comment', 'count')
 
     def get_comments(self) -> Iterator[Dict[str, Any]]:
         """Iterate over all comments of the post."""
-        comments_in_metadata = self['edge_media_to_comment']
-        if self.comments == len(comments_in_metadata['edges']):
+        if self.comments == 0:
+            # Avoid doing additional requests if there are no comments
+            return
+        comment_edges = self._field('edge_media_to_comment', 'edges')
+        if self.comments == len(comment_edges):
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
-            yield from (comment['node'] for comment in comments_in_metadata['edges'])
+            yield from (comment['node'] for comment in comment_edges)
         yield from self._instaloader.graphql_node_list(17852405266163336, {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
 
     def get_location(self) -> Optional[Dict[str, str]]:
         """If the Post has a location, returns a dictionary with fields 'lat' and 'lng'."""
-        loc_dict = self["location"]
+        loc_dict = self._field("location")
         if loc_dict is not None:
             location_json = self._instaloader.get_json("explore/locations/{0}/".format(loc_dict["id"]),
                                                        params={'__a': 1})
@@ -770,7 +779,7 @@ class Instaloader:
         if post.typename == 'GraphSidecar':
             edge_number = 1
             downloaded = True
-            for edge in post.sidecar_edges:
+            for edge in post.get_sidecar_edges():
                 edge_downloaded = self.download_pic(filename=filename,
                                                     url=edge['node']['display_url'],
                                                     mtime=post.date,
