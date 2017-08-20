@@ -222,8 +222,6 @@ How to Download
                            Defaults to ``{date:%Y-%m-%d_%H-%M-%S}``.
 --user-agent USER_AGENT    User Agent to use for HTTP requests. Per default,
                            Instaloader pretends being Chrome/51.
---no-sleep                 Do not sleep between requests to Instagram's servers.
-                           This makes downloading faster, but may be suspicious.
 
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^

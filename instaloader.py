@@ -15,7 +15,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from base64 import b64decode, b64encode
 from contextlib import contextmanager, suppress
 from datetime import datetime
@@ -364,6 +364,10 @@ class Instaloader:
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []
 
+        # For the adaption of sleep intervals (rate control)
+        self.request_count = 0
+        self.last_request_time = 0
+
     @property
     def is_logged_in(self) -> bool:
         return bool(self.username)
@@ -375,8 +379,12 @@ class Instaloader:
                                  self.dirname_pattern, self.filename_pattern,
                                  self.download_videos, self.download_geotags,
                                  self.download_captions, self.download_comments)
+        new_loader.request_count = self.request_count
+        new_loader.last_request_time = self.last_request_time
         yield new_loader
         self.error_log.extend(new_loader.error_log)
+        self.request_count = new_loader.request_count
+        self.last_request_time = new_loader.last_request_time
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
@@ -403,9 +411,18 @@ class Instaloader:
                 self.error('{}'.format(err))
 
     def _sleep(self):
-        """Sleep a short, random time if self.sleep is set. Called before each request to the instagram.com."""
-        if self.sleep:
-            time.sleep(random.uniform(0.5, 1.75))
+        """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
+        if not self.sleep:
+            return
+        max_sleep_int = 600/50     # 50 requests per 10 minutes
+        count_for_max_sleep  = 80  # after 80 requests.
+        sleep_interval = min(self.request_count, count_for_max_sleep) / count_for_max_sleep * max_sleep_int
+        current_time = time.monotonic()
+        sleep_time = self.last_request_time + sleep_interval - current_time
+        if sleep_time > 0.0:
+            time.sleep(sleep_time)
+        self.request_count += 1
+        self.last_request_time = max(current_time, self.last_request_time + sleep_interval)
 
     def _get_and_write_raw(self, url: str, filename: str, tries: int = 3) -> None:
         """Downloads raw data.
@@ -1342,9 +1359,7 @@ def main():
                             '\'{date:%%Y-%%m-%%d_%%H-%%M-%%S}\'.')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
-    g_how.add_argument('-S', '--no-sleep', action='store_true',
-                       help='Do not sleep between requests to Instagram\'s servers. This makes downloading faster, but '
-                            'may be suspicious.')
+    g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-O', '--shorter-output', action='store_true',
