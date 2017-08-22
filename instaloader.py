@@ -1159,7 +1159,8 @@ class Instaloader:
 
         # Download stories, if requested
         if download_stories or download_stories_only:
-            self.download_stories(userids=[profile_id], filename_target=name, fast_update=fast_update)
+            with self._error_catcher("Download stories of {}".format(name)):
+                self.download_stories(userids=[profile_id], filename_target=name, fast_update=fast_update)
         if download_stories_only:
             return
 
