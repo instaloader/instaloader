@@ -2,7 +2,6 @@
 
 """Download pictures (or videos) along with their captions and other metadata from Instagram."""
 import ast
-import copy
 import getpass
 import json
 import os
@@ -132,35 +131,29 @@ def format_string_contains_key(format_string: str, key: str) -> bool:
 def filterstr_to_filterfunc(filter_str: str, logged_in: bool) -> Callable[['Post'], bool]:
     """Takes an --only-if=... filter specification and makes a filter_func Callable out of it."""
 
-    class VerifyFilter(ast.NodeVisitor):
+    # The filter_str is parsed, then all names occurring in its AST are replaced by loads to post.<name>. A
+    # function Post->bool is returned which evaluates the filter with the post as 'post' in its namespace.
+
+    class TransformFilterAst(ast.NodeTransformer):
         def visit_Name(self, node: ast.Name):
-            # pylint:disable=invalid-name
+            # pylint:disable=invalid-name,no-self-use
             if not isinstance(node.ctx, ast.Load):
                 raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
             if not hasattr(Post, node.id):
                 raise InvalidArgumentException("Invalid filter: Name {} is not defined.".format(node.id))
             if node.id in Post.LOGIN_REQUIRING_PROPERTIES and not logged_in:
                 raise InvalidArgumentException("Invalid filter: Name {} requires being logged in.".format(node.id))
-            return self.generic_visit(node)
+            new_node = ast.Attribute(ast.copy_location(ast.Name('post', ast.Load()), node), node.id,
+                                     ast.copy_location(ast.Load(), node))
+            return ast.copy_location(new_node, node)
 
-    filter_ast = ast.parse(filter_str, filename='<--only-if parameter>', mode='eval')
-    VerifyFilter().visit(filter_ast)
+    input_filename = '<--only-if parameter>'
+    compiled_filter = compile(TransformFilterAst().visit(ast.parse(filter_str, filename=input_filename, mode='eval')),
+                              filename=input_filename, mode='eval')
 
     def filterfunc(post: 'Post') -> bool:
-        class EvaluatePostAttributes(ast.NodeTransformer):
-            def visit_Name(self, node: ast.Name):
-                # pylint:disable=invalid-name,no-self-use
-                obj = post.__getattribute__(node.id)
-                if isinstance(obj, str):
-                    new_node = ast.Str(obj)
-                elif isinstance(obj, int) and not isinstance(obj, bool):
-                    new_node = ast.Num(obj)
-                else:  # True, False or None
-                    new_node = ast.NameConstant(obj)
-                return ast.copy_location(new_node, node)
-        ast_obj = EvaluatePostAttributes().visit(copy.deepcopy(filter_ast))
         # pylint:disable=eval-used
-        return bool(eval(compile(ast_obj, '', 'eval'), {}))
+        return bool(eval(compiled_filter, {'post': post}))
 
     return filterfunc
 
