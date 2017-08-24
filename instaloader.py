@@ -6,6 +6,7 @@ import getpass
 import json
 import os
 import pickle
+import random
 import re
 import shutil
 import string
@@ -356,6 +357,7 @@ class Instaloader:
         self.download_geotags = download_geotags
         self.download_captions = download_captions
         self.download_comments = download_comments
+        self.previous_queries = dict()
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []
@@ -375,12 +377,10 @@ class Instaloader:
                                  self.dirname_pattern, self.filename_pattern,
                                  self.download_videos, self.download_geotags,
                                  self.download_captions, self.download_comments)
-        new_loader.request_count = self.request_count
-        new_loader.last_request_time = self.last_request_time
+        new_loader.previous_queries = self.previous_queries
         yield new_loader
         self.error_log.extend(new_loader.error_log)
-        self.request_count = new_loader.request_count
-        self.last_request_time = new_loader.last_request_time
+        self.previous_queries = new_loader.previous_queries
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
@@ -408,17 +408,8 @@ class Instaloader:
 
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
-        if not self.sleep:
-            return
-        max_sleep_int = 600/50     # 50 requests per 10 minutes
-        count_for_max_sleep  = 80  # after 80 requests.
-        sleep_interval = min(self.request_count, count_for_max_sleep) / count_for_max_sleep * max_sleep_int
-        current_time = time.monotonic()
-        sleep_time = self.last_request_time + sleep_interval - current_time
-        if sleep_time > 0.0:
-            time.sleep(sleep_time)
-        self.request_count += 1
-        self.last_request_time = max(current_time, self.last_request_time + sleep_interval)
+        if self.sleep:
+            time.sleep(random.uniform(0.5, 3))
 
     def _get_and_write_raw(self, url: str, filename: str, tries: int = 3) -> None:
         """Downloads raw data.
@@ -446,18 +437,41 @@ class Instaloader:
             self._sleep()
             self._get_and_write_raw(url, filename, tries - 1)
 
-    def get_json(self, url: str, params: Optional[Dict[str, Any]] = None,
+    def get_json(self, url: str, params: Dict[str, Any],
                  session: Optional[requests.Session] = None, tries: int = 3) -> Dict[str, Any]:
         """JSON request to Instagram.
 
         :param url: URL, relative to https://www.instagram.com/
         :param params: GET parameters
         :param session: Session to use, or None to use self.session
-        :param tries: Maximum number of attempts until a exception is raised
+        :param tries: Maximum number of attempts until an exception is raised
         :return: Decoded response dictionary
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
+        def graphql_query_waittime(query_id: int, untracked_queries: bool = False) -> int:
+            sliding_window = 660
+            timestamps = self.previous_queries.get(query_id)
+            if not timestamps:
+                return sliding_window if untracked_queries else 0
+            current_time = time.monotonic()
+            timestamps = list(filter(lambda t: t > current_time - sliding_window, timestamps))
+            self.previous_queries[query_id] = timestamps
+            if len(timestamps) < 100 and not untracked_queries:
+                return 0
+            return round(min(timestamps) + sliding_window - current_time) + 6
+        is_graphql_query = 'query_id' in params and 'graphql/query' in url
+        if is_graphql_query:
+            query_id = params['query_id']
+            waittime = graphql_query_waittime(query_id)
+            if waittime > 0:
+                self._log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
+                time.sleep(waittime)
+            timestamp_list = self.previous_queries.get(query_id)
+            if timestamp_list is not None:
+                timestamp_list.append(time.monotonic())
+            else:
+                self.previous_queries[query_id] = [time.monotonic()]
         sess = session if session else self.session
         try:
             self._sleep()
@@ -476,7 +490,7 @@ class Instaloader:
                 else:
                     raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
             return resp_json
-        except (ConnectionException, json.decoder.JSONDecodeError) as err:
+        except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = "JSON Query to {}: {}".format(url, err)
             if tries <= 1:
                 raise ConnectionException(error_string)
@@ -484,9 +498,13 @@ class Instaloader:
             if isinstance(err, TooManyRequests):
                 text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
                                 "Please do not use Instagram in your browser or run multiple instances of Instaloader "
-                                "in parallel. The request is retried in about four minutes.")
+                                "in parallel.")
                 print(textwrap.fill(text_for_429), file=sys.stderr)
-                time.sleep(660/3)
+                if is_graphql_query:
+                    waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)
+                    if waittime > 0:
+                        self._log('The request will be retried in {} seconds.'.format(waittime))
+                        time.sleep(waittime)
             self._sleep()
             self.get_json(url, params, sess, tries - 1)
 
