@@ -143,7 +143,7 @@ Instead of a *profile* or a *#hashtag*, the special targets
 ``:stories`` (stories of your followees) can be specified.
 
 --profile-pic-only         Only download profile picture.
---skip-videos              Do not download videos.
+--no-videos                Do not download videos.
 --geotags                  **Download geotags** when available. Geotags are stored as
                            a text file with the location's name and a Google Maps
                            link. This requires an additional request to the
@@ -222,7 +222,6 @@ How to Download
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
---shorter-output           Do not display captions while downloading.
 --quiet                    Disable user interaction, i.e. do not print messages
                            (except errors) and fail if login credentials are
                            needed but not given. This makes Instaloader

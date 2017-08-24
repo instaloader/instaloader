@@ -334,7 +334,7 @@ class Tristate(Enum):
 
 class Instaloader:
     def __init__(self,
-                 sleep: bool = True, quiet: bool = False, shorter_output: bool = False,
+                 sleep: bool = True, quiet: bool = False,
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
@@ -349,7 +349,6 @@ class Instaloader:
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
-        self.shorter_output = shorter_output
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
             if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
@@ -372,7 +371,7 @@ class Instaloader:
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
-        new_loader = Instaloader(self.sleep, self.quiet, self.shorter_output, self.user_agent,
+        new_loader = Instaloader(self.sleep, self.quiet, self.user_agent,
                                  self.dirname_pattern, self.filename_pattern,
                                  self.download_videos, self.download_geotags,
                                  self.download_captions, self.download_comments)
@@ -648,10 +647,7 @@ class Instaloader:
         filename += '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
-        if self.shorter_output:
-            pcaption = "txt"
-        else:
-            pcaption = '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
+        pcaption = '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
         with suppress(FileNotFoundError):
             with open(filename, 'rb') as file:
                 file_caption = file.read()
@@ -1299,7 +1295,7 @@ def main():
                              'followees.')
     g_what.add_argument('-P', '--profile-pic-only', action='store_true',
                         help='Only download profile picture.')
-    g_what.add_argument('-V', '--skip-videos', action='store_true',
+    g_what.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
     g_what.add_argument('-G', '--geotags', action='store_true',
                         help='Download geotags when available. Geotags are stored as a '
@@ -1387,7 +1383,7 @@ def main():
             raise SystemExit(":feed-all and :feed-liked were removed. Use :feed as target and "
                              "eventually --only-if=viewer_has_liked.")
 
-        download_videos = Tristate.always if not args.skip_videos else Tristate.no_extra_query
+        download_videos = Tristate.always if not args.no_videos else Tristate.no_extra_query
         download_comments = Tristate.always if args.comments else Tristate.no_extra_query
         download_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
 
@@ -1400,7 +1396,7 @@ def main():
         else:
             download_geotags = Tristate.no_extra_query
 
-        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, shorter_output=args.shorter_output,
+        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_videos=download_videos, download_geotags=download_geotags,
