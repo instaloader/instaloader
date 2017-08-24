@@ -27,6 +27,10 @@ requirements = ['requests>=2.4']
 if platform.system() == 'Windows' and sys.version_info < (3, 6):
     requirements.append('win_unicode_console')
 
+keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-feed', 'downloader', 'videos', 'photos',
+             'pictures', 'instagram-user-photos', 'instagram-photos', 'instagram-metadata', 'instagram-downloader',
+             'instagram-stories'])
+
 setup(
     name='instaloader',
     version=get_version(),
@@ -42,7 +46,7 @@ setup(
     python_requires='>=3.5',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
     zip_safe=True,
-    keywords='instagram downloader',
+    keywords=keywords,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
