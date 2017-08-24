@@ -45,7 +45,7 @@ To later **update your local copy** of that profiles, you may run
 
     instaloader --fast-update profile [profile ...]
 
-When ``--fast-update`` is given, Instaloader stops when arriving at the
+If ``--fast-update`` is given, Instaloader stops when arriving at the
 first already-downloaded picture. When updating profiles, Instaloader
 automatically **detects profile name changes** and renames the target
 directory accordingly.
@@ -57,10 +57,10 @@ invoke it with
 
     instaloader --login=your_username profile [profile ...]
 
-When invoked like this, it also **stores the session cookies** in a file
-in your temporary directory, which will be reused later when ``--login``
-is given. So you can download private profiles **non-interactively**
-when you already have a valid session cookie file.
+When logging in, Instaloader **stores the session cookies** in a file in
+your temporary directory, which will be reused later the next time
+``--login`` is given.  So you can download private profiles
+**non-interactively** when you already have a valid session cookie file.
 
 What to Download
 ^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ may specify the following targets:
 - ``profile``: Public profile, or private profile with ``--login``,
 
 - ``"#hashtag"``: Posts with a certain **hashtag** (the quotes are
-  usually neccessary)
+  usually neccessary),
 
 - ``:stories``: The currently-visible **stories** of your followees
   (requires ``--login``),
@@ -83,10 +83,10 @@ may specify the following targets:
 
 Instaloader goes through all media matching the specified targets and
 downloads the pictures and videos and their captions. You can specify
-``--comments`` to also **download comments** of each post, ``--geotags``
-to **download geotags** of each post and save them as Google Maps link.
-For each profile you download, ``--stories`` instructs Instaloader to
-**download the user's stories**.
+``--comments`` to also **download comments** of each post and
+``--geotags`` to **download geotags** of each post and save them as
+Google Maps link.  For each profile you download, ``--stories``
+instructs Instaloader to **download the user's stories**.
 
 Filename Specification
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -120,9 +120,9 @@ timestamp. The default for ``{date}`` is ``{date:%Y-%m-%d_%H-%M-%S}``.
 Filter Posts
 ^^^^^^^^^^^^
 
-The ``--only-if`` option allows to specify criterias which posts have to
+The ``--only-if`` option allows to specify criterias that posts have to
 meet to be downloaded. If not given, all posts are downloaded. It must
-be a boolean python expression where the variables ``likes``,
+be a boolean Python expression where the variables ``likes``,
 ``comments``, ``viewer_has_liked``, ``is_video``, ``date``, and some
 more (see class ``instaloader.Post`` for a full list) are defined.
 
@@ -134,14 +134,14 @@ To **download the pictures from your feed that you have liked**:
 
     instaloader --login=your_username --only-if=viewer_has_liked :feed
 
-Or you might only want to download posts that either you liked or were
-liked by many others:
+Or you might only want to download **posts that either you liked or were
+liked by many others**:
 
 ::
 
     instaloader --login=your_username --only-if="likes>100 or viewer_has_liked" profile
 
-Or you may skip videos:
+Or you may **skip videos**:
 
 ::
 
