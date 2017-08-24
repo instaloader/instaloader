@@ -1361,8 +1361,6 @@ def main():
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
-    g_misc.add_argument('-O', '--shorter-output', action='store_true',
-                        help='Do not display captions while downloading.')
     g_misc.add_argument('-q', '--quiet', action='store_true',
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
