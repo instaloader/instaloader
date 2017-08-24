@@ -506,7 +506,7 @@ class Instaloader:
                         self._log('The request will be retried in {} seconds.'.format(waittime))
                         time.sleep(waittime)
             self._sleep()
-            self.get_json(url, params, sess, tries - 1)
+            return self.get_json(url, params, sess, tries - 1)
 
     def _default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
         """Returns default HTTP header we use for requests."""
