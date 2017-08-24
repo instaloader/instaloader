@@ -1,17 +1,13 @@
 Instaloader
 ===========
 
-Download pictures (or videos) along with their captions and other metadata
-from Instagram.
 
 Installation
 ------------
 
-Instaloader is written in Python, thus ensure having
-`Python <https://www.python.org/>`__ (at least version 3.5) installed.
-
-If you have `pip <https://pypi.python.org/pypi/pip>`__ installed, you
-may install Instaloader using
+Instaloader requires `Python <https://www.python.org/>`__, at least
+version 3.5.  If you have `pip <https://pypi.python.org/pypi/pip>`__
+installed, you may install Instaloader using
 
 ::
 
@@ -30,7 +26,7 @@ Instaloader requires
 `requests <https://pypi.python.org/pypi/requests>`__, which
 will be installed automatically, if it is not already installed.
 
-How to automatically download pictures from Instagram
+How to Automatically Download Pictures from Instagram
 -----------------------------------------------------
 
 To **download all pictures and videos of a profile**, as well as the
@@ -49,8 +45,10 @@ To later **update your local copy** of that profiles, you may run
 
     instaloader --fast-update profile [profile ...]
 
-When ``--fast-update`` is given, Instaloader stops when arriving at
-the first already-downloaded picture.
+When ``--fast-update`` is given, Instaloader stops when arriving at the
+first already-downloaded picture. When updating profiles, Instaloader
+automatically **detects profile name changes** and renames the target
+directory accordingly.
 
 Instaloader can also be used to **download private profiles**. To do so,
 invoke it with
@@ -60,65 +58,95 @@ invoke it with
     instaloader --login=your_username profile [profile ...]
 
 When invoked like this, it also **stores the session cookies** in a file
-in your temporary directory, which will be reused later when ``--login`` is given. So
-you can download private profiles **non-interactively** when you already
-have a valid session cookie file.
+in your temporary directory, which will be reused later when ``--login``
+is given. So you can download private profiles **non-interactively**
+when you already have a valid session cookie file.
 
-Besides downloading private profiles, being logged in allows to
-**download stories**:
+What to Download
+^^^^^^^^^^^^^^^^
 
-::
+Instaloader does not only download media by-profile. More generally, you
+may specify the following targets:
 
-    instaloader --login=your_username --stories profile [profile ...]
+- ``profile``: Public profile, or private profile with ``--login``,
 
-You may also download
-**the most recent pictures by hashtag**:
+- ``"#hashtag"``: Posts with a certain **hashtag** (the quotes are
+  usually neccessary)
 
-::
+- ``:stories``: The currently-visible **stories** of your followees
+  (requires ``--login``),
 
-    instaloader "#hashtag"
+- ``:feed``: Your **feed** (requires ``--login``),
 
-This downloads the requested posts into a directory named according to the specified
-hashtag and the filenames correspond to the timestamp of the posts.
-As with all download tasks, this behavior can easily be customized, for example
-encode the poster's profile name in the filenames:
+- ``@profile``: All profiles which are followed by ``profile``, i.e. the
+  *followees* of ``profile`` (requires ``--login``).
+
+Instaloader goes through all media matching the specified targets and
+downloads the pictures and videos and their captions. You can specify
+``--comments`` to also **download comments** of each post, ``--geotags``
+to **download geotags** of each post and save them as Google Maps link.
+For each profile you download, ``--stories`` instructs Instaloader to
+**download the user's stories**.
+
+Filename Specification
+^^^^^^^^^^^^^^^^^^^^^^
+
+For each target, Instaloader creates a directory named after the target,
+i.e. ``profile``, ``#hashtag``, ``:feed``, etc. and therein saves the
+posts in files named after the post's timestamp.
+
+``--dirname-pattern`` allows to configure the directory name of each
+target. The default is ``--dirname-pattern={target}``. In the dirname
+pattern, the token ``{target}`` is replaced by the target name, and
+``{profile}`` is replaced by the owner of the post which is downloaded.
+
+``--filename-pattern`` configures the path of the post's files relative
+to the target directory. The default is ``--filename-pattern={date}``.
+The tokens ``{target}`` and ``{profile}`` are replaced like in the
+dirname pattern. Further, the tokens ``{date}`` and ``{shortcode}`` are
+defined.
+
+For example, encode the poster's profile name in the filenames with:
 
 ::
 
     instaloader --filename-pattern={date}_{profile} "#hashtag"
 
-If you want to **download all followees of a given profile**, call
+The pattern string is formatted with Python's string formatter. This
+gives additional flexibilty for pattern specification. For example,
+strptime-style formatting options are supported for the post's
+timestamp. The default for ``{date}`` is ``{date:%Y-%m-%d_%H-%M-%S}``.
 
-::
+Filter Posts
+^^^^^^^^^^^^
 
-    instaloader --login=your_username @profile
+The ``--only-if`` option allows to specify criterias which posts have to
+meet to be downloaded. If not given, all posts are downloaded. It must
+be a boolean python expression where the variables ``likes``,
+``comments``, ``viewer_has_liked``, ``is_video``, ``date``, and some
+more (see class ``instaloader.Post`` for a full list) are defined.
 
-To **download all pictures from your feed**:
+A few examples:
 
-::
-
-    instaloader --login=your_username :feed
-
-
-or to **download all the pictures from your feed that you have liked**, call
+To **download the pictures from your feed that you have liked**:
 
 ::
 
     instaloader --login=your_username --only-if=viewer_has_liked :feed
 
-The ``--only-if`` option allows to **filter media by custom criterias**. For
-example you might only want to download posts that you either liked or were
-liked and commented by many others:
+Or you might only want to download posts that either you liked or were
+liked by many others:
 
 ::
 
-    instaloader --login=your_username --only-if="viewer_has_liked or (likes>1500 and comments>10)" profile
+    instaloader --login=your_username --only-if="likes>100 or viewer_has_liked" profile
 
-**Download all stories** from the profiles you follow:
+Or you may skip videos:
 
 ::
 
-    instaloader --login=your_username --filename-pattern={date}_{profile} :stories
+    instaloader --only-if="not is_video" target
+
 
 Advanced Options
 ----------------
