@@ -3,6 +3,7 @@
 import re
 import sys
 import os
+import platform
 from setuptools import setup
 
 
@@ -21,6 +22,11 @@ def get_version():
 if sys.version_info < (3, 5):
     sys.exit('Instaloader requires Python >= 3.5.')
 
+requirements = ['requests>=2.4']
+
+if platform.system() == 'Windows' and sys.version_info < (3, 6):
+    requirements.append('win_unicode_console')
+
 setup(
     name='instaloader',
     version=get_version(),
@@ -32,7 +38,7 @@ setup(
     description='Download pictures (or videos) along with their captions and other metadata '
                 'from Instagram.',
     long_description=open(os.path.join(SRC, 'README.rst')).read(),
-    install_requires=['requests>=2.4'],
+    install_requires=requirements,
     python_requires='>=3.5',
     entry_points={'console_scripts': ['instaloader=instaloader:main']},
     zip_safe=True,

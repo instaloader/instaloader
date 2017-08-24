@@ -10,10 +10,6 @@ Installation
 Instaloader is written in Python, thus ensure having
 `Python <https://www.python.org/>`__ (at least version 3.5) installed.
 
-If you intend to use this tool under Windows, it is recommended
-to install
-`win-unicode-console <https://pypi.python.org/pypi/win_unicode_console>`__.
-
 If you have `pip <https://pypi.python.org/pypi/pip>`__ installed, you
 may install Instaloader using
 
