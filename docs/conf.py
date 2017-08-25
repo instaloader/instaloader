@@ -123,7 +123,7 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'default'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -178,7 +178,7 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 #
-html_sidebars = {'**': ["globaltoc.html", "relations.html", "links.html"] }
+html_sidebars = {'**': ["caption.html", "globaltoc.html", "relations.html", "links.html"] }
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
