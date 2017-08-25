@@ -1,12 +1,31 @@
-.. Instaloader documentation master file, created by
-   sphinx-quickstart on Fri Aug 25 15:38:26 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Instaloader
+===========
 
-Instaloader Documentation
-=========================
+*Instaloader* is a tool to download pictures (or videos) along with
+their captions and other metadata from Instagram.
 
-**Table of Contents**:
+::
+
+    $ pip3 install instaloader
+
+    $ instaloader profile [profile ...]
+
+**Instaloader**
+
+- downloads **public and private profiles, hashtags, user stories,
+  feeds**,
+  
+- downloads **comments, geotags, captions** of each post, 
+  
+- allows **fine-grained customization** of filters and where to store
+  downloaded media,
+
+- is free `Open Source <https://github.com/Thammus/instaloader>`__
+  software written in Python.
+
+
+Table of Contents
+-----------------
 
 .. toctree::
    :maxdepth: 2
@@ -15,6 +34,14 @@ Instaloader Documentation
    basic-usage
    cli-options
    as-module
+
+Useful Links
+------------
+
+- `Git Repository (on GitHub) <https://github.com/Thammus/instaloader>`__
+- `PyPI Project Page <https://pypi.python.org/pypi/instaloader>`__
+- `Issue Tracker / Bug Tracker <https://github.com/Thammus/instaloader/issues>`__
+- `Version History <https://github.com/Thammus/instaloader/releases>`__
 
 .. include:: ../README.rst
    :start-after: disclaimer-start

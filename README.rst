@@ -339,6 +339,10 @@ get the current username of a profile, given this unique ID
 
 .. as-module-intro-end
 
+Refer to the
+`Instaloader Documentation <http://instaloader.readthedocs.io/>`__ for
+more information.
+
 Disclaimer
 ----------
 
