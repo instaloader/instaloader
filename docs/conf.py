@@ -53,8 +53,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Instaloader'
-copyright = '2017, Alexander Graf and André Koch-Kramer'
-author = 'Alexander Graf and André Koch-Kramer'
+copyright = '2017, Alexander Graf and Andre Koch-Kramer'
+author = 'Alexander Graf and Andre Koch-Kramer'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
