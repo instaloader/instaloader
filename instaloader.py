@@ -810,7 +810,7 @@ class Instaloader:
                                                                 date=post.date, shortcode=post.shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-        # Download the image(s) / video thumbnail
+        # Download the image(s) / video thumbnail and videos within sidecars if desired
         if post.typename == 'GraphSidecar':
             edge_number = 1
             downloaded = True
@@ -819,6 +819,12 @@ class Instaloader:
                                                     url=edge['node']['display_url'],
                                                     mtime=post.date,
                                                     filename_suffix=str(edge_number))
+                # Additionally download video if available and desired
+                if edge['node']['is_video'] and self.download_videos is Tristate.always:
+                    self.download_pic(filename=filename,
+                                      url=edge['node']['video_url'],
+                                      mtime=post.date,
+                                      filename_suffix=str(edge_number))
                 downloaded = downloaded and edge_downloaded
                 edge_number += 1
         elif post.typename in ['GraphImage', 'GraphVideo']:
