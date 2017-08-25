@@ -1,9 +1,10 @@
 Instaloader
 ===========
 
-
 Installation
 ------------
+
+.. installation-start
 
 Instaloader requires `Python <https://www.python.org/>`__, at least
 version 3.5.  If you have `pip <https://pypi.python.org/pypi/pip>`__
@@ -26,8 +27,12 @@ Instaloader requires
 `requests <https://pypi.python.org/pypi/requests>`__, which
 will be installed automatically, if it is not already installed.
 
+.. installation-end
+
 How to Automatically Download Pictures from Instagram
 -----------------------------------------------------
+
+.. basic-usage-start
 
 To **download all pictures and videos of a profile**, as well as the
 **profile picture**, do
@@ -147,9 +152,12 @@ Or you may **skip videos**:
 
     instaloader --only-if="not is_video" target
 
+.. basic-usage-end
 
 Advanced Options
 ----------------
+
+.. cli-options-start
 
 The following flags can be given to Instaloader to specify how profiles should
 be downloaded.
@@ -255,8 +263,12 @@ Miscellaneous Options
                            needed but not given. This makes Instaloader
                            **suitable as a cron job**.
 
+.. cli-options-end
+
 Usage as Python module
 ----------------------
+
+.. as-module-intro-start
 
 You may also use parts of Instaloader as library to do other interesting
 things.
@@ -325,10 +337,16 @@ get the current username of a profile, given this unique ID
 
     loader.get_username_by_id(followees[0]['id'])
 
+.. as-module-intro-end
+
 Disclaimer
 ----------
 
-This code is in no way affiliated with, authorized, maintained or endorsed by Instagram or any of its affiliates or
+.. disclaimer-start
+
+Instaloader is in no way affiliated with, authorized, maintained or endorsed by Instagram or any of its affiliates or
 subsidiaries. This is an independent and unofficial project. Use at your own risk.
+
+.. disclaimer-end
 
 Instaloader is licensed under an MIT license. Refer to ``LICENSE`` file for more information.
