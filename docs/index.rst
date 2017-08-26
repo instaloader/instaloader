@@ -1,8 +1,10 @@
 Instaloader
 ===========
 
-*Instaloader* is a tool to download pictures (or videos) along with
+**Instaloader** is a tool to download pictures (or videos) along with
 their captions and other metadata from Instagram.
+
+With `Python <https://www.python.org/>`__ installed, do:
 
 ::
 

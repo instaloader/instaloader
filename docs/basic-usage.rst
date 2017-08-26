@@ -1,5 +1,5 @@
-How to Download Pictures from Instagram
----------------------------------------
+Download Pictures from Instagram
+---------------------------------
 
 Basic Usage
 ^^^^^^^^^^^

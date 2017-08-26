@@ -32,6 +32,9 @@ will be installed automatically, if it is not already installed.
 How to Automatically Download Pictures from Instagram
 -----------------------------------------------------
 
+(This file is only a summary of
+`the complete Instaloader Documentation <https://instaloader.readthedocs.io/>`__)
+
 .. basic-usage-start
 
 To **download all pictures and videos of a profile**, as well as the
@@ -340,7 +343,7 @@ get the current username of a profile, given this unique ID
 .. as-module-intro-end
 
 Refer to the
-`Instaloader Documentation <http://instaloader.readthedocs.io/>`__ for
+`Instaloader Documentation <https://instaloader.readthedocs.io/>`__ for
 more information.
 
 Disclaimer

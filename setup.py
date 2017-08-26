@@ -31,11 +31,14 @@ keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-fe
              'pictures', 'instagram-user-photos', 'instagram-photos', 'instagram-metadata', 'instagram-downloader',
              'instagram-stories'])
 
+# NOTE that many of the values defined in this file are duplicated on other places, such as the
+# documentation.
+
 setup(
     name='instaloader',
     version=get_version(),
     py_modules=['instaloader'],
-    url='https://github.com/Thammus/instaloader',
+    url='https://instaloader.readthedocs.io/',
     license='MIT',
     author='Alexander Graf, André Koch-Kramer',
     author_email='mail@agraf.me, koch-kramer@web.de',

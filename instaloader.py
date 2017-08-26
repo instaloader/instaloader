@@ -1302,7 +1302,9 @@ class Instaloader:
 
 def main():
     parser = ArgumentParser(description=__doc__, add_help=False,
-                            epilog="Report issues at https://github.com/Thammus/instaloader/issues.")
+                            epilog="Report issues at https://github.com/Thammus/instaloader/issues. "
+                                   "The complete documentation can be found at "
+                                   "https://instaloader.readthedocs.io/.")
 
     g_what = parser.add_argument_group('What to Download',
                                        'Specify a list of profiles or #hashtags. For each of these, Instaloader '
