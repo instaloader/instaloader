@@ -921,12 +921,7 @@ class Instaloader:
                 count += 1
 
                 shortcode = item["code"] if "code" in item else "no_code"
-
-                date_float = item["device_timestamp"] if "device_timestamp" in item else item["taken_at"]
-                if date_float > 10000000000:
-                    # device_timestamp seems to sometimes be in milliseconds
-                    date_float /= 1000
-                date = datetime.fromtimestamp(date_float)
+                date = datetime.fromtimestamp(item["taken_at"])
 
                 dirname = self.dirname_pattern.format(profile=name, target=filename_target)
                 filename = dirname + '/' + self.filename_pattern.format(profile=name, target=filename_target,
