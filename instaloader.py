@@ -387,10 +387,13 @@ class Instaloader:
         if not self.quiet:
             print(*msg, sep=sep, end=end, flush=flush)
 
-    def error(self, msg):
-        """Log a non-fatal error message to stderr, which is repeated at program termination."""
+    def error(self, msg, repeat_at_end = True):
+        """Log a non-fatal error message to stderr, which is repeated at program termination.
+
+        :param repeat_at_end: Set to false if the message should be printed, but not repeated at program termination."""
         print(msg, file=sys.stderr)
-        self.error_log.append(msg)
+        if repeat_at_end:
+            self.error_log.append(msg)
 
     @contextmanager
     def _error_catcher(self, extra_info: Optional[str] = None):
@@ -433,7 +436,7 @@ class Instaloader:
             if tries <= 1:
                 raise ConnectionException(error_string)
             else:
-                self.error(error_string + " [retrying]")
+                self.error(error_string + " [retrying]", repeat_at_end=False)
             self._sleep()
             self._get_and_write_raw(url, filename, tries - 1)
 
@@ -494,7 +497,7 @@ class Instaloader:
             error_string = "JSON Query to {}: {}".format(url, err)
             if tries <= 1:
                 raise ConnectionException(error_string)
-            self.error(error_string + " [retrying]")
+            self.error(error_string + " [retrying]", repeat_at_end=False)
             if isinstance(err, TooManyRequests):
                 text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
                                 "Please do not use Instagram in your browser or run multiple instances of Instaloader "
@@ -1249,7 +1252,7 @@ class Instaloader:
                             followees = self.get_followees(pentry[1:])
                             targets.update([followee['username'] for followee in followees])
                     else:
-                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                        self.error("--login=USERNAME required to download {}.".format(pentry))
                 elif pentry == ":feed":
                     if username is not None:
                         self._log("Retrieving pictures from your feed...")
@@ -1257,13 +1260,13 @@ class Instaloader:
                             self.download_feed_posts(fast_update=fast_update, max_count=max_count,
                                                      filter_func=filter_func)
                     else:
-                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                        self.error("--login=USERNAME required to download {}.".format(pentry))
                 elif pentry == ":stories":
                     if username is not None:
                         with self._error_catcher():
                             self.download_stories(fast_update=fast_update)
                     else:
-                        print("--login=USERNAME required to download {}.".format(pentry), file=sys.stderr)
+                        self.error("--login=USERNAME required to download {}.".format(pentry))
                 else:
                     targets.add(pentry)
             if len(targets) > 1:
