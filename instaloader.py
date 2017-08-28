@@ -197,6 +197,7 @@ class Post:
 
     @property
     def shortcode(self) -> str:
+        """Media shortcode. URL of the post is instagram.com/p/<shortcode>/."""
         return self._node['shortcode'] if 'shortcode' in self._node else self._node['code']
 
     def __repr__(self):
@@ -247,10 +248,12 @@ class Post:
 
     @property
     def date(self) -> datetime:
+        """Timestamp when the post was created."""
         return datetime.fromtimestamp(self._node["date"] if "date" in self._node else self._node["taken_at_timestamp"])
 
     @property
     def url(self) -> str:
+        """URL of the picture / video thumbnail of the post"""
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -266,6 +269,7 @@ class Post:
 
     @property
     def caption(self) -> Optional[str]:
+        """Caption."""
         if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
             return self._node["edge_media_to_caption"]["edges"][0]["node"]["text"]
         elif "caption" in self._node:
@@ -273,10 +277,12 @@ class Post:
 
     @property
     def is_video(self) -> bool:
+        """True if the Post is a video."""
         return self._node['is_video']
 
     @property
     def video_url(self) -> Optional[str]:
+        """URL of the video, or None."""
         if self.is_video:
             return self._field('video_url')
 
@@ -368,6 +374,7 @@ class Instaloader:
 
     @property
     def is_logged_in(self) -> bool:
+        """True, if this Instaloader instance is logged in."""
         return bool(self.username)
 
     @contextmanager
@@ -589,6 +596,7 @@ class Instaloader:
 
     def graphql_node_list(self, query_id: int, query_variables: Dict[str, Any], query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+        """Retrieve a list of GraphQL nodes."""
         query_variables['first'] = 500
         data = self.graphql_query(query_id, query_variables, query_referer)
         while True:

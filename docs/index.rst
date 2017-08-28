@@ -14,10 +14,13 @@ With `Python <https://www.python.org/>`__ installed, do:
 
 **Instaloader**
 
-- downloads **public and private profiles, hashtags, user stories,
+- downloads **public and private profiles, hashtags, user stories and
   feeds**,
   
-- downloads **comments, geotags, captions** of each post, 
+- downloads **comments, geotags and captions** of each post,
+
+- automatically **detects profile name changes** and renames the target
+  directory accordingly,
   
 - allows **fine-grained customization** of filters and where to store
   downloaded media,

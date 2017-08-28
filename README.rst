@@ -24,16 +24,13 @@ Alternatively, to get the most current version of Instaloader from our
 (pass ``--upgrade`` to upgrade if Instaloader is already installed)
 
 Instaloader requires
-`requests <https://pypi.python.org/pypi/requests>`__, which
+`requests <http://python-requests.org/>`__, which
 will be installed automatically, if it is not already installed.
 
 .. installation-end
 
 How to Automatically Download Pictures from Instagram
 -----------------------------------------------------
-
-(This file is only a summary of
-`the complete Instaloader Documentation <https://instaloader.readthedocs.io/>`__)
 
 .. basic-usage-start
 
@@ -122,7 +119,8 @@ For example, encode the poster's profile name in the filenames with:
 
 The pattern string is formatted with Python's string formatter. This
 gives additional flexibilty for pattern specification. For example,
-strptime-style formatting options are supported for the post's
+`strftime-style formatting options <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior>`__
+are supported for the post's
 timestamp. The default for ``{date}`` is ``{date:%Y-%m-%d_%H-%M-%S}``.
 
 Filter Posts
@@ -343,7 +341,7 @@ get the current username of a profile, given this unique ID
 .. as-module-intro-end
 
 Refer to the
-`Instaloader Documentation <https://instaloader.readthedocs.io/>`__ for
+`Instaloader Documentation <https://instaloader.readthedocs.io/as-module.html>`__ for
 more information.
 
 Disclaimer
