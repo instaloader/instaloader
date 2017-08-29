@@ -309,7 +309,7 @@ Then, you may download all pictures of all followees with
 
 .. code:: python
 
-    for f in loader.get_followers(PROFILE):
+    for f in loader.get_followees(PROFILE):
         loader.download_profile(f['username'])
 
 You could also download your last 20 liked pics with
@@ -325,11 +325,14 @@ To download the last 20 pictures with hashtag #cat, do
 
     loader.download_hashtag('cat', max_count=20)
 
-If logged in, Instaloader is also able to download user stories:
+Generally, Instaloader provides methods to iterate over the Posts from
+a certain source.
 
 .. code:: python
 
-    loader.download_stories()
+    for post in loader.get_hashtag_posts('cat'):
+        # post is an instance of instaloader.Post
+        self.download_post(post, target='#cat')
 
 Each Instagram profile has its own unique ID which stays unmodified even
 if a user changes his/her username. To get said ID, given the profile's
@@ -345,7 +348,7 @@ get the current username of a profile, given this unique ID
 
 .. code:: python
 
-    loader.get_username_by_id(followees[0]['id'])
+    loader.get_username_by_id(loader.get_followees()[0]['id'])
 
 .. as-module-intro-end
 

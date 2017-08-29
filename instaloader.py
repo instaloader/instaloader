@@ -1011,11 +1011,12 @@ class Instaloader:
         """
         Download pictures from the user's feed.
 
-        Example to download up to the 20 pics the user last liked:
-        >>> loader = Instaloader()
-        >>> loader.load_session_from_file('USER')
-        >>> loader.download_feed_posts(max_count=20, fast_update=True,
-        >>>                            filter_func=lambda post: post.viewer_has_liked)
+        Example to download up to the 20 pics the user last liked: ::
+
+            loader = Instaloader()
+            loader.load_session_from_file('USER')
+            loader.download_feed_posts(max_count=20, fast_update=True,
+                                       filter_func=lambda post: post.viewer_has_liked)
 
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
@@ -1049,9 +1050,10 @@ class Instaloader:
                          fast_update: bool = False) -> None:
         """Download pictures of one hashtag.
 
-        To download the last 30 pictures with hashtag #cat, do
-        >>> loader = Instaloader()
-        >>> loader.download_hashtag('cat', max_count=30)
+        To download the last 30 pictures with hashtag #cat, do ::
+
+            loader = Instaloader()
+            loader.download_hashtag('cat', max_count=30)
 
         :param hashtag: Hashtag to download, without leading '#'
         :param max_count: Maximum count of pictures to download
