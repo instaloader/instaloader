@@ -16,6 +16,8 @@ Introduction
    :members:
    :undoc-members:
 
+.. _post-class:
+
 ``Post`` Class
 ^^^^^^^^^^^^^^
 

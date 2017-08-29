@@ -276,6 +276,16 @@ class Post:
             return self._node["caption"]
 
     @property
+    def caption_hashtags(self) -> List[str]:
+        """List of all hashtags (without preceeding #) which occur in the Post's caption."""
+        if not self.caption:
+            return []
+        # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
+        # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
+        hashtag_regex = re.compile(r"(?:#)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        return re.findall(hashtag_regex, self.caption)
+
+    @property
     def is_video(self) -> bool:
         """True if the Post is a video."""
         return self._node['is_video']

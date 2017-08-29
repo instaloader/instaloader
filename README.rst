@@ -129,8 +129,8 @@ Filter Posts
 The ``--only-if`` option allows to specify criterias that posts have to
 meet to be downloaded. If not given, all posts are downloaded. It must
 be a boolean Python expression where the variables ``likes``,
-``comments``, ``viewer_has_liked``, ``is_video``, ``date``, and some
-more (see class ``instaloader.Post`` for a full list) are defined.
+``comments``, ``viewer_has_liked``, ``is_video``, and many
+more are defined.
 
 A few examples:
 
@@ -153,7 +153,16 @@ Or you may **skip videos**:
 
     instaloader --only-if="not is_video" target
 
+Or you may filter by hashtags that occur in the Post's caption. For
+example, to download posts of kittens that are cute: ::
+
+    instaloader --only-if="'cute' in caption_hashtags" "#kitten"
+
 .. basic-usage-end
+
+(For a more complete description of the ``-only-if`` option, refer to
+the `Instaloader Documentation <https://instaloader.readthedocs.io/basic-usage.html#filter-posts>`__)
+
 
 Advanced Options
 ----------------
