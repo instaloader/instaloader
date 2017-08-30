@@ -83,7 +83,7 @@ may specify the following targets:
 
 - ``:feed``: Your **feed** (requires ``--login``),
 
-- ``@profile``: All profiles which are followed by ``profile``, i.e. the
+- ``@profile``: All profiles that are followed by ``profile``, i.e. the
   *followees* of ``profile`` (requires ``--login``).
 
 Instaloader goes through all media matching the specified targets and
@@ -332,7 +332,7 @@ a certain source.
 
     for post in loader.get_hashtag_posts('cat'):
         # post is an instance of instaloader.Post
-        self.download_post(post, target='#cat')
+        loader.download_post(post, target='#cat')
 
 Each Instagram profile has its own unique ID which stays unmodified even
 if a user changes his/her username. To get said ID, given the profile's
@@ -341,14 +341,6 @@ name, you may call
 .. code:: python
 
     loader.get_id_by_username(PROFILE_NAME)
-
-``get_followees()`` also returns unique IDs for all loaded followees. To
-get the current username of a profile, given this unique ID
-``get_username_by_id()`` can be used. For example:
-
-.. code:: python
-
-    loader.get_username_by_id(loader.get_followees()[0]['id'])
 
 .. as-module-intro-end
 

@@ -277,7 +277,7 @@ class Post:
 
     @property
     def caption_hashtags(self) -> List[str]:
-        """List of all hashtags (without preceeding #) which occur in the Post's caption."""
+        """List of all hashtags (without preceeding #) that occur in the Post's caption."""
         if not self.caption:
             return []
         # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
@@ -461,7 +461,7 @@ class Instaloader:
                  session: Optional[requests.Session] = None, tries: int = 3) -> Dict[str, Any]:
         """JSON request to Instagram.
 
-        :param url: URL, relative to https://www.instagram.com/
+        :param url: URL, relative to www.instagram.com/
         :param params: GET parameters
         :param session: Session to use, or None to use self.session
         :param tries: Maximum number of attempts until an exception is raised
@@ -770,7 +770,7 @@ class Instaloader:
 
         If filename is None, the file with the default session path is loaded.
 
-        :raises FileNotFoundError; If the file does not exist.
+        :raises FileNotFoundError: If the file does not exist.
         """
         if filename is None:
             filename = get_default_session_filename(username)
