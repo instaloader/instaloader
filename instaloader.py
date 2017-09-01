@@ -29,7 +29,7 @@ import requests.utils
 import urllib3
 
 
-__version__ = '3.0rc1'
+__version__ = '3.0'
 
 
 try:
