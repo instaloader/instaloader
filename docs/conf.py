@@ -34,7 +34,15 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx_autodoc_typehints',
     'sphinx.ext.githubpages',
+    'sphinx.ext.intersphinx'
 ]
+
+autodoc_default_flags = ['show-inheritance', 'members', 'undoc-members']
+
+autodoc_member_order = 'bysource'
+
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
+                       'requests': ('http://docs.python-requests.org/en/master', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

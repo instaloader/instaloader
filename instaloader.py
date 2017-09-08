@@ -43,7 +43,9 @@ else:
 
 
 class InstaloaderException(Exception):
-    """Base exception for this script"""
+    """Base exception for this script.
+
+    :note: This exception should not be raised directly."""
     pass
 
 
@@ -163,9 +165,13 @@ class Post:
     """
     Structure containing information about an Instagram post.
 
-    Created by Instaloader methods get_profile_posts(), get_hashtag_posts(), get_feed_posts(). Posts are linked to
-    an Instaloader instance which is used for error logging and obtaining of additional metadata, if required.
-    This class unifies access to the properties associated with a post. It implements == and is hashable.
+    Created by Instaloader methods :meth:`.get_profile_posts`, :meth:`.get_hashtag_posts`, :meth:`.get_feed_posts`.
+    Posts are linked to an :class:`Instaloader` instance which is used for error logging and obtaining of additional
+    metadata, if required. This class unifies access to the properties associated with a post. It implements == and is
+    hashable.
+
+    The properties defined here are accessable by the filter expressions specified with the :option:`--only-if`
+    parameter.
     """
 
     LOGIN_REQUIRING_PROPERTIES = ["viewer_has_liked"]
@@ -173,7 +179,7 @@ class Post:
     def __init__(self, instaloader: 'Instaloader', node: Dict[str, Any], profile: Optional[str] = None):
         """Create a Post instance from a node structure as returned by Instagram.
 
-        :param instaloader: Instaloader instance used for additional queries if neccessary.
+        :param instaloader: :class:`Instaloader` instance used for additional queries if neccessary.
         :param node: Node structure.
         :param profile: The name of the owner, if already known at creation.
         """
@@ -340,9 +346,14 @@ class Post:
 class Tristate(Enum):
     """Tri-state to encode whether we should save certain information, i.e. videos, captions, comments or geotags.
 
-    never: Do not save, even if the information is available without any additional request,
-    no_extra_query: Save if and only if available without doing additional queries,
-    always: Save (and query, if neccessary).
+    :attr:`never`
+        Do not save, even if the information is available without any additional request,
+
+    :attr:`no_extra_query`
+        Save if and only if available without doing additional queries,
+
+    :attr:`always`
+        Save (and query, if neccessary).
     """
     never = 0
     no_extra_query = 1
@@ -753,7 +764,7 @@ class Instaloader:
         self._log('') # log output of _get_and_write_raw() does not produce \n
 
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
-        """Saves requests.Session object."""
+        """Saves internally stored :class:`requests.Session` object."""
         if filename is None:
             filename = get_default_session_filename(self.username)
         dirname = os.path.dirname(filename)
@@ -766,7 +777,7 @@ class Instaloader:
             self._log("Saved session to %s." % filename)
 
     def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
-        """Internally stores requests.Session object loaded from file.
+        """Internally stores :class:`requests.Session` object loaded from file.
 
         If filename is None, the file with the default session path is loaded.
 
@@ -784,7 +795,7 @@ class Instaloader:
             self.username = username
 
     def test_login(self, session: Optional[requests.Session]) -> Optional[str]:
-        """Returns the Instagram username to which given requests.Session object belongs, or None."""
+        """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
         if session:
             data = self.get_json('', params={'__a': 1}, session=session)
             return data['graphql']['user']['username'] if 'graphql' in data else None
@@ -1011,7 +1022,7 @@ class Instaloader:
         """
         Download pictures from the user's feed.
 
-        Example to download up to the 20 pics the user last liked: ::
+        Example to download up to the 20 pics the user last liked::
 
             loader = Instaloader()
             loader.load_session_from_file('USER')
@@ -1050,7 +1061,7 @@ class Instaloader:
                          fast_update: bool = False) -> None:
         """Download pictures of one hashtag.
 
-        To download the last 30 pictures with hashtag #cat, do ::
+        To download the last 30 pictures with hashtag #cat, do::
 
             loader = Instaloader()
             loader.download_hashtag('cat', max_count=30)
@@ -1081,7 +1092,8 @@ class Instaloader:
         has changed and return current name of the profile, and store ID of profile.
 
         :param profile: Profile name
-        :param profile_metadata: The profile's metadata (get_profile_metadata()), or None if the profile was not found
+        :param profile_metadata:
+            The profile's metadata (:meth:`get_profile_metadata`), or None if the profile was not found
         :return: current profile name, profile id
         """
         profile_exists = profile_metadata is not None
@@ -1126,7 +1138,7 @@ class Instaloader:
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile))
 
     def get_profile_metadata(self, profile_name: str) -> Dict[str, Any]:
-        """Retrieves a profile's metadata, for use with e.g. get_profile_posts() and check_profile_id()."""
+        """Retrieves a profile's metadata, for use with e.g. :meth:`get_profile_posts` and :meth:`check_profile_id`."""
         try:
             return self.get_json('{}/'.format(profile_name), params={'__a': 1})
         except QueryReturnedNotFoundException:
