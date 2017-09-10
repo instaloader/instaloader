@@ -292,6 +292,25 @@ class Post:
         return re.findall(hashtag_regex, self.caption.lower())
 
     @property
+    def caption_mentions(self) -> List[str]:
+        """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
+        if not self.caption:
+            return []
+        # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
+        # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
+        mention_regex = re.compile(r"(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        return re.findall(mention_regex, self.caption.lower())
+
+    @property
+    def tagged_users(self) -> List[str]:
+        """List of all lowercased users that are tagged in the Post."""
+        try:
+            return [edge['node']['user']['username' ].lower() for edge in self._field('edge_media_to_tagged_user',
+                                                                                      'edges')]
+        except KeyError:
+            return []
+
+    @property
     def is_video(self) -> bool:
         """True if the Post is a video."""
         return self._node['is_video']
