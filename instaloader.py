@@ -170,8 +170,8 @@ class Post:
     metadata, if required. This class unifies access to the properties associated with a post. It implements == and is
     hashable.
 
-    The properties defined here are accessable by the filter expressions specified with the :option:`--only-if`
-    parameter.
+    The properties defined here are accessible by the filter expressions specified with the :option:`--only-if`
+    parameter and exported into JSON files with :option:`--metadata-json`.
     """
 
     LOGIN_REQUIRING_PROPERTIES = ["viewer_has_liked"]
@@ -361,6 +361,22 @@ class Post:
                                                        params={'__a': 1})
             return location_json["location"]
 
+    @staticmethod
+    def json_encoder(obj) -> Dict[str, Any]:
+        """Convert instance of :class:`Post` to a JSON-serializable dictionary."""
+        if not isinstance(obj, Post):
+            raise TypeError("Object of type {} is not a Post object.".format(obj.__class__.__name__))
+        jsondict = {}
+        for prop in dir(Post):
+            if prop[0].isupper() or prop[0] == '_':
+                # skip uppercase and private properties
+                continue
+            val = obj.__getattribute__(prop)
+            if val is True or val is False or isinstance(val, (str, int, float, list)):
+                jsondict[prop] = val
+            elif isinstance(val, datetime):
+                jsondict[prop] = val.isoformat()
+        return jsondict
 
 class Tristate(Enum):
     """Tri-state to encode whether we should save certain information, i.e. videos, captions, comments or geotags.
@@ -387,8 +403,9 @@ class Instaloader:
                  filename_pattern: Optional[str] = None,
                  download_videos: Tristate = Tristate.always,
                  download_geotags: Tristate = Tristate.no_extra_query,
-                 download_captions: Tristate = Tristate.no_extra_query,
-                 download_comments: Tristate = Tristate.no_extra_query):
+                 save_captions: Tristate = Tristate.no_extra_query,
+                 download_comments: Tristate = Tristate.no_extra_query,
+                 save_metadata: Tristate = Tristate.never):
 
         # configuration parameters
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
@@ -401,16 +418,15 @@ class Instaloader:
             if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
         self.download_videos = download_videos
         self.download_geotags = download_geotags
-        self.download_captions = download_captions
+        self.save_captions = save_captions
         self.download_comments = download_comments
-        self.previous_queries = dict()
+        self.save_metadata = save_metadata
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []
 
         # For the adaption of sleep intervals (rate control)
-        self.request_count = 0
-        self.last_request_time = 0
+        self.previous_queries = dict()
 
     @property
     def is_logged_in(self) -> bool:
@@ -423,7 +439,7 @@ class Instaloader:
         new_loader = Instaloader(self.sleep, self.quiet, self.user_agent,
                                  self.dirname_pattern, self.filename_pattern,
                                  self.download_videos, self.download_geotags,
-                                 self.download_captions, self.download_comments)
+                                 self.save_captions, self.download_comments)
         new_loader.previous_queries = self.previous_queries
         yield new_loader
         self.error_log.extend(new_loader.error_log)
@@ -688,6 +704,12 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
+    def save_metadata_json(self, filename: str, post: Post) -> None:
+        """Saves metadata JSON file of a :class:`Post`."""
+        filename += '.json'
+        json.dump(post, fp=open(filename, 'w'), indent=4, default=Post.json_encoder)
+        self._log('json', end=' ', flush=True)
+
     def update_comments(self, filename: str, post: Post) -> None:
         filename += '_comments.json'
         try:
@@ -885,7 +907,7 @@ class Instaloader:
             downloaded = False
 
         # Save caption if desired
-        if self.download_captions is not Tristate.never:
+        if self.save_captions is not Tristate.never:
             if post.caption:
                 self.save_caption(filename, post.date, post.caption)
             else:
@@ -904,6 +926,11 @@ class Instaloader:
         # Update comments if desired
         if self.download_comments is Tristate.always:
             self.update_comments(filename, post)
+
+        # Save metadata as JSON if desired.  It might require an extra query, depending on which information has been
+        # already obtained.  Regarding Tristate interpretation, we always assume that it requires an extra query.
+        if self.save_metadata is Tristate.always:
+            self.save_metadata_json(filename, post)
 
         self._log()
         return downloaded
@@ -989,7 +1016,7 @@ class Instaloader:
                         self._log("Warning: Unable to find story image.")
                         downloaded = False
                     if "caption" in item and item["caption"] is not None and \
-                                    self.download_captions is not Tristate.never:
+                                    self.save_captions is not Tristate.never:
                         caption = item["caption"]
                         if isinstance(caption, dict) and "text" in caption:
                             caption = caption["text"]
@@ -1385,6 +1412,9 @@ def main():
                              'server for each post, which is why it is disabled by default.')
     g_what.add_argument('--no-captions', action='store_true',
                         help='Do not store media captions, although no additional request is needed to obtain them.')
+    g_what.add_argument('--metadata-json', action='store_true',
+                        help='Create a JSON file containing the metadata of each post. This does not include comments '
+                             'nor geotags.')
     g_what.add_argument('-s', '--stories', action='store_true',
                         help='Also download stories of each profile that is downloaded. Requires --login.')
     g_what.add_argument('--stories-only', action='store_true',
@@ -1458,7 +1488,8 @@ def main():
 
         download_videos = Tristate.always if not args.no_videos else Tristate.no_extra_query
         download_comments = Tristate.always if args.comments else Tristate.no_extra_query
-        download_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
+        save_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
+        save_metadata = Tristate.always if args.metadata_json else Tristate.never
 
         if args.geotags and args.no_geotags:
             raise SystemExit("--geotags and --no-geotags given. I am confused and refuse to work.")
@@ -1473,7 +1504,8 @@ def main():
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_videos=download_videos, download_geotags=download_geotags,
-                             download_captions=download_captions, download_comments=download_comments)
+                             save_captions=save_captions, download_comments=download_comments,
+                             save_metadata=save_metadata)
         loader.main(args.profile, args.login.lower() if args.login is not None else None, args.password,
                     args.sessionfile,
                     int(args.count) if args.count is not None else None,

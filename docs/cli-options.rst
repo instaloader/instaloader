@@ -56,6 +56,13 @@ Instead of a *profile* or a *#hashtag*, the special targets
    Also **download stories** of each profile that is downloaded. Requires
    :option:`--login`.
 
+.. option:: --metadata-json
+
+   Create a JSON file containing the metadata of each post. This does not
+   include comments (see :option:`--comments`) nor geotags (see
+   :option:`--geotags`). The JSON files contain the properties of
+   :class:`instaloader.Post`.
+
 .. option:: --stories-only
 
    Rather than downloading regular posts of each specified profile, only

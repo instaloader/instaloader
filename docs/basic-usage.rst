@@ -70,10 +70,13 @@ Instaloader supports the following targets:
 Instaloader goes through all media matching the specified targets and
 downloads the pictures and videos and their captions. You can specify
 
-- :option:`--comments`, to also **download comments** of each post and
+- :option:`--comments`, to also **download comments** of each post,
 
 - :option:`--geotags`, to **download geotags** of each post and save them as
-  Google Maps link.
+  Google Maps link,
+
+- :option:`--metadata-json`, to store further post metadata in a separate JSON
+  file.
 
 .. _filename-specification:
 
