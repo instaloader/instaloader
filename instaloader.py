@@ -405,7 +405,8 @@ class Instaloader:
                  download_geotags: Tristate = Tristate.no_extra_query,
                  save_captions: Tristate = Tristate.no_extra_query,
                  download_comments: Tristate = Tristate.no_extra_query,
-                 save_metadata: Tristate = Tristate.never):
+                 save_metadata: Tristate = Tristate.never,
+                 max_connection_attempts: int = 3):
 
         # configuration parameters
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
@@ -421,6 +422,7 @@ class Instaloader:
         self.save_captions = save_captions
         self.download_comments = download_comments
         self.save_metadata = save_metadata
+        self.max_connection_attempts = max_connection_attempts
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []
@@ -439,7 +441,8 @@ class Instaloader:
         new_loader = Instaloader(self.sleep, self.quiet, self.user_agent,
                                  self.dirname_pattern, self.filename_pattern,
                                  self.download_videos, self.download_geotags,
-                                 self.save_captions, self.download_comments)
+                                 self.save_captions, self.download_comments,
+                                 self.save_metadata, self.max_connection_attempts)
         new_loader.previous_queries = self.previous_queries
         yield new_loader
         self.error_log.extend(new_loader.error_log)
@@ -477,7 +480,7 @@ class Instaloader:
         if self.sleep:
             time.sleep(random.uniform(0.5, 3))
 
-    def _get_and_write_raw(self, url: str, filename: str, tries: int = 3) -> None:
+    def _get_and_write_raw(self, url: str, filename: str, _attempt = 1) -> None:
         """Downloads raw data.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
@@ -496,21 +499,23 @@ class Instaloader:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
         except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
             error_string = "URL {}: {}".format(url, err)
-            if tries <= 1:
+            if _attempt == self.max_connection_attempts:
                 raise ConnectionException(error_string)
-            else:
-                self.error(error_string + " [retrying]", repeat_at_end=False)
-            self._sleep()
-            self._get_and_write_raw(url, filename, tries - 1)
+            self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+            try:
+                self._sleep()
+                self._get_and_write_raw(url, filename, _attempt + 1)
+            except KeyboardInterrupt:
+                self.error("[skipped by user]", repeat_at_end=False)
+                raise ConnectionException(error_string)
 
     def get_json(self, url: str, params: Dict[str, Any],
-                 session: Optional[requests.Session] = None, tries: int = 3) -> Dict[str, Any]:
+                 session: Optional[requests.Session] = None, _attempt = 1) -> Dict[str, Any]:
         """JSON request to Instagram.
 
         :param url: URL, relative to www.instagram.com/
         :param params: GET parameters
         :param session: Session to use, or None to use self.session
-        :param tries: Maximum number of attempts until an exception is raised
         :return: Decoded response dictionary
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
@@ -558,21 +563,25 @@ class Instaloader:
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = "JSON Query to {}: {}".format(url, err)
-            if tries <= 1:
+            if _attempt == self.max_connection_attempts:
                 raise ConnectionException(error_string)
-            self.error(error_string + " [retrying]", repeat_at_end=False)
-            if isinstance(err, TooManyRequests):
-                text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
-                                "Please do not use Instagram in your browser or run multiple instances of Instaloader "
-                                "in parallel.")
-                print(textwrap.fill(text_for_429), file=sys.stderr)
-                if is_graphql_query:
-                    waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)
-                    if waittime > 0:
-                        self._log('The request will be retried in {} seconds.'.format(waittime))
-                        time.sleep(waittime)
-            self._sleep()
-            return self.get_json(url, params, sess, tries - 1)
+            self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+            text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
+                            "Please do not use Instagram in your browser or run multiple instances of Instaloader "
+                            "in parallel.")
+            try:
+                if isinstance(err, TooManyRequests):
+                    print(textwrap.fill(text_for_429), file=sys.stderr)
+                    if is_graphql_query:
+                        waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)
+                        if waittime > 0:
+                            self._log('The request will be retried in {} seconds.'.format(waittime))
+                            time.sleep(waittime)
+                self._sleep()
+                return self.get_json(url, params, sess, _attempt + 1)
+            except KeyboardInterrupt:
+                self.error("[skipped by user]", repeat_at_end=False)
+                raise ConnectionException(error_string)
 
     def _default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
         """Returns default HTTP header we use for requests."""
@@ -1464,6 +1473,10 @@ def main():
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
+    g_how.add_argument('--max-connection-attempts', metavar='N', type=int, default=3,
+                       help='Maximum number of connection attempts until a request is aborted. Defaults to 3. If a '
+                            'connection fails, it can by manually skipped by hitting CTRL+C. Set this to 0 to retry '
+                            'infinitely.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -1505,7 +1518,7 @@ def main():
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_videos=download_videos, download_geotags=download_geotags,
                              save_captions=save_captions, download_comments=download_comments,
-                             save_metadata=save_metadata)
+                             save_metadata=save_metadata, max_connection_attempts=args.max_connection_attempts)
         loader.main(args.profile, args.login.lower() if args.login is not None else None, args.password,
                     args.sessionfile,
                     int(args.count) if args.count is not None else None,

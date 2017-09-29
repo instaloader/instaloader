@@ -142,6 +142,12 @@ How to Download
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
    Chrome/51.
 
+.. option:: --max-connection-attempts N
+
+   Maximum number of connection attempts until a request is aborted. Defaults
+   to ``3``. If a connection fails, it can by manually skipped by hitting
+   :kbd:`Control-c`. Set this to ``0`` to retry infinitely.
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
