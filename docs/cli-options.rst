@@ -92,7 +92,7 @@ matching the specified targets.
 .. option:: --count COUNT
 
    Do not attempt to download more than COUNT posts.  Applies only to
-   ``#hashtag``, ``:feed-all`` and ``:feed-liked``.
+   ``#hashtag`` and ``:feed``.
 
 
 Login (Download Private Profiles)
@@ -145,7 +145,7 @@ How to Download
 .. option:: --max-connection-attempts N
 
    Maximum number of connection attempts until a request is aborted. Defaults
-   to ``3``. If a connection fails, it can by manually skipped by hitting
+   to ``3``. If a connection fails, it can be manually skipped by hitting
    :kbd:`Control-c`. Set this to ``0`` to retry infinitely.
 
 Miscellaneous Options

@@ -1442,7 +1442,7 @@ def main():
                              'flag is recommended when you use Instaloader to update your personal Instagram archive.')
     g_stop.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
-                             'Applies only to #hashtag, :feed-all and :feed-liked.')
+                             'Applies only to #hashtag and :feed.')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
@@ -1475,7 +1475,7 @@ def main():
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
     g_how.add_argument('--max-connection-attempts', metavar='N', type=int, default=3,
                        help='Maximum number of connection attempts until a request is aborted. Defaults to 3. If a '
-                            'connection fails, it can by manually skipped by hitting CTRL+C. Set this to 0 to retry '
+                            'connection fails, it can be manually skipped by hitting CTRL+C. Set this to 0 to retry '
                             'infinitely.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
