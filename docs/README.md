@@ -10,6 +10,6 @@ https://instaloader.readthedocs.io/
 The documentation is created with [Sphinx](http://www.sphinx-doc.org/). To build it, use
 
 ```
-pip3 install sphinx
+pip3 install sphinx sphinx-autodoc-typehints
 make html
 ```

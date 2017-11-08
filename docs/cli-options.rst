@@ -134,8 +134,11 @@ How to Download
    with ``--dirname-pattern``.  ``{profile}`` is replaced by the profile name,
    ``{target}`` is replaced by the target you specified, i.e.  either ``:feed``,
    ``#hashtag`` or the profile name.  Also, the fields ``{date}`` and
-   ``{shortcode}`` can be specified.  Defaults to ``{date:%Y-%m-%d_%H-%M-%S}``.
-   See :ref:`filename-specification`.
+   ``{shortcode}`` can be specified.  In case of not downloading stories, the
+   attributes of the :class:`.Post` class can be used in addition, e.g.
+   ``{post.owner_id}`` or ``{post.mediaid}``.
+   Defaults to
+   ``{date:%Y-%m-%d_%H-%M-%S}``.  See :ref:`filename-specification`.
 
 .. option:: --user-agent USER_AGENT
 
