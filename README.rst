@@ -20,6 +20,12 @@ Instaloader
 - allows **fine-grained customization** of filters and where to store
   downloaded media.
 
+::
+
+    instaloader [--comments] [--geotags] [--stories]
+                [--login YOUR-USERNAME] [--fast-update]
+                profile | "#hashtag" | :stories | :feed
+
 `Instaloader Documentation <https://instaloader.readthedocs.io/>`__
 
 

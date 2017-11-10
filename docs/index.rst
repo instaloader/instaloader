@@ -1,6 +1,8 @@
 Instaloader
 ===========
 
+.. highlight:: none
+
 **Instaloader** is a tool to download pictures (or videos) along with
 their captions and other metadata from Instagram.
 
@@ -25,6 +27,12 @@ With `Python <https://www.python.org/>`__ installed, do::
 
 - is free `open source <https://github.com/Thammus/instaloader>`__
   software written in Python.
+
+::
+
+    instaloader [--comments] [--geotags] [--stories]
+                [--login YOUR-USERNAME] [--fast-update]
+                profile | "#hashtag" | :stories | :feed
 
 
 Table of Contents
