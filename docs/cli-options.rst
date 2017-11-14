@@ -1,24 +1,26 @@
 Command Line Options
 ====================
 
-The following flags can be given to Instaloader to specify how profiles should
-be downloaded.
+Instaloader is invoked with::
 
-To get a list of all flags, their abbreviations and their descriptions,
-run ``instaloader --help``.
+   $ instaloader [options] target [target ...]
+
+where ``target`` is a ``profile``, a ``"#hashtag"``, ``@profile`` (all profiles
+that *profile* is following), or if logged in ``:feed`` (pictures from your
+feed) or ``:stories`` (stories of your followees).
+
+Here we explain the additional options that can be given to Instaloader to
+customize its behavior.  To get a list of all flags, their abbreviations and
+their descriptions, you may also run ``instaloader --help``.
 
 What to Download
 ^^^^^^^^^^^^^^^^
 
-Specify a list of profiles or #hashtags. For each of these, Instaloader
-creates a folder and downloads all posts along with the pictures's
-captions and the current **profile picture**. If an already-downloaded profile
-has been renamed, Instaloader automatically **finds it by its unique ID** and
-renames the folder likewise.
-
-Instead of a *profile* or a *#hashtag*, the special targets
-``:feed`` (pictures from your feed) and
-``:stories`` (stories of your followees) can be specified.
+Specify a list of targets (profiles, #hashtags, ``:feed`` or ``:stories``). For
+each of these, Instaloader creates a folder and stores all posts along with the
+pictures's captions and the current **profile picture** there. If an
+already-downloaded profile has been renamed, Instaloader automatically **finds
+it by its unique ID** and renames the folder likewise.
 
 .. option:: --profile-pic-only
 
