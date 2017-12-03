@@ -1,3 +1,9 @@
+.. meta::
+   :description:
+      Command line tool to download pictures (and videos) from Instagram.
+      Instaloader downloads public and private profiles, hashtags, user stories,
+      feeds, comments, geotags, captions and other metadata of each post.
+
 Instaloader
 ===========
 
