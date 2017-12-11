@@ -676,7 +676,7 @@ class Instaloader:
     def graphql_node_list(self, query_id: int, query_variables: Dict[str, Any], query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
-        query_variables['first'] = 500
+        query_variables['first'] = 200
         data = self.graphql_query(query_id, query_variables, query_referer)
         while True:
             edge_struct = edge_extractor(data)
@@ -1230,7 +1230,7 @@ class Instaloader:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
             data = self.graphql_query(17888483320059182, {'id': profile_metadata['user']['id'],
-                                                          'first': 500,
+                                                          'first': 200,
                                                           'after': end_cursor},
                                       'https://www.instagram.com/{0}/'.format(profile_name))
             media = data['data']['user']['edge_owner_to_timeline_media']
