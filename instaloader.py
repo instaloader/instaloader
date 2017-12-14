@@ -1025,43 +1025,53 @@ class Instaloader:
             for item in user_stories["items"]:
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
-
-                shortcode = item["code"] if "code" in item else "no_code"
-                date = datetime.fromtimestamp(item["taken_at"])
-
-                dirname = self.dirname_pattern.format(profile=name, target=filename_target)
-                filename = dirname + '/' + self.filename_pattern.format(profile=name, target=filename_target,
-                                                                        date=date,
-                                                                        shortcode=shortcode)
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
-                with self._error_catcher('Download story {} from user {}'.format(shortcode, name)):
-                    if "image_versions2" in item:
-                        url = item["image_versions2"]["candidates"][0]["url"]
-                        downloaded = self.download_pic(filename=filename,
-                                                       url=url,
-                                                       mtime=date)
-                    else:
-                        self._log("Warning: Unable to find story image.")
-                        downloaded = False
-                    if "caption" in item and item["caption"] is not None and \
-                                    self.save_captions is not Tristate.never:
-                        caption = item["caption"]
-                        if isinstance(caption, dict) and "text" in caption:
-                            caption = caption["text"]
-                        self.save_caption(filename, date, caption)
-                    else:
-                        self._log("<no caption>", end=' ', flush=True)
-                    if "video_versions" in item and self.download_videos is Tristate.always:
-                        downloaded = self.download_pic(filename=filename,
-                                                       url=item["video_versions"][0]["url"],
-                                                       mtime=date)
-                    if item["story_locations"] and self.download_geotags is not Tristate.never:
-                        location = item["story_locations"][0]["location"]
-                        if location:
-                            self.save_location(filename, location, date)
-                    self._log()
+                with self._error_catcher('Download story from user {}'.format(name)):
+                    downloaded = self.download_story(item, filename_target, name)
                     if fast_update and not downloaded:
                         break
+
+    def download_story(self, item: Dict[str, Any], target: str, profile: str) -> bool:
+        """Download one user story.
+
+        :param item: Story item, as in story['items'] for story in :meth:`get_stories`
+        :param target: Replacement for {target} in dirname_pattern and filename_pattern
+        :param profile: Owner profile name
+        :return: True if something was downloaded, False otherwise, i.e. file was already there
+        """
+
+        shortcode = item["code"] if "code" in item else "no_code"
+        date = datetime.fromtimestamp(item["taken_at"])
+        dirname = self.dirname_pattern.format(profile=profile, target=target)
+        filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
+                                                                date=date,
+                                                                shortcode=shortcode)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        if "image_versions2" in item:
+            url = item["image_versions2"]["candidates"][0]["url"]
+            downloaded = self.download_pic(filename=filename,
+                                           url=url,
+                                           mtime=date)
+        else:
+            self._log("Warning: Unable to find story image.")
+            downloaded = False
+        if "caption" in item and item["caption"] is not None and \
+                self.save_captions is not Tristate.never:
+            caption = item["caption"]
+            if isinstance(caption, dict) and "text" in caption:
+                caption = caption["text"]
+            self.save_caption(filename, date, caption)
+        else:
+            self._log("<no caption>", end=' ', flush=True)
+        if "video_versions" in item and self.download_videos is Tristate.always:
+            downloaded = self.download_pic(filename=filename,
+                                           url=item["video_versions"][0]["url"],
+                                           mtime=date)
+        if item["story_locations"] and self.download_geotags is not Tristate.never:
+            location = item["story_locations"][0]["location"]
+            if location:
+                self.save_location(filename, location, date)
+        self._log()
+        return downloaded
 
     def get_feed_posts(self) -> Iterator[Post]:
         """Get Posts of the user's feed."""
