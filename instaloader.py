@@ -1240,7 +1240,8 @@ class Instaloader:
             end_cursor = media['page_info']['end_cursor']
 
     def download_profile(self, name: str,
-                         profile_pic_only: bool = False, fast_update: bool = False,
+                         profile_pic: bool = True, profile_pic_only: bool = False,
+                         fast_update: bool = False,
                          download_stories: bool = False, download_stories_only: bool = False,
                          filter_func: Optional[Callable[[Post], bool]] = None) -> None:
         """Download one profile"""
@@ -1261,8 +1262,9 @@ class Instaloader:
             profile_metadata = self.get_profile_metadata(name)
 
         # Download profile picture
-        with self._error_catcher('Download profile picture of {}'.format(name)):
-            self.download_profilepic(name, profile_metadata["user"]["profile_pic_url"])
+        if profile_pic or profile_pic_only:
+            with self._error_catcher('Download profile picture of {}'.format(name)):
+                self.download_profilepic(name, profile_metadata["user"]["profile_pic_url"])
         if profile_pic_only:
             return
 
@@ -1320,7 +1322,8 @@ class Instaloader:
 
     def main(self, profilelist: List[str], username: Optional[str] = None, password: Optional[str] = None,
              sessionfile: Optional[str] = None, max_count: Optional[int] = None,
-             profile_pic_only: bool = False, fast_update: bool = False,
+             profile_pic: bool = True, profile_pic_only: bool = False,
+             fast_update: bool = False,
              stories: bool = False, stories_only: bool = False,
              filter_str: Optional[str] = None) -> None:
         """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
@@ -1384,7 +1387,7 @@ class Instaloader:
             for target in targets:
                 with self._error_catcher():
                     try:
-                        self.download_profile(target, profile_pic_only, fast_update, stories, stories_only,
+                        self.download_profile(target, profile_pic, profile_pic_only, fast_update, stories, stories_only,
                                               filter_func=filter_func)
                     except ProfileNotExistsException as err:
                         if username is not None:
@@ -1392,8 +1395,8 @@ class Instaloader:
                             self._log("Trying again anonymously, helps in case you are just blocked.")
                             with self.anonymous_copy() as anonymous_loader:
                                 with self._error_catcher():
-                                    anonymous_loader.download_profile(target, profile_pic_only, fast_update,
-                                                                      filter_func=filter_func)
+                                    anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
+                                                                      fast_update, filter_func=filter_func)
                         else:
                             raise err
         except KeyboardInterrupt:
@@ -1428,6 +1431,8 @@ def main():
                              'followees.')
     g_what.add_argument('-P', '--profile-pic-only', action='store_true',
                         help='Only download profile picture.')
+    g_what.add_argument('--no-profile-pic', action='store_true',
+                        help='Do not download profile picture.')
     g_what.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
     g_what.add_argument('-G', '--geotags', action='store_true',
@@ -1450,7 +1455,7 @@ def main():
                         help='Also download stories of each profile that is downloaded. Requires --login.')
     g_what.add_argument('--stories-only', action='store_true',
                         help='Rather than downloading regular posts of each specified profile, only download '
-                             'stories. Requires --login.')
+                             'stories. Requires --login. Does not imply --no-profile-pic.')
     g_what.add_argument('--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
@@ -1542,10 +1547,17 @@ def main():
                              download_videos=download_videos, download_geotags=download_geotags,
                              save_captions=save_captions, download_comments=download_comments,
                              save_metadata=save_metadata, max_connection_attempts=args.max_connection_attempts)
-        loader.main(args.profile, args.login.lower() if args.login is not None else None, args.password,
-                    args.sessionfile,
-                    int(args.count) if args.count is not None else None,
-                    args.profile_pic_only, args.fast_update, args.stories, args.stories_only, args.only_if)
+        loader.main(args.profile,
+                    username=args.login.lower() if args.login is not None else None,
+                    password=args.password,
+                    sessionfile=args.sessionfile,
+                    max_count=int(args.count) if args.count is not None else None,
+                    profile_pic=not args.no_profile_pic,
+                    profile_pic_only=args.profile_pic_only,
+                    fast_update=args.fast_update,
+                    stories=args.stories,
+                    stories_only=args.stories_only,
+                    filter_str=args.only_if)
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
 

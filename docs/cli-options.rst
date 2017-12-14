@@ -26,6 +26,10 @@ it by its unique ID** and renames the folder likewise.
 
    Only download profile picture.
 
+.. option:: --no-profile-pic
+
+   Do not download profile picture.
+
 .. option:: --no-videos
 
    Do not download videos.
@@ -68,7 +72,8 @@ it by its unique ID** and renames the folder likewise.
 .. option:: --stories-only
 
    Rather than downloading regular posts of each specified profile, only
-   download stories.  Requires :option:`--login`.
+   download stories.  Requires :option:`--login`. Does not imply
+   :option:`--no-profile-pic`.
 
 .. option:: --only-if filter
 
