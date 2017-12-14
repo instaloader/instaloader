@@ -416,6 +416,7 @@ class Instaloader:
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
                  download_videos: Tristate = Tristate.always,
+                 download_video_thumbnails: Tristate = Tristate.always,
                  download_geotags: Tristate = Tristate.no_extra_query,
                  save_captions: Tristate = Tristate.no_extra_query,
                  download_comments: Tristate = Tristate.no_extra_query,
@@ -432,6 +433,7 @@ class Instaloader:
         self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
             if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
         self.download_videos = download_videos
+        self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
         self.save_captions = save_captions
         self.download_comments = download_comments
@@ -454,7 +456,9 @@ class Instaloader:
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
         new_loader = Instaloader(self.sleep, self.quiet, self.user_agent,
                                  self.dirname_pattern, self.filename_pattern,
-                                 self.download_videos, self.download_geotags,
+                                 self.download_videos,
+                                 self.download_video_thumbnails,
+                                 self.download_geotags,
                                  self.save_captions, self.download_comments,
                                  self.save_metadata, self.max_connection_attempts)
         new_loader.previous_queries = self.previous_queries
@@ -908,27 +912,30 @@ class Instaloader:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
+        downloaded = False
         if post.typename == 'GraphSidecar':
             edge_number = 1
-            downloaded = True
             for edge in post.get_sidecar_edges():
-                edge_downloaded = self.download_pic(filename=filename,
+                # Download picture or video thumbnail
+                if not edge['node']['is_video'] or self.download_video_thumbnails is Tristate.always:
+                    downloaded |= self.download_pic(filename=filename,
                                                     url=edge['node']['display_url'],
                                                     mtime=post.date,
                                                     filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
                 if edge['node']['is_video'] and self.download_videos is Tristate.always:
-                    self.download_pic(filename=filename,
-                                      url=edge['node']['video_url'],
-                                      mtime=post.date,
-                                      filename_suffix=str(edge_number))
-                downloaded = downloaded and edge_downloaded
+                    downloaded |= self.download_pic(filename=filename,
+                                                    url=edge['node']['video_url'],
+                                                    mtime=post.date,
+                                                    filename_suffix=str(edge_number))
                 edge_number += 1
-        elif post.typename in ['GraphImage', 'GraphVideo']:
+        elif post.typename == 'GraphImage':
             downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date)
+        elif post.typename == 'GraphVideo':
+            if self.download_video_thumbnails is Tristate.always:
+                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date)
         else:
             self.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
-            downloaded = False
 
         # Save caption if desired
         if self.save_captions is not Tristate.never:
@@ -939,7 +946,7 @@ class Instaloader:
 
         # Download video if desired
         if post.is_video and self.download_videos is Tristate.always:
-            self.download_pic(filename=filename, url=post.video_url, mtime=post.date)
+            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date)
 
         # Download geotags if desired
         if self.download_geotags is Tristate.always:
@@ -1046,14 +1053,15 @@ class Instaloader:
                                                                 date=date,
                                                                 shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
+        downloaded = False
         if "image_versions2" in item:
-            url = item["image_versions2"]["candidates"][0]["url"]
-            downloaded = self.download_pic(filename=filename,
-                                           url=url,
-                                           mtime=date)
+            if "video_versions" not in item or self.download_video_thumbnails is Tristate.always:
+                url = item["image_versions2"]["candidates"][0]["url"]
+                downloaded = self.download_pic(filename=filename,
+                                               url=url,
+                                               mtime=date)
         else:
             self._log("Warning: Unable to find story image.")
-            downloaded = False
         if "caption" in item and item["caption"] is not None and \
                 self.save_captions is not Tristate.never:
             caption = item["caption"]
@@ -1063,9 +1071,9 @@ class Instaloader:
         else:
             self._log("<no caption>", end=' ', flush=True)
         if "video_versions" in item and self.download_videos is Tristate.always:
-            downloaded = self.download_pic(filename=filename,
-                                           url=item["video_versions"][0]["url"],
-                                           mtime=date)
+            downloaded |= self.download_pic(filename=filename,
+                                            url=item["video_versions"][0]["url"],
+                                            mtime=date)
         if item["story_locations"] and self.download_geotags is not Tristate.never:
             location = item["story_locations"][0]["location"]
             if location:
@@ -1445,6 +1453,8 @@ def main():
                         help='Do not download profile picture.')
     g_what.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
+    g_what.add_argument('--no-video-thumbnails', action='store_true',
+                        help='Do not download thumbnails of videos.')
     g_what.add_argument('-G', '--geotags', action='store_true',
                         help='Download geotags when available. Geotags are stored as a '
                              'text file with the location\'s name and a Google Maps link. '
@@ -1538,6 +1548,7 @@ def main():
                              "eventually --only-if=viewer_has_liked.")
 
         download_videos = Tristate.always if not args.no_videos else Tristate.no_extra_query
+        download_video_thumbnails = Tristate.always if not args.no_video_thumbnails else Tristate.never
         download_comments = Tristate.always if args.comments else Tristate.no_extra_query
         save_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
         save_metadata = Tristate.always if args.metadata_json else Tristate.never
@@ -1554,7 +1565,8 @@ def main():
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
-                             download_videos=download_videos, download_geotags=download_geotags,
+                             download_videos=download_videos, download_video_thumbnails=download_video_thumbnails,
+                             download_geotags=download_geotags,
                              save_captions=save_captions, download_comments=download_comments,
                              save_metadata=save_metadata, max_connection_attempts=args.max_connection_attempts)
         loader.main(args.profile,

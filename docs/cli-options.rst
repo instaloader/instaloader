@@ -34,6 +34,10 @@ it by its unique ID** and renames the folder likewise.
 
    Do not download videos.
 
+.. option:: --no-video-thumbnails
+
+   Do not download thumbnails of videos.
+
 .. option:: --geotags
 
    **Download geotags** when available. Geotags are stored as a text file with
