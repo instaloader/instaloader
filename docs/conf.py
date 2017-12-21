@@ -19,6 +19,9 @@
 #
 import os
 import sys
+import re
+import requests
+from datetime import datetime
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ------------------------------------------------
@@ -352,3 +355,15 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #
 # texinfo_no_detailmenu = False
+
+
+def get_latest_tag(repo):
+    tags = requests.get("https://api.github.com/repos/{}/git/refs/tags".format(repo)).json()
+    latest_tag = requests.get(tags[-1]['object']['url']).json()
+    version_string = latest_tag['tag']
+    version_date = datetime.strptime(latest_tag['tagger']['date'], "%Y-%m-%dT%H:%M:%SZ")
+    return version_string[1:], re.sub(r'\b0+(\d)', r'\1', "{:%d %b %Y}".format(version_date))
+
+current_release, current_release_date = get_latest_tag('Thammus/instaloader')
+
+html_context = {'current_release': current_release, 'current_release_date': current_release_date}

@@ -1,1 +1,3 @@
+requests
+sphinx
 sphinx-autodoc-typehints
