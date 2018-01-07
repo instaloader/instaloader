@@ -144,7 +144,7 @@ How to Download
    Prefix of filenames. Posts are stored in the directory whose pattern is given
    with ``--dirname-pattern``.  ``{profile}`` is replaced by the profile name,
    ``{target}`` is replaced by the target you specified, i.e.  either ``:feed``,
-   ``#hashtag`` or the profile name.  Also, the fields ``{date}`` and
+   ``#hashtag`` or the profile name.  Also, the fields ``{date}``, ``{date_utc}`` and
    ``{shortcode}`` can be specified.  In case of not downloading stories, the
    attributes of the :class:`.Post` class can be used in addition, e.g.
    ``{post.owner_id}`` or ``{post.mediaid}``.

@@ -268,8 +268,13 @@ class Post:
 
     @property
     def date(self) -> datetime:
-        """Timestamp when the post was created."""
+        """Timestamp when the post was created (local time zone)."""
         return datetime.fromtimestamp(self._node["date"] if "date" in self._node else self._node["taken_at_timestamp"])
+
+    @property
+    def date_utc(self) -> datetime:
+        """Timestamp when the post was created (UTC)."""
+        return datetime.utcfromtimestamp(self._node["date"] if "date" in self._node else self._node["taken_at_timestamp"])
 
     @property
     def url(self) -> str:
@@ -430,8 +435,12 @@ class Instaloader:
         self.sleep = sleep
         self.quiet = quiet
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
-        self.filename_pattern = filename_pattern.replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
-            if filename_pattern is not None else '{date:%Y-%m-%d_%H-%M-%S}'
+        if filename_pattern is not None:
+            self.filename_pattern = filename_pattern \
+                .replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
+                .replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
+        else:
+            self.filename_pattern = '{date:%Y-%m-%d_%H-%M-%S}'
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
@@ -907,7 +916,8 @@ class Instaloader:
         profilename = post.owner_username if needs_profilename else None
         dirname = self.dirname_pattern.format(profile=profilename, target=target.lower())
         filename = dirname + '/' + self.filename_pattern.format(profile=profilename, target=target.lower(),
-                                                                date=post.date, shortcode=post.shortcode,
+                                                                date=post.date, date_utc=post.date_utc,
+                                                                shortcode=post.shortcode,
                                                                 post=post)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -1048,9 +1058,10 @@ class Instaloader:
 
         shortcode = item["code"] if "code" in item else "no_code"
         date = datetime.fromtimestamp(item["taken_at"])
+        date_utc = datetime.utcfromtimestamp(item["taken_at"])
         dirname = self.dirname_pattern.format(profile=profile, target=target)
         filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
-                                                                date=date,
+                                                                date=date, date_utc=date_utc,
                                                                 shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False

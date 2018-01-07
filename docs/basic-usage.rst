@@ -95,7 +95,7 @@ pattern, the token ``{target}`` is replaced by the target name, and
 :option:`--filename-pattern` configures the path of the post's files relative
 to the target directory. The default is ``--filename-pattern={date}``.
 The tokens ``{target}`` and ``{profile}`` are replaced like in the
-dirname pattern. Further, the tokens ``{date}`` and ``{shortcode}`` are
+dirname pattern. Further, the tokens ``{date}``, ``{date_utc}`` and ``{shortcode}`` are
 defined. Additionally, in case of not downloading stories, the attributes of
 :class:`.Post` can be used, e.g. ``{post.owner_id}`` or ``{post.mediaid}``.
 
