@@ -24,7 +24,15 @@ Instaloader requires
 `requests <http://python-requests.org/>`__, which
 will be installed automatically, if it is not already installed.
 
-If you do not want to use pip, even though it is highly recommended,
-and prefer installing Instaloader manually,
-`Download the Source <https://github.com/Thammus/instaloader/releases>`__,
-extract the Zip or Tarball and execute ``instaloader.py`` from there.
+**Alternative methods for installing Instaloader:**
+
+- If you do not want to use pip, even though it is highly recommended,
+  and prefer to **install Instaloader manually**,
+  `Download the Source <https://github.com/Thammus/instaloader/releases>`__,
+  extract the Zip or Tarball and execute ``instaloader.py`` from there.
+
+- On **Arch Linux**, you may install Instaloader using the
+  `Instaloader AUR package <https://aur.archlinux.org/packages/instaloader/>`__.
+
+- On **Gentoo Linux**, you may install Instaloader using the
+  `Instaloader Ebuild <https://bugs.gentoo.org/642100>`__.
