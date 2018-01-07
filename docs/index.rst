@@ -51,6 +51,7 @@ Table of Contents
    basic-usage
    cli-options
    as-module
+   contributing
 
 Useful Links
 ------------
