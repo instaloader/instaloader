@@ -267,7 +267,7 @@ class Post:
         return int(self._field('owner', 'id'))
 
     @property
-    def date(self) -> datetime:
+    def date_local(self) -> datetime:
         """Timestamp when the post was created (local time zone)."""
         return datetime.fromtimestamp(self._node["date"] if "date" in self._node else self._node["taken_at_timestamp"])
 
@@ -436,11 +436,14 @@ class Instaloader:
         self.quiet = quiet
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         if filename_pattern is not None:
+            filename_pattern = re.sub(r"(\{(?:post\.)?date)([:}])", r"\1_utc\2", filename_pattern)
+            filename_pattern = re.sub(r"(?i)(\{(date|date_utc|post.date_utc):(?![^}]*UTC[^}]*).*?)}",
+                                      r"\1_UTC}", filename_pattern)
             self.filename_pattern = filename_pattern \
-                .replace('{date}', '{date:%Y-%m-%d_%H-%M-%S}') \
+                .replace('{date}', '{date_utc}') \
                 .replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
         else:
-            self.filename_pattern = '{date:%Y-%m-%d_%H-%M-%S}'
+            self.filename_pattern = '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}'
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
@@ -916,7 +919,7 @@ class Instaloader:
         profilename = post.owner_username if needs_profilename else None
         dirname = self.dirname_pattern.format(profile=profilename, target=target.lower())
         filename = dirname + '/' + self.filename_pattern.format(profile=profilename, target=target.lower(),
-                                                                date=post.date, date_utc=post.date_utc,
+                                                                date_utc=post.date_utc,
                                                                 shortcode=post.shortcode,
                                                                 post=post)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -930,39 +933,39 @@ class Instaloader:
                 if not edge['node']['is_video'] or self.download_video_thumbnails is Tristate.always:
                     downloaded |= self.download_pic(filename=filename,
                                                     url=edge['node']['display_url'],
-                                                    mtime=post.date,
+                                                    mtime=post.date_local,
                                                     filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
                 if edge['node']['is_video'] and self.download_videos is Tristate.always:
                     downloaded |= self.download_pic(filename=filename,
                                                     url=edge['node']['video_url'],
-                                                    mtime=post.date,
+                                                    mtime=post.date_local,
                                                     filename_suffix=str(edge_number))
                 edge_number += 1
         elif post.typename == 'GraphImage':
-            downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date)
+            downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
         elif post.typename == 'GraphVideo':
             if self.download_video_thumbnails is Tristate.always:
-                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date)
+                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
         else:
             self.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
         if self.save_captions is not Tristate.never:
             if post.caption:
-                self.save_caption(filename, post.date, post.caption)
+                self.save_caption(filename, post.date_local, post.caption)
             else:
                 self._log("<no caption>", end=' ', flush=True)
 
         # Download video if desired
         if post.is_video and self.download_videos is Tristate.always:
-            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date)
+            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
         if self.download_geotags is Tristate.always:
             location = post.get_location()
             if location:
-                self.save_location(filename, location, post.date)
+                self.save_location(filename, location, post.date_local)
 
         # Update comments if desired
         if self.download_comments is Tristate.always:
@@ -1057,11 +1060,11 @@ class Instaloader:
         """
 
         shortcode = item["code"] if "code" in item else "no_code"
-        date = datetime.fromtimestamp(item["taken_at"])
+        date_local = datetime.fromtimestamp(item["taken_at"])
         date_utc = datetime.utcfromtimestamp(item["taken_at"])
         dirname = self.dirname_pattern.format(profile=profile, target=target)
         filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
-                                                                date=date, date_utc=date_utc,
+                                                                date_utc=date_utc,
                                                                 shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
@@ -1070,7 +1073,7 @@ class Instaloader:
                 url = item["image_versions2"]["candidates"][0]["url"]
                 downloaded = self.download_pic(filename=filename,
                                                url=url,
-                                               mtime=date)
+                                               mtime=date_local)
         else:
             self._log("Warning: Unable to find story image.")
         if "caption" in item and item["caption"] is not None and \
@@ -1078,17 +1081,17 @@ class Instaloader:
             caption = item["caption"]
             if isinstance(caption, dict) and "text" in caption:
                 caption = caption["text"]
-            self.save_caption(filename, date, caption)
+            self.save_caption(filename, date_local, caption)
         else:
             self._log("<no caption>", end=' ', flush=True)
         if "video_versions" in item and self.download_videos is Tristate.always:
             downloaded |= self.download_pic(filename=filename,
                                             url=item["video_versions"][0]["url"],
-                                            mtime=date)
+                                            mtime=date_local)
         if item["story_locations"] and self.download_geotags is not Tristate.never:
             location = item["story_locations"][0]["location"]
             if location:
-                self.save_location(filename, location, date)
+                self.save_location(filename, location, date_local)
         self._log()
         return downloaded
 
