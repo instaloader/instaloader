@@ -1,0 +1,10 @@
+{% extends "!page.html" %}
+{% block body %}
+{{ super() }}
+{% if next and prev %}
+<h2>Next Section</h2>
+<p>
+  <a class="reference internal" href="{{ next.link|e }}">{{ next.title }}</a>
+</p>
+{% endif %}
+{% endblock %}
