@@ -437,13 +437,15 @@ class Instaloader:
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         if filename_pattern is not None:
             filename_pattern = re.sub(r"(\{(?:post\.)?date)([:}])", r"\1_utc\2", filename_pattern)
-            filename_pattern = re.sub(r"(?i)(\{(date|date_utc|post.date_utc):(?![^}]*UTC[^}]*).*?)}",
+            self.filename_pattern_old = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S}')
+            self.filename_pattern_old = re.sub(r"(?i)(\{(?:post\.)?date_utc:[^}]*?)_UTC",
+                                               r"\1", self.filename_pattern_old)
+            filename_pattern = re.sub(r"(?i)(\{(date_utc|post\.date_utc):(?![^}]*UTC[^}]*).*?)}",
                                       r"\1_UTC}", filename_pattern)
-            self.filename_pattern = filename_pattern \
-                .replace('{date}', '{date_utc}') \
-                .replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
+            self.filename_pattern = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
         else:
             self.filename_pattern = '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}'
+            self.filename_pattern_old = '{date_utc:%Y-%m-%d_%H-%M-%S}'
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
@@ -728,17 +730,24 @@ class Instaloader:
                                           lambda d: d['data']['user']['edge_follow'])
 
     def download_pic(self, filename: str, url: str, mtime: datetime,
-                     filename_suffix: Optional[str] = None) -> bool:
+                     filename_alt: Optional[str] = None, filename_suffix: Optional[str] = None) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
         if filename_suffix is not None:
             filename += '_' + filename_suffix
+            if filename_alt is not None:
+                filename_alt += '_' + filename_suffix
         filename += '.' + file_extension
         if os.path.isfile(filename):
             self._log(filename + ' exists', end=' ', flush=True)
             return False
+        if filename_alt is not None:
+            filename_alt += '.' + file_extension
+            if os.path.isfile(filename_alt):
+                self._log(filename_alt + 'exists', end=' ', flush=True)
+                return False
         self._get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
@@ -749,15 +758,20 @@ class Instaloader:
         json.dump(post, fp=open(filename, 'w'), indent=4, default=Post.json_encoder)
         self._log('json', end=' ', flush=True)
 
-    def update_comments(self, filename: str, post: Post) -> None:
-        filename += '_comments.json'
+    def update_comments(self, filename: str, post: Post, filename_alt: Optional[str] = None) -> None:
         try:
-            comments = json.load(open(filename))
+            filename_current = filename + '_comments.json'
+            comments = json.load(open(filename_current))
         except FileNotFoundError:
-            comments = list()
+            try:
+                filename_current = filename_alt + '_comments.json'
+                comments = json.load(open(filename_current))
+            except (FileNotFoundError, TypeError):
+                filename_current = filename + '_comments.json'
+                comments = list()
         comments.extend(post.get_comments())
         if comments:
-            with open(filename, 'w') as file:
+            with open(filename_current, 'w') as file:
                 comments_list = sorted(sorted(list(comments), key=lambda t: t['id']),
                                        key=lambda t: t['created_at'], reverse=True)
                 unique_comments_list = [comments_list[0]]
@@ -770,17 +784,25 @@ class Instaloader:
                     if x['id'] != y['id']:
                         unique_comments_list.append(y)
                 file.write(json.dumps(unique_comments_list, indent=4))
+            os.rename(filename_current, filename + '_comments.json')
             self._log('comments', end=' ', flush=True)
 
-    def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:
+    def save_caption(self, filename: str, mtime: datetime, caption: str, filename_alt: Optional[str] = None) -> None:
         """Updates picture caption"""
         filename += '.txt'
+        if filename_alt is not None:
+            filename_alt += '.txt'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
         pcaption = '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
         with suppress(FileNotFoundError):
-            with open(filename, 'rb') as file:
-                file_caption = file.read()
+            try:
+                with open(filename, 'rb') as file:
+                    file_caption = file.read()
+            except FileNotFoundError:
+                if filename_alt is not None:
+                    with open(filename_alt, 'rb') as file:
+                        file_caption = file.read()
             if file_caption.replace(b'\r\n', b'\n') == caption.replace(b'\r\n', b'\n'):
                 try:
                     self._log(pcaption + ' unchanged', end=' ', flush=True)
@@ -788,15 +810,22 @@ class Instaloader:
                     self._log('txt unchanged', end=' ', flush=True)
                 return None
             else:
-                def get_filename(index):
-                    return filename if index == 0 else (filename[:-4] + '_old_' +
-                                                        (str(0) if index < 10 else str()) + str(index) + filename[-4:])
+                def get_filename(file, index):
+                    return file if index == 0 else (file[:-4] + '_old_' +
+                                                    (str(0) if index < 10 else str()) + str(index) + file[-4:])
 
                 i = 0
-                while os.path.isfile(get_filename(i)):
+                file_exists_list = []
+                while True:
+                    file_exists_list.append(1 if os.path.isfile(get_filename(filename, i)) else 0)
+                    if not file_exists_list[i] and filename_alt is not None:
+                        file_exists_list[i] = 2 if os.path.isfile(get_filename(filename_alt, i)) else 0
+                    if not file_exists_list[i]:
+                        break
                     i = i + 1
                 for index in range(i, 0, -1):
-                    os.rename(get_filename(index - 1), get_filename(index))
+                    os.rename(get_filename(filename if file_exists_list[index - 1] % 2 else filename_alt, index - 1),
+                              get_filename(filename, index))
                 try:
                     self._log(pcaption + ' updated', end=' ', flush=True)
                 except UnicodeEncodeError:
@@ -922,6 +951,11 @@ class Instaloader:
                                                                 date_utc=post.date_utc,
                                                                 shortcode=post.shortcode,
                                                                 post=post)
+        filename_old = dirname + '/' + self.filename_pattern_old.replace("{post.date_utc", "{date_utc") \
+                                                                .format(profile=profilename, target=target.lower(),
+                                                                        date_utc=post.date_local,
+                                                                        shortcode=post.shortcode,
+                                                                        post=post)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
@@ -932,34 +966,40 @@ class Instaloader:
                 # Download picture or video thumbnail
                 if not edge['node']['is_video'] or self.download_video_thumbnails is Tristate.always:
                     downloaded |= self.download_pic(filename=filename,
+                                                    filename_alt=filename_old,
                                                     url=edge['node']['display_url'],
                                                     mtime=post.date_local,
                                                     filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
                 if edge['node']['is_video'] and self.download_videos is Tristate.always:
                     downloaded |= self.download_pic(filename=filename,
+                                                    filename_alt=filename_old,
                                                     url=edge['node']['video_url'],
                                                     mtime=post.date_local,
                                                     filename_suffix=str(edge_number))
                 edge_number += 1
         elif post.typename == 'GraphImage':
-            downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+            downloaded = self.download_pic(filename=filename, filename_alt=filename_old,
+                                           url=post.url, mtime=post.date_local)
         elif post.typename == 'GraphVideo':
             if self.download_video_thumbnails is Tristate.always:
-                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+                downloaded = self.download_pic(filename=filename, filename_alt=filename_old,
+                                               url=post.url, mtime=post.date_local)
         else:
             self.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
         if self.save_captions is not Tristate.never:
             if post.caption:
-                self.save_caption(filename, post.date_local, post.caption)
+                self.save_caption(filename=filename, filename_alt=filename_old,
+                                  mtime=post.date_local, caption=post.caption)
             else:
                 self._log("<no caption>", end=' ', flush=True)
 
         # Download video if desired
         if post.is_video and self.download_videos is Tristate.always:
-            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
+            downloaded |= self.download_pic(filename=filename, filename_alt=filename_old,
+                                            url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
         if self.download_geotags is Tristate.always:
@@ -969,7 +1009,7 @@ class Instaloader:
 
         # Update comments if desired
         if self.download_comments is Tristate.always:
-            self.update_comments(filename, post)
+            self.update_comments(filename=filename, filename_alt=filename_old, post=post)
 
         # Save metadata as JSON if desired.  It might require an extra query, depending on which information has been
         # already obtained.  Regarding Tristate interpretation, we always assume that it requires an extra query.
@@ -1066,12 +1106,16 @@ class Instaloader:
         filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
                                                                 date_utc=date_utc,
                                                                 shortcode=shortcode)
+        filename_old = dirname + '/' + self.filename_pattern_old.format(profile=profile, target=target,
+                                                                        date_utc=date_local,
+                                                                        shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if "image_versions2" in item:
             if "video_versions" not in item or self.download_video_thumbnails is Tristate.always:
                 url = item["image_versions2"]["candidates"][0]["url"]
                 downloaded = self.download_pic(filename=filename,
+                                               filename_alt=filename_old,
                                                url=url,
                                                mtime=date_local)
         else:
@@ -1081,11 +1125,12 @@ class Instaloader:
             caption = item["caption"]
             if isinstance(caption, dict) and "text" in caption:
                 caption = caption["text"]
-            self.save_caption(filename, date_local, caption)
+            self.save_caption(filename=filename, filename_alt=filename_old, mtime=date_local, caption=caption)
         else:
             self._log("<no caption>", end=' ', flush=True)
         if "video_versions" in item and self.download_videos is Tristate.always:
             downloaded |= self.download_pic(filename=filename,
+                                            filename_alt=filename_old,
                                             url=item["video_versions"][0]["url"],
                                             mtime=date_local)
         if item["story_locations"] and self.download_geotags is not Tristate.never:
