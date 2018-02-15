@@ -53,6 +53,10 @@ class QueryReturnedNotFoundException(InstaloaderException):
     pass
 
 
+class QueryReturnedForbiddenException(InstaloaderException):
+    pass
+
+
 class ProfileNotExistsException(InstaloaderException):
     pass
 
@@ -525,6 +529,9 @@ class Instaloader:
                     resp.raw.decode_content = True
                     shutil.copyfileobj(resp.raw, file)
             else:
+                if resp.status_code == 403:
+                    # suspected invalid URL signature
+                    raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
                 if resp.status_code == 404:
                     # 404 not worth retrying.
                     raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
@@ -848,8 +855,11 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         self._log('geo', end=' ', flush=True)
 
-    def download_profilepic(self, name: str, url: str) -> None:
-        """Downloads and saves profile pic with given url."""
+    def download_profilepic(self, name: str, profile_metadata: Dict[str, Any]) -> None:
+        """Downloads and saves profile pic."""
+
+        url = profile_metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in profile_metadata["user"] \
+            else profile_metadata["user"]["profile_pic_url"]
 
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
@@ -867,8 +877,13 @@ class Instaloader:
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
-        url = re.sub(r'/s([1-9][0-9]{2})x\1/', '/s2048x2048/', url)
-        self._get_and_write_raw(url, filename)
+        url_best = re.sub(r'/s([1-9][0-9]{2})x\1/', '/s2048x2048/', url)
+        url_best = re.sub(r'/vp/[a-f0-9]{32}/[A-F0-9]{8}/', '/', url_best)      # remove signature
+        try:
+            self._get_and_write_raw(url_best, filename)
+        except (QueryReturnedForbiddenException, QueryReturnedNotFoundException) as err:
+            self.error('{} Retrying with lower quality version.'.format(err))
+            self._get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self._log('') # log output of _get_and_write_raw() does not produce \n
 
@@ -1341,7 +1356,7 @@ class Instaloader:
         # Download profile picture
         if profile_pic or profile_pic_only:
             with self._error_catcher('Download profile picture of {}'.format(name)):
-                self.download_profilepic(name, profile_metadata["user"]["profile_pic_url"])
+                self.download_profilepic(name, profile_metadata)
         if profile_pic_only:
             return
 
