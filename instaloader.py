@@ -436,11 +436,11 @@ class Instaloader:
         self.quiet = quiet
         self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
         if filename_pattern is not None:
-            filename_pattern = re.sub(r"(\{(?:post\.)?date)([:}])", r"\1_utc\2", filename_pattern)
+            filename_pattern = re.sub(r"({(?:post\.)?date)([:}])", r"\1_utc\2", filename_pattern)
             self.filename_pattern_old = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S}')
-            self.filename_pattern_old = re.sub(r"(?i)(\{(?:post\.)?date_utc:[^}]*?)_UTC",
+            self.filename_pattern_old = re.sub(r"(?i)({(?:post\.)?date_utc:[^}]*?)_UTC",
                                                r"\1", self.filename_pattern_old)
-            filename_pattern = re.sub(r"(?i)(\{(date_utc|post\.date_utc):(?![^}]*UTC[^}]*).*?)}",
+            filename_pattern = re.sub(r"(?i)({(date_utc|post\.date_utc):(?![^}]*UTC[^}]*).*?)}",
                                       r"\1_UTC}", filename_pattern)
             self.filename_pattern = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
         else:
