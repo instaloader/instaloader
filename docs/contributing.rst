@@ -6,14 +6,14 @@ its community.  In this document, we advise on how you may help Instaloader to
 become an even greater tool.
 
 Instaloader's development is organized on 
-`GitHub <https://github.com/Thammus/instaloader>`__, where Issues and Pull
+`GitHub <https://github.com/instaloader/instaloader>`__, where Issues and Pull
 Requests are discussed.
 
 Reporting Bugs
 --------------
 
 If you encounter a bug, do not hesitate to report it in our
-`Issue Tracker <https://github.com/Thammus/instaloader/issues>`__. Since
+`Issue Tracker <https://github.com/instaloader/instaloader/issues>`__. Since
 Instaloader is actively developed, the majority of bugs is fixed within only
 **4 days** after being reported. When reporting a problem, please keep the
 following in mind:
@@ -40,7 +40,7 @@ Writing Code or Improving the Documentation
 -------------------------------------------
 
 Changes of the Instaloader source can be proposed as a
-`Pull Request <https://github.com/Thammus/instaloader/pulls>`__. There are only
+`Pull Request <https://github.com/instaloader/instaloader/pulls>`__. There are only
 few things to consider:
 
 - Sometimes, the most current code is not in the ``master`` branch. Check that
@@ -64,7 +64,7 @@ Suggesting Features
 
 If you have an idea of how Instaloader should be enhanced, but do not want to
 implement the feature yourself, feel free to open a ticket in our 
-`Issue Tracker <https://github.com/Thammus/instaloader/issues>`__.
+`Issue Tracker <https://github.com/instaloader/instaloader/issues>`__.
 Please consider the following:
 
 - Instaloader already has plenty of features. **Check the documentation**

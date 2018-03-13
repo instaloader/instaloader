@@ -364,6 +364,6 @@ def get_latest_tag(repo):
     version_date = datetime.strptime(latest_tag['tagger']['date'], "%Y-%m-%dT%H:%M:%SZ")
     return version_string[1:], re.sub(r'\b0+(\d)', r'\1', "{:%d %b %Y}".format(version_date))
 
-current_release, current_release_date = get_latest_tag('Thammus/instaloader')
+current_release, current_release_date = get_latest_tag('instaloader/instaloader')
 
 html_context = {'current_release': current_release, 'current_release_date': current_release_date}

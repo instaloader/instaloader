@@ -1504,7 +1504,7 @@ class Instaloader:
 
 def main():
     parser = ArgumentParser(description=__doc__, add_help=False,
-                            epilog="Report issues at https://github.com/Thammus/instaloader/issues. "
+                            epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
                                    "https://instaloader.readthedocs.io/.")
 

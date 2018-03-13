@@ -31,7 +31,7 @@ With `Python <https://www.python.org/>`__ installed, do::
 - allows **fine-grained customization** of filters and where to store
   downloaded media,
 
-- is free `open source <https://github.com/Thammus/instaloader>`__
+- is free `open source <https://github.com/instaloader/instaloader>`__
   software written in Python.
 
 ::
@@ -56,10 +56,10 @@ Table of Contents
 Useful Links
 ------------
 
-- `Git Repository (on GitHub) <https://github.com/Thammus/instaloader>`__
+- `Git Repository (on GitHub) <https://github.com/instaloader/instaloader>`__
 - `PyPI Project Page <https://pypi.python.org/pypi/instaloader>`__
-- `Issue Tracker / Bug Tracker <https://github.com/Thammus/instaloader/issues>`__
-- `Version History <https://github.com/Thammus/instaloader/releases>`__
+- `Issue Tracker / Bug Tracker <https://github.com/instaloader/instaloader/issues>`__
+- `Version History <https://github.com/instaloader/instaloader/releases>`__
 
 .. include:: ../README.rst
    :start-after: disclaimer-start

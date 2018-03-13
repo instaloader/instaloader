@@ -12,11 +12,11 @@ installed, you may install Instaloader using
     pip3 install instaloader
 
 Alternatively, to get the most current version of Instaloader from our
-`Git repository <https://github.com/Thammus/instaloader>`__:
+`Git repository <https://github.com/instaloader/instaloader>`__:
 
 ::
 
-    pip3 install git+https://github.com/Thammus/instaloader
+    pip3 install git+https://github.com/instaloader/instaloader
 
 (pass ``--upgrade`` to upgrade if Instaloader is already installed)
 
@@ -28,7 +28,7 @@ will be installed automatically, if it is not already installed.
 
 - If you do not want to use pip, even though it is highly recommended,
   and prefer to **install Instaloader manually**,
-  `Download the Source <https://github.com/Thammus/instaloader/releases>`__,
+  `Download the Source <https://github.com/instaloader/instaloader/releases>`__,
   extract the Zip or Tarball and execute ``instaloader.py`` from there.
 
 - On **Arch Linux**, you may install Instaloader using the

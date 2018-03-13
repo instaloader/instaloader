@@ -68,7 +68,7 @@ call::
 A reference of the many methods provided by the :mod:`instaloader` module is
 provided in the remainder of this document. Feel free to direct any issue or
 contribution to
-`Instaloader on Github <https://github.com/Thammus/instaloader>`__.
+`Instaloader on Github <https://github.com/instaloader/instaloader>`__.
 
 ``Instaloader`` (Main Class)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
