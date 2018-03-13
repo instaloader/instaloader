@@ -376,6 +376,19 @@ class Post:
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
 
+    def get_likes(self) -> Iterator[Dict[str, Any]]:
+        """Iterate over all likes of the post."""
+        if self.likes == 0:
+            # Avoid doing additional requests if there are no comments
+            return
+        likes_edges = self._field('edge_media_preview_like', 'edges')
+        if self.likes == len(likes_edges):
+            # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
+            yield from (like['node'] for like in likes_edges)
+        yield from self._instaloader.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
+                                                       'https://www.instagram.com/p/' + self.shortcode + '/',
+                                                       lambda d: d['data']['shortcode_media']['edge_liked_by'])
+
     def get_location(self) -> Optional[Dict[str, str]]:
         """If the Post has a location, returns a dictionary with fields 'lat' and 'lng'."""
         loc_dict = self._field("location")
@@ -699,17 +712,18 @@ class Instaloader:
         his/her username. To get said ID, given the profile's name, you may call this function."""
         return int(self.get_profile_metadata(profile)['user']['id'])
 
-    def graphql_node_list(self, query_id: int, query_variables: Dict[str, Any], query_referer: Optional[str],
+    def graphql_node_list(self, query_identifier: Union[int, str], query_variables: Dict[str, Any],
+                          query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
         query_variables['first'] = 200
-        data = self.graphql_query(query_id, query_variables, query_referer)
+        data = self.graphql_query(query_identifier, query_variables, query_referer)
         while True:
             edge_struct = edge_extractor(data)
             yield from [edge['node'] for edge in edge_struct['edges']]
             if edge_struct['page_info']['has_next_page']:
                 query_variables['after'] = edge_struct['page_info']['end_cursor']
-                data = self.graphql_query(query_id, query_variables, query_referer)
+                data = self.graphql_query(query_identifier, query_variables, query_referer)
             else:
                 break
 
