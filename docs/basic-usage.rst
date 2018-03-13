@@ -63,6 +63,9 @@ Instaloader supports the following targets:
 ``:feed``
    Your **feed** (requires :option:`--login`),
 
+``:saved``
+   Posts which are marked as **saved** (requires :option:`--login`),
+
 ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
    ``profile`` (requires :option:`--login`).

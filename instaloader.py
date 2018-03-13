@@ -22,7 +22,7 @@ from datetime import datetime
 from enum import Enum
 
 from io import BytesIO
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import requests
 import requests.utils
@@ -364,7 +364,11 @@ class Post:
         return self._field('edge_media_to_comment', 'count')
 
     def get_comments(self) -> Iterator[Dict[str, Any]]:
-        """Iterate over all comments of the post."""
+        """Iterate over all comments of the post.
+
+        Each comment is represented by a dictionary having the keys text, created_at, id and owner, which is a
+        dictionary with keys username, profile_pic_url and id.
+        """
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
@@ -375,6 +379,23 @@ class Post:
         yield from self._instaloader.graphql_node_list(17852405266163336, {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
+
+    def get_likes(self) -> Iterator[Dict[str, Any]]:
+        """Iterate over all likes of the post.
+
+        Each like is represented by a dictionary having the keys username, followed_by_viewer, id, is_verified,
+        requested_by_viewer, followed_by_viewer, profile_pic_url.
+        """
+        if self.likes == 0:
+            # Avoid doing additional requests if there are no comments
+            return
+        likes_edges = self._field('edge_media_preview_like', 'edges')
+        if self.likes == len(likes_edges):
+            # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
+            yield from (like['node'] for like in likes_edges)
+        yield from self._instaloader.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
+                                                       'https://www.instagram.com/p/' + self.shortcode + '/',
+                                                       lambda d: d['data']['shortcode_media']['edge_liked_by'])
 
     def get_location(self) -> Optional[Dict[str, str]]:
         """If the Post has a location, returns a dictionary with fields 'lat' and 'lng'."""
@@ -419,6 +440,8 @@ class Tristate(Enum):
 
 
 class Instaloader:
+    GRAPHQL_PAGE_LENGTH = 200
+
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
                  user_agent: Optional[str] = None,
@@ -651,12 +674,12 @@ class Instaloader:
         session.headers.update(self._default_http_header(empty_session_only=True))
         return session
 
-    def graphql_query(self, query_id: int, variables: Dict[str, Any],
+    def graphql_query(self, query_identifier: Union[int, str], variables: Dict[str, Any],
                       referer: Optional[str] = None) -> Dict[str, Any]:
         """
         Do a GraphQL Query.
 
-        :param query_id: Query ID.
+        :param query_identifier: Query ID or Hash.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
@@ -670,8 +693,9 @@ class Instaloader:
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
             tmpsession.headers['referer'] = urllib.parse.quote(referer)
-        resp_json = self.get_json('graphql/query', params={'query_id': query_id,
-                                                           'variables': json.dumps(variables, separators=(',', ':'))},
+        resp_json = self.get_json('graphql/query',
+                                  params={'query_id' if isinstance(query_identifier, int) else 'query_hash': query_identifier,
+                                          'variables': json.dumps(variables, separators=(',', ':'))},
                                   session=tmpsession)
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
@@ -698,17 +722,18 @@ class Instaloader:
         his/her username. To get said ID, given the profile's name, you may call this function."""
         return int(self.get_profile_metadata(profile)['user']['id'])
 
-    def graphql_node_list(self, query_id: int, query_variables: Dict[str, Any], query_referer: Optional[str],
+    def graphql_node_list(self, query_identifier: Union[int, str], query_variables: Dict[str, Any],
+                          query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
-        query_variables['first'] = 200
-        data = self.graphql_query(query_id, query_variables, query_referer)
+        query_variables['first'] = Instaloader.GRAPHQL_PAGE_LENGTH
+        data = self.graphql_query(query_identifier, query_variables, query_referer)
         while True:
             edge_struct = edge_extractor(data)
             yield from [edge['node'] for edge in edge_struct['edges']]
             if edge_struct['page_info']['has_next_page']:
                 query_variables['after'] = edge_struct['page_info']['end_cursor']
-                data = self.graphql_query(query_id, query_variables, query_referer)
+                data = self.graphql_query(query_identifier, query_variables, query_referer)
             else:
                 break
 
@@ -918,11 +943,10 @@ class Instaloader:
             self.session = session
             self.username = username
 
-    def test_login(self, session: Optional[requests.Session]) -> Optional[str]:
+    def test_login(self) -> Optional[str]:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
-        if session:
-            data = self.get_json('', params={'__a': 1}, session=session)
-            return data['graphql']['user']['username'] if 'graphql' in data else None
+        data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
+        return data["data"]["user"]["username"] if "username" in data["data"]["user"] else None
 
     def login(self, user: str, passwd: str) -> None:
         """Log in to instagram with given username and password and internally store session object"""
@@ -939,10 +963,12 @@ class Instaloader:
                              data={'password': passwd, 'username': user}, allow_redirects=True)
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         if login.status_code == 200:
-            if user == self.test_login(session):
+            self.session = session
+            if user == self.test_login():
                 self.username = user
-                self.session = session
             else:
+                self.username = None
+                self.session = None
                 raise BadCredentialsException('Login error! Check your credentials!')
         else:
             raise ConnectionException('Login error! Connection error!')
@@ -1214,6 +1240,57 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    def get_saved_posts(self) -> Iterator[Post]:
+        """Get Posts that are marked as saved by the user."""
+
+        data = self.get_profile_metadata(self.username)
+        user_id = data["user"]["id"]
+
+        while True:
+            if "graphql" in data:
+                is_edge = True
+                saved_media = data["graphql"]["user"]["edge_saved_media"]
+            elif "data" in data:
+                is_edge = True
+                saved_media = data["data"]["user"]["edge_saved_media"]
+            else:
+                is_edge = False
+                saved_media = data["user"]["saved_media"]
+
+            if is_edge:
+                yield from (Post(self, edge["node"]) for edge in saved_media["edges"])
+            else:
+                yield from (Post(self, node) for node in saved_media["nodes"])
+
+            if not saved_media["page_info"]["has_next_page"]:
+                break
+            data = self.graphql_query("f883d95537fbcd400f466f63d42bd8a1",
+                                      {'id': user_id, 'first': Instaloader.GRAPHQL_PAGE_LENGTH,
+                                       'after': saved_media["page_info"]["end_cursor"]})
+
+    def download_saved_posts(self, max_count: int = None, fast_update: bool = False,
+                             filter_func: Optional[Callable[[Post], bool]] = None) -> None:
+        """Download user's saved pictures.
+
+        :param max_count: Maximum count of pictures to download
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param filter_func: function(post), which returns True if given picture should be downloaded
+        """
+        count = 1
+        for post in self.get_saved_posts():
+            if max_count is not None and count > max_count:
+                break
+            name = post.owner_username
+            if filter_func is not None and not filter_func(post):
+                self._log("<pic by {} skipped".format(name), flush=True)
+                continue
+            self._log("[{:>3}] {} ".format(count, name), end=str(), flush=True)
+            count += 1
+            with self._error_catcher('Download saved posts'):
+                downloaded = self.download_post(post, target=':saved')
+                if fast_update and not downloaded:
+                    break
+
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
         yield from (Post(self, node) for node in
@@ -1322,7 +1399,7 @@ class Instaloader:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
             data = self.graphql_query(17888483320059182, {'id': profile_metadata['user']['id'],
-                                                          'first': 200,
+                                                          'first': Instaloader.GRAPHQL_PAGE_LENGTH,
                                                           'after': end_cursor},
                                       'https://www.instagram.com/{0}/'.format(profile_name))
             media = data['data']['user']['edge_owner_to_timeline_media']
@@ -1433,7 +1510,7 @@ class Instaloader:
                 if sessionfile is not None:
                     print(err, file=sys.stderr)
                 self._log("Session file does not exist yet - Logging in.")
-            if not self.is_logged_in or username != self.test_login(self.session):
+            if not self.is_logged_in or username != self.test_login():
                 if password is not None:
                     self.login(username, password)
                 else:
@@ -1469,6 +1546,14 @@ class Instaloader:
                     if username is not None:
                         with self._error_catcher():
                             self.download_stories(fast_update=fast_update)
+                    else:
+                        self.error("--login=USERNAME required to download {}.".format(pentry))
+                elif pentry == ":saved":
+                    if username is not None:
+                        self._log("Retrieving saved posts...")
+                        with self._error_catcher():
+                            self.download_saved_posts(fast_update=fast_update, max_count=max_count,
+                                                      filter_func=filter_func)
                     else:
                         self.error("--login=USERNAME required to download {}.".format(pentry))
                 else:
@@ -1518,9 +1603,10 @@ def main():
     g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
                         help='Name of profile or #hashtag to download. '
                              'Alternatively, if --login is given: @<profile> to download all followees of '
-                             '<profile>; the special targets :feed to '
-                             'download pictures from your feed; or :stories to download the stories of your '
-                             'followees.')
+                             '<profile>; the special targets '
+                             ':feed to download pictures from your feed; '
+                             ':stories to download the stories of your followees; or '
+                             ':saved to download the posts marked as saved.')
     g_what.add_argument('-P', '--profile-pic-only', action='store_true',
                         help='Only download profile picture.')
     g_what.add_argument('--no-profile-pic', action='store_true',

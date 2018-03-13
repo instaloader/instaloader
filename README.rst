@@ -9,8 +9,8 @@ Instaloader
 
 **Instaloader**
 
-- downloads **public and private profiles, hashtags, user stories and
-  feeds**,
+- downloads **public and private profiles, hashtags, user stories,
+  feeds and saved media**,
 
 - downloads **comments, geotags and captions** of each post,
 
@@ -24,7 +24,7 @@ Instaloader
 
     instaloader [--comments] [--geotags] [--stories]
                 [--login YOUR-USERNAME] [--fast-update]
-                profile | "#hashtag" | :stories | :feed
+                profile | "#hashtag" | :stories | :feed | :saved
 
 `Instaloader Documentation <https://instaloader.github.io/>`__
 
