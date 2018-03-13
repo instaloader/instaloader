@@ -364,7 +364,11 @@ class Post:
         return self._field('edge_media_to_comment', 'count')
 
     def get_comments(self) -> Iterator[Dict[str, Any]]:
-        """Iterate over all comments of the post."""
+        """Iterate over all comments of the post.
+
+        Each comment is represented by a dictionary having the keys text, created_at, id and owner, which is a
+        dictionary with keys username, profile_pic_url and id.
+        """
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
@@ -377,7 +381,11 @@ class Post:
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
 
     def get_likes(self) -> Iterator[Dict[str, Any]]:
-        """Iterate over all likes of the post."""
+        """Iterate over all likes of the post.
+
+        Each like is represented by a dictionary having the keys username, followed_by_viewer, id, is_verified,
+        requested_by_viewer, followed_by_viewer, profile_pic_url.
+        """
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
