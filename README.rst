@@ -24,7 +24,7 @@ Instaloader
 
     instaloader [--comments] [--geotags] [--stories]
                 [--login YOUR-USERNAME] [--fast-update]
-                profile | "#hashtag" | :stories | :feed
+                profile | "#hashtag" | :stories | :feed | :saved
 
 `Instaloader Documentation <https://instaloader.readthedocs.io/>`__
 

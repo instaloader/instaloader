@@ -38,7 +38,8 @@ With `Python <https://www.python.org/>`__ installed, do::
 
     instaloader [--comments] [--geotags] [--stories]
                 [--login YOUR-USERNAME] [--fast-update]
-                profile | "#hashtag" | :stories | :feed
+                profile | "#hashtag"
+                :stories | :feed | :saved
 
 
 Table of Contents

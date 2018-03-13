@@ -1577,9 +1577,10 @@ def main():
     g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
                         help='Name of profile or #hashtag to download. '
                              'Alternatively, if --login is given: @<profile> to download all followees of '
-                             '<profile>; the special targets :feed to '
-                             'download pictures from your feed; or :stories to download the stories of your '
-                             'followees.')
+                             '<profile>; the special targets '
+                             ':feed to download pictures from your feed; '
+                             ':stories to download the stories of your followees; or '
+                             ':saved to download the posts marked as saved.')
     g_what.add_argument('-P', '--profile-pic-only', action='store_true',
                         help='Only download profile picture.')
     g_what.add_argument('--no-profile-pic', action='store_true',
