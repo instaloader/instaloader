@@ -432,6 +432,8 @@ class Tristate(Enum):
 
 
 class Instaloader:
+    GRAPHQL_PAGE_LENGTH = 200
+
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
                  user_agent: Optional[str] = None,
@@ -716,7 +718,7 @@ class Instaloader:
                           query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
-        query_variables['first'] = 200
+        query_variables['first'] = Instaloader.GRAPHQL_PAGE_LENGTH
         data = self.graphql_query(query_identifier, query_variables, query_referer)
         while True:
             edge_struct = edge_extractor(data)
@@ -1255,7 +1257,8 @@ class Instaloader:
             if not saved_media["page_info"]["has_next_page"]:
                 break
             data = self.graphql_query("f883d95537fbcd400f466f63d42bd8a1",
-                                      {'id': user_id, 'first': 200, 'after': saved_media["page_info"]["end_cursor"]})
+                                      {'id': user_id, 'first': Instaloader.GRAPHQL_PAGE_LENGTH,
+                                       'after': saved_media["page_info"]["end_cursor"]})
 
     def download_saved_posts(self, max_count: int = None, fast_update: bool = False,
                              filter_func: Optional[Callable[[Post], bool]] = None) -> None:
@@ -1388,7 +1391,7 @@ class Instaloader:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
             data = self.graphql_query(17888483320059182, {'id': profile_metadata['user']['id'],
-                                                          'first': 200,
+                                                          'first': Instaloader.GRAPHQL_PAGE_LENGTH,
                                                           'after': end_cursor},
                                       'https://www.instagram.com/{0}/'.format(profile_name))
             media = data['data']['user']['edge_owner_to_timeline_media']
