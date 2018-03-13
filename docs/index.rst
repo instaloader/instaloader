@@ -2,7 +2,7 @@
    :description:
       Command line tool to download pictures (and videos) from Instagram.
       Instaloader downloads public and private profiles, hashtags, user stories,
-      feeds, comments, geotags, captions and other metadata of each post.
+      feeds, saved media, comments, geotags, captions and other metadata of each post.
 
 Instaloader
 ===========
@@ -20,8 +20,8 @@ With `Python <https://www.python.org/>`__ installed, do::
 
 **Instaloader**
 
-- downloads **public and private profiles, hashtags, user stories and
-  feeds**,
+- downloads **public and private profiles, hashtags, user stories,
+  feeds and saved media**,
 
 - downloads **comments, geotags and captions** of each post,
 
@@ -38,7 +38,7 @@ With `Python <https://www.python.org/>`__ installed, do::
 
     instaloader [--comments] [--geotags] [--stories]
                 [--login YOUR-USERNAME] [--fast-update]
-                profile | "#hashtag"
+                profile | "#hashtag" |
                 :stories | :feed | :saved
 
 

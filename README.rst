@@ -9,8 +9,8 @@ Instaloader
 
 **Instaloader**
 
-- downloads **public and private profiles, hashtags, user stories and
-  feeds**,
+- downloads **public and private profiles, hashtags, user stories,
+  feeds and saved media**,
 
 - downloads **comments, geotags and captions** of each post,
 
