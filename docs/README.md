@@ -3,7 +3,7 @@
 This directory contains sources for the Instaloader documentation.
 
 The documentation is hosted at:
-https://instaloader.readthedocs.io/
+https://instaloader.github.io/
 
 ## Build
 

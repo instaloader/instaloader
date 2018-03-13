@@ -38,7 +38,7 @@ setup(
     name='instaloader',
     version=get_version(),
     py_modules=['instaloader'],
-    url='https://instaloader.readthedocs.io/',
+    url='https://instaloader.github.io/',
     license='MIT',
     author='Alexander Graf, André Koch-Kramer',
     author_email='mail@agraf.me, koch-kramer@web.de',

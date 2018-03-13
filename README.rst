@@ -26,7 +26,7 @@ Instaloader
                 [--login YOUR-USERNAME] [--fast-update]
                 profile | "#hashtag" | :stories | :feed
 
-`Instaloader Documentation <https://instaloader.readthedocs.io/>`__
+`Instaloader Documentation <https://instaloader.github.io/>`__
 
 
 How to Automatically Download Pictures from Instagram
@@ -65,7 +65,7 @@ temporary directory, which will be reused later the next time ``--login``
 is given.  So you can download private profiles **non-interactively** when you
 already have a valid session cookie file.
 
-`Instaloader Documentation <https://instaloader.readthedocs.io/basic-usage.html>`__
+`Instaloader Documentation <https://instaloader.github.io/basic-usage.html>`__
 
 
 Disclaimer
