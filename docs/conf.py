@@ -191,7 +191,10 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 #
-html_sidebars = {'**': ["caption.html", "globaltoc.html", "relations.html", "links.html"] }
+if not os.environ.get("READTHEDOCS"):
+    html_sidebars = {'**': ["caption.html", "globaltoc.html", "relations.html", "links.html"] }
+else:
+    html_sidebars = {'**': ["caption.html", "rtdmessage.html", "globaltoc.html", "relations.html", "links.html"] }
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
