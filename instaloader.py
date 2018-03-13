@@ -919,11 +919,10 @@ class Instaloader:
             self.session = session
             self.username = username
 
-    def test_login(self, session: Optional[requests.Session]) -> Optional[str]:
+    def test_login(self) -> Optional[str]:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
-        if session:
-            data = self.get_json('', params={'__a': 1}, session=session)
-            return data['graphql']['user']['username'] if 'graphql' in data else None
+        data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
+        return data["data"]["user"]["username"] if "username" in data["data"]["user"] else None
 
     def login(self, user: str, passwd: str) -> None:
         """Log in to instagram with given username and password and internally store session object"""
@@ -940,10 +939,12 @@ class Instaloader:
                              data={'password': passwd, 'username': user}, allow_redirects=True)
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         if login.status_code == 200:
-            if user == self.test_login(session):
+            self.session = session
+            if user == self.test_login():
                 self.username = user
-                self.session = session
             else:
+                self.username = None
+                self.session = None
                 raise BadCredentialsException('Login error! Check your credentials!')
         else:
             raise ConnectionException('Login error! Connection error!')
@@ -1484,7 +1485,7 @@ class Instaloader:
                 if sessionfile is not None:
                     print(err, file=sys.stderr)
                 self._log("Session file does not exist yet - Logging in.")
-            if not self.is_logged_in or username != self.test_login(self.session):
+            if not self.is_logged_in or username != self.test_login():
                 if password is not None:
                     self.login(username, password)
                 else:
