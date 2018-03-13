@@ -18,10 +18,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import subprocess
 import sys
-import re
-import requests
-from datetime import datetime
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ------------------------------------------------
@@ -357,13 +355,7 @@ texinfo_documents = [
 # texinfo_no_detailmenu = False
 
 
-def get_latest_tag(repo):
-    tags = requests.get("https://api.github.com/repos/{}/git/refs/tags".format(repo)).json()
-    latest_tag = requests.get(tags[-1]['object']['url']).json()
-    version_string = latest_tag['tag']
-    version_date = datetime.strptime(latest_tag['tagger']['date'], "%Y-%m-%dT%H:%M:%SZ")
-    return version_string[1:], re.sub(r'\b0+(\d)', r'\1', "{:%d %b %Y}".format(version_date))
-
-current_release, current_release_date = get_latest_tag('instaloader/instaloader')
+current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
+current_release_date = subprocess.check_output(["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
 
 html_context = {'current_release': current_release, 'current_release_date': current_release_date}
