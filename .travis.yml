@@ -8,13 +8,24 @@ python:
  - "nightly"
 install:
  - pip install pylint requests
+ - pip install -r docs/requirements.txt
 script:
  - python3 -m pylint -r n -d bad-whitespace,missing-docstring,too-many-arguments,locally-disabled,line-too-long,too-many-public-methods,too-many-lines,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,inconsistent-return-statements instaloader
+ - make -C docs html
 deploy:
-  provider: pypi
-  user: aandergr
-  on:
-    tags: true
-    python: 3.6
-  password:
-    secure: KBsATtXNnEzqr0X2ALdyx2zaYj2EUfK8YjP4jEOilBELpJ4evHYXVgRkn9CKXGsD7LKbWmR3gz2rr8NZ6U42pHw0fpQHizz91MpJSKbNY7RZZh4UVWMDh81izeglchWAF+m3Wdpxpo/GBDbrZIbRQFhPgB+kjSzJo3uiCS+yVXtGG+6csJHzd0WkJjsVHz+XSdxyOiLy/qFF3nmY6ZrVrgw6WbX2YLbx9je6DxK3YRrnBqgMgH7Ui2xWWbgJCk3KKpQTMiMKnTa9mdeMJAd26YMCz1gG/X7ck6VNly/6bs5+Zq7/bU0dSolhPBhNthyccYdS0IeGPdPF3YqatblJ4fLGTfHn8oJs3/T11yIW9pvOT3UftEynPOUX+en2Qnb/3WfgwUfVts8i8DAYgEFLGEzbF5XMGy4gwAD/bZ0JW0pmgAG2PZsdOokAt+ydlNj/uxq1GFW2doZbul6k4t03p1mik6itYscvuhKoEm8Yw6wr1P9aDvMR6FFpSu4gDt2XrKmRmWkSXxpNeCfZujTjyAnISxLVQGSY7BG5K0Z2HbDtqqNz9nj4WgNGzZmngiRofCevWR+vPIDUDW7NCX03csfcFS9RRllBO/BrL7NVUV+Qp9dfTQYp+8SqYLWgHtDoXdgyMREjJaAmbx2u/TYTY8bADZ5F3vGUpv2j5hP3NTU=
+  - provider: pypi
+    user: aandergr
+    on:
+      tags: true
+      python: 3.6
+    password:
+      secure: KBsATtXNnEzqr0X2ALdyx2zaYj2EUfK8YjP4jEOilBELpJ4evHYXVgRkn9CKXGsD7LKbWmR3gz2rr8NZ6U42pHw0fpQHizz91MpJSKbNY7RZZh4UVWMDh81izeglchWAF+m3Wdpxpo/GBDbrZIbRQFhPgB+kjSzJo3uiCS+yVXtGG+6csJHzd0WkJjsVHz+XSdxyOiLy/qFF3nmY6ZrVrgw6WbX2YLbx9je6DxK3YRrnBqgMgH7Ui2xWWbgJCk3KKpQTMiMKnTa9mdeMJAd26YMCz1gG/X7ck6VNly/6bs5+Zq7/bU0dSolhPBhNthyccYdS0IeGPdPF3YqatblJ4fLGTfHn8oJs3/T11yIW9pvOT3UftEynPOUX+en2Qnb/3WfgwUfVts8i8DAYgEFLGEzbF5XMGy4gwAD/bZ0JW0pmgAG2PZsdOokAt+ydlNj/uxq1GFW2doZbul6k4t03p1mik6itYscvuhKoEm8Yw6wr1P9aDvMR6FFpSu4gDt2XrKmRmWkSXxpNeCfZujTjyAnISxLVQGSY7BG5K0Z2HbDtqqNz9nj4WgNGzZmngiRofCevWR+vPIDUDW7NCX03csfcFS9RRllBO/BrL7NVUV+Qp9dfTQYp+8SqYLWgHtDoXdgyMREjJaAmbx2u/TYTY8bADZ5F3vGUpv2j5hP3NTU=
+  - provider: pages
+    skip-cleanup: true
+    github-token: $GITHUB_TOKEN
+    local-dir: docs/_build/html
+    repo: instaloader/instaloader.github.io
+    target-branch: master
+    on:
+      branch: master
+      python: 3.6
