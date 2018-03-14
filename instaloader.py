@@ -1383,7 +1383,8 @@ class Instaloader:
     def get_profile_metadata(self, profile_name: str) -> Dict[str, Any]:
         """Retrieves a profile's metadata, for use with e.g. :meth:`get_profile_posts` and :meth:`check_profile_id`."""
         try:
-            return self.get_json('{}/'.format(profile_name), params={'__a': 1})
+            metadata = self.get_json('{}/'.format(profile_name), params={'__a': 1})
+            return metadata['graphql'] if 'graphql' in metadata else metadata
         except QueryReturnedNotFoundException:
             raise ProfileNotExistsException('Profile {} does not exist.'.format(profile_name))
 
@@ -1391,10 +1392,17 @@ class Instaloader:
         """Retrieve all posts from a profile."""
         profile_name = profile_metadata['user']['username']
         profile_id = int(profile_metadata['user']['id'])
-        yield from (Post(self, node, profile=profile_name, profile_id=profile_id)
-                    for node in profile_metadata['user']['media']['nodes'])
-        has_next_page = profile_metadata['user']['media']['page_info']['has_next_page']
-        end_cursor = profile_metadata['user']['media']['page_info']['end_cursor']
+        if 'media' in profile_metadata['user']:
+            # backwards compatibility with old non-graphql structure
+            yield from (Post(self, node, profile=profile_name, profile_id=profile_id)
+                        for node in profile_metadata['user']['media']['nodes'])
+            has_next_page = profile_metadata['user']['media']['page_info']['has_next_page']
+            end_cursor = profile_metadata['user']['media']['page_info']['end_cursor']
+        else:
+            yield from (Post(self, edge['node'], profile=profile_name, profile_id=profile_id)
+                        for edge in profile_metadata['user']['edge_owner_to_timeline_media']['edges'])
+            has_next_page = profile_metadata['user']['edge_owner_to_timeline_media']['page_info']['has_next_page']
+            end_cursor = profile_metadata['user']['edge_owner_to_timeline_media']['page_info']['end_cursor']
         while has_next_page:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
@@ -1455,13 +1463,13 @@ class Instaloader:
         if download_stories_only:
             return
 
-        if ("nodes" not in profile_metadata["user"]["media"] or
-                not profile_metadata["user"]["media"]["nodes"]):
-            raise ProfileHasNoPicsException("Profile %s: no pics found." % name)
-
         # Iterate over pictures and download them
         self._log("Retrieving posts from profile {}.".format(name))
-        totalcount = profile_metadata["user"]["media"]["count"]
+        if "media" in profile_metadata["user"]:
+            # backwards compatibility with old non-graphql structure
+            totalcount = profile_metadata["user"]["media"]["count"]
+        else:
+            totalcount = profile_metadata["user"]["edge_owner_to_timeline_media"]["count"]
         count = 1
         for post in self.get_profile_posts(profile_metadata):
             self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
