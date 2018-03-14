@@ -225,4 +225,4 @@ dummy:
 	@echo "Build finished. Dummy builder generates no files."
 
 favicon.ico: logo.svg
-	convert logo.svg favicon.ico
+	convert -density 384 -background transparent -define icon:auto-resize -colors 256 logo.svg favicon.ico
