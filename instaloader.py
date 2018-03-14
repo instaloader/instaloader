@@ -169,7 +169,8 @@ class Post:
     """
     Structure containing information about an Instagram post.
 
-    Created by Instaloader methods :meth:`.get_profile_posts`, :meth:`.get_hashtag_posts`, :meth:`.get_feed_posts`.
+    Created by Instaloader methods :meth:`.get_profile_posts`, :meth:`.get_hashtag_posts`, :meth:`.get_feed_posts` and
+    :meth:`.get_saved_posts`.
     Posts are linked to an :class:`Instaloader` instance which is used for error logging and obtaining of additional
     metadata, if required. This class unifies access to the properties associated with a post. It implements == and is
     hashable.
@@ -1247,12 +1248,9 @@ class Instaloader:
         user_id = data["user"]["id"]
 
         while True:
-            if "graphql" in data:
+            if "edge_saved_media" in data["user"]:
                 is_edge = True
-                saved_media = data["graphql"]["user"]["edge_saved_media"]
-            elif "data" in data:
-                is_edge = True
-                saved_media = data["data"]["user"]["edge_saved_media"]
+                saved_media = data["user"]["edge_saved_media"]
             else:
                 is_edge = False
                 saved_media = data["user"]["saved_media"]
@@ -1266,7 +1264,7 @@ class Instaloader:
                 break
             data = self.graphql_query("f883d95537fbcd400f466f63d42bd8a1",
                                       {'id': user_id, 'first': Instaloader.GRAPHQL_PAGE_LENGTH,
-                                       'after': saved_media["page_info"]["end_cursor"]})
+                                       'after': saved_media["page_info"]["end_cursor"]})['data']
 
     def download_saved_posts(self, max_count: int = None, fast_update: bool = False,
                              filter_func: Optional[Callable[[Post], bool]] = None) -> None:
