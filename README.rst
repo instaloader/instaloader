@@ -1,5 +1,4 @@
-Instaloader
-===========
+.. image:: https://raw.githubusercontent.com/instaloader/instaloader/master/docs/logo_heading.png
 
 ::
 
