@@ -226,3 +226,6 @@ dummy:
 
 favicon.ico: logo.svg
 	convert -density 384 -background transparent -define icon:auto-resize -colors 256 logo.svg favicon.ico
+
+logo.png: logo.svg
+	inkscape -z -e logo.png -w 100 -h 100 logo.svg
