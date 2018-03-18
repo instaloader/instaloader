@@ -362,3 +362,14 @@ current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).dec
 current_release_date = subprocess.check_output(["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
 
 html_context = {'current_release': current_release, 'current_release_date': current_release_date}
+
+
+def skip(app, what, name, obj, skip, options):
+    # Ensure constructors are documented
+    if name == "__init__":
+        return False
+    return skip
+
+
+def setup(app):
+    app.connect('autodoc-skip-member', skip)

@@ -427,6 +427,9 @@ class Profile:
     """
     An Instagram Profile.
 
+    Provides methods for accessing profile properties, as well as :meth:`Profile.get_posts` and for own profile
+    :meth:`Profile.get_saved_posts`.
+
     Instances are linked to an :class:`Instaloader` instance. This class implements == and is hashable.
     """
     def __init__(self, instaloader: 'Instaloader', identifier: Union[str, int]):
@@ -603,6 +606,7 @@ class Instaloader:
                  download_comments: Tristate = Tristate.no_extra_query,
                  save_metadata: Tristate = Tristate.never,
                  max_connection_attempts: int = 3):
+        """Instaloader."""
 
         # configuration parameters
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
