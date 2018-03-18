@@ -37,8 +37,8 @@ certain source::
         L.download_post(post, target='#cat')
 
 Besides :func:`Instaloader.get_hashtag_posts`, there is
-:func:`Instaloader.get_feed_posts`, :func:`Instaloader.get_profile_posts` and
-:func:`Instaloader.get_saved_posts`.
+:func:`Instaloader.get_feed_posts`, :func:`Profile.get_posts` and
+:func:`Profile.get_saved_posts`.
 Also, :class:`Post` instances can be created with :func:`Post.from_shortcode`
 and :func:`Post.from_mediaid`.
 
@@ -75,6 +75,12 @@ contribution to
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: Instaloader
+   :no-show-inheritance:
+
+``Profile`` Class
+^^^^^^^^^^^^^^^^^
+
+.. autoclass:: Profile
    :no-show-inheritance:
 
 ``Post`` Class
