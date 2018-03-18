@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Download pictures (or videos) along with their captions and other metadata from Instagram."""
+
 import ast
 import getpass
 import json
@@ -20,7 +21,7 @@ from base64 import b64decode, b64encode
 from contextlib import contextmanager, suppress
 from datetime import datetime
 from enum import Enum
-
+from functools import wraps
 from io import BytesIO
 from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
@@ -593,10 +594,13 @@ class Tristate(Enum):
 
 def _requires_login(func: Callable) -> Callable:
     """Decorator to raise an exception if herewith-decorated function is called without being logged in"""
+    @wraps(func)
     def call(instaloader, *args, **kwargs):
         if not instaloader.is_logged_in:
             raise LoginRequiredException("--login=USERNAME required.")
         return func(instaloader, *args, **kwargs)
+    # pylint:disable=no-member
+    call.__doc__ += ":raises LoginRequiredException: If called without being logged in.\n"
     return call
 
 
