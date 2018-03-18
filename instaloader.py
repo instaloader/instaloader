@@ -1234,33 +1234,18 @@ class Instaloader:
 
         :param userids: List of user IDs to be processed in terms of downloading their stories, or None.
         """
-        tempsession = copy_session(self.session)
-        header = tempsession.headers
-        header['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) ' \
-                               'AppleWebKit/420+'
-        del header['Host']
-        del header['Origin']
-        del header['X-Instagram-AJAX']
-        del header['X-Requested-With']
 
-        def _get(url):
-            self._sleep()
-            resp = tempsession.get(url)
-            if resp.status_code != 200:
-                raise ConnectionException('Failed to fetch stories.')
-            return json.loads(resp.text)
+        if userids is None:
+            data = self.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704", {"only_stories": True})["data"]["user"]
+            if data is None:
+                raise BadResponseException('Bad stories reel JSON.')
+            userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
 
-        url_reel_media = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'
-        url_reels_tray = 'https://i.instagram.com/api/v1/feed/reels_tray/'
-        if userids is not None:
-            for userid in userids:
-                yield _get(url_reel_media.format(userid))
-        else:
-            data = _get(url_reels_tray)
-            if 'tray' not in data:
-                raise BadResponseException('Bad story reel JSON.')
-            for user in data["tray"]:
-                yield user if "items" in user else _get(url_reel_media.format(user['user']['pk']))
+        stories = self.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
+                                     {"reel_ids": userids, "precomposed_overlay": False})["data"]
+
+        for media in stories["reels_media"]:
+            yield media
 
     @_requires_login
     def download_stories(self,
@@ -1308,9 +1293,9 @@ class Instaloader:
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
-        shortcode = item["code"] if "code" in item else "no_code"
-        date_local = datetime.fromtimestamp(item["taken_at"])
-        date_utc = datetime.utcfromtimestamp(item["taken_at"])
+        shortcode = mediaid_to_shortcode(int(item["id"]))
+        date_local = datetime.fromtimestamp(item["taken_at_timestamp"])
+        date_utc = datetime.utcfromtimestamp(item["taken_at_timestamp"])
         dirname = self.dirname_pattern.format(profile=profile, target=target)
         filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
                                                                 date_utc=date_utc,
@@ -1320,32 +1305,17 @@ class Instaloader:
                                                                         shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
-        if "image_versions2" in item:
-            if "video_versions" not in item or self.download_video_thumbnails is Tristate.always:
-                url = item["image_versions2"]["candidates"][0]["url"]
-                downloaded = self.download_pic(filename=filename,
-                                               filename_alt=filename_old,
-                                               url=url,
-                                               mtime=date_local)
-        else:
-            self._log("Warning: Unable to find story image.")
-        if "caption" in item and item["caption"] is not None and \
-                self.save_captions is not Tristate.never:
-            caption = item["caption"]
-            if isinstance(caption, dict) and "text" in caption:
-                caption = caption["text"]
-            self.save_caption(filename=filename, filename_alt=filename_old, mtime=date_local, caption=caption)
-        else:
-            self._log("<no caption>", end=' ', flush=True)
-        if "video_versions" in item and self.download_videos is Tristate.always:
+        if not item["is_video"] or self.download_video_thumbnails is Tristate.always:
+            url = item["display_resources"][-1]["src"]
+            downloaded = self.download_pic(filename=filename,
+                                           filename_alt=filename_old,
+                                           url=url,
+                                           mtime=date_local)
+        if item["is_video"] and self.download_videos is Tristate.always:
             downloaded |= self.download_pic(filename=filename,
                                             filename_alt=filename_old,
-                                            url=item["video_versions"][0]["url"],
+                                            url=item["video_resources"][-1]["src"],
                                             mtime=date_local)
-        if item["story_locations"] and self.download_geotags is not Tristate.never:
-            location = item["story_locations"][0]["location"]
-            if location:
-                self.save_location(filename, location, date_local)
         self._log()
         return downloaded
 
