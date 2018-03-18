@@ -1185,30 +1185,22 @@ class Instaloader:
     def get_feed_posts(self) -> Iterator[Post]:
         """Get Posts of the user's feed."""
 
-        data = self.get_json('', params={'__a': 1})
+        if not self.is_logged_in:
+            return
+        data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
 
         while True:
-            if "graphql" in data:
-                is_edge = True
-                feed = data["graphql"]["user"]["edge_web_feed_timeline"]
-            elif "data" in data:
-                is_edge = True
-                feed = data["data"]["user"]["edge_web_feed_timeline"]
-            else:
-                is_edge = False
-                feed = data["feed"]["media"]
-
-            if is_edge:
-                yield from (Post(self, edge["node"]) for edge in feed["edges"])
-            else:
-                yield from (Post(self, node) for node in feed["nodes"])
-
+            feed = data["user"]["edge_web_feed_timeline"]
+            yield from (Post(self, edge["node"]) for edge in feed["edges"]
+                        if not edge["node"]["__typename"] == "GraphSuggestedUserFeedUnit")
             if not feed["page_info"]["has_next_page"]:
                 break
-            data = self.graphql_query(17863003771166879, {'fetch_media_item_count': 12,
-                                                          'fetch_media_item_cursor': feed["page_info"]["end_cursor"],
-                                                          'fetch_comment_count': 4,
-                                                          'fetch_like': 10})
+            data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3",
+                                      {'fetch_media_item_count': 12,
+                                       'fetch_media_item_cursor': feed["page_info"]["end_cursor"],
+                                       'fetch_comment_count': 4,
+                                       'fetch_like': 10,
+                                       'has_stories': False})["data"]
 
     def download_feed_posts(self, max_count: int = None, fast_update: bool = False,
                             filter_func: Optional[Callable[[Post], bool]] = None) -> None:
@@ -1244,6 +1236,8 @@ class Instaloader:
     def get_saved_posts(self) -> Iterator[Post]:
         """Get Posts that are marked as saved by the user."""
 
+        if not self.is_logged_in:
+            return
         data = self.get_profile_metadata(self.username)
         user_id = data["user"]["id"]
 
