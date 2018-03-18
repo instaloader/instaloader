@@ -89,7 +89,7 @@ class ConnectionException(InstaloaderException):
     pass
 
 
-class TooManyRequests(ConnectionException):
+class TooManyRequestsException(ConnectionException):
     pass
 
 
@@ -613,7 +613,7 @@ class Instaloader:
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException("404")
             if resp.status_code == 429:
-                raise TooManyRequests("429 - Too Many Requests")
+                raise TooManyRequestsException("429 - Too Many Requests")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             resp_json = resp.json()
@@ -633,7 +633,7 @@ class Instaloader:
                             "Please do not use Instagram in your browser or run multiple instances of Instaloader "
                             "in parallel.")
             try:
-                if isinstance(err, TooManyRequests):
+                if isinstance(err, TooManyRequestsException):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
                         waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)

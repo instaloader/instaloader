@@ -100,6 +100,8 @@ Exceptions
 
 .. autoexception:: QueryReturnedNotFoundException
 
+.. autoexception:: QueryReturnedForbiddenException
+
 .. autoexception:: ProfileNotExistsException
 
 .. autoexception:: ProfileHasNoPicsException
@@ -115,3 +117,5 @@ Exceptions
 .. autoexception:: BadCredentialsException
 
 .. autoexception:: ConnectionException
+
+.. autoexception:: TooManyRequestsException
