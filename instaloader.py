@@ -1600,7 +1600,10 @@ class Instaloader:
             # Generate set of profiles, already downloading non-profile targets
             for target in targetlist:
                 with self._error_catcher(target):
-                    if target[0] == '#':
+                    if target[0] == '@':
+                        self._log("Retrieving followees of %s..." % target[1:])
+                        profiles.update([followee['username'] for followee in self.get_followees(target[1:])])
+                    elif target[0] == '#':
                         self.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                               filter_func=filter_func)
                     elif target == ":feed":
