@@ -947,7 +947,7 @@ class Instaloader:
     def test_login(self) -> Optional[str]:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
-        return data["data"]["user"]["username"] if "username" in data["data"]["user"] else None
+        return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
     def login(self, user: str, passwd: str) -> None:
         """Log in to instagram with given username and password and internally store session object"""
