@@ -774,7 +774,15 @@ class Instaloader:
         sess = session if session else self.session
         try:
             self._sleep()
-            resp = sess.get('https://www.instagram.com/' + url, params=params)
+            resp = sess.get('https://www.instagram.com/' + url, params=params, allow_redirects=False)
+            while resp.is_redirect:
+                redirect_url = resp.headers['location']
+                self._log('\nHTTP redirect from {} to {}'.format('https://www.instagram.com/' + url, redirect_url))
+                if redirect_url.index('https://www.instagram.com/') == 0:
+                    resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
+                                    params=params, allow_redirects=False)
+                else:
+                    break
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException("404")
             if resp.status_code == 429:
