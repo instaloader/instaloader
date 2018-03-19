@@ -377,7 +377,8 @@ class Post:
         if self.comments == len(comment_edges):
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
             yield from (comment['node'] for comment in comment_edges)
-        yield from self._instaloader.graphql_node_list(17852405266163336, {'shortcode': self.shortcode},
+        yield from self._instaloader.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
+                                                       {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
 
@@ -537,9 +538,10 @@ class Profile:
         while has_next_page:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
-            data = self._instaloader.graphql_query(17888483320059182, {'id': self.userid,
-                                                                       'first': Instaloader.GRAPHQL_PAGE_LENGTH,
-                                                                       'after': end_cursor},
+            data = self._instaloader.graphql_query("472f257a40c653c64c666ce877d59d2b",
+                                                   {'id': self.userid,
+                                                    'first': Instaloader.GRAPHQL_PAGE_LENGTH,
+                                                    'after': end_cursor},
                                                    'https://www.instagram.com/{0}/'.format(self.username))
             media = data['data']['user']['edge_owner_to_timeline_media']
             yield from (Post(self._instaloader, edge['node'], owner_profile=self)
@@ -748,29 +750,29 @@ class Instaloader:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
-        def graphql_query_waittime(query_id: int, untracked_queries: bool = False) -> int:
+        def graphql_query_waittime(query_hash: str, untracked_queries: bool = False) -> int:
             sliding_window = 660
-            timestamps = self.previous_queries.get(query_id)
+            timestamps = self.previous_queries.get(query_hash)
             if not timestamps:
                 return sliding_window if untracked_queries else 0
             current_time = time.monotonic()
             timestamps = list(filter(lambda t: t > current_time - sliding_window, timestamps))
-            self.previous_queries[query_id] = timestamps
+            self.previous_queries[query_hash] = timestamps
             if len(timestamps) < 100 and not untracked_queries:
                 return 0
             return round(min(timestamps) + sliding_window - current_time) + 6
-        is_graphql_query = 'query_id' in params and 'graphql/query' in url
+        is_graphql_query = 'query_hash' in params and 'graphql/query' in url
         if is_graphql_query:
-            query_id = params['query_id']
-            waittime = graphql_query_waittime(query_id)
+            query_hash = params['query_hash']
+            waittime = graphql_query_waittime(query_hash)
             if waittime > 0:
                 self._log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
                 time.sleep(waittime)
-            timestamp_list = self.previous_queries.get(query_id)
+            timestamp_list = self.previous_queries.get(query_hash)
             if timestamp_list is not None:
                 timestamp_list.append(time.monotonic())
             else:
-                self.previous_queries[query_id] = [time.monotonic()]
+                self.previous_queries[query_hash] = [time.monotonic()]
         sess = session if session else self.session
         try:
             self._sleep()
@@ -809,7 +811,7 @@ class Instaloader:
                 if isinstance(err, TooManyRequestsException):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
-                        waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)
+                        waittime = graphql_query_waittime(query_hash=params['query_hash'], untracked_queries=True)
                         if waittime > 0:
                             self._log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)
@@ -848,12 +850,12 @@ class Instaloader:
         session.headers.update(self._default_http_header(empty_session_only=True))
         return session
 
-    def graphql_query(self, query_identifier: Union[int, str], variables: Dict[str, Any],
+    def graphql_query(self, query_hash: str, variables: Dict[str, Any],
                       referer: Optional[str] = None) -> Dict[str, Any]:
         """
         Do a GraphQL Query.
 
-        :param query_identifier: Query ID or Hash.
+        :param query_hash: Query identifying hash.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
@@ -868,7 +870,7 @@ class Instaloader:
         if referer is not None:
             tmpsession.headers['referer'] = urllib.parse.quote(referer)
         resp_json = self.get_json('graphql/query',
-                                  params={'query_id' if isinstance(query_identifier, int) else 'query_hash': query_identifier,
+                                  params={'query_hash': query_hash,
                                           'variables': json.dumps(variables, separators=(',', ':'))},
                                   session=tmpsession)
         if 'status' not in resp_json:
@@ -877,7 +879,7 @@ class Instaloader:
 
     def get_username_by_id(self, profile_id: int) -> str:
         """To get the current username of a profile, given its unique ID, this function can be used."""
-        data = self.graphql_query(17862015703145017, {'id': str(profile_id), 'first': 1})['data']['user']
+        data = self.graphql_query("472f257a40c653c64c666ce877d59d2b", {'id': str(profile_id), 'first': 1})['data']['user']
         if data:
             data = data["edge_owner_to_timeline_media"]
         else:
@@ -896,18 +898,18 @@ class Instaloader:
         his/her username. To get said ID, given the profile's name, you may call this function."""
         return Profile(self, profile).userid
 
-    def graphql_node_list(self, query_identifier: Union[int, str], query_variables: Dict[str, Any],
+    def graphql_node_list(self, query_hash: str, query_variables: Dict[str, Any],
                           query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
         query_variables['first'] = Instaloader.GRAPHQL_PAGE_LENGTH
-        data = self.graphql_query(query_identifier, query_variables, query_referer)
+        data = self.graphql_query(query_hash, query_variables, query_referer)
         while True:
             edge_struct = edge_extractor(data)
             yield from [edge['node'] for edge in edge_struct['edges']]
             if edge_struct['page_info']['has_next_page']:
                 query_variables['after'] = edge_struct['page_info']['end_cursor']
-                data = self.graphql_query(query_identifier, query_variables, query_referer)
+                data = self.graphql_query(query_hash, query_variables, query_referer)
             else:
                 break
 
@@ -920,7 +922,8 @@ class Instaloader:
 
         :param profile: Name of profile to lookup followers.
         """
-        yield from self.graphql_node_list(17851374694183129, {'id': str(self.get_id_by_username(profile))},
+        yield from self.graphql_node_list("37479f2b8209594dde7facb0d904896a",
+                                          {'id': str(self.get_id_by_username(profile))},
                                           'https://www.instagram.com/' + profile + '/',
                                           lambda d: d['data']['user']['edge_followed_by'])
 
@@ -933,7 +936,8 @@ class Instaloader:
 
         :param profile: Name of profile to lookup followers.
         """
-        yield from self.graphql_node_list(17874545323001329, {'id': str(self.get_id_by_username(profile))},
+        yield from self.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
+                                          {'id': str(self.get_id_by_username(profile))},
                                           'https://www.instagram.com/' + profile + '/',
                                           lambda d: d['data']['user']['edge_follow'])
 
@@ -1409,7 +1413,7 @@ class Instaloader:
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
         yield from (Post(self, node) for node in
-                    self.graphql_node_list(17875800862117404, {'tag_name': hashtag},
+                    self.graphql_node_list("298b92c8d7cad703f7565aa892ede943", {'tag_name': hashtag},
                                            'https://www.instagram.com/explore/tags/{0}/'.format(hashtag),
                                            lambda d: d['data']['hashtag']['edge_hashtag_to_media']))
 
