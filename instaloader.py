@@ -130,7 +130,7 @@ def mediaid_to_shortcode(mediaid: int) -> str:
 def format_string_contains_key(format_string: str, key: str) -> bool:
     # pylint:disable=unused-variable
     for literal_text, field_name, format_spec, conversion in string.Formatter().parse(format_string):
-        if field_name == key or field_name.startswith(key + '.'):
+        if field_name and (field_name == key or field_name.startswith(key + '.')):
             return True
     return False
 
