@@ -6,6 +6,7 @@ import getpass
 import json
 import os
 import pickle
+import platform
 import random
 import re
 import shutil
@@ -127,7 +128,7 @@ def mediaid_to_shortcode(mediaid: int) -> str:
     return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ','A')
 
 
-def format_string_contains_key(format_string: str, key: str) -> bool:
+def format_string_contains_key(format_string: '_PathPattern', key: str) -> bool:
     # pylint:disable=unused-variable
     for literal_text, field_name, format_spec, conversion in string.Formatter().parse(format_string):
         if field_name and (field_name == key or field_name.startswith(key + '.')):
@@ -440,6 +441,14 @@ class Tristate(Enum):
     always = 2
 
 
+class _PathPattern(str):
+    """Class overriding :meth:`str.format` for character substitution in paths for Windows, see issue #84."""
+
+    def format(self, *args: Any, **kwargs: Any) -> str:
+        ret = super().format(*args, **kwargs)
+        return ret.replace(':', '\ua789') if platform.system() == 'Windows' else ret
+
+
 class Instaloader:
     GRAPHQL_PAGE_LENGTH = 200
 
@@ -462,18 +471,19 @@ class Instaloader:
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
-        self.dirname_pattern = dirname_pattern if dirname_pattern is not None else '{target}'
+        self.dirname_pattern = _PathPattern(dirname_pattern if dirname_pattern is not None else '{target}')
         if filename_pattern is not None:
             filename_pattern = re.sub(r"({(?:post\.)?date)([:}])", r"\1_utc\2", filename_pattern)
             self.filename_pattern_old = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S}')
-            self.filename_pattern_old = re.sub(r"(?i)({(?:post\.)?date_utc:[^}]*?)_UTC",
-                                               r"\1", self.filename_pattern_old)
+            self.filename_pattern_old = _PathPattern(re.sub(r"(?i)({(?:post\.)?date_utc:[^}]*?)_UTC",
+                                                            r"\1", self.filename_pattern_old))
             filename_pattern = re.sub(r"(?i)({(date_utc|post\.date_utc):(?![^}]*UTC[^}]*).*?)}",
                                       r"\1_UTC}", filename_pattern)
-            self.filename_pattern = filename_pattern.replace('{date_utc}', '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
+            self.filename_pattern = _PathPattern(filename_pattern.replace('{date_utc}',
+                                                                          '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}'))
         else:
-            self.filename_pattern = '{date_utc:%Y-%m-%d_%H-%M-%S_UTC}'
-            self.filename_pattern_old = '{date_utc:%Y-%m-%d_%H-%M-%S}'
+            self.filename_pattern = _PathPattern('{date_utc:%Y-%m-%d_%H-%M-%S_UTC}')
+            self.filename_pattern_old = _PathPattern('{date_utc:%Y-%m-%d_%H-%M-%S}')
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
