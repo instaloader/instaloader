@@ -1426,6 +1426,13 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    @_requires_login
+    def get_explore_posts(self) -> Iterator[Post]:
+        """Get Posts which are worthy of exploring suggested by Instagram."""
+        yield from (Post(self, node) for node in self.graphql_node_list("df0dcc250c2b18d9fd27c5581ef33c7c",
+                                                                        {}, 'https://www.instagram.com/explore/',
+                                                                        lambda d: d['data']['user']['edge_web_discover_media']))
+
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
         yield from (Post(self, node) for node in
