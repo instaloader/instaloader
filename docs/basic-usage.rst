@@ -1,3 +1,10 @@
+.. meta::
+   :description:
+      How to download pictures from Instagram. Description of basic
+      usage of Instaloader, free tool to download photos from public
+      and private profiles, hashtags, stories, feeds, saved media, and
+      their metadata, comments and captions.
+
 Download Pictures from Instagram
 ---------------------------------
 

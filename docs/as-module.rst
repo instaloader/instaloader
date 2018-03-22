@@ -1,7 +1,7 @@
 .. meta::
    :description:
-      Instaloader can also be used as a powerful and easy-to-use
-      Python API for Instagram, allowing to download media and metadata.
+      Documentation of Instaloader module, a powerful and easy-to-use
+      Python library to download Instagram media and metadata.
 
 Python Module :mod:`instaloader`
 --------------------------------
