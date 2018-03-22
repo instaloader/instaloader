@@ -1,8 +1,9 @@
 .. meta::
    :description:
-      Command line tool to download pictures (and videos) from Instagram.
-      Instaloader downloads public and private profiles, hashtags, user stories,
-      feeds, saved media, comments, geotags, captions and other metadata of each post.
+      Free command line tool to download photos from Instagram.
+      Scrapes public and private profiles, hashtags, stories, feeds,
+      saved media, and their metadata, comments and captions.
+      Written in Python.
 
 Instaloader
 ===========
