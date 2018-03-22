@@ -32,6 +32,12 @@ import urllib3
 
 __version__ = '3.3.2'
 
+# NOTE: duplicated in README.rst and docs/index.rst
+USAGE_STRING = """
+{0} [--comments] [--geotags] [--stories]
+            [--login YOUR-USERNAME] [--fast-update]
+            profile | "#hashtag" | :stories | :feed | :saved
+{0} --help""".format(sys.argv[0])
 
 try:
     # pylint:disable=wrong-import-position
@@ -1591,6 +1597,14 @@ class Instaloader:
         # Save session if it is useful
         if username is not None:
             self.save_session_to_file(sessionfile)
+        # User might be confused if Instaloader does nothing
+        if not profilelist:
+            if self.is_logged_in:
+                # Instaloader did at least save a session file
+                self._log("No targets were specified, thus nothing has been downloaded.")
+            else:
+                # Instloader did not do anything
+                self._log("usage:"+USAGE_STRING)
         if self.error_log:
             print("\nErrors occured:", file=sys.stderr)
             for err in self.error_log:
@@ -1598,7 +1612,7 @@ class Instaloader:
 
 
 def main():
-    parser = ArgumentParser(description=__doc__, add_help=False,
+    parser = ArgumentParser(description=__doc__, add_help=False, usage=USAGE_STRING,
                             epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
                                    "https://instaloader.github.io/.")
