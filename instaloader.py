@@ -268,6 +268,8 @@ class Post:
                 return self._owner_profile.username.lower()
             return self._field('owner', 'username').lower()
         except (InstaloaderException, KeyError, TypeError) as err:
+            if self._instaloader.raise_all_errors:
+                raise err
             self._instaloader.error("Get owner name of {}: {} -- using \'UNKNOWN\'.".format(self, err))
             return 'UNKNOWN'
 
@@ -671,6 +673,9 @@ class Instaloader:
         # For the adaption of sleep intervals (rate control)
         self.previous_queries = dict()
 
+        # Can be set to True for testing, disables supression of Instaloader._error_catcher
+        self.raise_all_errors = False
+
     @property
     def is_logged_in(self) -> bool:
         """True, if this Instaloader instance is logged in."""
@@ -717,6 +722,8 @@ class Instaloader:
                 self.error('{}: {}'.format(extra_info, err))
             else:
                 self.error('{}'.format(err))
+            if self.raise_all_errors:
+                raise err
 
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
