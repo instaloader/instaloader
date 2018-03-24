@@ -361,4 +361,4 @@ texinfo_documents = [
 current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
 current_release_date = subprocess.check_output(["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
 
-html_context = {'current_release': current_release, 'current_release_date': current_release_date}
+html_context = {'current_release': current_release, 'current_release_date': current_release_date, 'READTHEDOCS': bool(os.environ.get('READTHEDOCS'))}

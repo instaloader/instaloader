@@ -2,4 +2,7 @@
 {% block extrahead %}
 <meta name="google-site-verification" content="FNUsDdkOJM9obm9QEdrNBVd9AtAzHzA-aaSMCUrS6C8" />
 <script async defer src="https://buttons.github.io/buttons.js"></script>
+{% if READTHEDOCS %}
+<meta http-equiv="refresh" content="0; URL=https://instaloader.github.io/{{ pagename }}.html" />
+{% endif %}
 {% endblock %}
