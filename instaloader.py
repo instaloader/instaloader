@@ -734,9 +734,11 @@ class Instaloader:
         """Downloads raw data.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When download repeatedly failed."""
         try:
-            resp = self._get_anonymous_session().get(url, stream=True)
+            with self._get_anonymous_session() as anonymous_session:
+                resp = anonymous_session.get(url)
             if resp.status_code == 200:
                 self._log(filename, end=' ', flush=True)
                 with open(filename, 'wb') as file:
@@ -896,6 +898,7 @@ class Instaloader:
                                   params={'query_hash': query_hash,
                                           'variables': json.dumps(variables, separators=(',', ':'))},
                                   session=tmpsession)
+        tmpsession.close()
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
         return resp_json
@@ -990,7 +993,8 @@ class Instaloader:
     def save_metadata_json(self, filename: str, post: Post) -> None:
         """Saves metadata JSON file of a :class:`Post`."""
         filename += '.json'
-        json.dump(post, fp=open(filename, 'w'), indent=4, default=Post.json_encoder)
+        with open(filename, 'w') as fp:
+            json.dump(post, fp=fp, indent=4, default=Post.json_encoder)
         self._log('json', end=' ', flush=True)
 
     def update_comments(self, filename: str, post: Post, filename_alt: Optional[str] = None) -> None:
@@ -1089,8 +1093,9 @@ class Instaloader:
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
 
-        date_object = datetime.strptime(self._get_anonymous_session().head(profile.profile_pic_url).headers["Last-Modified"],
-                                        '%a, %d %b %Y %H:%M:%S GMT')
+        with self._get_anonymous_session() as anonymous_session:
+            date_object = datetime.strptime(anonymous_session.head(profile.profile_pic_url).headers["Last-Modified"],
+                                            '%a, %d %b %Y %H:%M:%S GMT')
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
             filename = '{0}/{1}_UTC_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
