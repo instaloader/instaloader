@@ -919,13 +919,7 @@ class Instaloader:
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
-        url_best = re.sub(r'/s([1-9][0-9]{2})x\1/', '/s2048x2048/', url)
-        url_best = re.sub(r'/vp/[a-f0-9]{32}/[A-F0-9]{8}/', '/', url_best)      # remove signature
-        try:
-            self._get_and_write_raw(url_best, filename)
-        except (QueryReturnedForbiddenException, QueryReturnedNotFoundException) as err:
-            self.error('{} Retrying with lower quality version.'.format(err))
-            self._get_and_write_raw(url, filename)
+        self._get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self._log('') # log output of _get_and_write_raw() does not produce \n
 
