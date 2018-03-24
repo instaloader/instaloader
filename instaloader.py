@@ -151,7 +151,7 @@ def filterstr_to_filterfunc(filter_str: str, logged_in: bool) -> Callable[['Post
 
     class TransformFilterAst(ast.NodeTransformer):
         def visit_Name(self, node: ast.Name):
-            # pylint:disable=invalid-name,no-self-use
+            # pylint:disable=no-self-use
             if not isinstance(node.ctx, ast.Load):
                 raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
             if not hasattr(Post, node.id):
@@ -248,7 +248,6 @@ class Post:
 
     def _field(self, *keys) -> Any:
         """Lookups given fields in _node, and if not found in _full_metadata. Raises KeyError if not found anywhere."""
-        # pylint:disable=invalid-name
         try:
             d = self._node
             for key in keys:
@@ -1018,7 +1017,6 @@ class Instaloader:
                 #    if unique_comments_list[-1]['id'] != comment['id']:
                 #        unique_comments_list.append(comment)
                 #file.write(json.dumps(unique_comments_list, indent=4))
-                #pylint:disable=invalid-name
                 for x, y in zip(comments_list[:-1], comments_list[1:]):
                     if x['id'] != y['id']:
                         unique_comments_list.append(y)
