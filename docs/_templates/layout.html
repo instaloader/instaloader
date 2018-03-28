@@ -1,17 +1,11 @@
 {% extends "!layout.html" %}
 {% block extrahead %}
 {{ super() }}
-<meta name="google-site-verification" content="FNUsDdkOJM9obm9QEdrNBVd9AtAzHzA-aaSMCUrS6C8" />
-<script async defer src="https://buttons.github.io/buttons.js"></script>
-{% if READTHEDOCS %}
-<meta http-equiv="refresh" content="0; URL=https://instaloader.github.io/{{ pagename }}.html" />
-<meta name="robots" content="noindex" />
-{% endif %}
-<style type="text/css">
-div.document { width: 1008px; }
-@media screen and (max-width: 1008px) {
-  div.sphinxsidebar { display: none; }
-  div.document { width: 100%!important; }
-}
-</style>
+  <meta name="google-site-verification" content="FNUsDdkOJM9obm9QEdrNBVd9AtAzHzA-aaSMCUrS6C8" />
+  {% if pagename == "index" %}
+  <link rel="canonical" href="https://instaloader.github.io/" />
+  {% else %}
+  <link rel="canonical" href="https://instaloader.github.io/{{ pagename }}.html" />
+  {% endif %}
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
 {% endblock %}
