@@ -903,7 +903,7 @@ class Instaloader:
 
         try:
             data = self.get_json(path='api/v1/users/{0}/info/'.format(profile_metadata["user"]["id"]), params={},
-                                 host='i.instagram.com')
+                                 host='i.instagram.com', session=self._get_anonymous_session())
             url = data["user"]["hd_profile_pic_url_info"]["url"]
         except (InstaloaderException, KeyError) as err:
             self.error('{} Unable to fetch high quality profile pic.'.format(err))
