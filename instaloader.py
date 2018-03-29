@@ -588,12 +588,13 @@ class Instaloader:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string)
 
-    def get_json(self, url: str, params: Dict[str, Any],
+    def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt = 1) -> Dict[str, Any]:
         """JSON request to Instagram.
 
-        :param url: URL, relative to www.instagram.com/
+        :param path: URL, relative to the given domain which defaults to www.instagram.com/
         :param params: GET parameters
+        :param host: Domain part of the URL from where to download the requested JSON; defaults to www.instagram.com
         :param session: Session to use, or None to use self.session
         :return: Decoded response dictionary
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
@@ -610,7 +611,7 @@ class Instaloader:
             if len(timestamps) < 100 and not untracked_queries:
                 return 0
             return round(min(timestamps) + sliding_window - current_time) + 6
-        is_graphql_query = 'query_id' in params and 'graphql/query' in url
+        is_graphql_query = 'query_id' in params and 'graphql/query' in path
         if is_graphql_query:
             query_id = params['query_id']
             waittime = graphql_query_waittime(query_id)
@@ -625,7 +626,7 @@ class Instaloader:
         sess = session if session else self.session
         try:
             self._sleep()
-            resp = sess.get('https://www.instagram.com/' + url, params=params)
+            resp = sess.get('https://{0}/{1}'.format(host, path), params=params)
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException("404")
             if resp.status_code == 429:
@@ -641,7 +642,7 @@ class Instaloader:
                     raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
-            error_string = "JSON Query to {}: {}".format(url, err)
+            error_string = "JSON Query to {}: {}".format(path, err)
             if _attempt == self.max_connection_attempts:
                 raise ConnectionException(error_string)
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
@@ -657,7 +658,7 @@ class Instaloader:
                             self._log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)
                 self._sleep()
-                return self.get_json(url, params, sess, _attempt + 1)
+                return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string)
@@ -900,8 +901,14 @@ class Instaloader:
     def download_profilepic(self, name: str, profile_metadata: Dict[str, Any]) -> None:
         """Downloads and saves profile pic."""
 
-        url = profile_metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in profile_metadata["user"] \
-            else profile_metadata["user"]["profile_pic_url"]
+        try:
+            data = self.get_json(path='api/v1/users/{0}/info/'.format(profile_metadata["user"]["id"]), params={},
+                                 host='i.instagram.com')
+            url = data["user"]["hd_profile_pic_url_info"]["url"]
+        except (InstaloaderException, KeyError) as err:
+            self.error('{} Unable to fetch high quality profile pic.'.format(err))
+            url = profile_metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in profile_metadata["user"] \
+                else profile_metadata["user"]["profile_pic_url"]
 
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
