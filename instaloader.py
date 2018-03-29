@@ -411,7 +411,7 @@ class Post:
         if loc_dict is not None:
             location_json = self._instaloader.get_json("explore/locations/{0}/".format(loc_dict["id"]),
                                                        params={'__a': 1})
-            return location_json["location"]
+            return location_json["location"] if "location" in location_json else location_json['graphql']['location']
 
     @staticmethod
     def json_encoder(obj) -> Dict[str, Any]:
