@@ -35,9 +35,9 @@ __version__ = '3.3.3'
 # NOTE: duplicated in README.rst and docs/index.rst
 USAGE_STRING = """
 {0} [--comments] [--geotags] [--stories]
-            [--login YOUR-USERNAME] [--fast-update]
-            profile | "#hashtag" | :stories | :feed | :saved
-{0} --help""".format(sys.argv[0])
+{2:{1}} [--login YOUR-USERNAME] [--fast-update]
+{2:{1}} profile | "#hashtag" | :stories | :feed | :saved
+{0} --help""".format(sys.argv[0], len(sys.argv[0]), '')
 
 try:
     # pylint:disable=wrong-import-position
