@@ -30,7 +30,7 @@ import requests.utils
 import urllib3
 
 
-__version__ = '3.3.3'
+__version__ = '3.3.4'
 
 # NOTE: duplicated in README.rst and docs/index.rst
 USAGE_STRING = """
