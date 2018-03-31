@@ -1647,6 +1647,8 @@ class Instaloader:
         try:
             # Generate set of profiles, already downloading non-profile targets
             for target in targetlist:
+                # strip '/' characters to be more shell-autocompletion-friendly
+                target = target.rstrip('/')
                 with self._error_catcher(target):
                     if target[0] == '@':
                         self._log("Retrieving followees of %s..." % target[1:])
