@@ -1,3 +1,4 @@
 requests
 sphinx
 sphinx-autodoc-typehints
+sphinx-bootstrap-theme

@@ -20,6 +20,9 @@
 import os
 import subprocess
 import sys
+
+import sphinx_bootstrap_theme
+
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ------------------------------------------------
@@ -133,16 +136,20 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
 html_theme_options = {
-    'show_powered_by': False,
-    'sidebar_width': '290px',
-    'page_width': '935px' }
+    'navbar_site_name': 'Site Contents',
+    'navbar_pagenav_name': 'Page Contents',
+    'navbar_pagenav': True,
+    'navbar_sidebarrel': True,
+    'nosidebar': True,
+     }
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -191,10 +198,8 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 #
-if not os.environ.get("READTHEDOCS"):
-    html_sidebars = {'**': ["caption.html", "globaltoc.html", "relations.html", "links.html"] }
-else:
-    html_sidebars = {'**': ["caption.html", "rtdmessage.html", "globaltoc.html", "relations.html", "links.html"] }
+#html_sidebars = {'**': ["relations.html", "links.html"] }
+html_sidebars = {}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -373,3 +378,4 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('autodoc-skip-member', skip)
+    app.add_stylesheet("style.css")

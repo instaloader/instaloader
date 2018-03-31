@@ -28,7 +28,7 @@ will be installed automatically, if it is not already installed.
 
 - If you do not want to use pip, even though it is highly recommended,
   and prefer to **install Instaloader manually**,
-  `Download the Source <https://github.com/instaloader/instaloader/releases>`__,
+  `Download the Source <https://github.com/instaloader/instaloader/releases/latest>`__,
   extract the Zip or Tarball and execute ``instaloader.py`` from there.
 
 - On **Arch Linux**, you may install Instaloader using the
@@ -36,3 +36,6 @@ will be installed automatically, if it is not already installed.
 
 - On **Gentoo Linux**, you may install Instaloader using the
   `Instaloader Ebuild <https://bugs.gentoo.org/642100>`__.
+
+- On **Windows 10**, you may download the standalone executable from the
+  `current release page <https://github.com/instaloader/instaloader/releases/latest>`__.

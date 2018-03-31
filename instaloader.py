@@ -31,14 +31,14 @@ import requests.utils
 import urllib3
 
 
-__version__ = '3.3.3'
+__version__ = '3.3.4'
 
 # NOTE: duplicated in README.rst and docs/index.rst
 USAGE_STRING = """
 {0} [--comments] [--geotags] [--stories]
-            [--login YOUR-USERNAME] [--fast-update]
-            profile | "#hashtag" | :stories | :feed | :saved
-{0} --help""".format(sys.argv[0])
+{2:{1}} [--login YOUR-USERNAME] [--fast-update]
+{2:{1}} profile | "#hashtag" | :stories | :feed | :saved
+{0} --help""".format(sys.argv[0], len(sys.argv[0]), '')
 
 try:
     # pylint:disable=wrong-import-position
@@ -413,7 +413,7 @@ class Post:
         if loc_dict is not None:
             location_json = self._instaloader.get_json("explore/locations/{0}/".format(loc_dict["id"]),
                                                        params={'__a': 1})
-            return location_json["location"]
+            return location_json["location"] if "location" in location_json else location_json['graphql']['location']
 
     @staticmethod
     def json_encoder(obj) -> Dict[str, Any]:
@@ -525,10 +525,17 @@ class Profile:
     def requested_by_viewer(self) -> bool:
         return self._metadata['user']['requested_by_viewer']
 
-    @property
-    def profile_pic_url(self) -> str:
-        return self._metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in self._metadata["user"] \
-            else self._metadata["user"]["profile_pic_url"]
+    def get_profile_pic_url(self) -> str:
+        """Return URL of profile picture"""
+        try:
+            with self._instaloader.get_anonymous_session() as anonymous_session:
+                data = self._instaloader.get_json(path='api/v1/users/{0}/info/'.format(self.userid), params={},
+                                                  host='i.instagram.com', session=anonymous_session)
+            return data["user"]["hd_profile_pic_url_info"]["url"]
+        except (InstaloaderException, KeyError) as err:
+            self._instaloader.error('{} Unable to fetch high quality profile pic.'.format(err))
+            return self._metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in self._metadata["user"] \
+                else self._metadata["user"]["profile_pic_url"]
 
     def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile."""
@@ -641,7 +648,7 @@ class Instaloader:
 
         # configuration parameters
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
-        self.session = self._get_anonymous_session()
+        self.session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
         self.quiet = quiet
@@ -736,7 +743,7 @@ class Instaloader:
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When download repeatedly failed."""
         try:
-            with self._get_anonymous_session() as anonymous_session:
+            with self.get_anonymous_session() as anonymous_session:
                 resp = anonymous_session.get(url)
             if resp.status_code == 200:
                 self._log(filename, end=' ', flush=True)
@@ -763,12 +770,13 @@ class Instaloader:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string)
 
-    def get_json(self, url: str, params: Dict[str, Any],
+    def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt = 1) -> Dict[str, Any]:
         """JSON request to Instagram.
 
-        :param url: URL, relative to www.instagram.com/
+        :param path: URL, relative to the given domain which defaults to www.instagram.com/
         :param params: GET parameters
+        :param host: Domain part of the URL from where to download the requested JSON; defaults to www.instagram.com
         :param session: Session to use, or None to use self.session
         :return: Decoded response dictionary
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
@@ -785,7 +793,7 @@ class Instaloader:
             if len(timestamps) < 100 and not untracked_queries:
                 return 0
             return round(min(timestamps) + sliding_window - current_time) + 6
-        is_graphql_query = 'query_hash' in params and 'graphql/query' in url
+        is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         if is_graphql_query:
             query_hash = params['query_hash']
             waittime = graphql_query_waittime(query_hash)
@@ -800,11 +808,11 @@ class Instaloader:
         sess = session if session else self.session
         try:
             self._sleep()
-            resp = sess.get('https://www.instagram.com/' + url, params=params, allow_redirects=False)
+            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
-                self._log('\nHTTP redirect from {} to {}'.format('https://www.instagram.com/' + url, redirect_url))
-                if redirect_url.index('https://www.instagram.com/') == 0:
+                self._log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
+                if redirect_url.index('https://{}/'.format(host)) == 0:
                     resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
                                     params=params, allow_redirects=False)
                 else:
@@ -824,7 +832,7 @@ class Instaloader:
                     raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
-            error_string = "JSON Query to {}: {}".format(url, err)
+            error_string = "JSON Query to {}: {}".format(path, err)
             if _attempt == self.max_connection_attempts:
                 raise ConnectionException(error_string)
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
@@ -840,7 +848,7 @@ class Instaloader:
                             self._log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)
                 self._sleep()
-                return self.get_json(url, params, sess, _attempt + 1)
+                return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string)
@@ -865,7 +873,7 @@ class Instaloader:
             del header['X-Requested-With']
         return header
 
-    def _get_anonymous_session(self) -> requests.Session:
+    def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
@@ -1091,27 +1099,22 @@ class Instaloader:
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
 
-        with self._get_anonymous_session() as anonymous_session:
-            date_object = datetime.strptime(anonymous_session.head(profile.profile_pic_url).headers["Last-Modified"],
+        profile_pic_url = profile.get_profile_pic_url()
+        with self.get_anonymous_session() as anonymous_session:
+            date_object = datetime.strptime(anonymous_session.head(profile_pic_url).headers["Last-Modified"],
                                             '%a, %d %b %Y %H:%M:%S GMT')
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
             filename = '{0}/{1}_UTC_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
                                                                                         target=profile.username.lower()),
-                                                            _epoch_to_string(date_object), profile.profile_pic_url[-3:])
+                                                            _epoch_to_string(date_object), profile_pic_url[-3:])
         else:
             filename = '{0}/{1}_{2}_UTC_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
-                                                                _epoch_to_string(date_object), profile.profile_pic_url[-3:])
+                                                                _epoch_to_string(date_object), profile_pic_url[-3:])
         if os.path.isfile(filename):
             self._log(filename + ' already exists')
             return None
-        url_best = re.sub(r'/s([1-9][0-9]{2})x\1/', '/s2048x2048/', profile.profile_pic_url)
-        url_best = re.sub(r'/vp/[a-f0-9]{32}/[A-F0-9]{8}/', '/', url_best)      # remove signature
-        try:
-            self._get_and_write_raw(url_best, filename)
-        except (QueryReturnedForbiddenException, QueryReturnedNotFoundException) as err:
-            self.error('{} Retrying with lower quality version.'.format(err))
-            self._get_and_write_raw(profile.profile_pic_url, filename)
+        self._get_and_write_raw(profile_pic_url, filename)
         os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self._log('') # log output of _get_and_write_raw() does not produce \n
 
