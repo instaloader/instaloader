@@ -1669,88 +1669,90 @@ class Instaloader:
                 print(err, file=sys.stderr)
                 password = None
 
-    def main(self, targetlist: List[str], username: Optional[str] = None, password: Optional[str] = None,
-             sessionfile: Optional[str] = None, max_count: Optional[int] = None,
-             profile_pic: bool = True, profile_pic_only: bool = False,
-             fast_update: bool = False,
-             stories: bool = False, stories_only: bool = False,
-             filter_str: Optional[str] = None) -> None:
-        """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
-        # Parse and generate filter function
-        if filter_str is not None:
-            filter_func = filterstr_to_filterfunc(filter_str, username is not None)
-            self.context.log('Only download posts with property "{}".'.format(filter_str))
-        else:
-            filter_func = None
-        # Login, if desired
-        if username is not None:
-            try:
-                self.load_session_from_file(username, sessionfile)
-            except FileNotFoundError as err:
-                if sessionfile is not None:
-                    print(err, file=sys.stderr)
-                self.context.log("Session file does not exist yet - Logging in.")
-            if not self.context.is_logged_in or username != self.test_login():
-                if password is not None:
-                    self.login(username, password)
-                else:
-                    self.interactive_login(username)
-            self.context.log("Logged in as %s." % username)
-        # Try block for KeyboardInterrupt (save session on ^C)
-        profiles = set()
+
+def _main(instaloader: Instaloader, targetlist: List[str],
+          username: Optional[str] = None, password: Optional[str] = None,
+          sessionfile: Optional[str] = None, max_count: Optional[int] = None,
+          profile_pic: bool = True, profile_pic_only: bool = False,
+          fast_update: bool = False,
+          stories: bool = False, stories_only: bool = False,
+          filter_str: Optional[str] = None) -> None:
+    """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
+    # Parse and generate filter function
+    if filter_str is not None:
+        filter_func = filterstr_to_filterfunc(filter_str, username is not None)
+        instaloader.context.log('Only download posts with property "{}".'.format(filter_str))
+    else:
+        filter_func = None
+    # Login, if desired
+    if username is not None:
         try:
-            # Generate set of profiles, already downloading non-profile targets
-            for target in targetlist:
-                # strip '/' characters to be more shell-autocompletion-friendly
-                target = target.rstrip('/')
-                with self.context.error_catcher(target):
-                    if target[0] == '@':
-                        self.context.log("Retrieving followees of %s..." % target[1:])
-                        profiles.update([followee['username'] for followee in self.get_followees(target[1:])])
-                    elif target[0] == '#':
-                        self.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
-                                              filter_func=filter_func)
-                    elif target == ":feed":
-                        self.download_feed_posts(fast_update=fast_update, max_count=max_count,
-                                                 filter_func=filter_func)
-                    elif target == ":stories":
-                        self.download_stories(fast_update=fast_update)
-                    elif target == ":saved":
-                        self.download_saved_posts(fast_update=fast_update, max_count=max_count,
-                                                  filter_func=filter_func)
-                    else:
-                        profiles.add(target)
-            if len(profiles) > 1:
-                self.context.log("Downloading {} profiles: {}".format(len(profiles), ','.join(profiles)))
-            # Iterate through profiles list and download them
-            for target in profiles:
-                with self.context.error_catcher(target):
-                    try:
-                        self.download_profile(target, profile_pic, profile_pic_only, fast_update, stories, stories_only,
-                                              filter_func=filter_func)
-                    except ProfileNotExistsException as err:
-                        if not self.context.is_logged_in:
-                            self.context.log(err)
-                            self.context.log("Trying again anonymously, helps in case you are just blocked.")
-                            with self.anonymous_copy() as anonymous_loader:
-                                with self.context.error_catcher():
-                                    anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
-                                                                      fast_update, filter_func=filter_func)
-                        else:
-                            raise err
-        except KeyboardInterrupt:
-            print("\nInterrupted by user.", file=sys.stderr)
-        # Save session if it is useful
-        if self.context.is_logged_in:
-            self.save_session_to_file(sessionfile)
-        # User might be confused if Instaloader does nothing
-        if not targetlist:
-            if self.context.is_logged_in:
-                # Instaloader did at least save a session file
-                self.context.log("No targets were specified, thus nothing has been downloaded.")
+            instaloader.load_session_from_file(username, sessionfile)
+        except FileNotFoundError as err:
+            if sessionfile is not None:
+                print(err, file=sys.stderr)
+            instaloader.context.log("Session file does not exist yet - Logging in.")
+        if not instaloader.context.is_logged_in or username != instaloader.test_login():
+            if password is not None:
+                instaloader.login(username, password)
             else:
-                # Instloader did not do anything
-                self.context.log("usage:"+USAGE_STRING)
+                instaloader.interactive_login(username)
+        instaloader.context.log("Logged in as %s." % username)
+    # Try block for KeyboardInterrupt (save session on ^C)
+    profiles = set()
+    try:
+        # Generate set of profiles, already downloading non-profile targets
+        for target in targetlist:
+            # strip '/' characters to be more shell-autocompletion-friendly
+            target = target.rstrip('/')
+            with instaloader.context.error_catcher(target):
+                if target[0] == '@':
+                    instaloader.context.log("Retrieving followees of %s..." % target[1:])
+                    profiles.update([followee['username'] for followee in instaloader.get_followees(target[1:])])
+                elif target[0] == '#':
+                    instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
+                                                 filter_func=filter_func)
+                elif target == ":feed":
+                    instaloader.download_feed_posts(fast_update=fast_update, max_count=max_count,
+                                                    filter_func=filter_func)
+                elif target == ":stories":
+                    instaloader.download_stories(fast_update=fast_update)
+                elif target == ":saved":
+                    instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
+                                                     filter_func=filter_func)
+                else:
+                    profiles.add(target)
+        if len(profiles) > 1:
+            instaloader.context.log("Downloading {} profiles: {}".format(len(profiles), ','.join(profiles)))
+        # Iterate through profiles list and download them
+        for target in profiles:
+            with instaloader.context.error_catcher(target):
+                try:
+                    instaloader.download_profile(target, profile_pic, profile_pic_only, fast_update, stories, stories_only,
+                                                 filter_func=filter_func)
+                except ProfileNotExistsException as err:
+                    if not instaloader.context.is_logged_in:
+                        instaloader.context.log(err)
+                        instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
+                        with instaloader.anonymous_copy() as anonymous_loader:
+                            with instaloader.context.error_catcher():
+                                anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
+                                                                  fast_update, filter_func=filter_func)
+                    else:
+                        raise err
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.", file=sys.stderr)
+    # Save session if it is useful
+    if instaloader.context.is_logged_in:
+        instaloader.save_session_to_file(sessionfile)
+    # User might be confused if Instaloader does nothing
+    if not targetlist:
+        if instaloader.context.is_logged_in:
+            # Instaloader did at least save a session file
+            instaloader.context.log("No targets were specified, thus nothing has been downloaded.")
+        else:
+            # Instloader did not do anything
+            instaloader.context.log("usage:" + USAGE_STRING)
 
 
 def main():
@@ -1895,17 +1897,18 @@ def main():
                              download_geotags=download_geotags,
                              save_captions=save_captions, download_comments=download_comments,
                              save_metadata=save_metadata, max_connection_attempts=args.max_connection_attempts)
-        loader.main(args.profile,
-                    username=args.login.lower() if args.login is not None else None,
-                    password=args.password,
-                    sessionfile=args.sessionfile,
-                    max_count=int(args.count) if args.count is not None else None,
-                    profile_pic=not args.no_profile_pic,
-                    profile_pic_only=args.profile_pic_only,
-                    fast_update=args.fast_update,
-                    stories=args.stories,
-                    stories_only=args.stories_only,
-                    filter_str=args.only_if)
+        _main(loader,
+              args.profile,
+              username=args.login.lower() if args.login is not None else None,
+              password=args.password,
+              sessionfile=args.sessionfile,
+              max_count=int(args.count) if args.count is not None else None,
+              profile_pic=not args.no_profile_pic,
+              profile_pic_only=args.profile_pic_only,
+              fast_update=args.fast_update,
+              stories=args.stories,
+              stories_only=args.stories_only,
+              filter_str=args.only_if)
         loader.close()
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)
