@@ -11,7 +11,7 @@ SRC = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_version():
-    with open(os.path.join(SRC, 'instaloader.py')) as f:
+    with open(os.path.join(SRC, 'instaloader/__init__.py')) as f:
         for line in f:
             m = re.match("__version__ = '(.*)'", line)
             if m:
@@ -37,7 +37,7 @@ keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-fe
 setup(
     name='instaloader',
     version=get_version(),
-    py_modules=['instaloader'],
+    packages=['instaloader'],
     url='https://instaloader.github.io/',
     license='MIT',
     author='Alexander Graf, André Koch-Kramer',
@@ -47,7 +47,7 @@ setup(
     long_description=open(os.path.join(SRC, 'README.rst')).read(),
     install_requires=requirements,
     python_requires='>=3.5',
-    entry_points={'console_scripts': ['instaloader=instaloader:main']},
+    entry_points={'console_scripts': ['instaloader=instaloader.__main__:main']},
     zip_safe=True,
     keywords=keywords,
     classifiers=[
