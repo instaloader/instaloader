@@ -1,6 +1,7 @@
 """Download pictures (or videos) along with their captions and other metadata from Instagram."""
 
 import ast
+import os
 import sys
 from argparse import ArgumentParser, SUPPRESS
 from typing import Callable, List, Optional
@@ -11,12 +12,16 @@ from .instaloader import Instaloader, Tristate, get_default_session_filename
 from .instaloadercontext import default_user_agent
 from .structures import Post
 
-# NOTE: duplicated in README.rst and docs/index.rst
-USAGE_STRING = """
+
+def usage_string():
+    # NOTE: duplicated in README.rst and docs/index.rst
+    argv0 = os.path.basename(sys.argv[0])
+    argv0 = "instaloader" if argv0 == "__main__.py" else argv0
+    return """
 {0} [--comments] [--geotags] [--stories]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | :stories | :feed | :saved
-{0} --help""".format(sys.argv[0], len(sys.argv[0]), '')
+{0} --help""".format(argv0, len(argv0), '')
 
 
 def filterstr_to_filterfunc(filter_str: str, logged_in: bool) -> Callable[['Post'], bool]:
@@ -131,11 +136,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.log("No targets were specified, thus nothing has been downloaded.")
         else:
             # Instloader did not do anything
-            instaloader.context.log("usage:" + USAGE_STRING)
+            instaloader.context.log("usage:" + usage_string())
 
 
 def main():
-    parser = ArgumentParser(description=__doc__, add_help=False, usage=USAGE_STRING,
+    parser = ArgumentParser(description=__doc__, add_help=False, usage=usage_string(),
                             epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
                                    "https://instaloader.github.io/.")
