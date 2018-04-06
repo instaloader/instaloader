@@ -1,4 +1,11 @@
 {% extends "!layout.html" %}
+{% block htmltitle %}
+  {% if pagename == "index" %}
+  <title>{{ title|striptags|e }}</title>
+  {% else %}
+  <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+  {% endif %}
+{% endblock %}
 {% block extrahead %}
 {{ super() }}
   <meta name="google-site-verification" content="FNUsDdkOJM9obm9QEdrNBVd9AtAzHzA-aaSMCUrS6C8" />

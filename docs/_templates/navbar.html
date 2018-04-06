@@ -14,7 +14,7 @@
           {% if theme_navbar_title -%}{{ theme_navbar_title|e }}{%- else -%}{{ project|e }}{%- endif -%}
         </a>
         <span class="navbar-text navbar-version pull-left">
-          <a href="https://github.com/instaloader/instaloader/releases/tag/v{{current_release}}" title="Released on {{current_release_date}}.">v<b>{{current_release}}</b></a>
+          <a href="https://github.com/instaloader/instaloader/releases/tag/v{{current_release}}" title="Released on {{current_release_date}}">v<b>{{current_release}}</b></a>
         </span>
       </div>
 
@@ -27,7 +27,7 @@
             {% endif %}
             {% block navbartoc %}
               {% include "globaltoc.html" %}
-              {% if theme_navbar_pagenav %}
+              {% if theme_navbar_pagenav and pagename not in ("index", "genindex", "installation") %}
                 {% include "navbartoc.html" %}
               {% endif %}
             {% endblock %}
@@ -46,7 +46,7 @@
                 <ul class="dropdown-menu" role="menu" aria-labelledby="dLabelUsefulLinks">
                   <li><a href="https://github.com/instaloader/instaloader/issues">Issue Tracker</a></li>
                   <li><a href="https://github.com/instaloader/instaloader/releases">Version History</a></li>
-                  <li><a href="https://pypi.python.org/pypi/instaloader">Instaloader on PyPI</a></li>
+                  <li><a href="https://pypi.org/project/instaloader/">Instaloader on PyPI</a></li>
                   <li><a href="https://github.com/instaloader/instaloader">Instaloader on GitHub</a></li>
                   <li role="separator" class="divider"></li>
                   <li style="padding-left: 20px;"><a class="github-button" href="https://github.com/instaloader/instaloader" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star Instaloader on GitHub">Star</a></li>
