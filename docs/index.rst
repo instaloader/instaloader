@@ -5,6 +5,8 @@
       saved media, and their metadata, comments and captions.
       Written in Python.
 
+.. title:: Instaloader — Download Instagram Photos and Metadata
+
 Instaloader
 ===========
 
@@ -43,8 +45,8 @@ With `Python <https://www.python.org/>`__ installed, do::
                 :stories | :feed | :saved
 
 
-Table of Contents
------------------
+Instaloader Documentation
+-------------------------
 
 .. toctree::
    :maxdepth: 2
@@ -59,7 +61,7 @@ Useful Links
 ------------
 
 - `Git Repository (on GitHub) <https://github.com/instaloader/instaloader>`__
-- `PyPI Project Page <https://pypi.python.org/pypi/instaloader>`__
+- `PyPI Project Page <https://pypi.org/project/instaloader/>`__
 - `Issue Tracker / Bug Tracker <https://github.com/instaloader/instaloader/issues>`__
 - `Version History <https://github.com/instaloader/instaloader/releases>`__
 
