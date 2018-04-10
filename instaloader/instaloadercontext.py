@@ -315,7 +315,7 @@ class InstaloaderContext:
         :raises ConnectionException: When download repeatedly failed."""
         try:
             with self.get_anonymous_session() as anonymous_session:
-                resp = anonymous_session.get(url)
+                resp = anonymous_session.get(url, stream=True)
             if resp.status_code == 200:
                 self.log(filename, end=' ', flush=True)
                 with open(filename, 'wb') as file:
