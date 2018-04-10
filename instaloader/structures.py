@@ -43,6 +43,7 @@ class Post:
         :param node: Node structure, as returned by Instagram.
         :param owner_profile: The Profile of the owner, if already known at creation.
         """
+        assert 'shortcode' in node
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
@@ -106,24 +107,24 @@ class Post:
             return d
 
     @property
+    def owner_profile(self) -> 'Profile':
+        if not self._owner_profile:
+            owner_struct = self._field('owner')
+            if 'username' in owner_struct:
+                self._owner_profile = Profile(self._context, owner_struct)
+            else:
+                self._owner_profile = Profile.from_id(self._context, owner_struct['id'])
+        return self._owner_profile
+
+    @property
     def owner_username(self) -> str:
-        """The Post's lowercase owner name, or 'UNKNOWN'."""
-        try:
-            if self._owner_profile:
-                return self._owner_profile.username.lower()
-            return self._field('owner', 'username').lower()
-        except (InstaloaderException, KeyError, TypeError) as err:
-            if self._context.raise_all_errors:
-                raise err
-            self._context.error("Get owner name of {}: {} -- using \'UNKNOWN\'.".format(self, err))
-            return 'UNKNOWN'
+        """The Post's lowercase owner name."""
+        return self.owner_profile.username
 
     @property
     def owner_id(self) -> int:
         """The ID of the Post's owner."""
-        if self._owner_profile:
-            return self._owner_profile.userid
-        return int(self._field('owner', 'id'))
+        return self.owner_profile.userid
 
     @property
     def date_local(self) -> datetime:
@@ -288,28 +289,62 @@ class Profile:
 
     This class implements == and is hashable.
     """
-    def __init__(self, context: InstaloaderContext, profile_name: str):
-        """
-        Lookup Profile information and create Profile instance.
-
-        :param context: :class:`InstaloaderContext` instance used for queries etc.
-        :param identifier: Profile name (string).
-        """
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+        assert 'username' in node
         self._context = context
+        self._node = node
 
+    @classmethod
+    def from_username(cls, context: InstaloaderContext, username: str):
+        # pylint:disable=protected-access
+        profile = cls(context, {'username': username.lower()})
+        profile._obtain_metadata()  # to raise ProfileNotExistException now in case username is invalid
+        return profile
+
+    @classmethod
+    def from_id(cls, context: InstaloaderContext, profile_id: int):
+        data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
+                                     {'id': str(profile_id), 'first': 1})['data']['user']
+        if data:
+            data = data["edge_owner_to_timeline_media"]
+        else:
+            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
+                                            str(profile_id) + ").")
+        if not data['edges']:
+            if data['count'] == 0:
+                raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
+            else:
+                raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
+        username = Post.from_mediaid(context, int(data['edges'][0]["node"]["id"])).owner_username
+        return cls(context, {'username': username.lower(), 'id': profile_id})
+
+    def _obtain_metadata(self):
         try:
-            metadata = self._context.get_json('{}/'.format(profile_name), params={'__a': 1})
-            self._metadata = metadata['graphql'] if 'graphql' in metadata else metadata
+            metadata = self._context.get_json('{}/'.format(self.username), params={'__a': 1})
+            self._node = metadata['graphql']['user'] if 'graphql' in metadata else metadata['user']
         except QueryReturnedNotFoundException:
-            raise ProfileNotExistsException('Profile {} does not exist.'.format(profile_name))
+            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+
+    def _metadata(self, *keys) -> Any:
+        try:
+            d = self._node
+            for key in keys:
+                d = d[key]
+            return d
+        except KeyError:
+            self._obtain_metadata()
+            d = self._node
+            for key in keys:
+                d = d[key]
+            return d
 
     @property
     def userid(self) -> int:
-        return int(self._metadata['user']['id'])
+        return int(self._metadata('id'))
 
     @property
     def username(self) -> str:
-        return self._metadata['user']['username']
+        return self._metadata('username').lower()
 
     def __repr__(self):
         return '<Profile {} ({})>'.format(self.username, self.userid)
@@ -324,50 +359,47 @@ class Profile:
 
     @property
     def is_private(self) -> bool:
-        return self._metadata['user']['is_private']
+        return self._metadata('is_private')
 
     @property
     def followed_by_viewer(self) -> bool:
-        return self._metadata['user']['followed_by_viewer']
+        return self._metadata('followed_by_viewer')
 
     @property
     def mediacount(self) -> int:
-        if "media" in self._metadata["user"]:
-            # backwards compatibility with old non-graphql structure
-            return self._metadata["user"]["media"]["count"]
-        return self._metadata["user"]["edge_owner_to_timeline_media"]["count"]
+        return self._metadata('edge_owner_to_timeline_media', 'count')
 
     @property
     def biography(self) -> str:
-        return self._metadata['user']['biography']
+        return self._metadata('biography')
 
     @property
     def blocked_by_viewer(self) -> bool:
-        return self._metadata['user']['blocked_by_viewer']
+        return self._metadata('blocked_by_viewer')
 
     @property
     def follows_viewer(self) -> bool:
-        return self._metadata['user']['follows_viewer']
+        return self._metadata('follows_viewer')
 
     @property
     def full_name(self) -> str:
-        return self._metadata['user']['full_name']
+        return self._metadata('full_name')
 
     @property
     def has_blocked_viewer(self) -> bool:
-        return self._metadata['user']['has_blocked_viewer']
+        return self._metadata('has_blocked_viewer')
 
     @property
     def has_requested_viewer(self) -> bool:
-        return self._metadata['user']['has_requested_viewer']
+        return self._metadata('has_requested_viewer')
 
     @property
     def is_verified(self) -> bool:
-        return self._metadata['user']['is_verified']
+        return self._metadata('is_verified')
 
     @property
     def requested_by_viewer(self) -> bool:
-        return self._metadata['user']['requested_by_viewer']
+        return self._metadata('requested_by_viewer')
 
     def get_profile_pic_url(self) -> str:
         """Return URL of profile picture"""
@@ -378,22 +410,14 @@ class Profile:
             return data["user"]["hd_profile_pic_url_info"]["url"]
         except (InstaloaderException, KeyError) as err:
             self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
-            return self._metadata["user"]["profile_pic_url_hd"] if "profile_pic_url_hd" in self._metadata["user"] \
-                else self._metadata["user"]["profile_pic_url"]
+            return self._metadata("profile_pic_url_hd")
 
     def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile."""
-        if 'media' in self._metadata['user']:
-            # backwards compatibility with old non-graphql structure
-            yield from (Post(self._context, node, owner_profile=self)
-                        for node in self._metadata['user']['media']['nodes'])
-            has_next_page = self._metadata['user']['media']['page_info']['has_next_page']
-            end_cursor = self._metadata['user']['media']['page_info']['end_cursor']
-        else:
-            yield from (Post(self._context, edge['node'], owner_profile=self)
-                        for edge in self._metadata['user']['edge_owner_to_timeline_media']['edges'])
-            has_next_page = self._metadata['user']['edge_owner_to_timeline_media']['page_info']['has_next_page']
-            end_cursor = self._metadata['user']['edge_owner_to_timeline_media']['page_info']['end_cursor']
+        yield from (Post(self._context, edge['node'], owner_profile=self)
+                    for edge in self._metadata('edge_owner_to_timeline_media', 'edges'))
+        has_next_page = self._metadata('edge_owner_to_timeline_media', 'page_info', 'has_next_page')
+        end_cursor = self._metadata('edge_owner_to_timeline_media', 'page_info', 'end_cursor')
         while has_next_page:
             # We do not use self.graphql_node_list() here, because profile_metadata
             # lets us obtain the first 12 nodes 'for free'
@@ -414,23 +438,18 @@ class Profile:
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
-        data = self._metadata
-
-        while True:
-            if "edge_saved_media" in data["user"]:
-                is_edge = True
-                saved_media = data["user"]["edge_saved_media"]
-            else:
-                is_edge = False
-                saved_media = data["user"]["saved_media"]
-
-            if is_edge:
-                yield from (Post(self._context, edge["node"]) for edge in saved_media["edges"])
-            else:
-                yield from (Post(self._context, node) for node in saved_media["nodes"])
-
-            if not saved_media["page_info"]["has_next_page"]:
-                break
+        yield from (Post(self._context, edge['node'])
+                    for edge in self._metadata('edge_saved_media', 'edges'))
+        has_next_page = self._metadata('edge_saved_media', 'page_info', 'has_next_page')
+        end_cursor = self._metadata('edge_saved_media', 'page_info', 'end_cursor')
+        while has_next_page:
             data = self._context.graphql_query("f883d95537fbcd400f466f63d42bd8a1",
-                                               {'id': self.userid, 'first': GRAPHQL_PAGE_LENGTH,
-                                                'after': saved_media["page_info"]["end_cursor"]})['data']
+                                               {'id': self.userid,
+                                                'first': GRAPHQL_PAGE_LENGTH,
+                                                'after': end_cursor},
+                                               'https://www.instagram.com/{0}/'.format(self.username))
+            media = data['data']['user']['edge_saved_media']
+            yield from (Post(self._context, edge['node'])
+                        for edge in media['edges'])
+            has_next_page = media['page_info']['has_next_page']
+            end_cursor = media['page_info']['end_cursor']

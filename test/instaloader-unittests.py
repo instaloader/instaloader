@@ -71,7 +71,7 @@ class TestInstaloader(unittest.TestCase):
 
     def test_saved_paging(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for count, post in enumerate(instaloader.Profile(self.L.context, OWN_USERNAME).get_saved_posts()):
+        for count, post in enumerate(instaloader.Profile.from_username(self.L.context, OWN_USERNAME).get_saved_posts()):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break
@@ -82,29 +82,31 @@ class TestInstaloader(unittest.TestCase):
 
     def test_get_followees(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for f in self.L.get_followees(OWN_USERNAME):
+        for f in self.L.get_followees(instaloader.Profile.from_username(self.L.context, OWN_USERNAME)):
             print(f['username'])
 
     def test_get_followers(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for f in self.L.get_followers(OWN_USERNAME):
+        for f in self.L.get_followers(instaloader.Profile.from_username(self.L.context, OWN_USERNAME)):
             print(f['username'])
 
     def test_get_username_by_id(self):
-        self.assertEqual(PUBLIC_PROFILE.lower(), self.L.get_username_by_id(PUBLIC_PROFILE_ID))
+        self.assertEqual(PUBLIC_PROFILE.lower(),
+                         instaloader.Profile.from_id(self.L.context, PUBLIC_PROFILE_ID).username)
 
     def test_get_id_by_username(self):
-        self.assertEqual(PUBLIC_PROFILE_ID, self.L.get_id_by_username(PUBLIC_PROFILE))
+        self.assertEqual(PUBLIC_PROFILE_ID,
+                         instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).userid)
 
     def test_get_likes(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for post in instaloader.Profile(self.L.context, OWN_USERNAME).get_posts():
+        for post in instaloader.Profile.from_username(self.L.context, OWN_USERNAME).get_posts():
             for like in post.get_likes():
                 print(like['username'])
             break
 
     def test_post_from_mediaid(self):
-        for post in instaloader.Profile(self.L.context, PUBLIC_PROFILE).get_posts():
+        for post in instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts():
             post2 = instaloader.Post.from_mediaid(self.L.context, post.mediaid)
             self.assertEqual(post, post2)
             break

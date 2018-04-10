@@ -135,30 +135,8 @@ class Instaloader:
     def __exit__(self, *args):
         self.close()
 
-    def get_username_by_id(self, profile_id: int) -> str:
-        """To get the current username of a profile, given its unique ID, this function can be used."""
-        data = self.context.graphql_query("472f257a40c653c64c666ce877d59d2b",
-                                          {'id': str(profile_id), 'first': 1})['data']['user']
-        if data:
-            data = data["edge_owner_to_timeline_media"]
-        else:
-            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                            str(profile_id) + ").")
-        if not data['edges']:
-            if data['count'] == 0:
-                raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
-            else:
-                raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        else:
-            return Post.from_mediaid(self.context, int(data['edges'][0]["node"]["id"])).owner_username
-
-    def get_id_by_username(self, profile: str) -> int:
-        """Each Instagram profile has its own unique ID which stays unmodified even if a user changes
-        his/her username. To get said ID, given the profile's name, you may call this function."""
-        return Profile(self.context, profile).userid
-
     @_requires_login
-    def get_followers(self, profile: str) -> Iterator[Dict[str, Any]]:
+    def get_followers(self, profile: Profile) -> Iterator[Dict[str, Any]]:
         """
         Retrieve list of followers of given profile.
         To use this, one needs to be logged in and private profiles has to be followed,
@@ -167,12 +145,12 @@ class Instaloader:
         :param profile: Name of profile to lookup followers.
         """
         yield from self.context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
-                                                  {'id': str(self.get_id_by_username(profile))},
-                                                  'https://www.instagram.com/' + profile + '/',
+                                                  {'id': str(profile.userid)},
+                                                  'https://www.instagram.com/' + profile.username + '/',
                                                   lambda d: d['data']['user']['edge_followed_by'])
 
     @_requires_login
-    def get_followees(self, profile: str) -> Iterator[Dict[str, Any]]:
+    def get_followees(self, profile: Profile) -> Iterator[Dict[str, Any]]:
         """
         Retrieve list of followees (followings) of given profile.
         To use this, one needs to be logged in and private profiles has to be followed,
@@ -181,8 +159,8 @@ class Instaloader:
         :param profile: Name of profile to lookup followers.
         """
         yield from self.context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
-                                                  {'id': str(self.get_id_by_username(profile))},
-                                                  'https://www.instagram.com/' + profile + '/',
+                                                  {'id': str(profile.userid)},
+                                                  'https://www.instagram.com/' + profile.username + '/',
                                                   lambda d: d['data']['user']['edge_follow'])
 
     def download_pic(self, filename: str, url: str, mtime: datetime,
@@ -608,7 +586,7 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         count = 1
-        for post in Profile(self.context, self.context.username).get_saved_posts():
+        for post in Profile.from_username(self.context, self.context.username).get_saved_posts():
             if max_count is not None and count > max_count:
                 break
             name = post.owner_username
@@ -671,15 +649,17 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
-    def check_profile_id(self, profile_name: str, profile: Optional[Profile] = None) -> str:
+    def check_profile_id(self, profile_name: str) -> Profile:
         """
         Consult locally stored ID of profile with given name, check whether ID matches and whether name
         has changed and return current name of the profile, and store ID of profile.
 
         :param profile_name: Profile name
-        :param profile: The :class:`Profile`, or None if the profile was not found
-        :return: current profile name, profile id
+        :return: Instance of current profile
         """
+        profile = None
+        with suppress(ProfileNotExistsException):
+            profile = Profile.from_username(self.context, profile_name)
         profile_exists = profile is not None
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
@@ -698,7 +678,8 @@ class Instaloader:
                 else:
                     self.context.log("Trying to find profile {0} using its unique ID {1}.".format(profile_name,
                                                                                                   profile_id))
-                newname = self.get_username_by_id(profile_id)
+                profile_from_id = Profile.from_id(self.context, profile_id)
+                newname = profile_from_id.username
                 self.context.log("Profile {0} has changed its name to {1}.".format(profile_name, newname))
                 if ((format_string_contains_key(self.dirname_pattern, 'profile') or
                      format_string_contains_key(self.dirname_pattern, 'target'))):
@@ -709,8 +690,8 @@ class Instaloader:
                 else:
                     os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower()),
                               '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
-                return newname
-            return profile_name
+                return profile_from_id
+            return profile
         except FileNotFoundError:
             pass
         if profile_exists:
@@ -719,7 +700,7 @@ class Instaloader:
             with open(id_filename, 'w') as text_file:
                 text_file.write(str(profile.userid) + "\n")
                 self.context.log("Stored ID {0} for profile {1}.".format(profile.userid, profile_name))
-            return profile_name
+            return profile
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
 
     def download_profile(self, profile_name: str,
@@ -728,21 +709,13 @@ class Instaloader:
                          download_stories: bool = False, download_stories_only: bool = False,
                          filter_func: Optional[Callable[[Post], bool]] = None) -> None:
         """Download one profile"""
-        profile_name = profile_name.lower()
 
         # Get profile main page json
-        profile = None
-        with suppress(ProfileNotExistsException):
-            # ProfileNotExistsException is raised again later in check_profile_id() when we search the profile, so we
-            # must suppress it here.
-            profile = Profile(self.context, profile_name)
-
         # check if profile does exist or name has changed since last download
         # and update name and json data if necessary
-        name_updated = self.check_profile_id(profile_name, profile)
-        if name_updated != profile_name:
-            profile_name = name_updated
-            profile = Profile(self.context, profile_name)
+        profile = self.check_profile_id(profile_name.lower())
+
+        profile_name = profile.username
 
         if self.context.is_logged_in and profile.has_blocked_viewer and not profile.is_private:
             # raising ProfileNotExistsException invokes "trying again anonymously" logic
