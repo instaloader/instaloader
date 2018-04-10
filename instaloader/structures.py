@@ -453,3 +453,185 @@ class Profile:
                         for edge in media['edges'])
             has_next_page = media['page_info']['has_next_page']
             end_cursor = media['page_info']['end_cursor']
+
+
+class StoryItem:
+    """
+    Structure containing information about a user story item i.e. image or video.
+
+    Created by method :meth:`Story.get_items`. This class implements == and is hashable.
+
+    :param context: :class:`InstaloaderContext` instance used for additional queries if necessary.
+    :param node: Dictionary containing the available information of the story item.
+    :param owner_profile: :class:`Profile` instance representing the story owner.
+    """
+
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner_profile: Optional[Profile] = None):
+        self._context = context
+        self._node = node
+        self._owner_profile = owner_profile
+
+    @property
+    def mediaid(self) -> int:
+        """The mediaid is a decimal representation of the media shortcode."""
+        return int(self._node['id'])
+
+    @property
+    def shortcode(self) -> str:
+        return mediaid_to_shortcode(self.mediaid)
+
+    def __repr__(self):
+        return '<StoryItem {}>'.format(self.mediaid)
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, StoryItem):
+            return self.mediaid == o.mediaid
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.mediaid)
+
+    @property
+    def owner_profile(self) -> Profile:
+        """:class:`Profile` instance of the story item's owner."""
+        if not self._owner_profile:
+            self._owner_profile = Profile.from_id(self._context, self._node['owner']['id'])
+        return self._owner_profile
+
+    @property
+    def owner_username(self) -> str:
+        """The StoryItem owner's lowercase name."""
+        return self.owner_profile.username
+
+    @property
+    def owner_id(self) -> int:
+        """The ID of the StoryItem owner."""
+        return self.owner_profile.userid
+
+    @property
+    def date_local(self) -> datetime:
+        """Timestamp when the StoryItem was created (local time zone)."""
+        return datetime.fromtimestamp(self._node['taken_at_timestamp'])
+
+    @property
+    def date_utc(self) -> datetime:
+        """Timestamp when the StoryItem was created (UTC)."""
+        return datetime.utcfromtimestamp(self._node['taken_at_timestamp'])
+
+    @property
+    def expiring_local(self) -> datetime:
+        """Timestamp when the StoryItem will get unavailable (local time zone)."""
+        return datetime.fromtimestamp(self._node['expiring_at_timestamp'])
+
+    @property
+    def expiring_utc(self) -> datetime:
+        """Timestamp when the StoryItem will get unavailable (UTC)."""
+        return datetime.utcfromtimestamp(self._node['expiring_at_timestamp'])
+
+    @property
+    def url(self) -> str:
+        """URL of the picture / video thumbnail of the StoryItem"""
+        return self._node['display_resources'][-1]['src']
+
+    @property
+    def typename(self) -> str:
+        """Type of post, GraphStoryImage or GraphStoryVideo"""
+        return self._node['__typename']
+
+    @property
+    def is_video(self) -> bool:
+        """True if the StoryItem is a video."""
+        return self._node['is_video']
+
+    @property
+    def video_url(self) -> Optional[str]:
+        """URL of the video, or None."""
+        if self.is_video:
+            return self._node['video_resources'][-1]['src']
+
+
+class Story:
+    """
+    Structure representing a user story with its associated items.
+
+    Provides methods for accessing story properties, as well as :meth:`Story.get_items`.
+
+    This class implements == and is hashable.
+
+    :param context: :class:`InstaloaderContext` instance used for additional queries if necessary.
+    :param node: Dictionary containing the available information of the story as returned by Instagram.
+    """
+
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+        self._context = context
+        self._node = node
+        self._unique_id = None
+
+    def __repr__(self):
+        return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, Story):
+            return self.unique_id == o.unique_id
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self._unique_id)
+
+    @property
+    def unique_id(self) -> str:
+        """
+        This ID only equals amongst :class:`Story` instances which have the same owner and the same set of
+        :class:`StoryItem`s. For all other :class:`Story` instances this ID is different.
+        """
+        if not self._unique_id:
+            id_list = [item.mediaid for item in self.get_items()]
+            id_list.sort()
+            self._unique_id = str().join([str(self.owner_id)] + list(map(str, id_list)))
+        return self._unique_id
+
+    @property
+    def last_seen_local(self) -> Optional[datetime]:
+        """Timestamp when the story has last been watched or None (local time zone)."""
+        if self._node['seen']:
+            return datetime.fromtimestamp(self._node['seen'])
+
+    @property
+    def last_seen_utc(self) -> Optional[datetime]:
+        """Timestamp when the story has last been watched or None (UTC)."""
+        if self._node['seen']:
+            return datetime.utcfromtimestamp(self._node['seen'])
+
+    @property
+    def latest_media_local(self) -> datetime:
+        """Timestamp when the last item of the story was created (local time zone)."""
+        return datetime.fromtimestamp(self._node['latest_reel_media'])
+
+    @property
+    def latest_media_utc(self) -> datetime:
+        """Timestamp when the last item of the story was created (UTC)."""
+        return datetime.utcfromtimestamp(self._node['latest_reel_media'])
+
+    @property
+    def itemcount(self) -> int:
+        """Count of items associated with the :class:`Story` instance."""
+        return len(self._node['items'])
+
+    @property
+    def owner_profile(self) -> Profile:
+        """:class:`Profile` instance of the story owner."""
+        return Profile(self._context, self._node['user'])
+
+    @property
+    def owner_username(self) -> str:
+        """The story owner's lowercase username."""
+        return self.owner_profile.username
+
+    @property
+    def owner_id(self) -> int:
+        """The story owner's ID."""
+        return self.owner_profile.userid
+
+    def get_items(self) -> Iterator[StoryItem]:
+        """Retrieve all items from a story."""
+        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._node['items'])

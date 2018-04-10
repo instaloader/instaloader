@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import Post, Profile, mediaid_to_shortcode
+from .structures import Post, Profile, Story, StoryItem
 
 
 def get_default_session_filename(username: str) -> str:
@@ -430,7 +430,7 @@ class Instaloader:
         return downloaded
 
     @_requires_login
-    def get_stories(self, userids: Optional[List[int]] = None) -> Iterator[Dict[str, Any]]:
+    def get_stories(self, userids: Optional[List[int]] = None) -> Iterator[Story]:
         """Get available stories from followees or all stories of users whose ID are given.
         Does not mark stories as seen.
         To use this, one needs to be logged in
@@ -448,8 +448,7 @@ class Instaloader:
         stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
                                              {"reel_ids": userids, "precomposed_overlay": False})["data"]
 
-        for media in stories["reels_media"]:
-            yield media
+        yield from (Story(self.context, media) for media in stories['reels_media'])
 
     @_requires_login
     def download_stories(self,
@@ -473,52 +472,50 @@ class Instaloader:
             raise InvalidArgumentException("The \"post\" keyword is not supported in the filename pattern when "
                                            "downloading stories.")
 
-        for user_stories in self.get_stories(userids):
-            if "items" not in user_stories:
-                raise BadResponseException('Bad reel media JSON.')
-            name = user_stories["user"]["username"].lower()
+        for user_story in self.get_stories(userids):
+            name = user_story.owner_username
             self.context.log("Retrieving stories from profile {}.".format(name))
-            totalcount = len(user_stories["items"])
+            totalcount = user_story.itemcount
             count = 1
-            for item in user_stories["items"]:
+            for item in user_story.get_items():
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
-                    downloaded = self.download_story(item, filename_target, name)
+                    downloaded = self.download_story(item, filename_target)
                     if fast_update and not downloaded:
                         break
 
-    def download_story(self, item: Dict[str, Any], target: str, profile: str) -> bool:
+    def download_story(self, item: StoryItem, target: str) -> bool:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
         :param target: Replacement for {target} in dirname_pattern and filename_pattern
-        :param profile: Owner profile name
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
-        shortcode = mediaid_to_shortcode(int(item["id"]))
-        date_local = datetime.fromtimestamp(item["taken_at_timestamp"])
-        date_utc = datetime.utcfromtimestamp(item["taken_at_timestamp"])
-        dirname = self.dirname_pattern.format(profile=profile, target=target)
-        filename = dirname + '/' + self.filename_pattern.format(profile=profile, target=target,
+        owner_name = item.owner_username
+        shortcode = item.shortcode
+        date_local = item.date_local
+        date_utc = item.date_utc
+        dirname = self.dirname_pattern.format(profile=owner_name, target=target)
+        filename = dirname + '/' + self.filename_pattern.format(profile=owner_name, target=target,
                                                                 date_utc=date_utc,
                                                                 shortcode=shortcode)
-        filename_old = dirname + '/' + self.filename_pattern_old.format(profile=profile, target=target,
+        filename_old = dirname + '/' + self.filename_pattern_old.format(profile=owner_name, target=target,
                                                                         date_utc=date_local,
                                                                         shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
-        if not item["is_video"] or self.download_video_thumbnails is Tristate.always:
-            url = item["display_resources"][-1]["src"]
+        if not item.is_video or self.download_video_thumbnails is Tristate.always:
+            url = item.url
             downloaded = self.download_pic(filename=filename,
                                            filename_alt=filename_old,
                                            url=url,
                                            mtime=date_local)
-        if item["is_video"] and self.download_videos is Tristate.always:
+        if item.is_video and self.download_videos is Tristate.always:
             downloaded |= self.download_pic(filename=filename,
                                             filename_alt=filename_old,
-                                            url=item["video_resources"][-1]["src"],
+                                            url=item.video_url,
                                             mtime=date_local)
         self.context.log()
         return downloaded
