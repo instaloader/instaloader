@@ -1302,10 +1302,19 @@ class Instaloader:
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
-        yield from (Post(self, node) for node in
-                    self.graphql_node_list(17875800862117404, {'tag_name': hashtag},
-                                           'https://www.instagram.com/explore/tags/{0}/'.format(hashtag),
-                                           lambda d: d['data']['hashtag']['edge_hashtag_to_media']))
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            if end_cursor:
+                params = {'__a': 1, 'max_id': end_cursor}
+            else:
+                params = {'__a': 1}
+            hashtag_data = self.get_json('explore/tags/{0}/'.format(hashtag),
+                                         params)['graphql']['hashtag']['edge_hashtag_to_media']
+            yield from (Post(self, edge['node']) for edge in
+                        hashtag_data['edges'])
+            has_next_page = hashtag_data['page_info']['has_next_page']
+            end_cursor = hashtag_data['page_info']['end_cursor']
 
     def download_hashtag(self, hashtag: str,
                          max_count: Optional[int] = None,
