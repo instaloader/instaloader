@@ -1373,6 +1373,9 @@ class Instaloader:
                     self._log("Profile {0} does not match the stored unique ID {1}.".format(profile, profile_id))
                 else:
                     self._log("Trying to find profile {0} using its unique ID {1}.".format(profile, profile_id))
+                if not self.is_logged_in:
+                    self.error("Profile {} changed its name. If you use --login=USERNAME, I can find out the new name.")
+                    raise LoginRequiredException("Login required to obtain username from userid")
                 newname = self.get_username_by_id(profile_id)
                 self._log("Profile {0} has changed its name to {1}.".format(profile, newname))
                 if ((format_string_contains_key(self.dirname_pattern, 'profile') or
