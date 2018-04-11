@@ -6,11 +6,10 @@ import sys
 from argparse import ArgumentParser, SUPPRESS
 from typing import Callable, List, Optional
 
-from . import __version__
-from .exceptions import *
-from .instaloader import Instaloader, Tristate, get_default_session_filename
+from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
+               Tristate, __version__)
+from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
-from .structures import Post
 
 
 def usage_string():
@@ -92,7 +91,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             with instaloader.context.error_catcher(target):
                 if target[0] == '@':
                     instaloader.context.log("Retrieving followees of %s..." % target[1:])
-                    profiles.update([followee['username'] for followee in instaloader.get_followees(target[1:])])
+                    followees = instaloader.get_followees(Profile.from_username(instaloader.context, target[1:]))
+                    profiles.update([followee['username'] for followee in followees])
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  filter_func=filter_func)

@@ -91,6 +91,7 @@ class TestInstaloader(unittest.TestCase):
             print(f['username'])
 
     def test_get_username_by_id(self):
+        self.L.load_session_from_file(OWN_USERNAME)
         self.assertEqual(PUBLIC_PROFILE.lower(),
                          instaloader.Profile.from_id(self.L.context, PUBLIC_PROFILE_ID).username)
 

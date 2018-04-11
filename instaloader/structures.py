@@ -43,7 +43,15 @@ class Post:
         :param node: Node structure, as returned by Instagram.
         :param owner_profile: The Profile of the owner, if already known at creation.
         """
-        assert 'shortcode' in node
+
+        # Ensure node contains all the data that is accessed via self._node
+        assert 'shortcode' in node or 'code' in node
+        assert 'id' in node
+        assert 'owner' in node
+        assert 'date' in node or 'taken_at_timestamp' in node
+        assert 'display_url' in node or 'display_src' in node
+        assert 'is_video' in node
+
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
@@ -109,10 +117,18 @@ class Post:
     @property
     def owner_profile(self) -> 'Profile':
         if not self._owner_profile:
-            owner_struct = self._field('owner')
+            if 'username' in self._node['owner']:
+                owner_struct = self._node['owner']
+            else:
+                # Sometimes, the 'owner' structure does not contain the username, only the user's ID.  In that case,
+                # this call triggers downloading of the complete Post metadata struct, where the owner username
+                # is contained. This is better than to get the username by user ID, since it is possible anonymously
+                # and gives us other information that is more likely to be usable.
+                owner_struct = self._full_metadata['owner']
             if 'username' in owner_struct:
                 self._owner_profile = Profile(self._context, owner_struct)
             else:
+                # Fallback, if we still did not get the owner username
                 self._owner_profile = Profile.from_id(self._context, owner_struct['id'])
         return self._owner_profile
 
@@ -303,6 +319,8 @@ class Profile:
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
+        if not context.is_logged_in:
+            raise LoginRequiredException("--login=USERNAME required to obtain profile metadata from its ID number.")
         data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
                                      {'id': str(profile_id), 'first': 1})['data']['user']
         if data:

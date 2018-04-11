@@ -607,12 +607,18 @@ class Instaloader:
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
-        yield from (Post(self.context, node)
-                    for node in self.context.graphql_node_list("298b92c8d7cad703f7565aa892ede943",
-                                                               {'tag_name': hashtag},
-                                                               'https://www.instagram.com/explore/tags/{0}/'
-                                                               .format(hashtag),
-                                                               lambda d: d['data']['hashtag']['edge_hashtag_to_media']))
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            if end_cursor:
+                params = {'__a': 1, 'max_id': end_cursor}
+            else:
+                params = {'__a': 1}
+            hashtag_data = self.context.get_json('explore/tags/{0}/'.format(hashtag),
+                                                 params)['graphql']['hashtag']['edge_hashtag_to_media']
+            yield from (Post(self.context, edge['node']) for edge in hashtag_data['edges'])
+            has_next_page = hashtag_data['page_info']['has_next_page']
+            end_cursor = hashtag_data['page_info']['end_cursor']
 
     def download_hashtag(self, hashtag: str,
                          max_count: Optional[int] = None,
@@ -675,6 +681,10 @@ class Instaloader:
                 else:
                     self.context.log("Trying to find profile {0} using its unique ID {1}.".format(profile_name,
                                                                                                   profile_id))
+                if not self.context.is_logged_in:
+                    self.context.error("Profile {} changed its name. "
+                                       "If you use --login=USERNAME, I can find out the new name.")
+                    raise LoginRequiredException("--login=USERNAME required to obtain profile name from its ID number")
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
                 self.context.log("Profile {0} has changed its name to {1}.".format(profile_name, newname))
