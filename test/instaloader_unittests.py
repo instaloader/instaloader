@@ -82,12 +82,14 @@ class TestInstaloader(unittest.TestCase):
 
     def test_get_followees(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for f in self.L.get_followees(instaloader.Profile.from_username(self.L.context, OWN_USERNAME)):
+        profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
+        for f in profile.get_followees():
             print(f['username'])
 
     def test_get_followers(self):
         self.L.load_session_from_file(OWN_USERNAME)
-        for f in self.L.get_followers(instaloader.Profile.from_username(self.L.context, OWN_USERNAME)):
+        profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
+        for f in profile.get_followers():
             print(f['username'])
 
     def test_get_username_by_id(self):
@@ -111,6 +113,13 @@ class TestInstaloader(unittest.TestCase):
             post2 = instaloader.Post.from_mediaid(self.L.context, post.mediaid)
             self.assertEqual(post, post2)
             break
+
+    def test_explore_paging(self):
+        self.L.load_session_from_file(OWN_USERNAME)
+        for count, post in enumerate(self.L.get_explore_posts()):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
 
 
 if __name__ == '__main__':

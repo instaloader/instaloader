@@ -1,6 +1,8 @@
+import hashlib
 import json
 import pickle
 import random
+import re
 import shutil
 import sys
 import textwrap
@@ -234,7 +236,14 @@ class InstaloaderContext:
                 raise TooManyRequestsException("429 - Too Many Requests")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
-            resp_json = resp.json()
+            is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
+            if is_html_query:
+                match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
+                if match is None:
+                    raise ConnectionException("Could not find \"window._sharedData\" in html response.")
+                return json.loads(match.group(1))
+            else:
+                resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
                 if 'message' in resp_json:
                     raise ConnectionException("Returned \"{}\" status, message \"{}\".".format(resp_json['status'],
@@ -265,13 +274,14 @@ class InstaloaderContext:
                 raise ConnectionException(error_string)
 
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
-                      referer: Optional[str] = None) -> Dict[str, Any]:
+                      referer: Optional[str] = None, rhx_gis: Optional[str] = None) -> Dict[str, Any]:
         """
         Do a GraphQL Query.
 
         :param query_hash: Query identifying hash.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
+        :param rhx_gis: 'rhx_gis' variable as somewhere returned by Instagram, needed to 'sign' request
         :return: The server's response dictionary.
         """
         tmpsession = copy_session(self._session)
@@ -283,9 +293,18 @@ class InstaloaderContext:
         tmpsession.headers['accept'] = '*/*'
         if referer is not None:
             tmpsession.headers['referer'] = urllib.parse.quote(referer)
+
+        variables_json = json.dumps(variables, separators=(',', ':'))
+
+        if rhx_gis:
+            #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
+            values = "{}:{}:{}:{}".format(rhx_gis, tmpsession.cookies['csrftoken'], self.user_agent, variables_json)
+            x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
+            tmpsession.headers['x-instagram-gis'] = x_instagram_gis
+
         resp_json = self.get_json('graphql/query',
                                   params={'query_hash': query_hash,
-                                          'variables': json.dumps(variables, separators=(',', ':'))},
+                                          'variables': variables_json},
                                   session=tmpsession)
         tmpsession.close()
         if 'status' not in resp_json:
@@ -295,17 +314,18 @@ class InstaloaderContext:
     def graphql_node_list(self, query_hash: str, query_variables: Dict[str, Any],
                           query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]],
+                          rhx_gis: Optional[str] = None,
                           first_data: Optional[Dict[str, Any]] = None) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
         query_variables['first'] = GRAPHQL_PAGE_LENGTH
         if first_data:
             data = first_data
         else:
-            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer))
+            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
         yield from (edge['node'] for edge in data['edges'])
         while data['page_info']['has_next_page']:
             query_variables['after'] = data['page_info']['end_cursor']
-            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer))
+            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
             yield from (edge['node'] for edge in data['edges'])
 
     def get_and_write_raw(self, url: str, filename: str, _attempt=1) -> None:

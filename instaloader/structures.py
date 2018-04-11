@@ -56,6 +56,7 @@ class Post:
         self._node = node
         self._owner_profile = owner_profile
         self._full_metadata_dict = None
+        self._rhx_gis_str = None
 
     @classmethod
     def from_shortcode(cls, context: InstaloaderContext, shortcode: str):
@@ -91,15 +92,21 @@ class Post:
     def __hash__(self) -> int:
         return hash(self.shortcode)
 
+    def _obtain_metadata(self):
+        if not self._full_metadata_dict:
+            pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
+            self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
+            self._rhx_gis_str = pic_json['rhx_gis']
+
     @property
     def _full_metadata(self) -> Dict[str, Any]:
-        if not self._full_metadata_dict:
-            pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={'__a': 1})
-            if "graphql" in pic_json:
-                self._full_metadata_dict = pic_json["graphql"]["shortcode_media"]
-            else:
-                self._full_metadata_dict = pic_json["media"]
+        self._obtain_metadata()
         return self._full_metadata_dict
+
+    @property
+    def _rhx_gis(self) -> str:
+        self._obtain_metadata()
+        return self._rhx_gis_str
 
     def _field(self, *keys) -> Any:
         """Lookups given fields in _node, and if not found in _full_metadata. Raises KeyError if not found anywhere."""
@@ -252,7 +259,8 @@ class Post:
         yield from self._context.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
                                                    {'shortcode': self.shortcode},
                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                   lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
+                                                   lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
+                                                   self._rhx_gis)
 
     def get_likes(self) -> Iterator[Dict[str, Any]]:
         """Iterate over all likes of the post.
@@ -270,7 +278,8 @@ class Post:
             return
         yield from self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                   lambda d: d['data']['shortcode_media']['edge_liked_by'])
+                                                   lambda d: d['data']['shortcode_media']['edge_liked_by'],
+                                                   self._rhx_gis)
 
     def get_location(self) -> Optional[Dict[str, str]]:
         """If the Post has a location, returns a dictionary with fields 'lat' and 'lng'."""
@@ -311,6 +320,7 @@ class Profile:
         assert 'username' in node
         self._context = context
         self._node = node
+        self._rhx_gis = None
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
@@ -340,8 +350,10 @@ class Profile:
 
     def _obtain_metadata(self):
         try:
-            metadata = self._context.get_json('{}/'.format(self.username), params={'__a': 1})
-            self._node = metadata['graphql']['user'] if 'graphql' in metadata else metadata['user']
+            if not self._rhx_gis:
+                metadata = self._context.get_json('{}/'.format(self.username), params={})
+                self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
+                self._rhx_gis = metadata['rhx_gis']
         except QueryReturnedNotFoundException:
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
 
@@ -434,11 +446,13 @@ class Profile:
 
     def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile."""
+        self._obtain_metadata()
         yield from (Post(self._context, node, self) for node in
                     self._context.graphql_node_list("472f257a40c653c64c666ce877d59d2b",
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_owner_to_timeline_media'],
+                                                    self._rhx_gis,
                                                     self._metadata('edge_owner_to_timeline_media')))
 
     def get_saved_posts(self) -> Iterator[Post]:
@@ -447,12 +461,50 @@ class Profile:
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
+        self._obtain_metadata()
         yield from (Post(self._context, node) for node in
                     self._context.graphql_node_list("f883d95537fbcd400f466f63d42bd8a1",
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_saved_media'],
+                                                    self._rhx_gis,
                                                     self._metadata('edge_saved_media')))
+
+    def get_followers(self) -> Iterator[Dict[str, Any]]:
+        """
+        Retrieve list of followers of given profile.
+        To use this, one needs to be logged in and private profiles has to be followed,
+        otherwise this returns an empty list.
+
+        :param profile: Name of profile to lookup followers.
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to get a profile's followers.")
+        self._obtain_metadata()
+        yield from self._context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
+                                                   {'id': str(self.userid)},
+                                                   'https://www.instagram.com/' + self.username + '/',
+                                                   lambda d: d['data']['user']['edge_followed_by'],
+                                                   self._rhx_gis)
+
+    def get_followees(self) -> Iterator[Dict[str, Any]]:
+        """
+        Retrieve list of followees (followings) of given profile.
+        To use this, one needs to be logged in and private profiles has to be followed,
+        otherwise this returns an empty list.
+
+        :param profile: Name of profile to lookup followers.
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to get a profile's followees.")
+        self._obtain_metadata()
+        yield from self._context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
+                                                   {'id': str(self.userid)},
+                                                   'https://www.instagram.com/' + self.username + '/',
+                                                   lambda d: d['data']['user']['edge_follow'],
+                                                   self._rhx_gis)
+
+
 
 
 class StoryItem:

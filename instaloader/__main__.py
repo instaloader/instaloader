@@ -91,7 +91,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             with instaloader.context.error_catcher(target):
                 if target[0] == '@':
                     instaloader.context.log("Retrieving followees of %s..." % target[1:])
-                    followees = instaloader.get_followees(Profile.from_username(instaloader.context, target[1:]))
+                    profile = Profile.from_username(instaloader.context, target[1:])
+                    followees = profile.get_followees()
                     profiles.update([followee['username'] for followee in followees])
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,

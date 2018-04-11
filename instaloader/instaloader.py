@@ -135,34 +135,6 @@ class Instaloader:
     def __exit__(self, *args):
         self.close()
 
-    @_requires_login
-    def get_followers(self, profile: Profile) -> Iterator[Dict[str, Any]]:
-        """
-        Retrieve list of followers of given profile.
-        To use this, one needs to be logged in and private profiles has to be followed,
-        otherwise this returns an empty list.
-
-        :param profile: Name of profile to lookup followers.
-        """
-        yield from self.context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
-                                                  {'id': str(profile.userid)},
-                                                  'https://www.instagram.com/' + profile.username + '/',
-                                                  lambda d: d['data']['user']['edge_followed_by'])
-
-    @_requires_login
-    def get_followees(self, profile: Profile) -> Iterator[Dict[str, Any]]:
-        """
-        Retrieve list of followees (followings) of given profile.
-        To use this, one needs to be logged in and private profiles has to be followed,
-        otherwise this returns an empty list.
-
-        :param profile: Name of profile to lookup followers.
-        """
-        yield from self.context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
-                                                  {'id': str(profile.userid)},
-                                                  'https://www.instagram.com/' + profile.username + '/',
-                                                  lambda d: d['data']['user']['edge_follow'])
-
     def download_pic(self, filename: str, url: str, mtime: datetime,
                      filename_alt: Optional[str] = None, filename_suffix: Optional[str] = None) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
@@ -600,10 +572,12 @@ class Instaloader:
     @_requires_login
     def get_explore_posts(self) -> Iterator[Post]:
         """Get Posts which are worthy of exploring suggested by Instagram."""
+        data = self.context.get_json('explore/', {})
         yield from (Post(self.context, node)
                     for node in self.context.graphql_node_list("df0dcc250c2b18d9fd27c5581ef33c7c",
                                                                {}, 'https://www.instagram.com/explore/',
-                                                               lambda d: d['data']['user']['edge_web_discover_media']))
+                                                               lambda d: d['data']['user']['edge_web_discover_media'],
+                                                               data['rhx_gis']))
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""
