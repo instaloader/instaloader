@@ -384,6 +384,7 @@ class Post:
         if self.comments == len(comment_edges):
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
             yield from (comment['node'] for comment in comment_edges)
+            return
         yield from self._instaloader.graphql_node_list(17852405266163336, {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'])
@@ -401,6 +402,7 @@ class Post:
         if self.likes == len(likes_edges):
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
             yield from (like['node'] for like in likes_edges)
+            return
         yield from self._instaloader.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_liked_by'])
