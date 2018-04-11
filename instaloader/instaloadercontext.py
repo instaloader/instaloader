@@ -294,18 +294,19 @@ class InstaloaderContext:
 
     def graphql_node_list(self, query_hash: str, query_variables: Dict[str, Any],
                           query_referer: Optional[str],
-                          edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+                          edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]],
+                          first_data: Optional[Dict[str, Any]] = None) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
         query_variables['first'] = GRAPHQL_PAGE_LENGTH
-        data = self.graphql_query(query_hash, query_variables, query_referer)
-        while True:
-            edge_struct = edge_extractor(data)
-            yield from [edge['node'] for edge in edge_struct['edges']]
-            if edge_struct['page_info']['has_next_page']:
-                query_variables['after'] = edge_struct['page_info']['end_cursor']
-                data = self.graphql_query(query_hash, query_variables, query_referer)
-            else:
-                break
+        if first_data:
+            data = first_data
+        else:
+            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer))
+        yield from (edge['node'] for edge in data['edges'])
+        while data['page_info']['has_next_page']:
+            query_variables['after'] = data['page_info']['end_cursor']
+            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer))
+            yield from (edge['node'] for edge in data['edges'])
 
     def get_and_write_raw(self, url: str, filename: str, _attempt=1) -> None:
         """Downloads raw data.

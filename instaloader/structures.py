@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional
 
 from .exceptions import *
-from .instaloadercontext import GRAPHQL_PAGE_LENGTH, InstaloaderContext
+from .instaloadercontext import InstaloaderContext
 
 
 def shortcode_to_mediaid(code: str) -> int:
@@ -248,6 +248,7 @@ class Post:
         if self.comments == len(comment_edges):
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
             yield from (comment['node'] for comment in comment_edges)
+            return
         yield from self._context.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
                                                    {'shortcode': self.shortcode},
                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
@@ -266,6 +267,7 @@ class Post:
         if self.likes == len(likes_edges):
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
             yield from (like['node'] for like in likes_edges)
+            return
         yield from self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
                                                    lambda d: d['data']['shortcode_media']['edge_liked_by'])
@@ -432,23 +434,12 @@ class Profile:
 
     def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile."""
-        yield from (Post(self._context, edge['node'], owner_profile=self)
-                    for edge in self._metadata('edge_owner_to_timeline_media', 'edges'))
-        has_next_page = self._metadata('edge_owner_to_timeline_media', 'page_info', 'has_next_page')
-        end_cursor = self._metadata('edge_owner_to_timeline_media', 'page_info', 'end_cursor')
-        while has_next_page:
-            # We do not use self.graphql_node_list() here, because profile_metadata
-            # lets us obtain the first 12 nodes 'for free'
-            data = self._context.graphql_query("472f257a40c653c64c666ce877d59d2b",
-                                               {'id': self.userid,
-                                                'first': GRAPHQL_PAGE_LENGTH,
-                                                'after': end_cursor},
-                                               'https://www.instagram.com/{0}/'.format(self.username))
-            media = data['data']['user']['edge_owner_to_timeline_media']
-            yield from (Post(self._context, edge['node'], owner_profile=self)
-                        for edge in media['edges'])
-            has_next_page = media['page_info']['has_next_page']
-            end_cursor = media['page_info']['end_cursor']
+        yield from (Post(self._context, node, self) for node in
+                    self._context.graphql_node_list("472f257a40c653c64c666ce877d59d2b",
+                                                    {'id': self.userid},
+                                                    'https://www.instagram.com/{0}/'.format(self.username),
+                                                    lambda d: d['data']['user']['edge_owner_to_timeline_media'],
+                                                    self._metadata('edge_owner_to_timeline_media')))
 
     def get_saved_posts(self) -> Iterator[Post]:
         """Get Posts that are marked as saved by the user."""
@@ -456,21 +447,12 @@ class Profile:
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
-        yield from (Post(self._context, edge['node'])
-                    for edge in self._metadata('edge_saved_media', 'edges'))
-        has_next_page = self._metadata('edge_saved_media', 'page_info', 'has_next_page')
-        end_cursor = self._metadata('edge_saved_media', 'page_info', 'end_cursor')
-        while has_next_page:
-            data = self._context.graphql_query("f883d95537fbcd400f466f63d42bd8a1",
-                                               {'id': self.userid,
-                                                'first': GRAPHQL_PAGE_LENGTH,
-                                                'after': end_cursor},
-                                               'https://www.instagram.com/{0}/'.format(self.username))
-            media = data['data']['user']['edge_saved_media']
-            yield from (Post(self._context, edge['node'])
-                        for edge in media['edges'])
-            has_next_page = media['page_info']['has_next_page']
-            end_cursor = media['page_info']['end_cursor']
+        yield from (Post(self._context, node) for node in
+                    self._context.graphql_node_list("f883d95537fbcd400f466f63d42bd8a1",
+                                                    {'id': self.userid},
+                                                    'https://www.instagram.com/{0}/'.format(self.username),
+                                                    lambda d: d['data']['user']['edge_saved_media'],
+                                                    self._metadata('edge_saved_media')))
 
 
 class StoryItem:
