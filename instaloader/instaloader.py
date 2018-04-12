@@ -458,11 +458,11 @@ class Instaloader:
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
-                    downloaded = self.download_story(item, filename_target)
+                    downloaded = self.download_storyitem(item, filename_target)
                     if fast_update and not downloaded:
                         break
 
-    def download_story(self, item: StoryItem, target: str) -> bool:
+    def download_storyitem(self, item: StoryItem, target: str) -> bool:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`

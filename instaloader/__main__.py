@@ -94,7 +94,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         instaloader.download_post(structure, os.path.dirname(target))
                     elif isinstance(structure, StoryItem):
                         instaloader.context.log("Attempting to download {} ({})".format(structure, target))
-                        instaloader.download_story(structure, os.path.dirname(target))
+                        instaloader.download_storyitem(structure, os.path.dirname(target))
                     elif isinstance(structure, Profile):
                         instaloader.context.log("Going to download {} ({})".format(structure.username, target))
                         profiles.add(structure.username)
