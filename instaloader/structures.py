@@ -44,13 +44,7 @@ class Post:
         :param owner_profile: The Profile of the owner, if already known at creation.
         """
 
-        # Ensure node contains all the data that is accessed via self._node
         assert 'shortcode' in node or 'code' in node
-        assert 'id' in node
-        assert 'owner' in node
-        assert 'date' in node or 'taken_at_timestamp' in node
-        assert 'display_url' in node or 'display_src' in node
-        assert 'is_video' in node
 
         self._context = context
         self._node = node
