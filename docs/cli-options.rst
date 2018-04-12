@@ -67,12 +67,13 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    Also **download stories** of each profile that is downloaded. Requires
    :option:`--login`.
 
-.. option:: --metadata-json
+.. option:: --no-metadata-json
 
-   Create a JSON file containing the metadata of each post. This does not
-   include comments (see :option:`--comments`) nor geotags (see
-   :option:`--geotags`). The JSON files contain the properties of
-   :class:`instaloader.Post`.
+   Do not create a JSON file containing the metadata of each post.
+
+.. option:: --no-compress-json
+
+   Do not xz compress JSON files, rather create pretty formatted JSONs.
 
 .. option:: --stories-only
 

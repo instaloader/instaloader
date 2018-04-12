@@ -7,7 +7,7 @@ from argparse import ArgumentParser, SUPPRESS
 from typing import Callable, List, Optional
 
 from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
-               Tristate, __version__)
+               StoryItem, Tristate, __version__, load_structure_from_file)
 from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
 
@@ -86,6 +86,22 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     try:
         # Generate set of profiles, already downloading non-profile targets
         for target in targetlist:
+            if (target.endswith('.json') or target.endswith('.json.xz')) and os.path.isfile(target):
+                with instaloader.context.error_catcher(target):
+                    structure = load_structure_from_file(instaloader.context, target)
+                    if isinstance(structure, Post):
+                        instaloader.context.log("Downloading {} ({})".format(structure, target))
+                        instaloader.download_post(structure, os.path.dirname(target))
+                    elif isinstance(structure, StoryItem):
+                        instaloader.context.log("Attempting to download {} ({})".format(structure, target))
+                        instaloader.download_story(structure, os.path.dirname(target))
+                    elif isinstance(structure, Profile):
+                        instaloader.context.log("Going to download {} ({})".format(structure.username, target))
+                        profiles.add(structure.username)
+                    else:
+                        raise InvalidArgumentException("{} JSON file not supported as target"
+                                                       .format(structure.__class__.__name__))
+                continue
             # strip '/' characters to be more shell-autocompletion-friendly
             target = target.rstrip('/')
             with instaloader.context.error_catcher(target):
@@ -181,9 +197,12 @@ def main():
                              'server for each post, which is why it is disabled by default.')
     g_what.add_argument('--no-captions', action='store_true',
                         help='Do not store media captions, although no additional request is needed to obtain them.')
+    g_what.add_argument('--no-metadata-json', action='store_true',
+                        help='Do not create a JSON file containing the metadata of each post.')
     g_what.add_argument('--metadata-json', action='store_true',
-                        help='Create a JSON file containing the metadata of each post. This does not include comments '
-                             'nor geotags.')
+                        help=SUPPRESS)
+    g_what.add_argument('--no-compress-json', action='store_true',
+                        help='Do not xz compress JSON files, rather create pretty formatted JSONs.')
     g_what.add_argument('-s', '--stories', action='store_true',
                         help='Also download stories of each profile that is downloaded. Requires --login.')
     g_what.add_argument('--stories-only', action='store_true',
@@ -264,7 +283,7 @@ def main():
         download_video_thumbnails = Tristate.always if not args.no_video_thumbnails else Tristate.never
         download_comments = Tristate.always if args.comments else Tristate.no_extra_query
         save_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
-        save_metadata = Tristate.always if args.metadata_json else Tristate.never
+        save_metadata = Tristate.always if not args.no_metadata_json else Tristate.never
 
         if args.geotags and args.no_geotags:
             raise SystemExit("--geotags and --no-geotags given. I am confused and refuse to work.")
@@ -281,7 +300,8 @@ def main():
                              download_videos=download_videos, download_video_thumbnails=download_video_thumbnails,
                              download_geotags=download_geotags,
                              save_captions=save_captions, download_comments=download_comments,
-                             save_metadata=save_metadata, max_connection_attempts=args.max_connection_attempts)
+                             save_metadata=save_metadata, compress_json=not args.no_compress_json,
+                             max_connection_attempts=args.max_connection_attempts)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

@@ -1,8 +1,11 @@
+import json
+import lzma
 import re
 from base64 import b64decode, b64encode
 from datetime import datetime
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Union
 
+from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 
@@ -64,6 +67,15 @@ class Post:
     def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
         """Create a post object from a given mediaid"""
         return cls.from_shortcode(context, mediaid_to_shortcode(mediaid))
+
+    def get_node(self):
+        if self._full_metadata_dict:
+            node = self._full_metadata_dict
+        else:
+            node = self._node
+        if self._owner_profile:
+            node['owner'] = self.owner_profile.get_node()
+        return node
 
     @property
     def shortcode(self) -> str:
@@ -283,23 +295,6 @@ class Post:
                                                    params={'__a': 1})
             return location_json["location"] if "location" in location_json else location_json['graphql']['location']
 
-    @staticmethod
-    def json_encoder(obj) -> Dict[str, Any]:
-        """Convert instance of :class:`Post` to a JSON-serializable dictionary."""
-        if not isinstance(obj, Post):
-            raise TypeError("Object of type {} is not a Post object.".format(obj.__class__.__name__))
-        jsondict = {}
-        for prop in dir(Post):
-            if prop[0].isupper() or prop[0] == '_':
-                # skip uppercase and private properties
-                continue
-            val = obj.__getattribute__(prop)
-            if val is True or val is False or isinstance(val, (str, int, float, list)):
-                jsondict[prop] = val
-            elif isinstance(val, datetime):
-                jsondict[prop] = val.isoformat()
-        return jsondict
-
 
 class Profile:
     """
@@ -341,6 +336,14 @@ class Profile:
                 raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
         username = Post.from_mediaid(context, int(data['edges'][0]["node"]["id"])).owner_username
         return cls(context, {'username': username.lower(), 'id': profile_id})
+
+    def get_node(self):
+        json_node = self._node.copy()
+        # remove posts
+        json_node.pop('edge_media_collections', None)
+        json_node.pop('edge_owner_to_timeline_media', None)
+        json_node.pop('edge_saved_media', None)
+        return json_node
 
     def _obtain_metadata(self):
         try:
@@ -517,6 +520,12 @@ class StoryItem:
         self._node = node
         self._owner_profile = owner_profile
 
+    def get_node(self):
+        node = self._node
+        if self._owner_profile:
+            node['owner'] = self._owner_profile.get_node()
+        return node
+
     @property
     def mediaid(self) -> int:
         """The mediaid is a decimal representation of the media shortcode."""
@@ -684,3 +693,44 @@ class Story:
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
         yield from (StoryItem(self._context, item, self.owner_profile) for item in self._node['items'])
+
+
+JsonExportable = Union[Post, Profile, StoryItem]
+
+
+def save_structure_to_file(structure: JsonExportable, filename: str):
+    json_structure = {'node': structure.get_node(),
+                      'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}}
+    compress = filename.endswith('.xz')
+    if compress:
+        with lzma.open(filename, 'wt', check=lzma.CHECK_NONE) as fp:
+            json.dump(json_structure, fp=fp, separators=(',', ':'))
+    else:
+        with open(filename, 'wt') as fp:
+            json.dump(json_structure, fp=fp, indent=4, sort_keys=True)
+
+
+def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
+    compressed = filename.endswith('.xz')
+    if compressed:
+        fp = lzma.open(filename, 'rt')
+    else:
+        fp = open(filename, 'rt')
+    json_structure = json.load(fp)
+    fp.close()
+    if 'node' in json_structure and 'instaloader' in json_structure and \
+            'node_type' in json_structure['instaloader']:
+        node_type = json_structure['instaloader']['node_type']
+        if node_type == "Post":
+            return Post(context, json_structure['node'])
+        elif node_type == "Profile":
+            return Profile(context, json_structure['node'])
+        elif node_type == "StoryItem":
+            return StoryItem(context, json_structure['node'])
+        else:
+            raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
+    elif 'shortcode' in json_structure:
+        # Post JSON created with Instaloader v3
+        return Post.from_shortcode(context, json_structure['shortcode'])
+    else:
+        raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))

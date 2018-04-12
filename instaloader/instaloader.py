@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import Post, Profile, Story, StoryItem
+from .structures import JsonExportable, Post, Profile, Story, StoryItem, save_structure_to_file
 
 
 def get_default_session_filename(username: str) -> str:
@@ -83,7 +83,8 @@ class Instaloader:
                  download_geotags: Tristate = Tristate.no_extra_query,
                  save_captions: Tristate = Tristate.no_extra_query,
                  download_comments: Tristate = Tristate.no_extra_query,
-                 save_metadata: Tristate = Tristate.never,
+                 save_metadata: Tristate = Tristate.no_extra_query,
+                 compress_json: bool = True,
                  max_connection_attempts: int = 3):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts)
@@ -108,6 +109,7 @@ class Instaloader:
         self.save_captions = save_captions
         self.download_comments = download_comments
         self.save_metadata = save_metadata
+        self.compress_json = compress_json
 
     @contextmanager
     def anonymous_copy(self):
@@ -118,7 +120,7 @@ class Instaloader:
                                  self.download_video_thumbnails,
                                  self.download_geotags,
                                  self.save_captions, self.download_comments,
-                                 self.save_metadata, self.context.max_connection_attempts)
+                                 self.save_metadata, self.compress_json, self.context.max_connection_attempts)
         new_loader.context.previous_queries = self.context.previous_queries
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
@@ -158,12 +160,16 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
-    def save_metadata_json(self, filename: str, post: Post) -> None:
-        """Saves metadata JSON file of a :class:`Post`."""
-        filename += '.json'
-        with open(filename, 'w') as fp:
-            json.dump(post, fp=fp, indent=4, default=Post.json_encoder)
-        self.context.log('json', end=' ', flush=True)
+    def save_metadata_json(self, filename: str, structure: JsonExportable) -> None:
+        """Saves metadata JSON file of a structure."""
+        if self.compress_json:
+            filename += '.json.xz'
+        else:
+            filename += '.json'
+        save_structure_to_file(structure, filename)
+        if isinstance(structure, (Post, StoryItem)):
+            # log 'json ' message when saving Post or StoryItem
+            self.context.log('json', end=' ', flush=True)
 
     def update_comments(self, filename: str, post: Post, filename_alt: Optional[str] = None) -> None:
         try:
@@ -393,9 +399,8 @@ class Instaloader:
         if self.download_comments is Tristate.always:
             self.update_comments(filename=filename, filename_alt=filename_old, post=post)
 
-        # Save metadata as JSON if desired.  It might require an extra query, depending on which information has been
-        # already obtained.  Regarding Tristate interpretation, we always assume that it requires an extra query.
-        if self.save_metadata is Tristate.always:
+        # Save metadata as JSON if desired.
+        if self.save_metadata is not Tristate.never:
             self.save_metadata_json(filename, post)
 
         self.context.log()
@@ -489,6 +494,9 @@ class Instaloader:
                                             filename_alt=filename_old,
                                             url=item.video_url,
                                             mtime=date_local)
+        # Save metadata as JSON if desired.
+        if self.save_metadata is not Tristate.never:
+            self.save_metadata_json(filename, item)
         self.context.log()
         return downloaded
 
@@ -697,6 +705,12 @@ class Instaloader:
         profile = self.check_profile_id(profile_name.lower())
 
         profile_name = profile.username
+
+        # Save metadata as JSON if desired.
+        if self.save_metadata is not Tristate.never:
+            json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name, target=profile_name),
+                                                 profile_name, profile.userid)
+            self.save_metadata_json(json_filename, profile)
 
         if self.context.is_logged_in and profile.has_blocked_viewer and not profile.is_private:
             # raising ProfileNotExistsException invokes "trying again anonymously" logic
