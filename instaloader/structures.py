@@ -618,6 +618,7 @@ class Story:
         self._context = context
         self._node = node
         self._unique_id = None
+        self._owner_profile = None
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -672,7 +673,9 @@ class Story:
     @property
     def owner_profile(self) -> Profile:
         """:class:`Profile` instance of the story owner."""
-        return Profile(self._context, self._node['user'])
+        if not self._owner_profile:
+            self._owner_profile = Profile(self._context, self._node['user'])
+        return self._owner_profile
 
     @property
     def owner_username(self) -> str:

@@ -14,4 +14,4 @@ else:
 
 from .exceptions import *
 from .instaloader import Instaloader, Tristate
-from .structures import Post, Profile, shortcode_to_mediaid, mediaid_to_shortcode
+from .structures import Post, Profile, Story, StoryItem, shortcode_to_mediaid, mediaid_to_shortcode
