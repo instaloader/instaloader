@@ -298,7 +298,7 @@ class InstaloaderContext:
 
         if rhx_gis:
             #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
-            values = "{}:{}:{}:{}".format(rhx_gis, tmpsession.cookies['csrftoken'], self.user_agent, variables_json)
+            values = "{}:{}:{}".format(rhx_gis, tmpsession.cookies['csrftoken'], variables_json)
             x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
             tmpsession.headers['x-instagram-gis'] = x_instagram_gis
 
