@@ -166,6 +166,16 @@ class Post:
         return datetime.utcfromtimestamp(self._node["date"] if "date" in self._node else self._node["taken_at_timestamp"])
 
     @property
+    def date(self) -> datetime:
+        """Synonym to :meth:`.date_utc`"""
+        return self.date_utc
+
+    @property
+    def profile(self) -> str:
+        """Synonym to :meth:`.owner_username`"""
+        return self.owner_username
+
+    @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the post"""
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
@@ -572,6 +582,16 @@ class StoryItem:
     def date_utc(self) -> datetime:
         """Timestamp when the StoryItem was created (UTC)."""
         return datetime.utcfromtimestamp(self._node['taken_at_timestamp'])
+
+    @property
+    def date(self) -> datetime:
+        """Synonym to :meth:`.date_utc`"""
+        return self.date_utc
+
+    @property
+    def profile(self) -> str:
+        """Synonym to :meth:`.owner_username`"""
+        return self.owner_username
 
     @property
     def expiring_local(self) -> datetime:
