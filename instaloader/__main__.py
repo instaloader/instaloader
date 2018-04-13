@@ -194,7 +194,11 @@ def main():
                              'This requires an additional request to the Instagram '
                              'server for each post, which is why it is disabled by default.')
     g_what.add_argument('--no-captions', action='store_true',
-                        help='Do not store media captions, although no additional request is needed to obtain them.')
+                        help='Do not create txt files.')
+    g_what.add_argument('--post-metadata-txt', action='append',
+                        help='Template to write in txt file for each Post.')
+    g_what.add_argument('--storyitem-metadata-txt', action='append',
+                        help='Template to write in txt file for each StoryItem.')
     g_what.add_argument('--no-metadata-json', action='store_true',
                         help='Do not create a JSON file containing the metadata of each post.')
     g_what.add_argument('--metadata-json', action='store_true',
@@ -277,13 +281,17 @@ def main():
             raise SystemExit(":feed-all and :feed-liked were removed. Use :feed as target and "
                              "eventually --only-if=viewer_has_liked.")
 
-        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet,
-                             user_agent=args.user_agent,
+        post_metadata_txt_pattern = '\n'.join(args.post_metadata_txt) if args.post_metadata_txt else None
+        storyitem_metadata_txt_pattern = '\n'.join(args.storyitem_metadata_txt) if args.storyitem_metadata_txt else None
+
+        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
-                             download_geotags=args.geotags,
-                             save_captions=not args.no_captions, download_comments=args.comments,
-                             save_metadata=not args.no_metadata_json, compress_json=not args.no_compress_json,
+                             download_geotags=args.geotags, save_captions=not args.no_captions,
+                             download_comments=args.comments, save_metadata=not args.no_metadata_json,
+                             compress_json=not args.no_compress_json,
+                             post_metadata_txt_pattern=post_metadata_txt_pattern,
+                             storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              max_connection_attempts=args.max_connection_attempts)
         _main(loader,
               args.profile,

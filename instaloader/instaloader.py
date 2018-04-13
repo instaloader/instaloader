@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
-from typing import Callable, Dict, Iterator, List, Optional, Union
+from typing import Callable, Dict, Iterator, List, Optional, Any
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -45,22 +45,14 @@ def _requires_login(func: Callable) -> Callable:
     return call
 
 
-class _PostPathFormatter(string.Formatter):
-    def __init__(self, post: Union[Post, StoryItem], target: str):
-        self._post = post
-        self._target = target
-
-    def vformat(self, format_string, args, kwargs):
-        """Override :meth:`string.Formatter.vformat` for character substitution in paths for Windows, see issue #84."""
-        ret = super().vformat(format_string, args, kwargs)
-        return ret.replace(':', '\ua789') if platform.system() == 'Windows' else ret
+class _ArbitraryItemFormatter(string.Formatter):
+    def __init__(self, item: Any):
+        self._item = item
 
     def get_field(self, field_name, args, kwargs):
-        """Override :meth:`string.Formatter.get_field` to substitue {target} and {<POST_ATTRIBUTE>}."""
-        if field_name == "target":
-            return self._target, None
-        if hasattr(Post, field_name) and hasattr(StoryItem, field_name):
-            return self._post.__getattribute__(field_name), None
+        """Override to substitute {ATTRIBUTE} by attributes of our _item."""
+        if hasattr(self._item, field_name):
+            return self._item.__getattribute__(field_name), None
         return super().get_field(field_name, args, kwargs)
 
     def format_field(self, value, format_spec):
@@ -69,6 +61,13 @@ class _PostPathFormatter(string.Formatter):
         if isinstance(value, datetime) and not format_spec:
             return super().format_field(value, '%Y-%m-%d_%H-%M-%S')
         return super().format_field(value, format_spec)
+
+
+class _PostPathFormatter(_ArbitraryItemFormatter):
+    def vformat(self, format_string, args, kwargs):
+        """Override :meth:`string.Formatter.vformat` for character substitution in paths for Windows, see issue #84."""
+        ret = super().vformat(format_string, args, kwargs)
+        return ret.replace(':', '\ua789') if platform.system() == 'Windows' else ret
 
 
 class Instaloader:
@@ -85,6 +84,8 @@ class Instaloader:
                  download_comments: bool = True,
                  save_metadata: bool = True,
                  compress_json: bool = True,
+                 post_metadata_txt_pattern: str = None,
+                 storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts)
@@ -99,17 +100,17 @@ class Instaloader:
         self.download_comments = download_comments
         self.save_metadata = save_metadata
         self.compress_json = compress_json
+        self.post_metadata_txt_pattern = post_metadata_txt_pattern or '{caption}'
+        self.storyitem_metadata_txt_pattern = storyitem_metadata_txt_pattern or ''
 
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
-        new_loader = Instaloader(self.context.sleep, self.context.quiet, self.context.user_agent,
-                                 self.dirname_pattern, self.filename_pattern,
-                                 self.download_videos,
-                                 self.download_video_thumbnails,
-                                 self.download_geotags,
-                                 self.save_captions, self.download_comments,
-                                 self.save_metadata, self.compress_json, self.context.max_connection_attempts)
+        new_loader = Instaloader(self.context.sleep, self.context.quiet, self.context.user_agent, self.dirname_pattern,
+                                 self.filename_pattern, self.download_videos, self.download_video_thumbnails,
+                                 self.download_geotags, self.save_captions, self.download_comments, self.save_metadata,
+                                 self.compress_json, self.post_metadata_txt_pattern,
+                                 self.storyitem_metadata_txt_pattern, self.context.max_connection_attempts)
         new_loader.context.previous_queries = self.context.previous_queries
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
@@ -177,6 +178,7 @@ class Instaloader:
     def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:
         """Updates picture caption"""
         filename += '.txt'
+        caption += '\n'
         pcaption = caption.replace('\n', ' ').strip()
         caption = caption.encode("UTF-8")
         pcaption = '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
@@ -290,8 +292,8 @@ class Instaloader:
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
-        dirname = _PostPathFormatter(post, target).format(self.dirname_pattern)
-        filename = dirname + '/' + _PostPathFormatter(post, target).format(self.filename_pattern)
+        dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
+        filename = dirname + '/' + _PostPathFormatter(post).format(self.filename_pattern, target=target)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
@@ -318,10 +320,11 @@ class Instaloader:
 
         # Save caption if desired
         if self.save_captions is not False:
-            if post.caption:
-                self.save_caption(filename=filename, mtime=post.date_local, caption=post.caption)
+            metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern)
+            if metadata_string:
+                self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
             else:
-                self.context.log("<no caption>", end=' ', flush=True)
+                self.context.log("<no txt>", end=' ', flush=True)
 
         # Download video if desired
         if post.is_video and self.download_videos is True:
@@ -405,8 +408,8 @@ class Instaloader:
         """
 
         date_local = item.date_local
-        dirname = _PostPathFormatter(item, target).format(self.dirname_pattern)
-        filename = dirname + '/' + _PostPathFormatter(item, target).format(self.filename_pattern)
+        dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
+        filename = dirname + '/' + _PostPathFormatter(item).format(self.filename_pattern, target=target)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
@@ -414,6 +417,13 @@ class Instaloader:
             downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
         if item.is_video and self.download_videos is True:
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
+        # Save caption if desired
+        if self.save_captions is not False:
+            metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern)
+            if metadata_string:
+                self.save_caption(filename=filename, mtime=item.date_local, caption=metadata_string)
+            else:
+                self.context.log("<no txt>", end=' ', flush=True)
         # Save metadata as JSON if desired.
         if self.save_metadata is not False:
             self.save_metadata_json(filename, item)

@@ -54,8 +54,15 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
 .. option:: --no-captions
 
-   Do not store media captions, although no additional request is needed to
-   obtain them.
+   Do not create txt files.
+
+.. option:: --post-metadata-txt
+
+   Template to write in txt file for each Post.
+
+.. option:: --storyitem-metadata-txt
+
+   Template to write in txt file for each StoryItem.
 
 .. option:: --stories
 
