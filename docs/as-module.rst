@@ -96,8 +96,6 @@ Miscellaneous Functions
 
 .. autofunction:: mediaid_to_shortcode
 
-.. autoclass:: Tristate
-
 Exceptions
 ^^^^^^^^^^
 

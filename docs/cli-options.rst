@@ -46,11 +46,6 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    request to the Instagram server for each picture, which is why it is disabled
    by default.
 
-.. option:: --no-geotags
-
-   Do not store geotags, even if they can be obtained without any additional
-   request.
-
 .. option:: --comments
 
    Download and update comments for each post. This requires an additional

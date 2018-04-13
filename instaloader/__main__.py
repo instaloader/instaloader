@@ -7,7 +7,7 @@ from argparse import ArgumentParser, SUPPRESS
 from typing import Callable, List, Optional
 
 from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
-               StoryItem, Tristate, __version__, load_structure_from_file)
+               StoryItem, __version__, load_structure_from_file)
 from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
 
@@ -189,8 +189,6 @@ def main():
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
                              'server for each picture, which is why it is disabled by default.')
-    g_what.add_argument('--no-geotags', action='store_true',
-                        help='Do not store geotags, even if they can be obtained without any additional request.')
     g_what.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
@@ -279,28 +277,13 @@ def main():
             raise SystemExit(":feed-all and :feed-liked were removed. Use :feed as target and "
                              "eventually --only-if=viewer_has_liked.")
 
-        download_videos = Tristate.always if not args.no_videos else Tristate.no_extra_query
-        download_video_thumbnails = Tristate.always if not args.no_video_thumbnails else Tristate.never
-        download_comments = Tristate.always if args.comments else Tristate.no_extra_query
-        save_captions = Tristate.no_extra_query if not args.no_captions else Tristate.never
-        save_metadata = Tristate.always if not args.no_metadata_json else Tristate.never
-
-        if args.geotags and args.no_geotags:
-            raise SystemExit("--geotags and --no-geotags given. I am confused and refuse to work.")
-        elif args.geotags:
-            download_geotags = Tristate.always
-        elif args.no_geotags:
-            download_geotags = Tristate.never
-        else:
-            download_geotags = Tristate.no_extra_query
-
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet,
                              user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
-                             download_videos=download_videos, download_video_thumbnails=download_video_thumbnails,
-                             download_geotags=download_geotags,
-                             save_captions=save_captions, download_comments=download_comments,
-                             save_metadata=save_metadata, compress_json=not args.no_compress_json,
+                             download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
+                             download_geotags=args.geotags,
+                             save_captions=not args.no_captions, download_comments=args.comments,
+                             save_metadata=not args.no_metadata_json, compress_json=not args.no_compress_json,
                              max_connection_attempts=args.max_connection_attempts)
         _main(loader,
               args.profile,

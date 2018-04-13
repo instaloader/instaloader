@@ -9,7 +9,6 @@ import sys
 import tempfile
 from contextlib import contextmanager, suppress
 from datetime import datetime
-from enum import Enum
 from functools import wraps
 from io import BytesIO
 from typing import Any, Callable, Dict, Iterator, List, Optional
@@ -32,23 +31,6 @@ def format_string_contains_key(format_string: '_PathPattern', key: str) -> bool:
         if field_name and (field_name == key or field_name.startswith(key + '.')):
             return True
     return False
-
-
-class Tristate(Enum):
-    """Tri-state to encode whether we should save certain information, i.e. videos, captions, comments or geotags.
-
-    :attr:`never`
-        Do not save, even if the information is available without any additional request,
-
-    :attr:`no_extra_query`
-        Save if and only if available without doing additional queries,
-
-    :attr:`always`
-        Save (and query, if neccessary).
-    """
-    never = 0
-    no_extra_query = 1
-    always = 2
 
 
 def _requires_login(func: Callable) -> Callable:
@@ -78,12 +60,12 @@ class Instaloader:
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
-                 download_videos: Tristate = Tristate.always,
-                 download_video_thumbnails: Tristate = Tristate.always,
-                 download_geotags: Tristate = Tristate.no_extra_query,
-                 save_captions: Tristate = Tristate.no_extra_query,
-                 download_comments: Tristate = Tristate.no_extra_query,
-                 save_metadata: Tristate = Tristate.no_extra_query,
+                 download_videos: bool = True,
+                 download_video_thumbnails: bool = True,
+                 download_geotags: bool = True,
+                 save_captions: bool = True,
+                 download_comments: bool = True,
+                 save_metadata: bool = True,
                  compress_json: bool = True,
                  max_connection_attempts: int = 3):
 
@@ -352,14 +334,14 @@ class Instaloader:
             edge_number = 1
             for edge in post.get_sidecar_edges():
                 # Download picture or video thumbnail
-                if not edge['node']['is_video'] or self.download_video_thumbnails is Tristate.always:
+                if not edge['node']['is_video'] or self.download_video_thumbnails is True:
                     downloaded |= self.download_pic(filename=filename,
                                                     filename_alt=filename_old,
                                                     url=edge['node']['display_url'],
                                                     mtime=post.date_local,
                                                     filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
-                if edge['node']['is_video'] and self.download_videos is Tristate.always:
+                if edge['node']['is_video'] and self.download_videos is True:
                     downloaded |= self.download_pic(filename=filename,
                                                     filename_alt=filename_old,
                                                     url=edge['node']['video_url'],
@@ -370,14 +352,14 @@ class Instaloader:
             downloaded = self.download_pic(filename=filename, filename_alt=filename_old,
                                            url=post.url, mtime=post.date_local)
         elif post.typename == 'GraphVideo':
-            if self.download_video_thumbnails is Tristate.always:
+            if self.download_video_thumbnails is True:
                 downloaded = self.download_pic(filename=filename, filename_alt=filename_old,
                                                url=post.url, mtime=post.date_local)
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
-        if self.save_captions is not Tristate.never:
+        if self.save_captions is not False:
             if post.caption:
                 self.save_caption(filename=filename, filename_alt=filename_old,
                                   mtime=post.date_local, caption=post.caption)
@@ -385,22 +367,22 @@ class Instaloader:
                 self.context.log("<no caption>", end=' ', flush=True)
 
         # Download video if desired
-        if post.is_video and self.download_videos is Tristate.always:
+        if post.is_video and self.download_videos is True:
             downloaded |= self.download_pic(filename=filename, filename_alt=filename_old,
                                             url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
-        if self.download_geotags is Tristate.always:
+        if self.download_geotags is True:
             location = post.get_location()
             if location:
                 self.save_location(filename, location, post.date_local)
 
         # Update comments if desired
-        if self.download_comments is Tristate.always:
+        if self.download_comments is True:
             self.update_comments(filename=filename, filename_alt=filename_old, post=post)
 
         # Save metadata as JSON if desired.
-        if self.save_metadata is not Tristate.never:
+        if self.save_metadata is not False:
             self.save_metadata_json(filename, post)
 
         self.context.log()
@@ -483,19 +465,19 @@ class Instaloader:
                                                                         shortcode=shortcode)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
-        if not item.is_video or self.download_video_thumbnails is Tristate.always:
+        if not item.is_video or self.download_video_thumbnails is True:
             url = item.url
             downloaded = self.download_pic(filename=filename,
                                            filename_alt=filename_old,
                                            url=url,
                                            mtime=date_local)
-        if item.is_video and self.download_videos is Tristate.always:
+        if item.is_video and self.download_videos is True:
             downloaded |= self.download_pic(filename=filename,
                                             filename_alt=filename_old,
                                             url=item.video_url,
                                             mtime=date_local)
         # Save metadata as JSON if desired.
-        if self.save_metadata is not Tristate.never:
+        if self.save_metadata is not False:
             self.save_metadata_json(filename, item)
         self.context.log()
         return downloaded
@@ -707,7 +689,7 @@ class Instaloader:
         profile_name = profile.username
 
         # Save metadata as JSON if desired.
-        if self.save_metadata is not Tristate.never:
+        if self.save_metadata is not False:
             json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name, target=profile_name),
                                                  profile_name, profile.userid)
             self.save_metadata_json(json_filename, profile)

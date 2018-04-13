@@ -22,9 +22,9 @@ class TestInstaloader(unittest.TestCase):
         self.dir = tempfile.mkdtemp()
         print("Testing in {}".format(self.dir))
         os.chdir(self.dir)
-        self.L = instaloader.Instaloader(download_geotags=instaloader.Tristate.always,
-                                         download_comments=instaloader.Tristate.always,
-                                         save_metadata=instaloader.Tristate.always)
+        self.L = instaloader.Instaloader(download_geotags=True,
+                                         download_comments=True,
+                                         save_metadata=True)
         self.L.context.raise_all_errors = True
 
     def tearDown(self):
