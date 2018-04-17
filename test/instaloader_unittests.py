@@ -38,6 +38,12 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
         self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
 
+    def test_public_profile_paging(self):
+        for count, post in enumerate(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts()):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
+
     def test_profile_pic_download(self):
         self.L.download_profile(PUBLIC_PROFILE, profile_pic_only=True)
 
@@ -68,6 +74,18 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
     @unittest.SkipTest
     def test_private_profile_download(self):
         self.L.download_profile(PRIVATE_PROFILE, download_stories=True)
+
+    def test_stories_paging(self):
+        for user_story in self.L.get_stories():
+            print("profile {}.".format(user_story.owner_username))
+            for item in user_story.get_items():
+                print(item)
+
+    def test_private_profile_paging(self):
+        for count, post in enumerate(instaloader.Profile.from_username(self.L.context, PRIVATE_PROFILE).get_posts()):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
 
     def test_feed_download(self):
         self.L.download_feed_posts(NORMAL_MAX_COUNT)
