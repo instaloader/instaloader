@@ -477,41 +477,37 @@ class Profile:
                                                     self._rhx_gis,
                                                     self._metadata('edge_saved_media')))
 
-    def get_followers(self) -> Iterator[Dict[str, Any]]:
+    def get_followers(self) -> Iterator['Profile']:
         """
         Retrieve list of followers of given profile.
         To use this, one needs to be logged in and private profiles has to be followed,
         otherwise this returns an empty list.
-
-        :param profile: Name of profile to lookup followers.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followers.")
         self._obtain_metadata()
-        yield from self._context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
-                                                   {'id': str(self.userid)},
-                                                   'https://www.instagram.com/' + self.username + '/',
-                                                   lambda d: d['data']['user']['edge_followed_by'],
-                                                   self._rhx_gis)
+        yield from (Profile(self._context, node) for node in
+                    self._context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
+                                                    {'id': str(self.userid)},
+                                                    'https://www.instagram.com/' + self.username + '/',
+                                                    lambda d: d['data']['user']['edge_followed_by'],
+                                                    self._rhx_gis))
 
-    def get_followees(self) -> Iterator[Dict[str, Any]]:
+    def get_followees(self) -> Iterator['Profile']:
         """
         Retrieve list of followees (followings) of given profile.
         To use this, one needs to be logged in and private profiles has to be followed,
         otherwise this returns an empty list.
-
-        :param profile: Name of profile to lookup followers.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followees.")
         self._obtain_metadata()
-        yield from self._context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
-                                                   {'id': str(self.userid)},
-                                                   'https://www.instagram.com/' + self.username + '/',
-                                                   lambda d: d['data']['user']['edge_follow'],
-                                                   self._rhx_gis)
-
-
+        yield from (Profile(self._context, node) for node in
+                    self._context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
+                                                    {'id': str(self.userid)},
+                                                    'https://www.instagram.com/' + self.username + '/',
+                                                    lambda d: d['data']['user']['edge_follow'],
+                                                    self._rhx_gis))
 
 
 class StoryItem:

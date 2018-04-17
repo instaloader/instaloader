@@ -109,7 +109,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     instaloader.context.log("Retrieving followees of %s..." % target[1:])
                     profile = Profile.from_username(instaloader.context, target[1:])
                     followees = profile.get_followees()
-                    profiles.update([followee['username'] for followee in followees])
+                    profiles.update([followee.username for followee in followees])
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  filter_func=filter_func)

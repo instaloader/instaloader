@@ -111,12 +111,12 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
     def test_get_followees(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
         for f in profile.get_followees():
-            print(f['username'])
+            print(f.username)
 
     def test_get_followers(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
         for f in profile.get_followers():
-            print(f['username'])
+            print(f.username)
 
     def test_get_username_by_id(self):
         self.assertEqual(PUBLIC_PROFILE.lower(),
