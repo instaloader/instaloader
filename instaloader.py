@@ -725,7 +725,7 @@ class Instaloader:
         variables_json = json.dumps(variables, separators=(',', ':'))
 
         if rhx_gis:
-            values = "{}:{}:{}".format(rhx_gis, tmpsession.cookies['csrftoken'], variables_json)
+            values = "{}:{}".format(rhx_gis, variables_json)
             x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
             tmpsession.cookies.set('ig_pr', '2')
             tmpsession.headers['x-instagram-gis'] = x_instagram_gis
