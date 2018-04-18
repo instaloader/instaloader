@@ -663,7 +663,8 @@ class Instaloader:
                 if isinstance(err, TooManyRequests):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
-                        waittime = graphql_query_waittime(query_id=params['query_id'], untracked_queries=True)
+                        query_id = params['query_id'] if 'query_id' in params else params['query_hash']
+                        waittime = graphql_query_waittime(query_id, untracked_queries=True)
                         if waittime > 0:
                             self._log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)
