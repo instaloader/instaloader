@@ -1162,7 +1162,7 @@ class Instaloader:
             self._log("Retrieving stories from profile {}.".format(name))
             totalcount = len(user_stories["items"])
             count = 1
-            for item in user_stories["items"]:
+            for item in reversed(user_stories["items"]):
                 self._log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self._error_catcher('Download story from user {}'.format(name)):
