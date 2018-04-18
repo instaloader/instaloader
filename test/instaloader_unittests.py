@@ -7,8 +7,8 @@ import unittest
 
 import instaloader
 
-PUBLIC_PROFILE = "Thammus"
-PUBLIC_PROFILE_ID = 1700252981
+PUBLIC_PROFILE = "selenagomez"
+PUBLIC_PROFILE_ID = 460563723
 HASHTAG = "kitten"
 OWN_USERNAME = "aandergr"
 NORMAL_MAX_COUNT = 2

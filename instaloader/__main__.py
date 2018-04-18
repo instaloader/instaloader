@@ -140,7 +140,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                 anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
                                                                   fast_update, filter_func=filter_func)
                     else:
-                        raise err
+                        raise
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     # Save session if it is useful

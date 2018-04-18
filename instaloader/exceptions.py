@@ -5,6 +5,10 @@ class InstaloaderException(Exception):
     pass
 
 
+class QueryReturnedBadRequestException(InstaloaderException):
+    pass
+
+
 class QueryReturnedNotFoundException(InstaloaderException):
     pass
 

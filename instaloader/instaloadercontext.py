@@ -17,8 +17,6 @@ import urllib3
 
 from .exceptions import *
 
-GRAPHQL_PAGE_LENGTH = 200
-
 
 def copy_session(session: requests.Session) -> requests.Session:
     """Duplicates a requests.Session."""
@@ -57,6 +55,7 @@ class InstaloaderContext:
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
+        self._graphql_page_length = 50
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []
@@ -108,7 +107,7 @@ class InstaloaderContext:
             else:
                 self.error('{}'.format(err))
             if self.raise_all_errors:
-                raise err
+                raise
 
     def _default_http_header(self, empty_session_only: bool = False) -> Dict[str, str]:
         """Returns default HTTP header we use for requests."""
@@ -192,6 +191,7 @@ class InstaloaderContext:
         :param host: Domain part of the URL from where to download the requested JSON; defaults to www.instagram.com
         :param session: Session to use, or None to use self.session
         :return: Decoded response dictionary
+        :raises QueryReturnedBadRequestException: When the server responds with a 400.
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
@@ -230,10 +230,12 @@ class InstaloaderContext:
                                     params=params, allow_redirects=False)
                 else:
                     break
+            if resp.status_code == 400:
+                raise QueryReturnedBadRequestException("400 Bad Request")
             if resp.status_code == 404:
-                raise QueryReturnedNotFoundException("404")
+                raise QueryReturnedNotFoundException("404 Not Found")
             if resp.status_code == 429:
-                raise TooManyRequestsException("429 - Too Many Requests")
+                raise TooManyRequestsException("429 Too Many Requests")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
@@ -254,7 +256,7 @@ class InstaloaderContext:
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = "JSON Query to {}: {}".format(path, err)
             if _attempt == self.max_connection_attempts:
-                raise ConnectionException(error_string)
+                raise ConnectionException(error_string) from err
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
             text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
                             "Please do not use Instagram in your browser or run multiple instances of Instaloader "
@@ -271,7 +273,7 @@ class InstaloaderContext:
                 return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
-                raise ConnectionException(error_string)
+                raise ConnectionException(error_string) from err
 
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
                       referer: Optional[str] = None, rhx_gis: Optional[str] = None) -> Dict[str, Any]:
@@ -284,29 +286,28 @@ class InstaloaderContext:
         :param rhx_gis: 'rhx_gis' variable as somewhere returned by Instagram, needed to 'sign' request
         :return: The server's response dictionary.
         """
-        tmpsession = copy_session(self._session)
-        tmpsession.headers.update(self._default_http_header(empty_session_only=True))
-        del tmpsession.headers['Connection']
-        del tmpsession.headers['Content-Length']
-        tmpsession.headers['authority'] = 'www.instagram.com'
-        tmpsession.headers['scheme'] = 'https'
-        tmpsession.headers['accept'] = '*/*'
-        if referer is not None:
-            tmpsession.headers['referer'] = urllib.parse.quote(referer)
+        with copy_session(self._session) as tmpsession:
+            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
+            del tmpsession.headers['Connection']
+            del tmpsession.headers['Content-Length']
+            tmpsession.headers['authority'] = 'www.instagram.com'
+            tmpsession.headers['scheme'] = 'https'
+            tmpsession.headers['accept'] = '*/*'
+            if referer is not None:
+                tmpsession.headers['referer'] = urllib.parse.quote(referer)
 
-        variables_json = json.dumps(variables, separators=(',', ':'))
+            variables_json = json.dumps(variables, separators=(',', ':'))
 
-        if rhx_gis:
-            #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
-            values = "{}:{}".format(rhx_gis, variables_json)
-            x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
-            tmpsession.headers['x-instagram-gis'] = x_instagram_gis
+            if rhx_gis:
+                #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
+                values = "{}:{}".format(rhx_gis, variables_json)
+                x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
+                tmpsession.headers['x-instagram-gis'] = x_instagram_gis
 
-        resp_json = self.get_json('graphql/query',
-                                  params={'query_hash': query_hash,
-                                          'variables': variables_json},
-                                  session=tmpsession)
-        tmpsession.close()
+            resp_json = self.get_json('graphql/query',
+                                      params={'query_hash': query_hash,
+                                              'variables': variables_json},
+                                      session=tmpsession)
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
         return resp_json
@@ -317,15 +318,29 @@ class InstaloaderContext:
                           rhx_gis: Optional[str] = None,
                           first_data: Optional[Dict[str, Any]] = None) -> Iterator[Dict[str, Any]]:
         """Retrieve a list of GraphQL nodes."""
-        query_variables['first'] = GRAPHQL_PAGE_LENGTH
+
+        def _query():
+            query_variables['first'] = self._graphql_page_length
+            try:
+                return edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
+            except QueryReturnedBadRequestException:
+                new_page_length = int(self._graphql_page_length / 2)
+                if new_page_length >= 12:
+                    self._graphql_page_length = new_page_length
+                    self.error("HTTP Error 400 (Bad Request) on GraphQL Query. Retrying with shorter page length.",
+                               repeat_at_end=False)
+                    return _query()
+                else:
+                    raise
+
         if first_data:
             data = first_data
         else:
-            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
+            data = _query()
         yield from (edge['node'] for edge in data['edges'])
         while data['page_info']['has_next_page']:
             query_variables['after'] = data['page_info']['end_cursor']
-            data = edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
+            data = _query()
             yield from (edge['node'] for edge in data['edges'])
 
     def get_and_write_raw(self, url: str, filename: str, _attempt=1) -> None:
@@ -353,11 +368,11 @@ class InstaloaderContext:
         except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
             error_string = "URL {}: {}".format(url, err)
             if _attempt == self.max_connection_attempts:
-                raise ConnectionException(error_string)
+                raise ConnectionException(error_string) from err
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
             try:
                 self._sleep()
                 self.get_and_write_raw(url, filename, _attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
-                raise ConnectionException(error_string)
+                raise ConnectionException(error_string) from err
