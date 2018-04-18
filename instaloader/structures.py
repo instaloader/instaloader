@@ -708,7 +708,7 @@ class Story:
 
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._node['items'])
+        yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
 
 
 JsonExportable = Union[Post, Profile, StoryItem]
