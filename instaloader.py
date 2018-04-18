@@ -460,7 +460,7 @@ class _PathPattern(str):
 
 
 class Instaloader:
-    GRAPHQL_PAGE_LENGTH = 200
+    GRAPHQL_PAGE_LENGTH = 12
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
