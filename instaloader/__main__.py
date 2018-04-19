@@ -1,6 +1,7 @@
 """Download pictures (or videos) along with their captions and other metadata from Instagram."""
 
 import ast
+import datetime
 import os
 import sys
 from argparse import ArgumentParser, SUPPRESS
@@ -35,6 +36,8 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
             # pylint:disable=no-self-use
             if not isinstance(node.ctx, ast.Load):
                 raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
+            if node.id == "datetime":
+                return node
             if not hasattr(item_type, node.id):
                 raise InvalidArgumentException("Invalid filter: {} not a {} attribute.".format(node.id,
                                                                                                item_type.__name__))
@@ -48,7 +51,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     def filterfunc(item) -> bool:
         # pylint:disable=eval-used
-        return bool(eval(compiled_filter, {'item': item}))
+        return bool(eval(compiled_filter, {'item': item, 'datetime': datetime.datetime}))
 
     return filterfunc
 
