@@ -36,8 +36,6 @@ class Post:
     parameter and exported into JSON files with :option:`--metadata-json`.
     """
 
-    LOGIN_REQUIRING_PROPERTIES = ["viewer_has_liked"]
-
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any],
                  owner_profile: Optional['Profile'] = None):
         """Create a Post instance from a node structure as returned by Instagram.

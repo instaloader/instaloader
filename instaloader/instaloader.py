@@ -372,7 +372,8 @@ class Instaloader:
     def download_stories(self,
                          userids: Optional[List[int]] = None,
                          fast_update: bool = False,
-                         filename_target: str = ':stories') -> None:
+                         filename_target: str = ':stories',
+                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
         """
         Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
@@ -381,6 +382,7 @@ class Instaloader:
         :param userids: List of user IDs to be processed in terms of downloading their stories
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
+        :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         """
 
         if not userids:
@@ -392,6 +394,9 @@ class Instaloader:
             totalcount = user_story.itemcount
             count = 1
             for item in user_story.get_items():
+                if storyitem_filter is not None and not storyitem_filter(item):
+                    self.context.log("<{} skipped>".format(item), flush=True)
+                    continue
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
@@ -451,7 +456,7 @@ class Instaloader:
 
     @_requires_login
     def download_feed_posts(self, max_count: int = None, fast_update: bool = False,
-                            filter_func: Optional[Callable[[Post], bool]] = None) -> None:
+                            post_filter: Optional[Callable[[Post], bool]] = None) -> None:
         """
         Download pictures from the user's feed.
 
@@ -460,11 +465,11 @@ class Instaloader:
             loader = Instaloader()
             loader.load_session_from_file('USER')
             loader.download_feed_posts(max_count=20, fast_update=True,
-                                       filter_func=lambda post: post.viewer_has_liked)
+                                       post_filter=lambda post: post.viewer_has_liked)
 
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
-        :param filter_func: function(post), which returns True if given picture should be downloaded
+        :param post_filter: function(post), which returns True if given picture should be downloaded
         """
         self.context.log("Retrieving pictures from your feed...")
         count = 1
@@ -472,7 +477,7 @@ class Instaloader:
             if max_count is not None and count > max_count:
                 break
             name = post.owner_username
-            if filter_func is not None and not filter_func(post):
+            if post_filter is not None and not post_filter(post):
                 self.context.log("<pic by %s skipped>" % name, flush=True)
                 continue
             self.context.log("[%3i] %s " % (count, name), end="", flush=True)
@@ -484,12 +489,12 @@ class Instaloader:
 
     @_requires_login
     def download_saved_posts(self, max_count: int = None, fast_update: bool = False,
-                             filter_func: Optional[Callable[[Post], bool]] = None) -> None:
+                             post_filter: Optional[Callable[[Post], bool]] = None) -> None:
         """Download user's saved pictures.
 
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
-        :param filter_func: function(post), which returns True if given picture should be downloaded
+        :param post_filter: function(post), which returns True if given picture should be downloaded
         """
         self.context.log("Retrieving saved posts...")
         count = 1
@@ -497,7 +502,7 @@ class Instaloader:
             if max_count is not None and count > max_count:
                 break
             name = post.owner_username
-            if filter_func is not None and not filter_func(post):
+            if post_filter is not None and not post_filter(post):
                 self.context.log("<pic by {} skipped".format(name), flush=True)
                 continue
             self.context.log("[{:>3}] {} ".format(count, name), end=str(), flush=True)
@@ -534,7 +539,7 @@ class Instaloader:
 
     def download_hashtag(self, hashtag: str,
                          max_count: Optional[int] = None,
-                         filter_func: Optional[Callable[[Post], bool]] = None,
+                         post_filter: Optional[Callable[[Post], bool]] = None,
                          fast_update: bool = False) -> None:
         """Download pictures of one hashtag.
 
@@ -545,7 +550,7 @@ class Instaloader:
 
         :param hashtag: Hashtag to download, without leading '#'
         :param max_count: Maximum count of pictures to download
-        :param filter_func: function(post), which returns True if given picture should be downloaded
+        :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         """
         hashtag = hashtag.lower()
@@ -555,7 +560,7 @@ class Instaloader:
             if max_count is not None and count > max_count:
                 break
             self.context.log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True)
-            if filter_func is not None and not filter_func(post):
+            if post_filter is not None and not post_filter(post):
                 self.context.log('<skipped>')
                 continue
             count += 1
@@ -626,7 +631,8 @@ class Instaloader:
                          profile_pic: bool = True, profile_pic_only: bool = False,
                          fast_update: bool = False,
                          download_stories: bool = False, download_stories_only: bool = False,
-                         filter_func: Optional[Callable[[Post], bool]] = None) -> None:
+                         post_filter: Optional[Callable[[Post], bool]] = None,
+                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
         """Download one profile"""
 
         # Get profile main page json
@@ -667,7 +673,8 @@ class Instaloader:
         # Download stories, if requested
         if download_stories or download_stories_only:
             with self.context.error_catcher("Download stories of {}".format(profile_name)):
-                self.download_stories(userids=[profile.userid], filename_target=profile_name, fast_update=fast_update)
+                self.download_stories(userids=[profile.userid], filename_target=profile_name, fast_update=fast_update,
+                                      storyitem_filter=storyitem_filter)
         if download_stories_only:
             return
 
@@ -678,7 +685,7 @@ class Instaloader:
         for post in profile.get_posts():
             self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
             count += 1
-            if filter_func is not None and not filter_func(post):
+            if post_filter is not None and not post_filter(post):
                 self.context.log('<skipped>')
                 continue
             with self.context.error_catcher('Download profile {}'.format(profile_name)):

@@ -4,7 +4,7 @@ import ast
 import os
 import sys
 from argparse import ArgumentParser, SUPPRESS
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
                StoryItem, __version__, load_structure_from_file)
@@ -23,8 +23,9 @@ def usage_string():
 {0} --help""".format(argv0, len(argv0), '')
 
 
-def filterstr_to_filterfunc(filter_str: str, logged_in: bool) -> Callable[['Post'], bool]:
-    """Takes an --only-if=... filter specification and makes a filter_func Callable out of it."""
+def filterstr_to_filterfunc(filter_str: str, item_type: type):
+    """Takes an --post-filter=... or --storyitem-filter=... filter
+     specification and makes a filter_func Callable out of it."""
 
     # The filter_str is parsed, then all names occurring in its AST are replaced by loads to post.<name>. A
     # function Post->bool is returned which evaluates the filter with the post as 'post' in its namespace.
@@ -34,21 +35,20 @@ def filterstr_to_filterfunc(filter_str: str, logged_in: bool) -> Callable[['Post
             # pylint:disable=no-self-use
             if not isinstance(node.ctx, ast.Load):
                 raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
-            if not hasattr(Post, node.id):
-                raise InvalidArgumentException("Invalid filter: Name {} is not defined.".format(node.id))
-            if node.id in Post.LOGIN_REQUIRING_PROPERTIES and not logged_in:
-                raise InvalidArgumentException("Invalid filter: Name {} requires being logged in.".format(node.id))
-            new_node = ast.Attribute(ast.copy_location(ast.Name('post', ast.Load()), node), node.id,
+            if not hasattr(item_type, node.id):
+                raise InvalidArgumentException("Invalid filter: {} not a {} attribute.".format(node.id,
+                                                                                               item_type.__name__))
+            new_node = ast.Attribute(ast.copy_location(ast.Name('item', ast.Load()), node), node.id,
                                      ast.copy_location(ast.Load(), node))
             return ast.copy_location(new_node, node)
 
-    input_filename = '<--only-if parameter>'
+    input_filename = '<command line filter parameter>'
     compiled_filter = compile(TransformFilterAst().visit(ast.parse(filter_str, filename=input_filename, mode='eval')),
                               filename=input_filename, mode='eval')
 
-    def filterfunc(post: 'Post') -> bool:
+    def filterfunc(item) -> bool:
         # pylint:disable=eval-used
-        return bool(eval(compiled_filter, {'post': post}))
+        return bool(eval(compiled_filter, {'item': item}))
 
     return filterfunc
 
@@ -59,14 +59,18 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           profile_pic: bool = True, profile_pic_only: bool = False,
           fast_update: bool = False,
           stories: bool = False, stories_only: bool = False,
-          filter_str: Optional[str] = None) -> None:
+          post_filter_str: Optional[str] = None,
+          storyitem_filter_str: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
-    if filter_str is not None:
-        filter_func = filterstr_to_filterfunc(filter_str, username is not None)
-        instaloader.context.log('Only download posts with property "{}".'.format(filter_str))
-    else:
-        filter_func = None
+    post_filter = None
+    if post_filter_str is not None:
+        post_filter = filterstr_to_filterfunc(post_filter_str, Post)
+        instaloader.context.log('Only download posts with property "{}".'.format(post_filter_str))
+    storyitem_filter = None
+    if storyitem_filter_str is not None:
+        storyitem_filter = filterstr_to_filterfunc(storyitem_filter_str, StoryItem)
+        instaloader.context.log('Only download storyitems with property "{}".'.format(storyitem_filter_str))
     # Login, if desired
     if username is not None:
         try:
@@ -90,9 +94,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 with instaloader.context.error_catcher(target):
                     structure = load_structure_from_file(instaloader.context, target)
                     if isinstance(structure, Post):
+                        if post_filter is not None and not post_filter(structure):
+                            instaloader.context.log("<{} ({}) skipped>".format(structure, target), flush=True)
+                            continue
                         instaloader.context.log("Downloading {} ({})".format(structure, target))
                         instaloader.download_post(structure, os.path.dirname(target))
                     elif isinstance(structure, StoryItem):
+                        if storyitem_filter is not None and not storyitem_filter(structure):
+                            instaloader.context.log("<{} ({}) skipped>".format(structure, target), flush=True)
+                            continue
                         instaloader.context.log("Attempting to download {} ({})".format(structure, target))
                         instaloader.download_storyitem(structure, os.path.dirname(target))
                     elif isinstance(structure, Profile):
@@ -112,15 +122,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     profiles.update([followee.username for followee in followees])
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
-                                                 filter_func=filter_func)
+                                                 post_filter=post_filter)
                 elif target == ":feed":
                     instaloader.download_feed_posts(fast_update=fast_update, max_count=max_count,
-                                                    filter_func=filter_func)
+                                                    post_filter=post_filter)
                 elif target == ":stories":
-                    instaloader.download_stories(fast_update=fast_update)
+                    instaloader.download_stories(fast_update=fast_update, storyitem_filter=storyitem_filter)
                 elif target == ":saved":
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
-                                                     filter_func=filter_func)
+                                                     post_filter=post_filter)
                 else:
                     profiles.add(target)
         if len(profiles) > 1:
@@ -130,7 +140,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             with instaloader.context.error_catcher(target):
                 try:
                     instaloader.download_profile(target, profile_pic, profile_pic_only, fast_update,
-                                                 stories, stories_only, filter_func=filter_func)
+                                                 stories, stories_only, post_filter=post_filter,
+                                                 storyitem_filter=storyitem_filter)
                 except ProfileNotExistsException as err:
                     if not instaloader.context.is_logged_in:
                         instaloader.context.log(err)
@@ -138,7 +149,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         with instaloader.anonymous_copy() as anonymous_loader:
                             with instaloader.context.error_catcher():
                                 anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
-                                                                  fast_update, filter_func=filter_func)
+                                                                  fast_update, post_filter=post_filter)
                     else:
                         raise
     except KeyboardInterrupt:
@@ -210,10 +221,14 @@ def main():
     g_what.add_argument('--stories-only', action='store_true',
                         help='Rather than downloading regular posts of each specified profile, only download '
                              'stories. Requires --login. Does not imply --no-profile-pic.')
-    g_what.add_argument('--only-if', metavar='filter',
+    g_what.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
-                             'instaloader.Post attributes. Example: --only-if=viewer_has_liked.')
+                             'instaloader.Post attributes. Example: --post-filter=viewer_has_liked.')
+    g_what.add_argument('--storyitem-filter', metavar='filter',
+                        help='Expression that, if given, must evaluate to True for each storyitem to be downloaded. '
+                             'Must be a syntactically valid python expression. Variables are evaluated to '
+                             'instaloader.StoryItem attributes.')
 
     g_stop = parser.add_argument_group('When to Stop Downloading',
                                        'If none of these options are given, Instaloader goes through all pictures '
@@ -279,7 +294,7 @@ def main():
 
         if ':feed-all' in args.profile or ':feed-liked' in args.profile:
             raise SystemExit(":feed-all and :feed-liked were removed. Use :feed as target and "
-                             "eventually --only-if=viewer_has_liked.")
+                             "eventually --post-filter=viewer_has_liked.")
 
         post_metadata_txt_pattern = '\n'.join(args.post_metadata_txt) if args.post_metadata_txt else None
         storyitem_metadata_txt_pattern = '\n'.join(args.storyitem_metadata_txt) if args.storyitem_metadata_txt else None
@@ -304,7 +319,8 @@ def main():
               fast_update=args.fast_update,
               stories=args.stories,
               stories_only=args.stories_only,
-              filter_str=args.only_if)
+              post_filter_str=args.post_filter,
+              storyitem_filter_str=args.storyitem_filter)
         loader.close()
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err)

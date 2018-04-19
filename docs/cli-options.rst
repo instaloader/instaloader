@@ -83,13 +83,21 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    download stories.  Requires :option:`--login`. Does not imply
    :option:`--no-profile-pic`.
 
-.. option:: --only-if filter
+.. option:: --post-filter filter, --only-if filter
 
    Expression that, if given, must evaluate to True for each post to be
    downloaded.  Must be a syntactically valid Python expression. Variables are
    evaluated to :class:`instaloader.Post` attributes.  Example:
-   ``--only-if=viewer_has_liked``. See :ref:`filter-posts` for more
+   ``--post-filter=viewer_has_liked``. See :ref:`filter-posts` for more
    examples.
+
+.. option:: --storyitem-filter filter
+
+   Expression that, if given, must evaluate to True for each storyitem to be
+   downloaded.  Must be a syntactically valid Python expression. Variables are
+   evaluated to :class:`instaloader.StoryItem` attributes.
+   See :ref:`filter-posts` for more examples.
+
 
 
 When to Stop Downloading
