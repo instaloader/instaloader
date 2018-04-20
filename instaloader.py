@@ -377,6 +377,7 @@ class Post:
         Each comment is represented by a dictionary having the keys text, created_at, id and owner, which is a
         dictionary with keys username, profile_pic_url and id.
         """
+        # pylint:disable=protected-access
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
@@ -397,6 +398,7 @@ class Post:
         Each like is represented by a dictionary having the keys username, followed_by_viewer, id, is_verified,
         requested_by_viewer, followed_by_viewer, profile_pic_url.
         """
+        # pylint:disable=protected-access
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
