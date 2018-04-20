@@ -460,7 +460,7 @@ class _PathPattern(str):
 
 
 class Instaloader:
-    GRAPHQL_PAGE_LENGTH = 12
+    GRAPHQL_PAGE_LENGTH = 50
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
@@ -506,7 +506,7 @@ class Instaloader:
         self.error_log = []
 
         # For the adaption of sleep intervals (rate control)
-        self.previous_queries = dict()
+        self.query_timestamps = list()
 
     @property
     def is_logged_in(self) -> bool:
@@ -523,10 +523,10 @@ class Instaloader:
                                  self.download_geotags,
                                  self.save_captions, self.download_comments,
                                  self.save_metadata, self.max_connection_attempts)
-        new_loader.previous_queries = self.previous_queries
+        new_loader.query_timestamps = self.query_timestamps
         yield new_loader
         self.error_log.extend(new_loader.error_log)
-        self.previous_queries = new_loader.previous_queries
+        self.query_timestamps = new_loader.query_timestamps
 
     def _log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
@@ -604,29 +604,25 @@ class Instaloader:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
-        def graphql_query_waittime(query_id: Union[int, str], untracked_queries: bool = False) -> int:
+        def graphql_query_waittime(untracked_queries: bool = False) -> int:
             sliding_window = 660
-            timestamps = self.previous_queries.get(query_id)
-            if not timestamps:
+            if not self.query_timestamps:
                 return sliding_window if untracked_queries else 0
             current_time = time.monotonic()
-            timestamps = list(filter(lambda t: t > current_time - sliding_window, timestamps))
-            self.previous_queries[query_id] = timestamps
-            if len(timestamps) < 100 and not untracked_queries:
+            self.query_timestamps = list(filter(lambda t: t > current_time - sliding_window, self.query_timestamps))
+            if len(self.query_timestamps) < 20 and not untracked_queries:
                 return 0
-            return round(min(timestamps) + sliding_window - current_time) + 6
+            return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'graphql/query' in path
         if is_graphql_query:
-            query_id = params['query_id'] if 'query_id' in params else params['query_hash']
-            waittime = graphql_query_waittime(query_id)
+            waittime = graphql_query_waittime()
             if waittime > 0:
                 self._log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
                 time.sleep(waittime)
-            timestamp_list = self.previous_queries.get(query_id)
-            if timestamp_list is not None:
-                timestamp_list.append(time.monotonic())
+            if self.query_timestamps is not None:
+                self.query_timestamps.append(time.monotonic())
             else:
-                self.previous_queries[query_id] = [time.monotonic()]
+                self.query_timestamps = [time.monotonic()]
         sess = session if session else self.session
         try:
             self._sleep()
@@ -663,8 +659,7 @@ class Instaloader:
                 if isinstance(err, TooManyRequests):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
-                        query_id = params['query_id'] if 'query_id' in params else params['query_hash']
-                        waittime = graphql_query_waittime(query_id, untracked_queries=True)
+                        waittime = graphql_query_waittime(untracked_queries=True)
                         if waittime > 0:
                             self._log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)
