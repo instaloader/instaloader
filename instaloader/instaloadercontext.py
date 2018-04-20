@@ -61,7 +61,7 @@ class InstaloaderContext:
         self.error_log = []
 
         # For the adaption of sleep intervals (rate control)
-        self.previous_queries = dict()
+        self.query_timestamps = list()
 
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
@@ -195,29 +195,25 @@ class InstaloaderContext:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
-        def graphql_query_waittime(query_hash: str, untracked_queries: bool = False) -> int:
+        def graphql_query_waittime(untracked_queries: bool = False) -> int:
             sliding_window = 660
-            timestamps = self.previous_queries.get(query_hash)
-            if not timestamps:
+            if not self.query_timestamps:
                 return sliding_window if untracked_queries else 0
             current_time = time.monotonic()
-            timestamps = list(filter(lambda t: t > current_time - sliding_window, timestamps))
-            self.previous_queries[query_hash] = timestamps
-            if len(timestamps) < 100 and not untracked_queries:
+            self.query_timestamps = list(filter(lambda t: t > current_time - sliding_window, self.query_timestamps))
+            if len(self.query_timestamps) < 20 and not untracked_queries:
                 return 0
-            return round(min(timestamps) + sliding_window - current_time) + 6
+            return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         if is_graphql_query:
-            query_hash = params['query_hash']
-            waittime = graphql_query_waittime(query_hash)
+            waittime = graphql_query_waittime()
             if waittime > 0:
                 self.log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
                 time.sleep(waittime)
-            timestamp_list = self.previous_queries.get(query_hash)
-            if timestamp_list is not None:
-                timestamp_list.append(time.monotonic())
+            if self.query_timestamps is not None:
+                self.query_timestamps.append(time.monotonic())
             else:
-                self.previous_queries[query_hash] = [time.monotonic()]
+                self.query_timestamps = [time.monotonic()]
         sess = session if session else self._session
         try:
             self._sleep()
@@ -265,7 +261,7 @@ class InstaloaderContext:
                 if isinstance(err, TooManyRequestsException):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
-                        waittime = graphql_query_waittime(query_hash=params['query_hash'], untracked_queries=True)
+                        waittime = graphql_query_waittime(untracked_queries=True)
                         if waittime > 0:
                             self.log('The request will be retried in {} seconds.'.format(waittime))
                             time.sleep(waittime)

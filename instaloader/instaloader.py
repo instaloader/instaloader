@@ -111,11 +111,11 @@ class Instaloader:
                                  self.download_geotags, self.save_captions, self.download_comments, self.save_metadata,
                                  self.compress_json, self.post_metadata_txt_pattern,
                                  self.storyitem_metadata_txt_pattern, self.context.max_connection_attempts)
-        new_loader.context.previous_queries = self.context.previous_queries
+        new_loader.context.query_timestamps = self.context.query_timestamps
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
-        self.context.previous_queries = new_loader.context.previous_queries
+        self.context.query_timestamps = new_loader.context.query_timestamps
         new_loader.close()
 
     def close(self):
