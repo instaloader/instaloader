@@ -385,6 +385,7 @@ class Post:
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
             yield from (comment['node'] for comment in comment_edges)
             return
+        self._instaloader._log('(Warning: Fetching comments uses many queries, which are rate limited.)')
         yield from self._instaloader.graphql_node_list(17852405266163336, {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
@@ -404,6 +405,7 @@ class Post:
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
             yield from (like['node'] for like in likes_edges)
             return
+        self._instaloader._log('(Warning: Fetching likes uses many queries, which are rate limited.)')
         yield from self._instaloader.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
                                                        lambda d: d['data']['shortcode_media']['edge_liked_by'],
@@ -779,6 +781,7 @@ class Instaloader:
 
         :param profile: Name of profile to lookup followers.
         """
+        self._log('(Warning: Fetching followers uses many queries, which are rate limited.)')
         yield from self.graphql_node_list(17851374694183129, {'id': str(self.get_id_by_username(profile))},
                                           'https://www.instagram.com/' + profile + '/',
                                           lambda d: d['data']['user']['edge_followed_by'])
@@ -791,6 +794,7 @@ class Instaloader:
 
         :param profile: Name of profile to lookup followers.
         """
+        self._log('(Warning: Fetching followees uses many queries, which are rate limited.)')
         yield from self.graphql_node_list(17874545323001329, {'id': str(self.get_id_by_username(profile))},
                                           'https://www.instagram.com/' + profile + '/',
                                           lambda d: d['data']['user']['edge_follow'])
