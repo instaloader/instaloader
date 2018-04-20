@@ -139,9 +139,11 @@ class InstaloaderContext:
         return session
 
     def save_session_to_file(self, sessionfile):
+        """Not meant to be used directly, use :meth:`Instaloader.save_session_to_file`."""
         pickle.dump(requests.utils.dict_from_cookiejar(self._session.cookies), sessionfile)
 
     def load_session_from_file(self, username, sessionfile):
+        """Not meant to be used directly, use :meth:`Instaloader.load_session_to_file`."""
         session = requests.Session()
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())
@@ -150,10 +152,12 @@ class InstaloaderContext:
         self.username = username
 
     def test_login(self) -> Optional[str]:
+        """Not meant to be used directly, use :meth:`Instaloader.test_login`."""
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
     def login(self, user, passwd):
+        """Not meant to be used directly, use :meth:`Instaloader.login`."""
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',

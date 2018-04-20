@@ -10,6 +10,9 @@ Python Module :mod:`instaloader`
 
 .. highlight:: python
 
+.. contents::
+  :backlinks: none
+
 Instaloader exposes its internally used methods as a Python module, making it a
 **powerful and easy-to-use Python API for Instagram**, allowing to further
 customize obtaining media and metadata.
@@ -42,34 +45,8 @@ Besides :func:`Instaloader.get_hashtag_posts`, there is
 Also, :class:`Post` instances can be created with :func:`Post.from_shortcode`
 and :func:`Post.from_mediaid`.
 
-Further, information about profiles can be easily obtained. For example, you may
-print a list of all followees and followers of a profile with::
-
-    # Print followees
-    print(PROFILE + " follows these profiles:")
-    for f in L.get_followees(PROFILE):
-        print("\t%s\t%s" % (f['username'], f['full_name']))
-
-    # Print followers
-    print("Followers of " + PROFILE + ":")
-    for f in L.get_followers(PROFILE):
-        print("\t%s\t%s" % (f['username'], f['full_name']))
-
-Then, you may download all pictures of all followees with::
-
-    for f in L.get_followees(PROFILE):
-        L.download_profile(f['username'])
-
-Each Instagram profile has its own unique ID which stays unmodified even if a
-user changes his/her username. To get said ID, given the profile's name, you may
-call::
-
-    L.get_id_by_username(PROFILE_NAME)
-
 A reference of the many methods provided by the :mod:`instaloader` module is
-provided in the remainder of this document. Feel free to direct any issue or
-contribution to
-`Instaloader on Github <https://github.com/instaloader/instaloader>`__.
+provided in the remainder of this document.
 
 ``Instaloader`` (Main Class)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -77,30 +54,42 @@ contribution to
 .. autoclass:: Instaloader
    :no-show-inheritance:
 
-``Profile`` Class
-^^^^^^^^^^^^^^^^^
+Instagram Structures
+^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: Profile
-   :no-show-inheritance:
+.. autofunction:: load_structure_from_file
 
-``Post`` Class
-^^^^^^^^^^^^^^
+.. autofunction:: save_structure_to_file
+
+``Post``
+""""""""
+
+.. autofunction:: mediaid_to_shortcode
+
+.. autofunction:: shortcode_to_mediaid
 
 .. autoclass:: Post
    :no-show-inheritance:
 
-Miscellaneous Functions
-^^^^^^^^^^^^^^^^^^^^^^^
+``StoryItem``
+"""""""""""""
 
-.. autofunction:: shortcode_to_mediaid
+.. autoclass:: StoryItem
+   :no-show-inheritance:
 
-.. autofunction:: mediaid_to_shortcode
+``Profile``
+"""""""""""
+
+.. autoclass:: Profile
+   :no-show-inheritance:
 
 Exceptions
 ^^^^^^^^^^
 
 .. autoexception:: InstaloaderException
    :no-show-inheritance:
+
+.. autoexception:: QueryReturnedBadRequestException
 
 .. autoexception:: QueryReturnedNotFoundException
 
@@ -123,3 +112,9 @@ Exceptions
 .. autoexception:: ConnectionException
 
 .. autoexception:: TooManyRequestsException
+
+``InstaloaderContext`` (Low-level functions)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: InstaloaderContext
+   :no-show-inheritance:

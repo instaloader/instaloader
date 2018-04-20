@@ -28,23 +28,26 @@ class Post:
     Structure containing information about an Instagram post.
 
     Created by methods :meth:`Profile.get_posts`, :meth:`Instaloader.get_hashtag_posts`,
-    :meth:`Instaloader.get_feed_posts` and :meth:`Profile.get_saved_posts`.
+    :meth:`Instaloader.get_feed_posts` and :meth:`Profile.get_saved_posts`, which return iterators of Posts::
+
+       L = Instaloader()
+       for post in L.get_hashtag_posts(HASHTAG):
+           L.download_post(post, target='#'+HASHTAG)
+
+    Might also be created with::
+
+       post = Post.from_shortcode(L.context, SHORTCODE)
+
     This class unifies access to the properties associated with a post. It implements == and is
     hashable.
 
-    The properties defined here are accessible by the filter expressions specified with the :option:`--only-if`
-    parameter and exported into JSON files with :option:`--metadata-json`.
+    :param context: :attr:`Instaloader.context` used for additional queries if neccessary..
+    :param node: Node structure, as returned by Instagram.
+    :param owner_profile: The Profile of the owner, if already known at creation.
     """
 
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any],
                  owner_profile: Optional['Profile'] = None):
-        """Create a Post instance from a node structure as returned by Instagram.
-
-        :param context: :class:`InstaloaderContext` instance used for additional queries if neccessary.
-        :param node: Node structure, as returned by Instagram.
-        :param owner_profile: The Profile of the owner, if already known at creation.
-        """
-
         assert 'shortcode' in node or 'code' in node
 
         self._context = context
@@ -296,7 +299,7 @@ class Post:
                                                    self._rhx_gis)
 
     def get_location(self) -> Optional[Dict[str, str]]:
-        """If the Post has a location, returns a dictionary with fields 'lat' and 'lng'."""
+        """If the Post has a location, returns a dictionary with fields 'lat' and 'lng' and 'name'."""
         loc_dict = self._field("location")
         if loc_dict is not None:
             location_json = self._context.get_json("explore/locations/{0}/".format(loc_dict["id"]),
@@ -311,7 +314,25 @@ class Profile:
     Provides methods for accessing profile properties, as well as :meth:`Profile.get_posts` and for own profile
     :meth:`Profile.get_saved_posts`.
 
-    This class implements == and is hashable.
+    Get instances with :meth:`Post.owner_profile`, :meth:`StoryItem.owner_profile`, :meth:`Profile.get_followees`,
+    :meth:`Profile.get_followers` or::
+
+       L = Instaloader()
+       profile = Profile.from_username(L.context, USERNAME)
+
+    Provides :meth:`Profile.get_posts` and for own profile :meth:`Profile.get_saved_posts` to iterate over associated
+    :class:`Post` objects::
+
+       for post in profile.get_posts():
+           L.download_post(post, target=profile.username)
+
+    :meth:`Profile.get_followees` and :meth:`Profile.get_followers`::
+
+       print("{} follows these profiles:".format(profile.username))
+       for followee in profile.get_followees():
+           print(followee.username)
+
+    Also, this class implements == and is hashable.
     """
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert 'username' in node
@@ -321,6 +342,12 @@ class Profile:
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
+        """Create a Profile instance from a given username, raise exception if it does not exist.
+
+        :param context: :attr:`Instaloader.context`
+        :param username: Username
+        :raises: :class:`ProfileNotExistsException`
+        """
         # pylint:disable=protected-access
         profile = cls(context, {'username': username.lower()})
         profile._obtain_metadata()  # to raise ProfileNotExistException now in case username is invalid
@@ -328,6 +355,13 @@ class Profile:
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
+        """If logged in, create a Profile instance from a given userid. If possible, use :meth:`Profile.from_username`
+        or constructor directly rather than this method, since does many requests.
+
+        :param context: :attr:`Instaloader.context`
+        :param profile_id: userid
+        :raises: :class:`ProfileNotExistsException`, :class:`LoginRequiredException`, :class:`ProfileHasNoPicsException`
+        """
         if not context.is_logged_in:
             raise LoginRequiredException("--login=USERNAME required to obtain profile metadata from its ID number.")
         data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
@@ -377,10 +411,12 @@ class Profile:
 
     @property
     def userid(self) -> int:
+        """User ID"""
         return int(self._metadata('id'))
 
     @property
     def username(self) -> str:
+        """Profile Name"""
         return self._metadata('username').lower()
 
     def __repr__(self):
@@ -478,8 +514,7 @@ class Profile:
     def get_followers(self) -> Iterator['Profile']:
         """
         Retrieve list of followers of given profile.
-        To use this, one needs to be logged in and private profiles has to be followed,
-        otherwise this returns an empty list.
+        To use this, one needs to be logged in and private profiles has to be followed.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followers.")
@@ -494,8 +529,7 @@ class Profile:
     def get_followees(self) -> Iterator['Profile']:
         """
         Retrieve list of followees (followings) of given profile.
-        To use this, one needs to be logged in and private profiles has to be followed,
-        otherwise this returns an empty list.
+        To use this, one needs to be logged in and private profiles has to be followed.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followees.")
@@ -712,7 +746,16 @@ class Story:
 JsonExportable = Union[Post, Profile, StoryItem]
 
 
-def save_structure_to_file(structure: JsonExportable, filename: str):
+def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
+    """Saves a :class:`Post`, :class:`Profile` or :class:`StoryItem` to a '.json' or '.json.xz' file such that it can
+    later be loaded by :func:`load_structure_from_file`.
+
+    If the specified filename ends in '.xz', the file will be LZMA compressed. Otherwise, a pretty-printed JSON file
+    will be created.
+
+    :param structure: :class:`Post`, :class:`Profile` or :class:`StoryItem`
+    :param filename: Filename, ends in '.json' or '.json.xz'
+    """
     json_structure = {'node': structure.get_node(),
                       'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}}
     compress = filename.endswith('.xz')
@@ -725,6 +768,12 @@ def save_structure_to_file(structure: JsonExportable, filename: str):
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
+    """Loads a :class:`Post`, :class:`Profile` or :class:`StoryItem` from a '.json' or '.json.xz' file that
+    has been saved by :func:`save_structure_from_file`.
+
+    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
+    :param filename: Filename, ends in '.json' or '.json.xz'
+    """
     compressed = filename.endswith('.xz')
     if compressed:
         fp = lzma.open(filename, 'rt')

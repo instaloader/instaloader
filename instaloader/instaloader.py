@@ -71,6 +71,36 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
 
 
 class Instaloader:
+    """Instaloader Class.
+
+    ::
+
+        L = Instaloader()
+
+        # Optionally, login or load session
+        L.login(USER, PASSWORD)        # (login)
+        L.interactive_login(USER)      # (ask password on terminal)
+        L.load_session_from_file(USER) # (load session created w/
+                                       #  `instaloader -l USERNAME`)
+
+    :mod:`instaloader` provides the :class:`Post` structure, which represents a
+    picture, video or sidecar (set of multiple pictures/videos) posted in a user's
+    profile. :class:`Instaloader` provides methods to iterate over Posts from a
+    certain source::
+
+        for post in L.get_hashtag_posts('cat'):
+            # post is an instance of Post
+            L.download_post(post, target='#cat')
+
+    Besides :func:`Instaloader.get_hashtag_posts`, there is
+    :func:`Instaloader.get_feed_posts`, :func:`Profile.get_posts` and
+    :func:`Profile.get_saved_posts`.
+    Also, :class:`Post` instances can be created with :func:`Post.from_shortcode`
+    and :func:`Post.from_mediaid`.
+
+    Also, this class provides methods :meth:`Instaloader.download_profile`,
+    :meth:`Instaloader.download_hashtag` and many more to download targets.
+    """
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
@@ -119,6 +149,7 @@ class Instaloader:
         new_loader.close()
 
     def close(self):
+        """Close associated session objects and repeat error log."""
         self.context.close()
 
     def __enter__(self):
@@ -176,7 +207,7 @@ class Instaloader:
             self.context.log('comments', end=' ', flush=True)
 
     def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:
-        """Updates picture caption"""
+        """Updates picture caption / Post metadata info"""
         filename += '.txt'
         caption += '\n'
         pcaption = caption.replace('\n', ' ').strip()
@@ -214,6 +245,7 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
     def save_location(self, filename: str, location_json: Dict[str, str], mtime: datetime) -> None:
+        """Save post location name and Google Maps link."""
         filename += '_location.txt'
         location_string = (location_json["name"] + "\n" +
                            "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location_json["lat"],
@@ -250,7 +282,10 @@ class Instaloader:
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
-        """Saves internally stored :class:`requests.Session` object."""
+        """Saves internally stored :class:`requests.Session` object.
+
+        :param filename: Filename, or None to use default filename.
+        """
         if filename is None:
             filename = get_default_session_filename(self.context.username)
         dirname = os.path.dirname(filename)
@@ -437,7 +472,10 @@ class Instaloader:
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
-        """Get Posts of the user's feed."""
+        """Get Posts of the user's feed.
+
+        :return: Iterator over Posts of the user's feed.
+        """
 
         data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
 
@@ -514,7 +552,10 @@ class Instaloader:
 
     @_requires_login
     def get_explore_posts(self) -> Iterator[Post]:
-        """Get Posts which are worthy of exploring suggested by Instagram."""
+        """Get Posts which are worthy of exploring suggested by Instagram.
+
+        :return: Iterator over Posts of the user's suggested posts.
+        """
         data = self.context.get_json('explore/', {})
         yield from (Post(self.context, node)
                     for node in self.context.graphql_node_list("df0dcc250c2b18d9fd27c5581ef33c7c",
