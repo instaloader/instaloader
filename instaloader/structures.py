@@ -11,19 +11,6 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 
 
-def shortcode_to_mediaid(code: str) -> int:
-    if len(code) > 11:
-        raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
-    code = 'A' * (12 - len(code)) + code
-    return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
-
-
-def mediaid_to_shortcode(mediaid: int) -> str:
-    if mediaid.bit_length() > 64:
-        raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
-    return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
-
-
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostComment = namedtuple('PostComment', ['id', 'created_at_utc', 'text', 'owner'])
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
@@ -74,7 +61,20 @@ class Post:
     @classmethod
     def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
         """Create a post object from a given mediaid"""
-        return cls.from_shortcode(context, mediaid_to_shortcode(mediaid))
+        return cls.from_shortcode(context, Post.mediaid_to_shortcode(mediaid))
+
+    @staticmethod
+    def shortcode_to_mediaid(code: str) -> int:
+        if len(code) > 11:
+            raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
+        code = 'A' * (12 - len(code)) + code
+        return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
+
+    @staticmethod
+    def mediaid_to_shortcode(mediaid: int) -> str:
+        if mediaid.bit_length() > 64:
+            raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
+        return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
 
     def _asdict(self):
         if self._full_metadata_dict:
@@ -593,10 +593,6 @@ class StoryItem:
         """The mediaid is a decimal representation of the media shortcode."""
         return int(self._node['id'])
 
-    @property
-    def shortcode(self) -> str:
-        return mediaid_to_shortcode(self.mediaid)
-
     def __repr__(self):
         return '<StoryItem {}>'.format(self.mediaid)
 
@@ -681,7 +677,16 @@ class Story:
     """
     Structure representing a user story with its associated items.
 
-    Provides methods for accessing story properties, as well as :meth:`Story.get_items`.
+    Provides methods for accessing story properties, as well as :meth:`Story.get_items` to request associated
+    :class:`StoryItem` nodes. Stories are returned by :meth:`Instaloader.get_stories`.
+
+    With a logged-in :class:`Instaloader` instance `L`, you may download all your visible user stories with::
+
+       for story in L.get_stories():
+           # story is a Story object
+           for item in story.get_items():
+               # item is a StoryItem object
+               L.download_storyitem(item, ':stores')
 
     This class implements == and is hashable.
 

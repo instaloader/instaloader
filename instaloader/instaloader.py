@@ -71,36 +71,7 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
 
 
 class Instaloader:
-    """Instaloader Class.
-
-    ::
-
-        L = Instaloader()
-
-        # Optionally, login or load session
-        L.login(USER, PASSWORD)        # (login)
-        L.interactive_login(USER)      # (ask password on terminal)
-        L.load_session_from_file(USER) # (load session created w/
-                                       #  `instaloader -l USERNAME`)
-
-    :mod:`instaloader` provides the :class:`Post` structure, which represents a
-    picture, video or sidecar (set of multiple pictures/videos) posted in a user's
-    profile. :class:`Instaloader` provides methods to iterate over Posts from a
-    certain source::
-
-        for post in L.get_hashtag_posts('cat'):
-            # post is an instance of Post
-            L.download_post(post, target='#cat')
-
-    Besides :func:`Instaloader.get_hashtag_posts`, there is
-    :func:`Instaloader.get_feed_posts`, :func:`Profile.get_posts` and
-    :func:`Profile.get_saved_posts`.
-    Also, :class:`Post` instances can be created with :func:`Post.from_shortcode`
-    and :func:`Post.from_mediaid`.
-
-    Also, this class provides methods :meth:`Instaloader.download_profile`,
-    :meth:`Instaloader.download_hashtag` and many more to download targets.
-    """
+    """Instaloader Class."""
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,

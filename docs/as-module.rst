@@ -1,6 +1,6 @@
 .. meta::
    :description:
-      Documentation of Instaloader module, a powerful and easy-to-use
+      Documentation of Instaloader module, a powerful and intuitive
       Python library to download Instagram media and metadata.
 
 Python Module :mod:`instaloader`
@@ -13,9 +13,9 @@ Python Module :mod:`instaloader`
 .. contents::
   :backlinks: none
 
-Instaloader exposes its internally used methods as a Python module, making it a
-**powerful and easy-to-use Python API for Instagram**, allowing to further
-customize obtaining media and metadata.
+Instaloader exposes its internally used methods and structures as a Python
+module, making it a **powerful and intuitive Python API for Instagram**,
+allowing to further customize obtaining media and metadata.
 
 Start with getting an instance of :class:`Instaloader`::
 
@@ -57,31 +57,50 @@ provided in the remainder of this document.
 Instagram Structures
 ^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: load_structure_from_file
-
-.. autofunction:: save_structure_to_file
-
-``Post``
-""""""""
-
-.. autofunction:: mediaid_to_shortcode
-
-.. autofunction:: shortcode_to_mediaid
+Posts
+"""""
 
 .. autoclass:: Post
    :no-show-inheritance:
 
-``StoryItem``
-"""""""""""""
+Additionally, the following trivial structures are defined:
+
+.. autoclass:: PostSidecarNode
+   :no-show-inheritance:
+   :no-members:
+
+.. autoclass:: PostComment
+   :no-show-inheritance:
+   :no-members:
+
+.. autoclass:: PostLocation
+   :no-show-inheritance:
+   :no-members:
+
+User Stories
+""""""""""""
+
+.. autoclass:: Story
+   :no-show-inheritance:
 
 .. autoclass:: StoryItem
    :no-show-inheritance:
 
-``Profile``
-"""""""""""
+Profiles
+""""""""
 
 .. autoclass:: Profile
    :no-show-inheritance:
+
+Loading and Saving
+""""""""""""""""""
+
+:class:`Post`, :class:`StoryItem` and :class:`Profile` can be saved and loaded
+to/from JSON files.
+
+.. autofunction:: load_structure_from_file
+
+.. autofunction:: save_structure_to_file
 
 Exceptions
 ^^^^^^^^^^
