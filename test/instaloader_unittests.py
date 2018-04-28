@@ -125,7 +125,7 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
     def test_get_likes(self):
         for post in instaloader.Profile.from_username(self.L.context, OWN_USERNAME).get_posts():
             for like in post.get_likes():
-                print(like['username'])
+                print(like.username)
             break
 
     def test_explore_paging(self):

@@ -293,24 +293,21 @@ class Post:
                                                    lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
                                                    self._rhx_gis)
 
-    def get_likes(self) -> Iterator[Dict[str, Any]]:
-        """Iterate over all likes of the post.
-
-        Each like is represented by a dictionary having the keys username, followed_by_viewer, id, is_verified,
-        requested_by_viewer, followed_by_viewer, profile_pic_url.
-        """
+    def get_likes(self) -> Iterator['Profile']:
+        """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
         likes_edges = self._field('edge_media_preview_like', 'edges')
         if self.likes == len(likes_edges):
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
-            yield from (like['node'] for like in likes_edges)
+            yield from (Profile(self._context, like['node']) for like in likes_edges)
             return
-        yield from self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
-                                                   'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                   lambda d: d['data']['shortcode_media']['edge_liked_by'],
-                                                   self._rhx_gis)
+        yield from (Profile(self._context, node) for node in
+                    self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
+                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
+                                                    lambda d: d['data']['shortcode_media']['edge_liked_by'],
+                                                    self._rhx_gis))
 
     @property
     def location(self) -> Optional[PostLocation]:
