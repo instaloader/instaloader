@@ -11,11 +11,11 @@ from contextlib import contextmanager, suppress
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
-from typing import Callable, Dict, Iterator, List, Optional, Any
+from typing import Callable, Iterator, List, Optional, Any
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import JsonExportable, Post, Profile, Story, StoryItem, save_structure_to_file
+from .structures import JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file
 
 
 def get_default_session_filename(username: str) -> str:
@@ -244,12 +244,12 @@ class Instaloader:
             shutil.copyfileobj(BytesIO(caption), text_file)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
-    def save_location(self, filename: str, location_json: Dict[str, str], mtime: datetime) -> None:
+    def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
         """Save post location name and Google Maps link."""
         filename += '_location.txt'
-        location_string = (location_json["name"] + "\n" +
-                           "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location_json["lat"],
-                                                                                        location_json["lng"]))
+        location_string = (location.name + "\n" +
+                           "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location.lat,
+                                                                                        location.lng))
         with open(filename, 'wb') as text_file:
             shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
@@ -335,14 +335,14 @@ class Instaloader:
         downloaded = False
         if post.typename == 'GraphSidecar':
             edge_number = 1
-            for edge in post.get_sidecar_edges():
+            for sidecar_node in post.get_sidecar_nodes():
                 # Download picture or video thumbnail
-                if not edge['node']['is_video'] or self.download_video_thumbnails is True:
-                    downloaded |= self.download_pic(filename=filename, url=edge['node']['display_url'],
+                if not sidecar_node.is_video or self.download_video_thumbnails is True:
+                    downloaded |= self.download_pic(filename=filename, url=sidecar_node.display_url,
                                                     mtime=post.date_local, filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
-                if edge['node']['is_video'] and self.download_videos is True:
-                    downloaded |= self.download_pic(filename=filename, url=edge['node']['video_url'],
+                if sidecar_node.is_video and self.download_videos is True:
+                    downloaded |= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                     mtime=post.date_local, filename_suffix=str(edge_number))
                 edge_number += 1
         elif post.typename == 'GraphImage':
@@ -366,10 +366,8 @@ class Instaloader:
             downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
-        if self.download_geotags is True:
-            location = post.get_location()
-            if location:
-                self.save_location(filename, location, post.date_local)
+        if self.download_geotags and post.location:
+            self.save_location(filename, post.location, post.date_local)
 
         # Update comments if desired
         if self.download_comments is True:

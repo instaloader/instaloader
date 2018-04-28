@@ -2,6 +2,7 @@ import json
 import lzma
 import re
 from base64 import b64decode, b64encode
+from collections import namedtuple
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional, Union
 
@@ -21,6 +22,10 @@ def mediaid_to_shortcode(mediaid: int) -> str:
     if mediaid.bit_length() > 64:
         raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
     return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
+
+
+PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
+PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
 
 
 class Post:
@@ -55,6 +60,7 @@ class Post:
         self._owner_profile = owner_profile
         self._full_metadata_dict = None
         self._rhx_gis_str = None
+        self._location = None
 
     @classmethod
     def from_shortcode(cls, context: InstaloaderContext, shortcode: str):
@@ -76,6 +82,8 @@ class Post:
             node = self._node
         if self._owner_profile:
             node['owner'] = self.owner_profile.get_node()
+        if self._location:
+            node['location'] = self._location._asdict()
         return node
 
     @property
@@ -189,8 +197,14 @@ class Post:
         # if __typename is not in node, it is an old image or video
         return 'GraphImage'
 
-    def get_sidecar_edges(self) -> List[Dict[str, Any]]:
-        return self._field('edge_sidecar_to_children', 'edges')
+    def get_sidecar_nodes(self) -> Iterator[PostSidecarNode]:
+        """Sidecar nodes of a Post with typename==GraphSidecar."""
+        if self.typename == 'GraphSidecar':
+            for edge in self._field('edge_sidecar_to_children', 'edges'):
+                node = edge['node']
+                is_video = node['is_video']
+                yield PostSidecarNode(is_video=is_video, display_url=node['display_url'],
+                                      video_url=node['video_url'] if is_video else None)
 
     @property
     def caption(self) -> Optional[str]:
@@ -298,13 +312,19 @@ class Post:
                                                    lambda d: d['data']['shortcode_media']['edge_liked_by'],
                                                    self._rhx_gis)
 
-    def get_location(self) -> Optional[Dict[str, str]]:
-        """If the Post has a location, returns a dictionary with fields 'lat' and 'lng' and 'name'."""
-        loc_dict = self._field("location")
-        if loc_dict is not None:
-            location_json = self._context.get_json("explore/locations/{0}/".format(loc_dict["id"]),
-                                                   params={'__a': 1})
-            return location_json["location"] if "location" in location_json else location_json['graphql']['location']
+    @property
+    def location(self) -> Optional[PostLocation]:
+        """If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'."""
+        loc = self._field("location")
+        if self._location or not loc:
+            return self._location
+        location_id = int(loc['id'])
+        if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
+            loc = self._context.get_json("explore/locations/{0}/".format(location_id),
+                                         params={'__a': 1})['graphql']['location']
+        self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
+                                      loc['lat'], loc['lng'])
+        return self._location
 
 
 class Profile:
