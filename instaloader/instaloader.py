@@ -8,7 +8,7 @@ import string
 import sys
 import tempfile
 from contextlib import contextmanager, suppress
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
 from typing import Callable, Iterator, List, Optional, Any
@@ -185,12 +185,17 @@ class Instaloader:
             self.context.log('json', end=' ', flush=True)
 
     def update_comments(self, filename: str, post: Post) -> None:
+        def _postcomment_asdict(comment):
+            return {'id': comment.id,
+                    'created_at': comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp(),
+                    'text': comment.text,
+                    'owner': comment.owner._asdict()}
         filename += '_comments.json'
         try:
             comments = json.load(open(filename))
         except FileNotFoundError:
             comments = list()
-        comments.extend(post.get_comments())
+        comments.extend(_postcomment_asdict(comment) for comment in post.get_comments())
         if comments:
             with open(filename, 'w') as file:
                 comments_list = sorted(sorted(list(comments), key=lambda t: t['id']),

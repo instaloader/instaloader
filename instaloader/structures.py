@@ -25,6 +25,7 @@ def mediaid_to_shortcode(mediaid: int) -> str:
 
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
+PostComment = namedtuple('PostComment', ['id', 'created_at_utc', 'text', 'owner'])
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
 
 
@@ -273,25 +274,31 @@ class Post:
         """Comment count"""
         return self._field('edge_media_to_comment', 'count')
 
-    def get_comments(self) -> Iterator[Dict[str, Any]]:
+    def get_comments(self) -> Iterator[PostComment]:
         """Iterate over all comments of the post.
 
-        Each comment is represented by a dictionary having the keys text, created_at, id and owner, which is a
-        dictionary with keys username, profile_pic_url and id.
+        Each comment is represented by a PostComment namedtuple with fields text (string), created_at (datetime),
+        id (int) and owner (:class:`Profile`).
         """
+        def _postcomment(node):
+            return PostComment(id=int(node['id']),
+                               created_at_utc=datetime.utcfromtimestamp(node['created_at']),
+                               text=node['text'],
+                               owner=Profile(self._context, node['owner']))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
         comment_edges = self._field('edge_media_to_comment', 'edges')
         if self.comments == len(comment_edges):
             # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
-            yield from (comment['node'] for comment in comment_edges)
+            yield from (_postcomment(comment['node']) for comment in comment_edges)
             return
-        yield from self._context.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
-                                                   {'shortcode': self.shortcode},
-                                                   'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                   lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
-                                                   self._rhx_gis)
+        yield from (_postcomment(node) for node in
+                    self._context.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
+                                                    {'shortcode': self.shortcode},
+                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
+                                                    lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
+                                                    self._rhx_gis))
 
     def get_likes(self) -> Iterator['Profile']:
         """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
