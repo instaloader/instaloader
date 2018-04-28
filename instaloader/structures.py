@@ -75,13 +75,13 @@ class Post:
         """Create a post object from a given mediaid"""
         return cls.from_shortcode(context, mediaid_to_shortcode(mediaid))
 
-    def get_node(self):
+    def _asdict(self):
         if self._full_metadata_dict:
             node = self._full_metadata_dict
         else:
             node = self._node
         if self._owner_profile:
-            node['owner'] = self.owner_profile.get_node()
+            node['owner'] = self.owner_profile._asdict()
         if self._location:
             node['location'] = self._location._asdict()
         return node
@@ -399,7 +399,7 @@ class Profile:
         username = Post.from_mediaid(context, int(data['edges'][0]["node"]["id"])).owner_username
         return cls(context, {'username': username.lower(), 'id': profile_id})
 
-    def get_node(self):
+    def _asdict(self):
         json_node = self._node.copy()
         # remove posts
         json_node.pop('edge_media_collections', None)
@@ -578,10 +578,10 @@ class StoryItem:
         self._node = node
         self._owner_profile = owner_profile
 
-    def get_node(self):
+    def _asdict(self):
         node = self._node
         if self._owner_profile:
-            node['owner'] = self._owner_profile.get_node()
+            node['owner'] = self._owner_profile._asdict()
         return node
 
     @property
@@ -776,7 +776,7 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     :param structure: :class:`Post`, :class:`Profile` or :class:`StoryItem`
     :param filename: Filename, ends in '.json' or '.json.xz'
     """
-    json_structure = {'node': structure.get_node(),
+    json_structure = {'node': structure._asdict(),
                       'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}}
     compress = filename.endswith('.xz')
     if compress:
