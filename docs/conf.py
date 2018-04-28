@@ -25,6 +25,8 @@ import sphinx_bootstrap_theme
 
 sys.path.insert(0, os.path.abspath('..'))
 
+import docs.sphinx_autodoc_typehints as sphinx_autodoc_typehints
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -36,7 +38,6 @@ sys.path.insert(0, os.path.abspath('..'))
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx_autodoc_typehints',
     'sphinx.ext.githubpages',
     'sphinx.ext.intersphinx'
 ]
@@ -371,3 +372,5 @@ html_context = {'current_release': current_release, 'current_release_date': curr
 
 def setup(app):
     app.add_stylesheet("style.css")
+    app.connect('autodoc-process-signature', sphinx_autodoc_typehints.process_signature)
+    app.connect('autodoc-process-docstring', sphinx_autodoc_typehints.process_docstring)
