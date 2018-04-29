@@ -302,10 +302,18 @@ def main():
         post_metadata_txt_pattern = '\n'.join(args.post_metadata_txt) if args.post_metadata_txt else None
         storyitem_metadata_txt_pattern = '\n'.join(args.storyitem_metadata_txt) if args.storyitem_metadata_txt else None
 
+        if args.no_captions:
+            if not (post_metadata_txt_pattern or storyitem_metadata_txt_pattern):
+                post_metadata_txt_pattern = ''
+                storyitem_metadata_txt_pattern = ''
+            else:
+                raise SystemExit("--no-captions and --post-metadata-txt or --storyitem-metadata-txt given; "
+                                 "That contradicts.")
+
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
-                             download_geotags=args.geotags, save_captions=not args.no_captions,
+                             download_geotags=args.geotags,
                              download_comments=args.comments, save_metadata=not args.no_metadata_json,
                              compress_json=not args.no_compress_json,
                              post_metadata_txt_pattern=post_metadata_txt_pattern,

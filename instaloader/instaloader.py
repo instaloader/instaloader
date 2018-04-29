@@ -57,9 +57,12 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def format_field(self, value, format_spec):
         """Override :meth:`string.Formatter.format_field` to have our
-         default format_spec for :class:`datetime.Datetime` objects."""
+         default format_spec for :class:`datetime.Datetime` objects, and to
+         let None yield an empty string rather than ``None``."""
         if isinstance(value, datetime) and not format_spec:
             return super().format_field(value, '%Y-%m-%d_%H-%M-%S')
+        if value is None:
+            return ''
         return super().format_field(value, format_spec)
 
 
@@ -80,11 +83,12 @@ class Instaloader:
     :param download_videos: not :option:`--no-videos`
     :param download_video_thumbnails: not :option:`--no-video-thumbnails`
     :param download_geotags: :option:`--geotags`
-    :param save_captions: not :option:`--no-captions`
     :param download_comments: :option:`--comments`
     :param save_metadata: not :option:`--no-metadata-json`
     :param compress_json: not :option:`--no-compress-json`
-    :param post_metadata_txt_pattern: :option:`--post-metadata-txt`, default is ``{caption}``
+    :param post_metadata_txt_pattern:
+       :option:`--post-metadata-txt`, default is ``{caption}``. Set to empty string to avoid creation of post metadata
+       txt file.
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
     """
@@ -97,7 +101,6 @@ class Instaloader:
                  download_videos: bool = True,
                  download_video_thumbnails: bool = True,
                  download_geotags: bool = True,
-                 save_captions: bool = True,
                  download_comments: bool = True,
                  save_metadata: bool = True,
                  compress_json: bool = True,
@@ -113,19 +116,20 @@ class Instaloader:
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
-        self.save_captions = save_captions
         self.download_comments = download_comments
         self.save_metadata = save_metadata
         self.compress_json = compress_json
-        self.post_metadata_txt_pattern = post_metadata_txt_pattern or '{caption}'
-        self.storyitem_metadata_txt_pattern = storyitem_metadata_txt_pattern or ''
+        self.post_metadata_txt_pattern = '{caption}' if post_metadata_txt_pattern is None \
+            else post_metadata_txt_pattern
+        self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
+            else storyitem_metadata_txt_pattern
 
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
         new_loader = Instaloader(self.context.sleep, self.context.quiet, self.context.user_agent, self.dirname_pattern,
                                  self.filename_pattern, self.download_videos, self.download_video_thumbnails,
-                                 self.download_geotags, self.save_captions, self.download_comments, self.save_metadata,
+                                 self.download_geotags, self.download_comments, self.save_metadata,
                                  self.compress_json, self.post_metadata_txt_pattern,
                                  self.storyitem_metadata_txt_pattern, self.context.max_connection_attempts)
         new_loader.context.query_timestamps = self.context.query_timestamps
@@ -200,11 +204,13 @@ class Instaloader:
 
     def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:
         """Updates picture caption / Post metadata info"""
+        def _elliptify(caption):
+            pcaption = caption.replace('\n', ' ').strip()
+            return '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
         filename += '.txt'
         caption += '\n'
-        pcaption = caption.replace('\n', ' ').strip()
+        pcaption = _elliptify(caption)
         caption = caption.encode("UTF-8")
-        pcaption = '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
         with suppress(FileNotFoundError):
             with open(filename, 'rb') as file:
                 file_caption = file.read()
@@ -225,7 +231,7 @@ class Instaloader:
                 for index in range(i, 0, -1):
                     os.rename(get_filename(index - 1), get_filename(index))
                 try:
-                    self.context.log(pcaption + ' updated', end=' ', flush=True)
+                    self.context.log(_elliptify(file_caption.decode("UTF-8")) + ' updated', end=' ', flush=True)
                 except UnicodeEncodeError:
                     self.context.log('txt updated', end=' ', flush=True)
         try:
@@ -346,12 +352,9 @@ class Instaloader:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
-        if self.save_captions is not False:
-            metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern)
-            if metadata_string:
-                self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
-            else:
-                self.context.log("<no txt>", end=' ', flush=True)
+        metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
+        if metadata_string:
+            self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
 
         # Download video if desired
         if post.is_video and self.download_videos is True:
@@ -448,12 +451,9 @@ class Instaloader:
         if item.is_video and self.download_videos is True:
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
         # Save caption if desired
-        if self.save_captions is not False:
-            metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern)
-            if metadata_string:
-                self.save_caption(filename=filename, mtime=item.date_local, caption=metadata_string)
-            else:
-                self.context.log("<no txt>", end=' ', flush=True)
+        metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
+        if metadata_string:
+            self.save_caption(filename=filename, mtime=item.date_local, caption=metadata_string)
         # Save metadata as JSON if desired.
         if self.save_metadata is not False:
             self.save_metadata_json(filename, item)
