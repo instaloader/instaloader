@@ -71,7 +71,23 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
 
 
 class Instaloader:
-    """Instaloader Class."""
+    """Instaloader Class.
+
+    :param quiet: :option:`--quiet`
+    :param user_agent: :option:`--user-agent`
+    :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
+    :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
+    :param download_videos: not :option:`--no-videos`
+    :param download_video_thumbnails: not :option:`--no-video-thumbnails`
+    :param download_geotags: :option:`--geotags`
+    :param save_captions: not :option:`--no-captions`
+    :param download_comments: :option:`--comments`
+    :param save_metadata: not :option:`--no-metadata-json`
+    :param compress_json: not :option:`--no-compress-json`
+    :param post_metadata_txt_pattern: :option:`--post-metadata-txt`, default is ``{caption}``
+    :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
+    :param max_connection_attempts: :option:`--max-connection-attempts`
+    """
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
