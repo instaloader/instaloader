@@ -10,6 +10,9 @@ Download Pictures from Instagram
 
 .. highlight:: none
 
+Here we describe how to use Instaloader to download pictures from Instagram. If
+you do not have Instaloader installed yet, see :ref:`install`.
+
 .. NOTE that Section "Basic Usage" is duplicated in README.rst.
 
 Basic Usage

@@ -23,7 +23,7 @@ posts along with the pictures's captions and the current **profile picture**
 there. If an already-downloaded profile has been renamed, Instaloader
 automatically **finds it by its unique ID** and renames the folder likewise.
 
-.. option:: --profile-pic-only
+.. option:: --profile-pic-only, -P
 
    Only download profile picture.
 
@@ -31,7 +31,7 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
    Do not download profile picture.
 
-.. option:: --no-videos
+.. option:: --no-videos, -V
 
    Do not download videos.
 
@@ -39,14 +39,14 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
    Do not download thumbnails of videos.
 
-.. option:: --geotags
+.. option:: --geotags, -G
 
    **Download geotags** when available. Geotags are stored as a text file with
    the location's name and a Google Maps link. This requires an additional
    request to the Instagram server for each picture, which is why it is disabled
    by default.
 
-.. option:: --comments
+.. option:: --comments, -C
 
    Download and update comments for each post. This requires an additional
    request to the Instagram server for each post, which is why it is disabled by
@@ -65,7 +65,7 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    Template to write in txt file for each StoryItem. See
    :ref:`metadata-text-files`.
 
-.. option:: --stories
+.. option:: --stories, -s
 
    Also **download stories** of each profile that is downloaded. Requires
    :option:`--login`.
@@ -107,13 +107,13 @@ When to Stop Downloading
 If none of these options are given, Instaloader goes through all pictures
 matching the specified targets.
 
-.. option:: --fast-update
+.. option:: --fast-update, -F
 
    For each target, stop when encountering the first already-downloaded picture.
    This flag is recommended when you use Instaloader to update your personal
    Instagram archive.
 
-.. option:: --count COUNT
+.. option:: --count COUNT, -c
 
    Do not attempt to download more than COUNT posts.  Applies only to
    ``#hashtag`` and ``:feed``.
@@ -127,17 +127,17 @@ profiles. To login, pass the :option:`--login` option. Your session cookie (not 
 password!) will be saved to a local file to be reused next time you want
 Instaloader to login.
 
-.. option:: --login YOUR-USERNAME
+.. option:: --login YOUR-USERNAME, -l YOUR-USERNAME
 
    Login name (profile name) for your Instagram account.
 
-.. option:: --sessionfile SESSIONFILE
+.. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
    Path for loading and storing session key file.  Defaults to a path within
    your temporary directory, encoding your local username and your Instagram
    profile name.
 
-.. option:: --password YOUR-PASSWORD
+.. option:: --password YOUR-PASSWORD, -p YOUR-PASSWORD
 
    Password for your Instagram account.  Without this option, you'll be prompted
    for your password interactively if there is not yet a valid session file.
@@ -174,7 +174,7 @@ How to Download
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. option:: --quiet
+.. option:: --quiet, -q
 
    Disable user interaction, i.e. do not print messages (except errors) and fail
    if login credentials are needed but not given. This makes Instaloader

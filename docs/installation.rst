@@ -1,28 +1,24 @@
-Installation
-============
+.. _install:
+
+Install Instaloader
+===================
 
 .. highlight:: none
 
-Instaloader requires `Python <https://www.python.org/>`__, at least
-version 3.5.  If you have `pip <https://pypi.python.org/pypi/pip>`__
-installed, you may install Instaloader using
+**To install Instaloader**,
 
-::
+#. Ensure that you have `Python <https://www.python.org/>`__, at least
+   version 3.5 and `pip <https://pypi.python.org/pypi/pip>`__
+   installed
 
-    pip3 install instaloader
+#. Then, install Instaloader using::
 
-Alternatively, to get the most current version of Instaloader from our
-`Git repository <https://github.com/instaloader/instaloader>`__:
+      pip3 install instaloader
 
-::
+**To upgrade Instaloader**, do::
 
-    pip3 install git+https://github.com/instaloader/instaloader
+   pip3 install --upgrade instaloader
 
-(pass ``--upgrade`` to upgrade if Instaloader is already installed)
-
-Instaloader requires
-`requests <http://python-requests.org/>`__, which
-will be installed automatically, if it is not already installed.
 
 **Alternative methods for installing Instaloader:**
 
@@ -34,8 +30,10 @@ will be installed automatically, if it is not already installed.
 - On **Arch Linux**, you may install Instaloader using the
   `Instaloader AUR package <https://aur.archlinux.org/packages/instaloader/>`__.
 
-- On **Gentoo Linux**, you may install Instaloader using the
-  `Instaloader Ebuild <https://bugs.gentoo.org/642100>`__.
-
 - On **Windows 10**, you may download the standalone executable from the
   `current release page <https://github.com/instaloader/instaloader/releases/latest>`__.
+
+To get the most current version of Instaloader from our
+`Git repository <https://github.com/instaloader/instaloader>`__::
+
+    pip3 install --upgrade git+https://github.com/instaloader/instaloader
