@@ -109,8 +109,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         instaloader.context.log("Attempting to download {} ({})".format(structure, target))
                         instaloader.download_storyitem(structure, os.path.dirname(target))
                     elif isinstance(structure, Profile):
-                        instaloader.context.log("Going to download {} ({})".format(structure.username, target))
-                        profiles.add(structure.username)
+                        raise InvalidArgumentException("Profile JSON are ignored. Pass \"{}\" to download that profile"
+                                                       .format(structure.username))
                     else:
                         raise InvalidArgumentException("{} JSON file not supported as target"
                                                        .format(structure.__class__.__name__))
