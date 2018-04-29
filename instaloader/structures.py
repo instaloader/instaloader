@@ -177,12 +177,12 @@ class Post:
 
     @property
     def date(self) -> datetime:
-        """Synonym to :meth:`.date_utc`"""
+        """Synonym to :attr:`~Post.date_utc`"""
         return self.date_utc
 
     @property
     def profile(self) -> str:
-        """Synonym to :meth:`.owner_username`"""
+        """Synonym to :attr:`~Post.owner_username`"""
         return self.owner_username
 
     @property
@@ -593,6 +593,12 @@ class StoryItem:
         """The mediaid is a decimal representation of the media shortcode."""
         return int(self._node['id'])
 
+    @property
+    def shortcode(self) -> str:
+        """Convert :attr:`~StoryItem.mediaid` to a shortcode-like string, allowing ``{shortcode}`` to be used with
+        :option:`--filename-pattern`."""
+        return Post.mediaid_to_shortcode(self.mediaid)
+
     def __repr__(self):
         return '<StoryItem {}>'.format(self.mediaid)
 
@@ -633,12 +639,12 @@ class StoryItem:
 
     @property
     def date(self) -> datetime:
-        """Synonym to :meth:`.date_utc`"""
+        """Synonym to :attr:`~StoryItem.date_utc`"""
         return self.date_utc
 
     @property
     def profile(self) -> str:
-        """Synonym to :meth:`.owner_username`"""
+        """Synonym to :attr:`~StoryItem.owner_username`"""
         return self.owner_username
 
     @property

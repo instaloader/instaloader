@@ -85,9 +85,6 @@ downloads the pictures and videos and their captions. You can specify
 - :option:`--geotags`, to **download geotags** of each post and save them as
   Google Maps link,
 
-- :option:`--metadata-json`, to store further post metadata in a separate JSON
-  file.
-
 .. _filename-specification:
 
 Filename Specification
@@ -103,60 +100,102 @@ pattern, the token ``{target}`` is replaced by the target name, and
 ``{profile}`` is replaced by the owner of the post which is downloaded.
 
 :option:`--filename-pattern` configures the path of the post's files relative
-to the target directory. The default is ``--filename-pattern={date}``.
+to the target directory that is specified with :option:`--dirname-pattern`.
+The default is ``--filename-pattern={date_utc}_UTC``.
 The tokens ``{target}`` and ``{profile}`` are replaced like in the
-dirname pattern. Further, the tokens ``{date}``, ``{date_utc}`` and ``{shortcode}`` are
-defined. Additionally, in case of not downloading stories, the attributes of
-:class:`.Post` can be used, e.g. ``{post.owner_id}`` or ``{post.mediaid}``.
+dirname pattern. The following tokens are defined for usage with
+:option:`--filename-pattern`:
 
-For example, encode the poster's profile name in the filenames with:
+- ``{target}``
+   Target name (as given in Instaloader command line)
 
-::
+- ``{profile}`` (same as ``{owner_username}``)
+   Owner of the Post / StoryItem.
 
-    instaloader --filename-pattern={date}_{profile} "#hashtag"
+- ``{owner_id}``
+   Unique integer ID of owner profile.
 
-The pattern string is formatted with Python's string formatter. This
-gives additional flexibilty for pattern specification. For example,
-`strftime-style formatting options <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior>`__
-are supported for the post's
-timestamp. The default for ``{date}`` is ``{date:%Y-%m-%d_%H-%M-%S}``.
+- ``{shortcode}``
+   Shortcode (identifier string).
+
+- ``{mediaid}``
+   Integer representation of shortcode.
+
+- ``{date_utc}`` (same as ``{date}``)
+   Creation time in UTC timezone.
+   `strftime()-style formatting options <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior>`__
+   are supported as format specifier. The default date format specifier used by
+   Instaloader is::
+
+      {date_utc:%Y-%m-%d_%H-%M-%S}
+
+For example, encode the poster's profile name in the filenames with::
+
+    instaloader --filename-pattern={date_utc}_UTC_{profile} "#hashtag"
+
+As another example, you may instruct Instaloader to store posts in a
+``PROFILE/YEAR/SHORTCODE.jpg`` directory structure::
+
+    instaloader --dirname-pattern={profile} --filename-pattern={date_utc:%Y}/{shortcode} <target> ...
 
 .. _filter-posts:
 
 Filter Posts
 ^^^^^^^^^^^^
 
-The :option:`--only-if` option allows to specify criterias that posts have to
-meet to be downloaded. If not given, all posts are downloaded. It must be a
-boolean Python expression where the variables :attr:`.likes`, :attr:`.comments`,
-:attr:`.viewer_has_liked`, :attr:`.is_video`, and many more are defined.
+.. py:currentmodule:: instaloader
 
-A few examples:
+The options :option:`--post-filter` and :option:`--storyitem-filter`
+allows to specify criterias that posts or story items have to
+meet to be downloaded. If not given, all posts are downloaded.
 
-To **download the pictures from your feed that you have liked**:
+The filter string must be a
+`Python boolean expression <https://docs.python.org/3/reference/expressions.html#boolean-operations>`__
+where the attributes from :class:`Post` or
+:class:`StoryItem` respectively are defined.
 
-::
+Id est, the following attributes can be used with both
+:option:`--post-filter` and :option:`--storyitem-filter`:
 
-    instaloader --login=your_username --only-if=viewer_has_liked :feed
+- :attr:`~Post.is_video` (bool)
+   Post/StoryItem is a video. For example, you may skip videos::
 
-Or you might only want to download **posts that either you liked or were
-liked by many others**:
+      instaloader --post-filter="not is_video" target
 
-::
+- :attr:`~Post.owner_username` (str), :attr:`~Post.owner_id` (int)
+   Owner profile username / userid.
 
-    instaloader --login=your_username --only-if="likes>100 or viewer_has_liked" profile
+- :attr:`~Post.date_utc` (datetime), :attr:`~Post.date_local` (datetime)
+   Creation timestamp. Since :class:`~datetime.datetime` objects can be created
+   inside filter strings, this easily allows filtering by creation date. E.g.::
 
-Or you may **skip videos**:
+      instaloader --post-filter="date_utc <= datetime(2018, 5, 31)" target
 
-::
+As :option:`--post-filter`, the following attributes can be used additionally:
 
-    instaloader --only-if="not is_video" target
+- :attr:`~Post.viewer_has_liked` (bool)
+   Whether user (with :option:`--login`) has liked given post. To download the
+   pictures from your feed that you have liked::
 
-Or you may filter by hashtags that occur in the Post's caption. For
-example, to download posts of kittens that are cute: ::
+      instaloader --login=your_username --post-filter=viewer_has_liked :feed
 
-    instaloader --only-if="'cute' in caption_hashtags" "#kitten"
+- :attr:`~Post.likes` (int), :attr:`~Post.comments` (int)
+   Likes count / Comments count. You might only want to download posts that
+   either you liked or were liked by many others**::
 
-The given string is evaluated as a
-`Python boolean expression <https://docs.python.org/3/reference/expressions.html#boolean-operations>`__,
-where all occuring variables are attributes of the :class:`.Post` class.
+      instaloader --login=your_username --post-filter="likes>100 or viewer_has_liked" profile
+
+- :attr:`~Post.caption_hashtags` (list of str) / :attr:`~Post.caption_mentions` (list of str)
+   ``#hashtags`` or ``@mentions`` (lowercased) in the Post's caption. For example, to
+   download posts of kittens that are cute::
+
+       instaloader --post-filter="'cute' in caption_hashtags" "#kitten"
+
+- :attr:`~Post.tagged_users` (list of str)
+   Lowercased usernames that are tagged in the Post.
+
+For :option:`--storyitem-filter`, the following additional attributes are
+defined:
+
+- :attr:`~StoryItem.expiring_utc` (datetime) / :attr:`~StoryItem.expiring_local` (datetime)
+   Timestamp when StoryItem will get unavailable.

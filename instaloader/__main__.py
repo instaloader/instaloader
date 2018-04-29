@@ -264,12 +264,10 @@ def main():
                             '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
                             'profile name. Defaults to \'{target}\'.')
     g_how.add_argument('--filename-pattern',
-                       help='Prefix of filenames. Posts are stored in the directory whose pattern is given with '
-                            '--dirname-pattern. {profile} is replaced by the profile name, '
-                            '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
-                            'profile name. Also, the fields {date} and {shortcode} can be specified. In case of not '
-                            'downloading stories, the attributes of the Post class can be used in addition, e.g. '
-                            '{post.owner_id} or {post.mediaid}. Defaults to \'{date:%%Y-%%m-%%d_%%H-%%M-%%S}\'.')
+                       help='Prefix of filenames, relative to the directory given with '
+                            '--dirname-pattern. {profile} is replaced by the profile name,'
+                            '{target} is replaced by the target you specified, i.e. either :feed'
+                            '#hashtag or the profile name. Defaults to \'{date_utc}_UTC\'')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)

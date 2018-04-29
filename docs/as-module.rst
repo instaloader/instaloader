@@ -39,11 +39,55 @@ certain source::
         # post is an instance of instaloader.Post
         L.download_post(post, target='#cat')
 
-Besides :func:`Instaloader.get_hashtag_posts`, there is
-:func:`Instaloader.get_feed_posts`, :func:`Profile.get_posts` and
-:func:`Profile.get_saved_posts`.
-Also, :class:`Post` instances can be created with :func:`Post.from_shortcode`
-and :func:`Post.from_mediaid`.
+:class:`Post` instances can be created with:
+
+- :func:`Post.from_shortcode`
+   Use a Post shortcode (part of the Post URL,
+   ``https://www.instagram.com/p/SHORTCODE/``) to create a Post
+   object::
+
+      post = Post.from_shortcode(L.context, SHORTCODE)
+
+- :meth:`Profile.get_posts`
+   All media of a :class:`Profile`.
+
+- :meth:`Profile.get_saved_posts`
+   Media that the user marked as saved (:class:`Profile` must be own profile
+   for this to work)
+
+- :meth:`Instaloader.get_feed_posts`
+   Media in the user's feed.
+
+- :meth:`Instaloader.get_explore_posts`
+   Media that is suggested by Instagram to explore.
+
+- :meth:`Instaloader.get_hashtag_posts`
+   Media associated with given hashtag.
+
+With the :class:`Profile` class, Instaloader also makes it easy to access
+metadata of a Profile. :class:`Profile` instances can be created with:
+
+- :meth:`Profile.from_username`::
+
+     profile = Profile.from_username(L.context, USERNAME)
+
+- :meth:`Profile_from_userid`
+   given its User ID (currently requires to be logged in).
+
+- :meth:`Profile.get_followees`
+   Profiles that are followed by given user.
+
+- :meth:`Profile.get_followers`
+   Profiles that follow given user.
+
+- :attr:`Post.owner_profile`, :attr:`Story.owner_profile` and :attr:`StoryItem.owner_profile`
+   Owner profile of particular object.
+
+- :meth:`Post.get_likes`
+   Profiles that liked a given :class:`Post`
+
+- :attr:`PostComment.owner` attribute for comment in :meth:`Post.get_comments`
+   Profile of a Post comment.
 
 A reference of the many methods provided by the :mod:`instaloader` module is
 provided in the remainder of this document.

@@ -153,15 +153,11 @@ How to Download
 
 .. option:: --filename-pattern FILENAME_PATTERN
 
-   Prefix of filenames. Posts are stored in the directory whose pattern is given
-   with ``--dirname-pattern``.  ``{profile}`` is replaced by the profile name,
+   Prefix of filenames, relative to the directory given with
+   :option:`--dirname-pattern`. ``{profile}`` is replaced by the profile name,
    ``{target}`` is replaced by the target you specified, i.e.  either ``:feed``,
-   ``#hashtag`` or the profile name.  Also, the fields ``{date}``, ``{date_utc}`` and
-   ``{shortcode}`` can be specified.  In case of not downloading stories, the
-   attributes of the :class:`.Post` class can be used in addition, e.g.
-   ``{post.owner_id}`` or ``{post.mediaid}``.
-   Defaults to
-   ``{date:%Y-%m-%d_%H-%M-%S}``.  See :ref:`filename-specification`.
+   ``#hashtag`` or the profile name. Defaults to ``{date_utc}_UTC``.
+   See :ref:`filename-specification` for a list of supported tokens.
 
 .. option:: --user-agent USER_AGENT
 
