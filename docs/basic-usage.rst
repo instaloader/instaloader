@@ -199,3 +199,36 @@ defined:
 
 - :attr:`~StoryItem.expiring_utc` (datetime) / :attr:`~StoryItem.expiring_local` (datetime)
    Timestamp when StoryItem will get unavailable.
+
+.. _metadata-text-files:
+
+Metadata Text Files
+^^^^^^^^^^^^^^^^^^^
+
+Unless :option:`--no-captions` is given, Instaloader creates a ``.txt`` file
+along with each post where the Post's caption is saved.
+
+You can customize what metadata to save for each Post or StoryItem with
+:option:`--post-metadata-txt` and :option:`--storyitem-metadata-txt`. The
+default is ``--post-metadata-txt={caption}`` and no storyitem metadata txt.
+These strings are formatted similar as in the :ref:`filename-specification` and
+the result is saved in text files, unless it is empty.
+
+Specifying these options multiple times results in output having multiple lines,
+in the order they were given to Instaloader.
+
+The field names are evaluated to :class:`Post` or :class:`StoryItem` attributes,
+and as such, the same fields are supported as in :ref:`filename-specification`
+and :ref:`filter-posts`.
+
+For example, to save the current number of likes for each post, rather than
+the post's caption::
+
+   instaloader --post-metadata-txt="{likes} likes." <target>
+
+Note that with this feature, it is possible to easily and fastly extract
+additional metadata of already-downloaded posts, by reimporting their JSON
+files. Say, you now also want to export the number of comments the Posts had
+when they were downloaded::
+
+   instaloader --post-metadata-txt="{likes} likes, {comments} comments." <target>/*.json.xz

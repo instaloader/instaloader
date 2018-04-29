@@ -58,11 +58,12 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
 .. option:: --post-metadata-txt
 
-   Template to write in txt file for each Post.
+   Template to write in txt file for each Post. See :ref:`metadata-text-files`.
 
 .. option:: --storyitem-metadata-txt
 
-   Template to write in txt file for each StoryItem.
+   Template to write in txt file for each StoryItem. See
+   :ref:`metadata-text-files`.
 
 .. option:: --stories
 
