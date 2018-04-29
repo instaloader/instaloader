@@ -55,35 +55,37 @@ What to Download
 
 Instaloader supports the following targets:
 
-``profile``
+- ``profile``
    Public profile, or private profile with :option:`--login`. For each profile
    you download, :option:`--stories` instructs Instaloader to also
    **download the user's stories**.
 
-``"#hashtag"``
+- ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually neccessary),
 
-``:stories``
+- ``:stories``
    The currently-visible **stories** of your followees (requires
    :option:`--login`),
 
-``:feed``
+- ``:feed``
    Your **feed** (requires :option:`--login`),
 
-``:saved``
+- ``:saved``
    Posts which are marked as **saved** (requires :option:`--login`),
 
-``@profile``
+- ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
    ``profile`` (requires :option:`--login`).
 
 Instaloader goes through all media matching the specified targets and
 downloads the pictures and videos and their captions. You can specify
 
-- :option:`--comments`, to also **download comments** of each post,
+- :option:`--comments`
+   also **download comments** of each post,
 
-- :option:`--geotags`, to **download geotags** of each post and save them as
-  Google Maps link,
+- :option:`--geotags`
+   **download geotags** of each post and save them as
+   Google Maps link,
 
 .. _filename-specification:
 
