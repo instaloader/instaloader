@@ -21,6 +21,8 @@ With `Python <https://www.python.org/>`__ installed, do::
 
     $ instaloader profile [profile ...]
 
+See :ref:`install` for more options on how to install Instaloader.
+
 **Instaloader**
 
 - downloads **public and private profiles, hashtags, user stories,
@@ -44,6 +46,8 @@ With `Python <https://www.python.org/>`__ installed, do::
                 profile | "#hashtag" |
                 :stories | :feed | :saved
 
+See :ref:`download-pictures-from-instagram` for a detailed introduction on how
+to use Instaloader to download pictures from Instagram.
 
 Instaloader Documentation
 -------------------------

@@ -1,3 +1,5 @@
+.. _command-line-options:
+
 Command Line Options
 ====================
 
@@ -12,7 +14,9 @@ posts marked as saved).
 
 Here we explain the additional options that can be given to Instaloader to
 customize its behavior.  To get a list of all flags, their abbreviations and
-their descriptions, you may also run ``instaloader --help``.
+their descriptions, you may also run ``instaloader --help``.  For an
+introduction on how to use Instaloader, see
+:ref:`download-pictures-from-instagram`.
 
 What to Download
 ^^^^^^^^^^^^^^^^
@@ -142,6 +146,10 @@ Instaloader to login.
    Password for your Instagram account.  Without this option, you'll be prompted
    for your password interactively if there is not yet a valid session file.
 
+   .. warning:: Using :option:`--password` option is discouraged for security
+      reasons.  Enter your password interactively when asked, or use the
+      sessionfile feature (:option:`--sessionfile` to customize path).
+
 How to Download
 ^^^^^^^^^^^^^^^
 
@@ -177,5 +185,5 @@ Miscellaneous Options
 .. option:: --quiet, -q
 
    Disable user interaction, i.e. do not print messages (except errors) and fail
-   if login credentials are needed but not given. This makes Instaloader
-   **suitable as a cron job**.
+   if login credentials are needed but not given.
+   This is handy for running :ref:`instaloader-as-cronjob`.

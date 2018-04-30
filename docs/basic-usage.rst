@@ -5,6 +5,8 @@
       and private profiles, hashtags, stories, feeds, saved media, and
       their metadata, comments and captions.
 
+.. _download-pictures-from-instagram:
+
 Download Pictures from Instagram
 ---------------------------------
 
@@ -89,6 +91,9 @@ downloads the pictures and videos and their captions. You can specify
 - :option:`--geotags`
    **download geotags** of each post and save them as
    Google Maps link,
+
+For a reference of all supported command line options, see
+:ref:`command-line-options`.
 
 .. _filename-specification:
 
@@ -237,3 +242,32 @@ files. Say, you now also want to export the number of comments the Posts had
 when they were downloaded::
 
    instaloader --post-metadata-txt="{likes} likes, {comments} comments." <target>/*.json.xz
+
+.. _instaloader-as-cronjob:
+
+Instaloader as Cronjob
+^^^^^^^^^^^^^^^^^^^^^^
+
+Instaloader is suitable for running as a cronjob to periodically update your
+personal Instagram archive. The :option:`--quiet` option disables user
+interactions and logging of non-error messages. To non-interactively use
+Instaloader logged-in, create a session file, e.g. in your home directory::
+
+   instaloader --login=your_username --sessionfile=~/.instaloader-session
+
+Then use the same parameters in your cronjob to load the session and download
+the given targets::
+
+   instaloader --login=your_username --sessionfile=~/.instaloader-session --quiet <target> [...]
+
+Without :option:`--sessionfile` option, Instaloader saves the session file in
+a path within your temporary directory.
+
+Programming Instaloader
+^^^^^^^^^^^^^^^^^^^^^^^
+
+If your task cannot be done with the command line interface of Instaloader,
+consider taking a look at the :ref:`python-module-instaloader`.
+Instaloader exposes its internally used methods and structures, making it a
+powerful and intuitive Python API for Instagram, allowing to further customize
+obtaining media and metadata.

@@ -3,6 +3,8 @@
       Documentation of Instaloader module, a powerful and intuitive
       Python library to download Instagram media and metadata.
 
+.. _python-module-instaloader:
+
 Python Module :mod:`instaloader`
 --------------------------------
 
