@@ -139,20 +139,17 @@ class Post:
 
     @property
     def owner_profile(self) -> 'Profile':
+        """:class:`Profile` instance of the Post's owner."""
         if not self._owner_profile:
             if 'username' in self._node['owner']:
                 owner_struct = self._node['owner']
             else:
                 # Sometimes, the 'owner' structure does not contain the username, only the user's ID.  In that case,
                 # this call triggers downloading of the complete Post metadata struct, where the owner username
-                # is contained. This is better than to get the username by user ID, since it
-                # gives us other information that is more likely to be usable.
+                # is contained.
+                # Note that we cannot use Profile.from_id() here since that would lead us into a recursion.
                 owner_struct = self._full_metadata['owner']
-            if 'username' in owner_struct:
-                self._owner_profile = Profile(self._context, owner_struct)
-            else:
-                # Fallback, if we still did not get the owner username
-                self._owner_profile = Profile.from_id(self._context, owner_struct['id'])
+            self._owner_profile = Profile(self._context, owner_struct)
         return self._owner_profile
 
     @property
@@ -399,8 +396,7 @@ class Profile:
                 raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
             else:
                 raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        username = Post.from_shortcode(context, data['edges'][0]["node"]["shortcode"]).owner_username
-        return cls(context, {'username': username.lower(), 'id': profile_id})
+        return Post(context, data['edges'][0]['node']).owner_profile
 
     def _asdict(self):
         json_node = self._node.copy()
