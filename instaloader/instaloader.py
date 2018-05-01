@@ -529,11 +529,10 @@ class Instaloader:
         for post in Profile.from_username(self.context, self.context.username).get_saved_posts():
             if max_count is not None and count > max_count:
                 break
-            name = post.owner_username
             if post_filter is not None and not post_filter(post):
-                self.context.log("<pic by {} skipped".format(name), flush=True)
+                self.context.log("<{} skipped>".format(post), flush=True)
                 continue
-            self.context.log("[{:>3}] {} ".format(count, name), end=str(), flush=True)
+            self.context.log("[{:>3}] ".format(count), end=str(), flush=True)
             count += 1
             with self.context.error_catcher('Download saved posts'):
                 downloaded = self.download_post(post, target=':saved')
