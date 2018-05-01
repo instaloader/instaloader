@@ -643,7 +643,7 @@ class Instaloader:
                               '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
                 return profile_from_id
             return profile
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             pass
         if profile_exists:
             os.makedirs(self.dirname_pattern.format(profile=profile_name.lower(),
