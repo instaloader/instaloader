@@ -74,7 +74,10 @@ metadata of a Profile. :class:`Profile` instances can be created with:
      profile = Profile.from_username(L.context, USERNAME)
 
 - :meth:`Profile_from_userid`
-   given its User ID (currently requires to be logged in).
+   given its User ID. This allows to easily lookup a Profile's username given
+   its ID::
+
+      Profile.from_id(L.context, USERID).username
 
 - :meth:`Profile.get_followees`
    Profiles that are followed by given user.

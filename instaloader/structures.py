@@ -145,8 +145,8 @@ class Post:
             else:
                 # Sometimes, the 'owner' structure does not contain the username, only the user's ID.  In that case,
                 # this call triggers downloading of the complete Post metadata struct, where the owner username
-                # is contained. This is better than to get the username by user ID, since it is possible anonymously
-                # and gives us other information that is more likely to be usable.
+                # is contained. This is better than to get the username by user ID, since it
+                # gives us other information that is more likely to be usable.
                 owner_struct = self._full_metadata['owner']
             if 'username' in owner_struct:
                 self._owner_profile = Profile(self._context, owner_struct)
@@ -379,17 +379,16 @@ class Profile:
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
-        """If logged in, create a Profile instance from a given userid. If possible, use :meth:`Profile.from_username`
-        or constructor directly rather than this method, since does many requests.
+        """Create a Profile instance from a given userid. If possible, use :meth:`Profile.from_username`
+        or constructor directly rather than this method, since it does many requests.
 
         :param context: :attr:`Instaloader.context`
         :param profile_id: userid
-        :raises: :class:`ProfileNotExistsException`, :class:`LoginRequiredException`, :class:`ProfileHasNoPicsException`
+        :raises: :class:`ProfileNotExistsException`, :class:`ProfileHasNoPicsException`
         """
-        if not context.is_logged_in:
-            raise LoginRequiredException("--login=USERNAME required to obtain profile metadata from its ID number.")
         data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
-                                     {'id': str(profile_id), 'first': 1})['data']['user']
+                                     {'id': str(profile_id), 'first': 1},
+                                     rhx_gis=context.root_rhx_gis)['data']['user']
         if data:
             data = data["edge_owner_to_timeline_media"]
         else:
@@ -400,7 +399,7 @@ class Profile:
                 raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
             else:
                 raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        username = Post.from_mediaid(context, int(data['edges'][0]["node"]["id"])).owner_username
+        username = Post.from_shortcode(context, data['edges'][0]["node"]["shortcode"]).owner_username
         return cls(context, {'username': username.lower(), 'id': profile_id})
 
     def _asdict(self):

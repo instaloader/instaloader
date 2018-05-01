@@ -629,10 +629,6 @@ class Instaloader:
                 else:
                     self.context.log("Trying to find profile {0} using its unique ID {1}.".format(profile_name,
                                                                                                   profile_id))
-                if not self.context.is_logged_in:
-                    self.context.error("Profile {} changed its name. "
-                                       "If you use --login=USERNAME, I can find out the new name.")
-                    raise LoginRequiredException("--login=USERNAME required to obtain profile name from its ID number")
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
                 self.context.log("Profile {0} has changed its name to {1}.".format(profile_name, newname))
