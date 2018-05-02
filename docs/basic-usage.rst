@@ -37,7 +37,9 @@ To later **update your local copy** of that profiles, you may run
     instaloader --fast-update profile [profile ...]
 
 If :option:`--fast-update` is given, Instaloader stops when arriving at the
-first already-downloaded picture. When updating profiles, Instaloader
+first already-downloaded picture.
+
+When updating profiles, Instaloader
 automatically **detects profile name changes** and renames the target directory
 accordingly.
 
