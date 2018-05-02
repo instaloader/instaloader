@@ -137,7 +137,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 else:
                     profiles.add(target)
         if len(profiles) > 1:
-            instaloader.context.log("Downloading {} profiles: {}".format(len(profiles), ','.join(profiles)))
+            instaloader.context.log("Downloading {} profiles: {}".format(len(profiles), ' '.join(profiles)))
         # Iterate through profiles list and download them
         for target in profiles:
             with instaloader.context.error_catcher(target):
