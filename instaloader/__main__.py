@@ -146,7 +146,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                  stories, stories_only, post_filter=post_filter,
                                                  storyitem_filter=storyitem_filter)
                 except ProfileNotExistsException as err:
-                    if not instaloader.context.is_logged_in:
+                    if instaloader.context.is_logged_in:
                         instaloader.context.log(err)
                         instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
                         with instaloader.anonymous_copy() as anonymous_loader:
