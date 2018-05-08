@@ -56,6 +56,7 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
+        self._graphql_count_per_slidingwindow = 25
         self._root_rhx_gis = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
@@ -185,7 +186,7 @@ class InstaloaderContext:
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
         if self.sleep:
-            time.sleep(random.uniform(0.5, 3))
+            time.sleep(min(random.expovariate(0.6), 5.0))
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:
@@ -206,7 +207,7 @@ class InstaloaderContext:
                 return sliding_window if untracked_queries else 0
             current_time = time.monotonic()
             self.query_timestamps = list(filter(lambda t: t > current_time - sliding_window, self.query_timestamps))
-            if len(self.query_timestamps) < 20 and not untracked_queries:
+            if len(self.query_timestamps) < self._graphql_count_per_slidingwindow and not untracked_queries:
                 return 0
             return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
