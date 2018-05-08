@@ -178,27 +178,28 @@ class Instaloader:
     def update_comments(self, filename: str, post: Post) -> None:
         def _postcomment_asdict(comment):
             return {'id': comment.id,
-                    'created_at': comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp(),
+                    'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
                     'owner': comment.owner._asdict()}
         filename += '_comments.json'
         try:
-            comments = json.load(open(filename))
-        except FileNotFoundError:
+            with open(filename) as fp:
+                comments = json.load(fp)
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
             comments = list()
         comments.extend(_postcomment_asdict(comment) for comment in post.get_comments())
         if comments:
+            comments_list = sorted(sorted(list(comments), key=lambda t: int(t['id'])),
+                                   key=lambda t: int(t['created_at']), reverse=True)
+            unique_comments_list = [comments_list[0]]
+            #for comment in comments_list:
+            #    if unique_comments_list[-1]['id'] != comment['id']:
+            #        unique_comments_list.append(comment)
+            #file.write(json.dumps(unique_comments_list, indent=4))
+            for x, y in zip(comments_list[:-1], comments_list[1:]):
+                if x['id'] != y['id']:
+                    unique_comments_list.append(y)
             with open(filename, 'w') as file:
-                comments_list = sorted(sorted(list(comments), key=lambda t: t['id']),
-                                       key=lambda t: t['created_at'], reverse=True)
-                unique_comments_list = [comments_list[0]]
-                #for comment in comments_list:
-                #    if unique_comments_list[-1]['id'] != comment['id']:
-                #        unique_comments_list.append(comment)
-                #file.write(json.dumps(unique_comments_list, indent=4))
-                for x, y in zip(comments_list[:-1], comments_list[1:]):
-                    if x['id'] != y['id']:
-                        unique_comments_list.append(y)
                 file.write(json.dumps(unique_comments_list, indent=4))
             self.context.log('comments', end=' ', flush=True)
 
