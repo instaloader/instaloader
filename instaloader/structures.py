@@ -365,6 +365,8 @@ class Profile:
     def from_username(cls, context: InstaloaderContext, username: str):
         """Create a Profile instance from a given username, raise exception if it does not exist.
 
+        See also :meth:`Instaloader.check_profile_id`.
+
         :param context: :attr:`Instaloader.context`
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
@@ -412,8 +414,8 @@ class Profile:
                 metadata = self._context.get_json('{}/'.format(self.username), params={})
                 self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
                 self._rhx_gis = metadata['rhx_gis']
-        except QueryReturnedNotFoundException:
-            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+        except (QueryReturnedNotFoundException, KeyError) as err:
+            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
 
     def _metadata(self, *keys) -> Any:
         try:
