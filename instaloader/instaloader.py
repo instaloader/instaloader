@@ -699,9 +699,12 @@ class Instaloader:
 
         # Download stories, if requested
         if download_stories or download_stories_only:
-            with self.context.error_catcher("Download stories of {}".format(profile_name)):
-                self.download_stories(userids=[profile.userid], filename_target=profile_name, fast_update=fast_update,
-                                      storyitem_filter=storyitem_filter)
+            if profile.has_highlight_reel:
+                with self.context.error_catcher("Download stories of {}".format(profile_name)):
+                    self.download_stories(userids=[profile.userid], filename_target=profile_name,
+                                          fast_update=fast_update, storyitem_filter=storyitem_filter)
+            else:
+                self.context.log("{} does not have any stories.".format(profile_name))
         if download_stories_only:
             return
 

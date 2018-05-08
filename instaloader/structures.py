@@ -482,6 +482,10 @@ class Profile:
         return self._metadata('has_blocked_viewer')
 
     @property
+    def has_highlight_reel(self) -> bool:
+        return self._metadata('has_highlight_reel')
+
+    @property
     def has_requested_viewer(self) -> bool:
         return self._metadata('has_requested_viewer')
 
