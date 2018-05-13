@@ -46,8 +46,8 @@ class InstaloaderContext:
     class :class:`Instaloader`.
     """
 
-    def __init__(self, sleep: bool = True, quiet: bool = False,
-                 user_agent: Optional[str] = None, max_connection_attempts: int = 3):
+    def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
+                 graphql_count_per_slidingwindow: int = 20, max_connection_attempts: int = 3):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self._session = self.get_anonymous_session()
@@ -56,7 +56,8 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self._graphql_count_per_slidingwindow = 25
+        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow \
+                                               if graphql_count_per_slidingwindow else 20
         self._root_rhx_gis = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
@@ -207,7 +208,7 @@ class InstaloaderContext:
                 return sliding_window if untracked_queries else 0
             current_time = time.monotonic()
             self.query_timestamps = list(filter(lambda t: t > current_time - sliding_window, self.query_timestamps))
-            if len(self.query_timestamps) < self._graphql_count_per_slidingwindow and not untracked_queries:
+            if len(self.query_timestamps) < self.graphql_count_per_slidingwindow and not untracked_queries:
                 return 0
             return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path

@@ -271,6 +271,7 @@ def main():
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
+    g_how.add_argument('--graphql-rate-limit', type=int, default=20, help=SUPPRESS)
     g_how.add_argument('--max-connection-attempts', metavar='N', type=int, default=3,
                        help='Maximum number of connection attempts until a request is aborted. Defaults to 3. If a '
                             'connection fails, it can be manually skipped by hitting CTRL+C. Set this to 0 to retry '
@@ -316,6 +317,7 @@ def main():
                              compress_json=not args.no_compress_json,
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
+                             graphql_rate_limit=args.graphql_rate_limit,
                              max_connection_attempts=args.max_connection_attempts)
         _main(loader,
               args.profile,

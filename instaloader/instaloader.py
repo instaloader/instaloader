@@ -106,9 +106,10 @@ class Instaloader:
                  compress_json: bool = True,
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
+                 graphql_rate_limit: int = 20,
                  max_connection_attempts: int = 3):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts)
+        self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -131,7 +132,8 @@ class Instaloader:
                                  self.filename_pattern, self.download_videos, self.download_video_thumbnails,
                                  self.download_geotags, self.download_comments, self.save_metadata,
                                  self.compress_json, self.post_metadata_txt_pattern,
-                                 self.storyitem_metadata_txt_pattern, self.context.max_connection_attempts)
+                                 self.storyitem_metadata_txt_pattern, self.context.graphql_count_per_slidingwindow,
+                                 self.context.max_connection_attempts)
         new_loader.context.query_timestamps = self.context.query_timestamps
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
