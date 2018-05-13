@@ -701,7 +701,7 @@ class Instaloader:
 
         # Download stories, if requested
         if download_stories or download_stories_only:
-            if profile.has_highlight_reel:
+            if profile.has_viewable_story:
                 with self.context.error_catcher("Download stories of {}".format(profile_name)):
                     self.download_stories(userids=[profile.userid], filename_target=profile_name,
                                           fast_update=fast_update, storyitem_filter=storyitem_filter)

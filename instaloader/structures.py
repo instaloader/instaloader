@@ -358,6 +358,8 @@ class Profile:
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert 'username' in node
         self._context = context
+        self._has_highlight_reels = None
+        self._has_public_story = None
         self._node = node
         self._rhx_gis = None
 
@@ -484,8 +486,42 @@ class Profile:
         return self._metadata('has_blocked_viewer')
 
     @property
-    def has_highlight_reel(self) -> bool:
-        return self._metadata('has_highlight_reel')
+    def has_highlight_reels(self) -> bool:
+        """
+        This becomes `True` if the :class:`Profile` has any stories currently available,
+        even if not viewable by the viewer.
+        """
+        if not self._has_highlight_reels:
+            with self._context.anonymous_copy() as anonymous_context:
+                data = anonymous_context.get_json(path='api/v1/users/{}/info/'.format(self.userid),
+                                                  params={}, host='i.instagram.com')
+            self._has_highlight_reels = data['user']['has_highlight_reels']
+        return self._has_highlight_reels
+
+    @property
+    def has_public_story(self) -> bool:
+        if not self._has_public_story:
+            self._obtain_metadata()
+            # query not rate limited if invoked anonymously:
+            with self._context.anonymous_copy() as anonymous_context:
+                data = anonymous_context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
+                                                       {'user_id': self.userid, 'include_chaining': False,
+                                                        'include_reel': False, 'include_suggested_users': False,
+                                                        'include_logged_out_extras': True,
+                                                        'include_highlight_reels': False},
+                                                       'https://www.instagram.com/{}/'.format(self.username),
+                                                       self._rhx_gis)
+            self._has_public_story = data['data']['user']['has_public_story']
+        return self._has_public_story
+
+    @property
+    def has_viewable_story(self) -> bool:
+        """
+        Some stories are private. This property determines if the :class:`Profile`
+        has at least one story which can be viewed using the associated :class:`InstaloaderContext`,
+        i.e. the viewer has privileges to view it.
+        """
+        return self.has_public_story or self.followed_by_viewer and self.has_highlight_reels
 
     @property
     def has_requested_viewer(self) -> bool:

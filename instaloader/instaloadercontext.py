@@ -69,6 +69,16 @@ class InstaloaderContext:
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
 
+    @contextmanager
+    def anonymous_copy(self):
+        session = self._session
+        username = self.username
+        self._session = self.get_anonymous_session()
+        self.username = None
+        yield self
+        self.username = username
+        self._session = session
+
     @property
     def is_logged_in(self) -> bool:
         """True, if this Instaloader instance is logged in."""
@@ -212,7 +222,10 @@ class InstaloaderContext:
                 return 0
             return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
-        if is_graphql_query:
+        # some queries are not rate limited if invoked anonymously:
+        query_not_limited = is_graphql_query and not self.is_logged_in \
+                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8']
+        if is_graphql_query and not query_not_limited:
             waittime = graphql_query_waittime()
             if waittime > 0:
                 self.log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
@@ -228,7 +241,7 @@ class InstaloaderContext:
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
-                if redirect_url.index('https://{}/'.format(host)) == 0:
+                if redirect_url.startswith('https://{}/'.format(host)):
                     resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
                                     params=params, allow_redirects=False)
                 else:
