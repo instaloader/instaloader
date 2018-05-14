@@ -482,6 +482,18 @@ class Profile:
         return self._metadata('edge_owner_to_timeline_media', 'count')
 
     @property
+    def followers(self) -> int:
+        return self._metadata('edge_followed_by', 'count')
+
+    @property
+    def followees(self) -> int:
+        return self._metadata('edge_follow', 'count')
+
+    @property
+    def external_url(self) -> Optional[str]:
+        return self._metadata('external_url')
+
+    @property
     def biography(self) -> str:
         return self._metadata('biography')
 
