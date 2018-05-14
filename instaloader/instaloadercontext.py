@@ -47,7 +47,7 @@ class InstaloaderContext:
     """
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 graphql_count_per_slidingwindow: int = 20, max_connection_attempts: int = 3):
+                 graphql_count_per_slidingwindow: Optional[int] = None, max_connection_attempts: int = 3):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self._session = self.get_anonymous_session()
@@ -56,8 +56,7 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow \
-                                               if graphql_count_per_slidingwindow else 20
+        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 20
         self._root_rhx_gis = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
@@ -76,6 +75,7 @@ class InstaloaderContext:
         self._session = self.get_anonymous_session()
         self.username = None
         yield self
+        self._session.close()
         self.username = username
         self._session = session
 

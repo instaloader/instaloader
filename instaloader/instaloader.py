@@ -106,7 +106,7 @@ class Instaloader:
                  compress_json: bool = True,
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
-                 graphql_rate_limit: int = 20,
+                 graphql_rate_limit: Optional[int] = None,
                  max_connection_attempts: int = 3):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
