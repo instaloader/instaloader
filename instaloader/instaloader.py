@@ -91,6 +91,10 @@ class Instaloader:
        txt file.
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
+
+    .. attribute:: context
+
+       The associated :class:`InstaloaderContext` with low-level communication functions and logging.
     """
 
     def __init__(self,

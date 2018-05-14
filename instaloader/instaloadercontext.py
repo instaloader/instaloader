@@ -156,7 +156,7 @@ class InstaloaderContext:
         pickle.dump(requests.utils.dict_from_cookiejar(self._session.cookies), sessionfile)
 
     def load_session_from_file(self, username, sessionfile):
-        """Not meant to be used directly, use :meth:`Instaloader.load_session_to_file`."""
+        """Not meant to be used directly, use :meth:`Instaloader.load_session_from_file`."""
         session = requests.Session()
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())

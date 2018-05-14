@@ -12,8 +12,24 @@ from .instaloadercontext import InstaloaderContext
 
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
+PostSidecarNode.__doc__ = "Item of a Sidecar Post."
+PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
+PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
+PostSidecarNode.video_url.__doc__ = "URL of video or None."
+
 PostComment = namedtuple('PostComment', ['id', 'created_at_utc', 'text', 'owner'])
+PostComment.id.__doc__ = "ID number of comment."
+PostComment.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
+PostComment.text.__doc__ = "Comment text."
+PostComment.owner.__doc__ = "Owner :class:`Profile` of the comment."
+
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
+PostLocation.id.__doc__ = "ID number of location."
+PostLocation.name.__doc__ = "Location name."
+PostLocation.slug.__doc__ = "URL friendly variant of location name."
+PostLocation.has_public_page.__doc__ = "Whether location has a public page."
+PostLocation.lat.__doc__ = "Latitude (:class:`float`)."
+PostLocation.lng.__doc__ = "Longitude (:class:`float`)."
 
 
 class Post:
@@ -758,7 +774,7 @@ class Story:
     def unique_id(self) -> str:
         """
         This ID only equals amongst :class:`Story` instances which have the same owner and the same set of
-        :class:`StoryItem`s. For all other :class:`Story` instances this ID is different.
+        :class:`StoryItem`. For all other :class:`Story` instances this ID is different.
         """
         if not self._unique_id:
             id_list = [item.mediaid for item in self.get_items()]
@@ -841,7 +857,7 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
     """Loads a :class:`Post`, :class:`Profile` or :class:`StoryItem` from a '.json' or '.json.xz' file that
-    has been saved by :func:`save_structure_from_file`.
+    has been saved by :func:`save_structure_to_file`.
 
     :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
     :param filename: Filename, ends in '.json' or '.json.xz'

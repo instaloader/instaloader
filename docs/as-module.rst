@@ -73,7 +73,7 @@ metadata of a Profile. :class:`Profile` instances can be created with:
 
      profile = Profile.from_username(L.context, USERNAME)
 
-- :meth:`Profile_from_userid`
+- :meth:`Profile.from_id`
    given its User ID. This allows to easily lookup a Profile's username given
    its ID::
 
@@ -116,15 +116,12 @@ Additionally, the following trivial structures are defined:
 
 .. autoclass:: PostSidecarNode
    :no-show-inheritance:
-   :no-members:
 
 .. autoclass:: PostComment
    :no-show-inheritance:
-   :no-members:
 
 .. autoclass:: PostLocation
    :no-show-inheritance:
-   :no-members:
 
 User Stories
 """"""""""""
@@ -154,8 +151,14 @@ to/from JSON files.
 Exceptions
 ^^^^^^^^^^
 
+.. currentmodule:: instaloader.exceptions
+
 .. autoexception:: InstaloaderException
    :no-show-inheritance:
+
+.. autoexception:: ConnectionException
+
+.. currentmodule:: instaloader
 
 .. autoexception:: QueryReturnedBadRequestException
 
@@ -176,8 +179,6 @@ Exceptions
 .. autoexception:: BadResponseException
 
 .. autoexception:: BadCredentialsException
-
-.. autoexception:: ConnectionException
 
 .. autoexception:: TooManyRequestsException
 
