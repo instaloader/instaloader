@@ -1,7 +1,7 @@
 """Download pictures (or videos) along with their captions and other metadata from Instagram."""
 
 
-__version__ = '4.0.1'
+__version__ = '4.0.2'
 
 
 try:
