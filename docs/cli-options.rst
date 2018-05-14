@@ -88,6 +88,11 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    download stories.  Requires :option:`--login`. Does not imply
    :option:`--no-profile-pic`.
 
+   .. note::
+
+      If possible, use ``:stories`` target rather than :option:`--stories-only`
+      with all your followees. ``:stories`` uses fewer API requests.
+
 .. option:: --post-filter filter, --only-if filter
 
    Expression that, if given, must evaluate to True for each post to be
