@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from itertools import islice
 
 import instaloader
 
@@ -111,6 +112,11 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_test_login(self):
         self.assertEqual(OWN_USERNAME, self.L.test_login())
+
+    def test_followees_and_stories(self):
+        profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
+        for f in islice(profile.get_followees(), PAGING_MAX_COUNT):
+            self.L.download_profile(f.username, profile_pic=False, download_stories_only=True)
 
     def test_get_followees(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
