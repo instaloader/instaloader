@@ -374,10 +374,13 @@ class Profile:
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert 'username' in node
         self._context = context
-        self._has_highlight_reels = None
         self._has_public_story = None
         self._node = node
         self._rhx_gis = None
+        self._iphone_struct_ = None
+        if 'iphone_struct' in node:
+            # if loaded from JSON with load_structure_from_file()
+            self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
@@ -424,6 +427,8 @@ class Profile:
         json_node.pop('edge_media_collections', None)
         json_node.pop('edge_owner_to_timeline_media', None)
         json_node.pop('edge_saved_media', None)
+        if self._iphone_struct_:
+            json_node['iphone_struct'] = self._iphone_struct_
         return json_node
 
     def _obtain_metadata(self):
@@ -447,6 +452,15 @@ class Profile:
             for key in keys:
                 d = d[key]
             return d
+
+    @property
+    def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._iphone_struct_:
+            with self._context.anonymous_copy() as anonymous_context:
+                data = anonymous_context.get_json(path='api/v1/users/{}/info/'.format(self.userid),
+                                                  params={}, host='i.instagram.com')
+            self._iphone_struct_ = data['user']
+        return self._iphone_struct_
 
     @property
     def userid(self) -> int:
@@ -519,12 +533,7 @@ class Profile:
         This becomes `True` if the :class:`Profile` has any stories currently available,
         even if not viewable by the viewer.
         """
-        if not self._has_highlight_reels:
-            with self._context.anonymous_copy() as anonymous_context:
-                data = anonymous_context.get_json(path='api/v1/users/{}/info/'.format(self.userid),
-                                                  params={}, host='i.instagram.com')
-            self._has_highlight_reels = data['user']['has_highlight_reels']
-        return self._has_highlight_reels
+        return self._iphone_struct['has_highlight_reels']
 
     @property
     def has_public_story(self) -> bool:
@@ -563,16 +572,20 @@ class Profile:
     def requested_by_viewer(self) -> bool:
         return self._metadata('requested_by_viewer')
 
-    def get_profile_pic_url(self) -> str:
+    @property
+    def profile_pic_url(self) -> str:
         """Return URL of profile picture"""
         try:
-            with self._context.get_anonymous_session() as anonymous_session:
-                data = self._context.get_json(path='api/v1/users/{0}/info/'.format(self.userid), params={},
-                                              host='i.instagram.com', session=anonymous_session)
-            return data["user"]["hd_profile_pic_url_info"]["url"]
+            return self._iphone_struct['hd_profile_pic_url_info']['url']
         except (InstaloaderException, KeyError) as err:
             self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
             return self._metadata("profile_pic_url_hd")
+
+    def get_profile_pic_url(self) -> str:
+        """.. deprecated:: 4.0.3
+
+	   Use :attr:`profile_pic_url`."""
+        return self.profile_pic_url
 
     def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile."""

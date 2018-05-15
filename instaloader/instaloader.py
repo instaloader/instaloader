@@ -266,7 +266,7 @@ class Instaloader:
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S')
 
-        profile_pic_url = profile.get_profile_pic_url()
+        profile_pic_url = profile.profile_pic_url
         with self.context.get_anonymous_session() as anonymous_session:
             date_object = datetime.strptime(anonymous_session.head(profile_pic_url).headers["Last-Modified"],
                                             '%a, %d %b %Y %H:%M:%S GMT')
