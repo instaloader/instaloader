@@ -320,7 +320,11 @@ class Instaloader:
         return self.context.test_login()
 
     def login(self, user: str, passwd: str) -> None:
-        """Log in to instagram with given username and password and internally store session object"""
+        """Log in to instagram with given username and password and internally store session object.
+
+        :raises InvalidArgumentException: If the provided username does not exist.
+        :raises BadCredentialsException: If the provided password is wrong.
+        :raises ConnectionException: If connection to Instagram failed."""
         self.context.login(user, passwd)
 
     def download_post(self, post: Post, target: str) -> bool:
@@ -732,7 +736,9 @@ class Instaloader:
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.
 
-        :raises LoginRequiredException: when in quiet mode."""
+        :raises LoginRequiredException: when in quiet mode.
+        :raises InvalidArgumentException: If the provided username does not exist.
+        :raises ConnectionException: If connection to Instagram failed."""
         if self.context.quiet:
             raise LoginRequiredException("Quiet mode requires given password or valid session file.")
         password = None

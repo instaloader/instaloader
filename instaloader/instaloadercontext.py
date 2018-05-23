@@ -170,29 +170,44 @@ class InstaloaderContext:
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
     def login(self, user, passwd):
-        """Not meant to be used directly, use :meth:`Instaloader.login`."""
+        """Not meant to be used directly, use :meth:`Instaloader.login`.
+
+        :raises InvalidArgumentException: If the provided username does not exist.
+        :raises BadCredentialsException: If the provided password is wrong.
+        :raises ConnectionException: If connection to Instagram failed."""
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header())
-        self._sleep()
-        resp = session.get('https://www.instagram.com/')
-        session.headers.update({'X-CSRFToken': resp.cookies['csrftoken']})
+        session.headers.update({'X-CSRFToken': self.get_json('', {})['config']['csrf_token']})
+        # Not using self.get_json() here, because we need to access csrftoken cookie
         self._sleep()
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'password': passwd, 'username': user}, allow_redirects=True)
-        session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
-        if login.status_code == 200:
-            self._session = session
-            if user == self.test_login():
-                self.username = user
+        if login.status_code != 200:
+            raise ConnectionException("Login error: {} {}".format(login.status_code, login.reason))
+        resp_json = login.json()
+        if resp_json['status'] != 'ok':
+            if 'message' in resp_json:
+                raise ConnectionException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
+                                                                                               resp_json['message']))
             else:
-                self.username = None
-                self._session = None
-                raise BadCredentialsException('Login error! Check your credentials!')
-        else:
-            raise ConnectionException('Login error! Connection error!')
+                raise ConnectionException("Login error: \"{}\" status.".format(resp_json['status']))
+        if not resp_json['authenticated']:
+            if resp_json['user']:
+                # '{"authenticated": false, "user": true, "status": "ok"}'
+                raise BadCredentialsException('Login error: Wrong password.')
+            else:
+                # '{"authenticated": false, "user": false, "status": "ok"}'
+                # Raise InvalidArgumentException rather than BadCredentialException, because BadCredentialException
+                # triggers re-asking of password in Instaloader.interactive_login(), which makes no sense if the
+                # username is invalid.
+                raise InvalidArgumentException('Login error: User {} does not exist.'.format(user))
+        # '{"authenticated": true, "user": true, "userId": ..., "oneTapPrompt": false, "status": "ok"}'
+        session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
+        self._session = session
+        self.username = user
 
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
