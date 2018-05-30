@@ -16,6 +16,9 @@ NORMAL_MAX_COUNT = 2
 PAGING_MAX_COUNT = 15
 PRIVATE_PROFILE = "aandergr"
 
+# Preserve query timestamps (rate control) between tests to not get rate limited
+instaloadercontext_query_timestamps = list()
+
 
 class TestInstaloaderAnonymously(unittest.TestCase):
 
@@ -27,8 +30,11 @@ class TestInstaloaderAnonymously(unittest.TestCase):
                                          download_comments=True,
                                          save_metadata=True)
         self.L.context.raise_all_errors = True
+        self.L.context.query_timestamps = instaloadercontext_query_timestamps
 
     def tearDown(self):
+        global instaloadercontext_query_timestamps
+        instaloadercontext_query_timestamps = self.L.context.query_timestamps
         self.L.close()
         os.chdir('/')
         print("Removing {}".format(self.dir))
