@@ -273,3 +273,6 @@ consider taking a look at the :ref:`python-module-instaloader`.
 Instaloader exposes its internally used methods and structures, making it a
 powerful and intuitive Python API for Instagram, allowing to further customize
 obtaining media and metadata.
+
+Also see :ref:`codesnippets`, where we collect example scripts that use
+Instaloader to achieve more complex tasks.
