@@ -59,6 +59,7 @@ Instaloader Documentation
    basic-usage
    cli-options
    as-module
+   codesnippets
    contributing
 
 Useful Links

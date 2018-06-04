@@ -97,6 +97,9 @@ metadata of a Profile. :class:`Profile` instances can be created with:
 A reference of the many methods provided by the :mod:`instaloader` module is
 provided in the remainder of this document.
 
+For a list of real code examples using the Instaloader module for advanced
+tasks, see :ref:`codesnippets`.
+
 ``Instaloader`` (Main Class)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
