@@ -206,10 +206,7 @@ class Post:
     @property
     def typename(self) -> str:
         """Type of post, GraphImage, GraphVideo or GraphSidecar"""
-        if '__typename' in self._node:
-            return self._node['__typename']
-        # if __typename is not in node, it is an old image or video
-        return 'GraphImage'
+        return self._field('__typename')
 
     def get_sidecar_nodes(self) -> Iterator[PostSidecarNode]:
         """Sidecar nodes of a Post with typename==GraphSidecar."""
