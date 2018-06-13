@@ -1,3 +1,5 @@
+.. _contributing:
+
 Contributing to Instaloader
 ===========================
 
@@ -23,7 +25,7 @@ following in mind:
 
 - Briefly **check whether the bug has already been reported**. If you find an
   issue reporting the same bug you encountered, comment there rather than
-  opening a new issue. However, if unsure, it is advised to create a new issue.
+  opening a new issue. However, if unsure, please create a new issue.
 
 - State **how the bug can be reproduced**, i.e. how Instaloader was invoked
   when the problem occured (of course, you may anonymize profile names etc.).
@@ -47,13 +49,13 @@ few things to consider:
   you forked from the most recent branch.
 
 - We use `Pylint <https://www.pylint.org/>`__ for error and syntax checking of
-  ``instaloader.py``. The file ``.travis.yml`` in the project's root directory
+  the source. The file ``.travis.yml`` in the project's root directory
   shows how it is invoked. Note that sometimes it might be better to disable a
   warning rather than adapting the code to Pylint's desires.
 
 - The documentation source is located in the ``docs`` folder. The file
   ``cli-options.rst`` is merely an RST-formatted copy of ``ìnstaloader --help``
-  output, of which the source is near the bottom of ``instaloader.py``.
+  output, of which the source is in ``instaloader/__main__.py``.
 
 - Feel free to contact us, even if you "only" have Proof-of-Concepts or
   not-fully integrated changes. They already might be an advance for the
@@ -81,3 +83,21 @@ Please consider the following:
 - **Be patient**. Naturally, bugs and pull requests have a higher priority than
   feature suggestions. Keep in mind that this is a free software project, and
   unfortunately we only have limited time to work on it.
+
+Donations
+---------
+
+.. donations-start
+
+It is a pleasure for us to share our Instaloader to the world, and we are proud
+to have attracted such an active and motivating community, with so many users
+who share their suggestions and ideas with us. Buying a community-sponsored beer
+or coffee from time to time is very likely to further raise our passion for the
+development of Instaloader.
+
+We have a PayPal.Me link for donations: `PayPal.me/aandergr
+<https://www.paypal.me/aandergr>`__
+
+.. donations-end
+
+.. (Discussion in :issue:`130`)
