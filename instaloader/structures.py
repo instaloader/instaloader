@@ -93,10 +93,9 @@ class Post:
         return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
 
     def _asdict(self):
+        node = self._node
         if self._full_metadata_dict:
-            node = self._full_metadata_dict
-        else:
-            node = self._node
+            node.update(self._full_metadata_dict)
         if self._owner_profile:
             node['owner'] = self.owner_profile._asdict()
         if self._location:
