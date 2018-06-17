@@ -68,7 +68,7 @@ Instaloader supports the following targets:
    **download the user's stories**.
 
 - ``"#hashtag"``
-   Posts with a certain **hashtag** (the quotes are usually neccessary),
+   Posts with a certain **hashtag** (the quotes are usually necessary),
 
 - ``:stories``
    The currently-visible **stories** of your followees (requires
@@ -158,7 +158,7 @@ Filter Posts
 .. py:currentmodule:: instaloader
 
 The options :option:`--post-filter` and :option:`--storyitem-filter`
-allows to specify criterias that posts or story items have to
+allows to specify criteria that posts or story items have to
 meet to be downloaded. If not given, all posts are downloaded.
 
 The filter string must be a

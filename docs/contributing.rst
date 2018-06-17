@@ -28,7 +28,7 @@ following in mind:
   opening a new issue. However, if unsure, please create a new issue.
 
 - State **how the bug can be reproduced**, i.e. how Instaloader was invoked
-  when the problem occured (of course, you may anonymize profile names etc.).
+  when the problem occurred (of course, you may anonymize profile names etc.).
 
 - Include all **error messages and tracebacks** in the report.
 
@@ -54,7 +54,7 @@ few things to consider:
   warning rather than adapting the code to Pylint's desires.
 
 - The documentation source is located in the ``docs`` folder. The file
-  ``cli-options.rst`` is merely an RST-formatted copy of ``ìnstaloader --help``
+  ``cli-options.rst`` is merely an RST-formatted copy of ``instaloader --help``
   output, of which the source is in ``instaloader/__main__.py``.
 
 - Feel free to contact us, even if you "only" have Proof-of-Concepts or
