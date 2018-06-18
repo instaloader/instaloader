@@ -180,7 +180,7 @@ class Instaloader:
         filename += '.' + file_extension
         # A post is considered "commited" if the json file exists and is not malformed.
         if self.commit_mode:
-            if self._committed:
+            if self._committed and os.path.isfile(filename):
                 self.context.log(filename + ' exists', end=' ', flush=True)
                 return False
         else:
