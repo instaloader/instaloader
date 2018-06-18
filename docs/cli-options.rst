@@ -230,6 +230,12 @@ How to Download
    to ``3``. If a connection fails, it can be manually skipped by hitting
    :kbd:`Control-c`. Set this to ``0`` to retry infinitely.
 
+.. option:: --commit-mode
+
+   Tries to ensure downloaded images avoid corruption in case of unexpected
+   interruption. If the last picture is corrupted, Instaloader will fix the
+   picture the next time it is run.
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
