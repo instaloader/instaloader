@@ -140,6 +140,9 @@ class Instaloader:
         if self.commit_mode and not self.save_metadata:
             raise InvalidArgumentException("Commit mode requires JSON metadata to be saved.")
 
+        # Used to keep state in commit mode
+        self._committed = None
+
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
