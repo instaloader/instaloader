@@ -40,16 +40,21 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         print("Removing {}".format(self.dir))
         shutil.rmtree(self.dir)
 
+    def post_paging_test(self, iterator):
+        previous_post = None
+        for post in islice(iterator, PAGING_MAX_COUNT):
+            print(post)
+            if previous_post:
+                self.assertTrue(post.date_utc < previous_post.date_utc)
+            previous_post = post
+
     @unittest.SkipTest
     def test_public_profile_download(self):
         self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
         self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
 
     def test_public_profile_paging(self):
-        for count, post in enumerate(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts()):
-            print(post)
-            if count == PAGING_MAX_COUNT:
-                break
+        self.post_paging_test(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts())
 
     def test_profile_pic_download(self):
         self.L.download_profile(PUBLIC_PROFILE, profile_pic_only=True)
@@ -93,10 +98,7 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
                 print(item)
 
     def test_private_profile_paging(self):
-        for count, post in enumerate(instaloader.Profile.from_username(self.L.context, PRIVATE_PROFILE).get_posts()):
-            print(post)
-            if count == PAGING_MAX_COUNT:
-                break
+        self.post_paging_test(instaloader.Profile.from_username(self.L.context, PRIVATE_PROFILE).get_posts())
 
     def test_feed_download(self):
         self.L.download_feed_posts(NORMAL_MAX_COUNT)
