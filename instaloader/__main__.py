@@ -232,6 +232,9 @@ def main():
                         help='Expression that, if given, must evaluate to True for each storyitem to be downloaded. '
                              'Must be a syntactically valid python expression. Variables are evaluated to '
                              'instaloader.StoryItem attributes.')
+    g_what.add_argument('--no-database', action='store_true',
+                        help='Do not use a database to keep track of downloaded posts. Without such a database, it will'
+                             ' take more download time and memory space when loading an already stored post.')
 
     g_stop = parser.add_argument_group('When to Stop Downloading',
                                        'If none of these options are given, Instaloader goes through all pictures '
@@ -314,7 +317,7 @@ def main():
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
                              download_comments=args.comments, save_metadata=not args.no_metadata_json,
-                             compress_json=not args.no_compress_json,
+                             compress_json=not args.no_compress_json, use_database=not args.no_database,
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              graphql_rate_limit=args.graphql_rate_limit,

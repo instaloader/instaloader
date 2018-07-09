@@ -4,13 +4,16 @@ import os
 import platform
 import re
 import shutil
+import sqlite3
 import string
 import sys
 import tempfile
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
+from hashlib import blake2b
 from io import BytesIO
+from pathlib import Path
 from typing import Callable, Iterator, List, Optional, Any
 
 from .exceptions import *
@@ -108,6 +111,7 @@ class Instaloader:
                  download_comments: bool = True,
                  save_metadata: bool = True,
                  compress_json: bool = True,
+                 use_database: bool = True,
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  graphql_rate_limit: Optional[int] = None,
@@ -124,6 +128,8 @@ class Instaloader:
         self.download_comments = download_comments
         self.save_metadata = save_metadata
         self.compress_json = compress_json
+        self.use_database = use_database
+        self._database_connection = None
         self.post_metadata_txt_pattern = '{caption}' if post_metadata_txt_pattern is None \
             else post_metadata_txt_pattern
         self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
@@ -155,7 +161,8 @@ class Instaloader:
     def __exit__(self, *args):
         self.close()
 
-    def download_pic(self, filename: str, url: str, mtime: datetime, filename_suffix: Optional[str] = None) -> bool:
+    def download_pic(self, filename: str, url: str, mtime: datetime,
+                     filename_suffix: Optional[str] = None, shortcode: Optional[str] = None) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
@@ -163,8 +170,47 @@ class Instaloader:
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
+        file_already_exists = False
         if os.path.isfile(filename):
             self.context.log(filename + ' exists', end=' ', flush=True)
+            file_already_exists = True
+        if self.use_database and shortcode:
+            filelist = self.database_lookup(shortcode)
+            hashlist = next(filelist, ':').split(sep=':')
+            try:
+                hashindex = 2 * int(filename_suffix) - (2 if file_extension == 'jpg' else 1)
+            except (TypeError, ValueError):
+                hashindex = 0 if file_extension == 'jpg' else 1
+            if len(hashlist) <= hashindex:
+                hashlist.extend([''] * (hashindex + 1 + (hashindex+1) % 2 - len(hashlist)))
+            if file_already_exists:
+                with open(filename, 'rb') as f:
+                    filehash = blake2b(f.read(), digest_size=16).hexdigest()
+                if hashlist[hashindex] and filehash != hashlist[hashindex]:
+                    self.context.error('Warning: File {} does not match database entry: Expected hash {}, found {}.'
+                                       .format(filename, hashlist[hashindex], filehash))
+                    return False
+                hashlist[hashindex] = filehash
+                self.database_insert(shortcode, os.path.abspath(filename), ':'.join(hashlist))
+                return False
+            file_linked = False
+            if hashlist[hashindex]:
+                for file in filelist:
+                    with open(file, 'rb') as f:
+                        filehash = blake2b(f.read(), digest_size=16).hexdigest()
+                    if filehash == hashlist[hashindex]:
+                        os.link(file, filename)
+                        self.context.log(filename + ' linked', end=' ', flush=True)
+                        file_linked = True
+                        break
+            if not file_linked:
+                self.context.get_and_write_raw(url, filename)
+                with open(filename, 'rb') as f:
+                    hashlist[hashindex] = blake2b(f.read(), digest_size=16).hexdigest()
+            os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
+            self.database_insert(shortcode, os.path.abspath(filename), ':'.join(hashlist))
+            return True
+        if file_already_exists:
             return False
         self.context.get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
@@ -349,17 +395,21 @@ class Instaloader:
                 # Download picture or video thumbnail
                 if not sidecar_node.is_video or self.download_video_thumbnails is True:
                     downloaded |= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+                                                    mtime=post.date_local, shortcode=post.shortcode,
+                                                    filename_suffix=str(edge_number))
                 # Additionally download video if available and desired
                 if sidecar_node.is_video and self.download_videos is True:
                     downloaded |= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+                                                    mtime=post.date_local, shortcode=post.shortcode,
+                                                    filename_suffix=str(edge_number))
                 edge_number += 1
         elif post.typename == 'GraphImage':
-            downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+            downloaded = self.download_pic(filename=filename, url=post.url,
+                                           mtime=post.date_local, shortcode=post.shortcode)
         elif post.typename == 'GraphVideo':
             if self.download_video_thumbnails is True:
-                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+                downloaded = self.download_pic(filename=filename, url=post.url,
+                                               mtime=post.date_local, shortcode=post.shortcode)
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
@@ -370,7 +420,8 @@ class Instaloader:
 
         # Download video if desired
         if post.is_video and self.download_videos is True:
-            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
+            downloaded |= self.download_pic(filename=filename, url=post.video_url,
+                                            mtime=post.date_local, shortcode=post.shortcode)
 
         # Download geotags if desired
         if self.download_geotags and post.location:
@@ -459,9 +510,10 @@ class Instaloader:
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
             url = item.url
-            downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
+            downloaded = self.download_pic(filename=filename, url=url, mtime=date_local, shortcode=item.shortcode)
         if item.is_video and self.download_videos is True:
-            downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
+            downloaded |= self.download_pic(filename=filename, url=item.video_url,
+                                            mtime=date_local, shortcode=item.shortcode)
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
         if metadata_string:
@@ -750,3 +802,61 @@ class Instaloader:
             except BadCredentialsException as err:
                 print(err, file=sys.stderr)
                 password = None
+
+    @property
+    def database_connection(self) -> Optional[sqlite3.Connection]:
+        if self.use_database:
+            dirname = str(Path.home()) + '/.instaloader'
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+                os.chmod(dirname, 0o700)
+            if not self._database_connection:
+                self._database_connection = sqlite3.connect(dirname + '/instaloader.db',
+                                                            detect_types=sqlite3.PARSE_DECLTYPES)
+            return self._database_connection
+
+    def _database_create(self):
+        cursor = self.database_connection.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS shortcodes
+                                 (id INTEGER PRIMARY KEY, shortcode TEXT NOT NULL UNIQUE, hash TEXT NOT NULL)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS links
+                                 (shortcode_id TEXT NOT NULL, file TEXT NOT NULL,
+                                  UNIQUE (shortcode_id, file) ON CONFLICT IGNORE,
+                                  FOREIGN KEY (shortcode_id) REFERENCES shortcodes (id) ON DELETE CASCADE)''')
+        self.database_connection.commit()
+
+    def database_lookup(self, shortcode: str) -> Iterator[str]:
+        c = self.database_connection.cursor()
+
+        def lookup():
+            id_and_hash = c.execute('SELECT id, hash FROM shortcodes WHERE shortcode=?', (shortcode,)).fetchone()
+            if id_and_hash:
+                files = c.execute('SELECT file FROM links WHERE shortcode_id=?', (id_and_hash[0],)).fetchall()
+                yield id_and_hash[1]
+                yield from (file[0] for file in files)
+        try:
+            yield from lookup()
+        except sqlite3.OperationalError:
+            self._database_create()
+            yield from lookup()
+
+    def database_insert(self, shortcode: str, file: str, hashes: str) -> None:
+        c = self.database_connection.cursor()
+
+        def insert_query():
+            c.execute('INSERT OR REPLACE INTO shortcodes (shortcode, hashes, id)'
+                      'VALUES (?, ?, (SELECT id FROM shortcodes WHERE shortcode=?))', (shortcode, hashes, shortcode))
+            c.execute('INSERT INTO links VALUES (?,?)', (c.lastrowid, file))
+            self.database_connection.commit()
+        try:
+            insert_query()
+        except sqlite3.OperationalError:
+            self._database_create()
+            insert_query()
+
+    def database_delete(self, shortcode: str, files: List[str]) -> None:
+        self.database_connection.cursor()\
+            .execute('DELETE FROM links WHERE file IN ({})'
+                     'AND shortcode_id=(SELECT id FROM shortcodes WHERE shortcode=?)'
+                     .format(','.join(['?']*len(files))), files + [shortcode])
+        self.database_connection.commit()
