@@ -10,3 +10,11 @@ dd {
 dl.option dd {
     padding-left: 12px;
 }
+
+a {
+    color: #008d06;
+}
+
+a:hover {
+    color: #f48400;
+}
