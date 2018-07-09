@@ -270,14 +270,15 @@ class Instaloader:
         with self.context.get_anonymous_session() as anonymous_session:
             date_object = datetime.strptime(anonymous_session.head(profile_pic_url).headers["Last-Modified"],
                                             '%a, %d %b %Y %H:%M:%S GMT')
+        profile_pic_extension = 'jpg'
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
             filename = '{0}/{1}_UTC_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
                                                                                         target=profile.username.lower()),
-                                                            _epoch_to_string(date_object), profile_pic_url[-3:])
+                                                            _epoch_to_string(date_object), profile_pic_extension)
         else:
             filename = '{0}/{1}_{2}_UTC_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
-                                                                _epoch_to_string(date_object), profile_pic_url[-3:])
+                                                                _epoch_to_string(date_object), profile_pic_extension)
         if os.path.isfile(filename):
             self.context.log(filename + ' already exists')
             return None
