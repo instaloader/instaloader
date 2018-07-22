@@ -17,7 +17,7 @@ Reporting Bugs
 If you encounter a bug, do not hesitate to report it in our
 `Issue Tracker <https://github.com/instaloader/instaloader/issues>`__. Since
 Instaloader is actively developed, the majority of bugs is fixed within only
-**4 days** after being reported. When reporting a problem, please keep the
+**3 days** after being reported. When reporting a problem, please keep the
 following in mind:
 
 - Ensure you **use the latest version** of Instaloader. The currently-installed
@@ -101,3 +101,19 @@ We have a PayPal.Me link for donations: `PayPal.me/aandergr
 .. donations-end
 
 .. (Discussion in :issue:`130`)
+
+IRC Channel
+-----------
+
+.. ircchannel-start
+
+For a direct and personal communication within Instaloader's community, we have
+an IRC channel
+
+**#instaloader** on **Freenode**.
+
+Freenode provides a `Web IRC Client
+<https://webchat.freenode.net/?channels=instaloader>`__, allowing to join our
+channel without having an IRC client installed.
+
+.. ircchannel-end

@@ -88,6 +88,10 @@ become an even greater tool.
    :start-after: donations-start
    :end-before: donations-end
 
+.. include:: contributing.rst
+   :start-after: ircchannel-start
+   :end-before: ircchannel-end
+
 ..
    * :ref:`genindex`
    * :ref:`modindex`

@@ -75,6 +75,32 @@ Disclaimer
 Instaloader is in no way affiliated with, authorized, maintained or endorsed by Instagram or any of its affiliates or
 subsidiaries. This is an independent and unofficial project. Use at your own risk.
 
+Instaloader is licensed under an MIT license. Refer to ``LICENSE`` file for more information.
+
 .. disclaimer-end
 
-Instaloader is licensed under an MIT license. Refer to ``LICENSE`` file for more information.
+Contributing
+------------
+
+As an open source project, Instaloader heavily depends on the contributions from
+its community. See
+`contributing <https://instaloader.github.io/contributing.html>`__
+for how you may help Instaloader to become an even greater tool.
+
+It is a pleasure for us to share our Instaloader to the world, and we are proud
+to have attracted such an active and motivating community, with so many users
+who share their suggestions and ideas with us. Buying a community-sponsored beer
+or coffee from time to time is very likely to further raise our passion for the
+development of Instaloader.
+
+We have a PayPal.Me link for donations: `PayPal.me/aandergr
+<https://www.paypal.me/aandergr>`__
+
+For a direct and personal communication within Instaloader's community, we have
+an IRC channel
+
+**#instaloader** on **Freenode**.
+
+Freenode provides a `Web IRC Client
+<https://webchat.freenode.net/?channels=instaloader>`__, allowing to join our
+channel without having an IRC client installed.
