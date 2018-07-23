@@ -93,8 +93,9 @@ who share their suggestions and ideas with us. Buying a community-sponsored beer
 or coffee from time to time is very likely to further raise our passion for the
 development of Instaloader.
 
-We have a PayPal.Me link for donations: `PayPal.me/aandergr
-<https://www.paypal.me/aandergr>`__
+| For Donations, we provide a PayPal.Me link and a Bitcoin address.
+|  PayPal: `PayPal.me/aandergr <https://www.paypal.me/aandergr>`__
+|  BTC: 1Nst4LoadeYzrKjJ1DX9CpbLXBYE9RKLwY
 
 For a direct and personal communication within Instaloader's community, we have
 an IRC channel
