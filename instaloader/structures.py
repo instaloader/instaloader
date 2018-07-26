@@ -609,6 +609,16 @@ class Profile:
                                                     self._rhx_gis,
                                                     self._metadata('edge_saved_media')))
 
+    def get_tagged_posts(self) -> Iterator[Post]:
+        """Retrieve all posts where a profile is tagged."""
+        self._obtain_metadata()
+        yield from (Post(self._context, node, self) for node in
+                    self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",
+                                                    {'id': self.userid},
+                                                    'https://www.instagram.com/{0}/'.format(self.username),
+                                                    lambda d: d['data']['user']['edge_user_to_photos_of_you'],
+                                                    self._rhx_gis))
+
     def get_followers(self) -> Iterator['Profile']:
         """
         Retrieve list of followers of given profile.
