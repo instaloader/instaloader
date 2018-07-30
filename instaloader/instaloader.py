@@ -7,11 +7,14 @@ import shutil
 import string
 import sys
 import tempfile
+import http.client
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
 from typing import Callable, Iterator, List, Optional, Any
+
+http.client._MAXHEADERS = 1000
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
