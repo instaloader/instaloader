@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
-from typing import Callable, Iterator, List, Optional, Any
+from typing import Any, Callable, Iterator, List, Optional, Union
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -410,25 +410,26 @@ class Instaloader:
 
     @_requires_login
     def download_stories(self,
-                         userids: Optional[List[int]] = None,
+                         userids: Optional[List[Union[int, Profile]]] = None,
                          fast_update: bool = False,
-                         filename_target: str = ':stories',
+                         filename_target: Optional[str] = ':stories',
                          storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
         """
         Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
         To use this, one needs to be logged in
 
-        :param userids: List of user IDs to be processed in terms of downloading their stories
+        :param userids: List of user IDs or Profiles to be processed in terms of downloading their stories
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
+               or None if profile name should be used instead
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         """
 
         if not userids:
             self.context.log("Retrieving all visible stories...")
 
-        for user_story in self.get_stories(userids):
+        for user_story in self.get_stories([p if isinstance(p, int) else p.userid for p in userids]):
             name = user_story.owner_username
             self.context.log("Retrieving stories from profile {}.".format(name))
             totalcount = user_story.itemcount
@@ -440,7 +441,7 @@ class Instaloader:
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
-                    downloaded = self.download_storyitem(item, filename_target)
+                    downloaded = self.download_storyitem(item, filename_target if filename_target else name)
                     if fast_update and not downloaded:
                         break
 
@@ -611,6 +612,24 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    def _get_id_filename(self, profile_name: str) -> str:
+        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target'))):
+            return '{0}/id'.format(self.dirname_pattern.format(profile=profile_name.lower(),
+                                                               target=profile_name.lower()))
+        else:
+            return '{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower())
+
+    def save_profile_id(self, profile: Profile):
+        """
+        Store ID of profile locally.
+        """
+        os.makedirs(self.dirname_pattern.format(profile=profile.username,
+                                                target=profile.username), exist_ok=True)
+        with open(self._get_id_filename(profile.username), 'w') as text_file:
+            text_file.write(str(profile.userid) + "\n")
+            self.context.log("Stored ID {0} for profile {1}.".format(profile.userid, profile.username))
+
     def check_profile_id(self, profile_name: str) -> Profile:
         """
         Consult locally stored ID of profile with given name, check whether ID matches and whether name
@@ -623,12 +642,7 @@ class Instaloader:
         with suppress(ProfileNotExistsException):
             profile = Profile.from_username(self.context, profile_name)
         profile_exists = profile is not None
-        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-             format_string_contains_key(self.dirname_pattern, 'target'))):
-            id_filename = '{0}/id'.format(self.dirname_pattern.format(profile=profile_name.lower(),
-                                                                      target=profile_name.lower()))
-        else:
-            id_filename = '{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower())
+        id_filename = self._get_id_filename(profile_name)
         try:
             with open(id_filename, 'rb') as id_file:
                 profile_id = int(id_file.read())
@@ -657,15 +671,11 @@ class Instaloader:
         except (FileNotFoundError, ValueError):
             pass
         if profile_exists:
-            os.makedirs(self.dirname_pattern.format(profile=profile_name.lower(),
-                                                    target=profile_name.lower()), exist_ok=True)
-            with open(id_filename, 'w') as text_file:
-                text_file.write(str(profile.userid) + "\n")
-                self.context.log("Stored ID {0} for profile {1}.".format(profile.userid, profile_name))
+            self.save_profile_id(profile)
             return profile
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
 
-    def download_profile(self, profile_name: str,
+    def download_profile(self, profile_name: Union[str, Profile],
                          profile_pic: bool = True, profile_pic_only: bool = False,
                          fast_update: bool = False,
                          download_stories: bool = False, download_stories_only: bool = False,
@@ -676,7 +686,10 @@ class Instaloader:
         # Get profile main page json
         # check if profile does exist or name has changed since last download
         # and update name and json data if necessary
-        profile = self.check_profile_id(profile_name.lower())
+        if isinstance(profile_name, str):
+            profile = self.check_profile_id(profile_name.lower())
+        else:
+            profile = profile_name
 
         profile_name = profile.username
 

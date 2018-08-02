@@ -526,10 +526,11 @@ class Profile:
     @property
     def has_highlight_reels(self) -> bool:
         """
-        This becomes `True` if the :class:`Profile` has any stories currently available,
-        even if not viewable by the viewer.
+        Always returns `True` since :issue:`153`.
+
+        Before broken, this indicated whether the :class:`Profile` had available stories.
         """
-        return self._iphone_struct['has_highlight_reels']
+        return True
 
     @property
     def has_public_story(self) -> bool:
