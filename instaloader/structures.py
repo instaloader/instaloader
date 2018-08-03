@@ -612,7 +612,7 @@ class Profile:
     def get_tagged_posts(self) -> Iterator[Post]:
         """Retrieve all posts where a profile is tagged."""
         self._obtain_metadata()
-        yield from (Post(self._context, node, self) for node in
+        yield from (Post(self._context, node, self if int(node['owner']['id']) == self.userid else None) for node in
                     self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
