@@ -175,6 +175,9 @@ class InstaloaderContext:
         :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
         :raises ConnectionException: If connection to Instagram failed."""
+        import http.client
+        # pylint:disable=protected-access
+        http.client._MAXHEADERS = 200
         session = requests.Session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',

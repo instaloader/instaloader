@@ -76,6 +76,11 @@ class TestInstaloaderAnonymously(unittest.TestCase):
             self.assertEqual(post, post2)
             break
 
+    def test_public_profile_tagged_paging(self):
+        for post in islice(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_tagged_posts(),
+                           PAGING_MAX_COUNT):
+            print(post)
+
 
 class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
