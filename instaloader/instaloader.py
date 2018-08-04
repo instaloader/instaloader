@@ -49,11 +49,11 @@ class _ArbitraryItemFormatter(string.Formatter):
     def __init__(self, item: Any):
         self._item = item
 
-    def get_field(self, field_name, args, kwargs):
+    def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if hasattr(self._item, field_name):
-            return self._item.__getattribute__(field_name), None
-        return super().get_field(field_name, args, kwargs)
+        if hasattr(self._item, key):
+            return getattr(self._item, key)
+        return super().get_value(key, args, kwargs)
 
     def format_field(self, value, format_spec):
         """Override :meth:`string.Formatter.format_field` to have our
