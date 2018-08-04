@@ -612,6 +612,23 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    def download_tagged(self, profile: Profile, fast_update: bool = False,
+                        target: Optional[str] = None,
+                        post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+        if target is None:
+            target = profile.username + ':tagged'
+        self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
+        count = 1
+        for post in profile.get_tagged_posts():
+            self.context.log("[%3i/???] " % (count), end="", flush=True)
+            count += 1
+            if post_filter is not None and not post_filter(post):
+                self.context.log('<{} skipped>'.format(post))
+            with self.context.error_catcher('Download tagged {}'.format(profile.username)):
+                downloaded = self.download_post(post, target)
+                if fast_update and not downloaded:
+                    break
+
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
@@ -679,6 +696,7 @@ class Instaloader:
                          profile_pic: bool = True, profile_pic_only: bool = False,
                          fast_update: bool = False,
                          download_stories: bool = False, download_stories_only: bool = False,
+                         download_tagged: bool = False, download_tagged_only: bool = False,
                          post_filter: Optional[Callable[[Post], bool]] = None,
                          storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
         """Download one profile"""
@@ -730,6 +748,13 @@ class Instaloader:
             else:
                 self.context.log("{} does not have any stories.".format(profile_name))
         if download_stories_only:
+            return
+
+        # Download tagged, if requested
+        if download_tagged or download_tagged_only:
+            with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
+                self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
+        if download_tagged_only:
             return
 
         # Iterate over pictures and download them

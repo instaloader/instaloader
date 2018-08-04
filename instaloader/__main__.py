@@ -62,6 +62,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           profile_pic: bool = True, profile_pic_only: bool = False,
           fast_update: bool = False,
           stories: bool = False, stories_only: bool = False,
+          tagged: bool = False, tagged_only: bool = False,
           post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
@@ -146,7 +147,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 with instaloader.context.error_catcher(target):
                     try:
                         instaloader.download_profile(target, profile_pic, profile_pic_only,
-                                                     fast_update, post_filter=post_filter)
+                                                     fast_update, download_tagged=tagged,
+                                                     download_tagged_only=tagged_only, post_filter=post_filter)
                     except ProfileNotExistsException as err:
                         if instaloader.context.is_logged_in and not stories_only:
                             instaloader.context.log(err)
@@ -154,7 +156,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             with instaloader.anonymous_copy() as anonymous_loader:
                                 with instaloader.context.error_catcher():
                                     anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
-                                                                      fast_update, post_filter=post_filter)
+                                                                      fast_update, download_tagged=tagged,
+                                                                      download_tagged_only=tagged_only,
+                                                                      post_filter=post_filter)
                         else:
                             raise
         if stories or stories_only:
@@ -231,6 +235,10 @@ def main():
     g_what.add_argument('--stories-only', action='store_true',
                         help='Rather than downloading regular posts of each specified profile, only download '
                              'stories. Requires --login. Does not imply --no-profile-pic.')
+    g_what.add_argument('--tagged', action='store_true',
+                        help='Also download posts where each profile is tagged.')
+    g_what.add_argument('--tagged-only', action='store_true',
+                        help='Download only post where each profile is tagged, not their regular posts.')
     g_what.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
@@ -337,6 +345,8 @@ def main():
               fast_update=args.fast_update,
               stories=args.stories,
               stories_only=args.stories_only,
+              tagged=args.tagged,
+              tagged_only=args.tagged_only,
               post_filter_str=args.post_filter,
               storyitem_filter_str=args.storyitem_filter)
         loader.close()
