@@ -428,8 +428,10 @@ class Instaloader:
 
         if not userids:
             self.context.log("Retrieving all visible stories...")
+        else:
+            userids = [p if isinstance(p, int) else p.userid for p in userids]
 
-        for user_story in self.get_stories([p if isinstance(p, int) else p.userid for p in userids]):
+        for user_story in self.get_stories(userids):
             name = user_story.owner_username
             self.context.log("Retrieving stories from profile {}.".format(name))
             totalcount = user_story.itemcount
