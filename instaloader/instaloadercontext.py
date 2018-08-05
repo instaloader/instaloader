@@ -9,6 +9,7 @@ import textwrap
 import time
 import urllib.parse
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Iterator, Optional
 
 import requests
@@ -246,7 +247,8 @@ class InstaloaderContext:
         if is_graphql_query and not query_not_limited:
             waittime = graphql_query_waittime()
             if waittime > 0:
-                self.log('\nToo many queries in the last time. Need to wait {} seconds.'.format(waittime))
+                self.log('\nToo many queries in the last time. Need to wait {} seconds, until {:%H:%M}.'
+                         .format(waittime, datetime.now() + timedelta(seconds=waittime)))
                 time.sleep(waittime)
             if self.query_timestamps is not None:
                 self.query_timestamps.append(time.monotonic())
@@ -301,7 +303,8 @@ class InstaloaderContext:
                     if is_graphql_query:
                         waittime = graphql_query_waittime(untracked_queries=True)
                         if waittime > 0:
-                            self.log('The request will be retried in {} seconds.'.format(waittime))
+                            self.log('The request will be retried in {} seconds, at {:%H:%M}.'
+                                     .format(waittime, datetime.now() + timedelta(seconds=waittime)))
                             time.sleep(waittime)
                 self._sleep()
                 return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)

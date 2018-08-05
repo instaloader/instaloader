@@ -49,11 +49,11 @@ class _ArbitraryItemFormatter(string.Formatter):
     def __init__(self, item: Any):
         self._item = item
 
-    def get_field(self, field_name, args, kwargs):
+    def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if hasattr(self._item, field_name):
-            return self._item.__getattribute__(field_name), None
-        return super().get_field(field_name, args, kwargs)
+        if hasattr(self._item, key):
+            return getattr(self._item, key)
+        return super().get_value(key, args, kwargs)
 
     def format_field(self, value, format_spec):
         """Override :meth:`string.Formatter.format_field` to have our
@@ -396,17 +396,22 @@ class Instaloader:
         :param userids: List of user IDs to be processed in terms of downloading their stories, or None.
         """
 
-        if userids is None:
+        if not userids:
             data = self.context.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704",
                                               {"only_stories": True})["data"]["user"]
             if data is None:
                 raise BadResponseException('Bad stories reel JSON.')
             userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
 
-        stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
-                                             {"reel_ids": userids, "precomposed_overlay": False})["data"]
+        def _userid_chunks():
+            userids_per_query = 100
+            for i in range(0, len(userids), userids_per_query):
+                yield userids[i:i + userids_per_query]
 
-        yield from (Story(self.context, media) for media in stories['reels_media'])
+        for userid_chunk in _userid_chunks():
+            stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
+                                                 {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
+            yield from (Story(self.context, media) for media in stories['reels_media'])
 
     @_requires_login
     def download_stories(self,
@@ -428,8 +433,10 @@ class Instaloader:
 
         if not userids:
             self.context.log("Retrieving all visible stories...")
+        else:
+            userids = [p if isinstance(p, int) else p.userid for p in userids]
 
-        for user_story in self.get_stories([p if isinstance(p, int) else p.userid for p in userids]):
+        for user_story in self.get_stories(userids):
             name = user_story.owner_username
             self.context.log("Retrieving stories from profile {}.".format(name))
             totalcount = user_story.itemcount

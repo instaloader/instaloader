@@ -91,6 +91,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.context.log("Logged in as %s." % username)
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
+    anonymous_retry_profiles = set()
     try:
         # Generate set of profiles, already downloading non-profile targets
         for target in targetlist:
@@ -137,7 +138,28 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
                                                      post_filter=post_filter)
                 else:
-                    profiles.add(instaloader.check_profile_id(target))
+                    try:
+                        profile = instaloader.check_profile_id(target)
+                        if instaloader.context.is_logged_in and profile.has_blocked_viewer:
+                            if not stories_only and not profile.is_private:
+                                raise ProfileNotExistsException("{} blocked you; But she's public, "
+                                                                "so we just download her anonymously.".format(target))
+                            else:
+                                instaloader.context.error("{} blocked you.".format(target))
+                        else:
+                            profiles.add(profile)
+                    except ProfileNotExistsException as err:
+                        # Not only our profile.has_blocked_viewer condition raises ProfileNotExistsException,
+                        # check_profile_id() also does, since access to blocked profile may be responded with 404.
+                        if instaloader.context.is_logged_in and not stories_only:
+                            instaloader.context.log(err)
+                            instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
+                            with instaloader.anonymous_copy() as anonymous_loader:
+                                with instaloader.context.error_catcher():
+                                    anonymous_retry_profiles.add(anonymous_loader.check_profile_id(target))
+                                    instaloader.context.log("Looks good.")
+                        else:
+                            raise
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
@@ -145,22 +167,20 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             # Iterate through profiles list and download them
             for target in profiles:
                 with instaloader.context.error_catcher(target):
-                    try:
-                        instaloader.download_profile(target, profile_pic, profile_pic_only,
-                                                     fast_update, download_tagged=tagged,
-                                                     download_tagged_only=tagged_only, post_filter=post_filter)
-                    except ProfileNotExistsException as err:
-                        if instaloader.context.is_logged_in and not stories_only:
-                            instaloader.context.log(err)
-                            instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
-                            with instaloader.anonymous_copy() as anonymous_loader:
-                                with instaloader.context.error_catcher():
-                                    anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
-                                                                      fast_update, download_tagged=tagged,
-                                                                      download_tagged_only=tagged_only,
-                                                                      post_filter=post_filter)
-                        else:
-                            raise
+                    instaloader.download_profile(target, profile_pic, profile_pic_only,
+                                                 fast_update, download_tagged=tagged,
+                                                 download_tagged_only=tagged_only,
+                                                 post_filter=post_filter)
+            if anonymous_retry_profiles:
+                instaloader.context.log("Downloading anonymously: {}"
+                                        .format(' '.join([p.username for p in anonymous_retry_profiles])))
+                with instaloader.anonymous_copy() as anonymous_loader:
+                    for target in anonymous_retry_profiles:
+                        with instaloader.context.error_catcher(target):
+                            anonymous_loader.download_profile(target, profile_pic, profile_pic_only,
+                                                              fast_update, download_tagged=tagged,
+                                                              download_tagged_only=tagged_only,
+                                                              post_filter=post_filter)
         if stories or stories_only:
             with instaloader.context.error_catcher("Download stories"):
                 instaloader.context.log("Downloading stories")
