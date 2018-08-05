@@ -526,7 +526,8 @@ class Profile:
     @property
     def has_highlight_reels(self) -> bool:
         """
-        Always returns `True` since :issue:`153`.
+        .. deprecated:: 4.0.6
+           Always returns `True` since :issue:`153`.
 
         Before broken, this indicated whether the :class:`Profile` had available stories.
         """
