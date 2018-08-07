@@ -75,10 +75,12 @@ class InstaloaderContext:
         username = self.username
         self._session = self.get_anonymous_session()
         self.username = None
-        yield self
-        self._session.close()
-        self.username = username
-        self._session = session
+        try:
+            yield self
+        finally:
+            self._session.close()
+            self.username = username
+            self._session = session
 
     @property
     def is_logged_in(self) -> bool:

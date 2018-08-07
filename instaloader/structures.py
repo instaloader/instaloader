@@ -552,6 +552,8 @@ class Profile:
     @property
     def has_viewable_story(self) -> bool:
         """
+        .. deprecated:: 4.0.6
+
         Some stories are private. This property determines if the :class:`Profile`
         has at least one story which can be viewed using the associated :class:`InstaloaderContext`,
         i.e. the viewer has privileges to view it.
