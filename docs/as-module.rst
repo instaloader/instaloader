@@ -135,6 +135,11 @@ User Stories
 .. autoclass:: StoryItem
    :no-show-inheritance:
 
+Highlights
+""""""""""
+
+.. autoclass:: Highlight
+
 Profiles
 """"""""
 

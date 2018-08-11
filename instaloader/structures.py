@@ -782,7 +782,7 @@ class Story:
            # story is a Story object
            for item in story.get_items():
                # item is a StoryItem object
-               L.download_storyitem(item, ':stores')
+               L.download_storyitem(item, ':stories')
 
     This class implements == and is hashable.
 
@@ -805,7 +805,7 @@ class Story:
         return NotImplemented
 
     def __hash__(self) -> int:
-        return hash(self._unique_id)
+        return hash(self.unique_id)
 
     @property
     def unique_id(self) -> str:
@@ -866,6 +866,61 @@ class Story:
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
         yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+
+
+class Highlight(Story):
+
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+        super().__init__(context, node)
+        self._items = None
+
+    def __repr__(self):
+        return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
+
+    @property
+    def unique_id(self) -> int:
+        """A unique ID identifying this set of highlights."""
+        return int(self._node['id'])
+
+    @property
+    def owner_profile(self) -> Profile:
+        """:class:`Profile` instance of the highlights' owner."""
+        if not self._owner_profile:
+            self._owner_profile = Profile(self._context, self._node['owner'])
+        return self._owner_profile
+
+    @property
+    def title(self) -> str:
+        """The title of these highlights."""
+        return self._node['title']
+
+    @property
+    def cover_url(self) -> str:
+        """URL of the highlights' cover."""
+        return self._node['cover_media']['thumbnail_src']
+
+    @property
+    def cover_cropped_url(self) -> str:
+        """URL of the cropped version of the cover."""
+        return self._node['cover_media_cropped_thumbnail']['url']
+
+    def _fetch_items(self):
+        if not self._items:
+            self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
+                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
+                                                       "highlight_reel_ids": [str(self.unique_id)],
+                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
+
+    @property
+    def itemcount(self) -> int:
+        """Count of items associated with the :class:`Highlight` instance."""
+        self._fetch_items()
+        return len(self._items)
+
+    def get_items(self) -> Iterator[StoryItem]:
+        """Retrieve all associated highlight items."""
+        self._fetch_items()
+        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
 
 
 JsonExportable = Union[Post, Profile, StoryItem]

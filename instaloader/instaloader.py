@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, List, Optional, Set, Union
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file
+from .structures import Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file
 
 
 def get_default_session_filename(username: str) -> str:
@@ -190,7 +190,7 @@ class Instaloader:
 
     def update_comments(self, filename: str, post: Post) -> None:
         def _postcomment_asdict(comment):
-            return {'id': comment.id,
+            return {'id': comment.unique_id,
                     'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
                     'owner': comment.owner._asdict()}
@@ -487,6 +487,56 @@ class Instaloader:
             self.save_metadata_json(filename, item)
         self.context.log()
         return downloaded
+
+    @_requires_login
+    def get_highlights(self, userid: int) -> Iterator[Highlight]:
+        """Get all highlights from a user.
+        To use this, one needs to be logged in
+
+        :param userid: ID of the profile whose highlights should get fetched.
+        """
+
+        data = self.context.graphql_query("7c16654f22c819fb63d1183034a5162f",
+                                          {"user_id": userid, "include_chaining": False, "include_reel": False,
+                                           "include_suggested_users": False, "include_logged_out_extras": False,
+                                           "include_highlight_reels": True})["data"]["user"]['edge_highlight_reels']
+        if data is None:
+            raise BadResponseException('Bad highlights reel JSON.')
+        yield from (Highlight(self.context, edge['node']) for edge in data['edges'])
+
+    @_requires_login
+    def download_highlights(self,
+                            userid: int,
+                            fast_update: bool = False,
+                            filename_target: Optional[str] = None,
+                            storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
+        """
+        Download available highlights from a user whose ID is given.
+        To use this, one needs to be logged in
+
+        :param userid: ID of the profile whose highlights should get downloaded.
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
+               or None if profile name and the highlights' titles should be used instead
+        :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
+        """
+        for user_highlight in self.get_highlights(userid):
+            name = user_highlight.owner_username
+            self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
+            totalcount = user_highlight.itemcount
+            count = 1
+            for item in user_highlight.get_items():
+                if storyitem_filter is not None and not storyitem_filter(item):
+                    self.context.log("<{} skipped>".format(item), flush=True)
+                    continue
+                self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                count += 1
+                with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title, name)):
+                    downloaded = self.download_storyitem(item, filename_target
+                                                         if filename_target
+                                                         else '{}/{}'.format(name, user_highlight.title))
+                    if fast_update and not downloaded:
+                        break
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
