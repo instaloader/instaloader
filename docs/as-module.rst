@@ -139,6 +139,10 @@ Highlights
 """"""""""
 
 .. autoclass:: Highlight
+   :no-show-inheritance:
+   :inherited-members:
+
+   Bases: :class:`Story`
 
 Profiles
 """"""""
