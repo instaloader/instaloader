@@ -102,19 +102,3 @@ development of Instaloader.
 .. donations-end
 
 .. (Discussion in :issue:`130`)
-
-IRC Channel
------------
-
-.. ircchannel-start
-
-For a direct and personal communication within Instaloader's community, we have
-an IRC channel
-
-**#instaloader** on **Freenode**.
-
-Freenode provides a `Web IRC Client
-<https://webchat.freenode.net/?channels=instaloader>`__, allowing to join our
-channel without having an IRC client installed.
-
-.. ircchannel-end
