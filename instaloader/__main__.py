@@ -201,7 +201,7 @@ def main():
                             epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
                                    "https://instaloader.github.io/.",
-                            fromfile_prefix_chars='@')
+                            fromfile_prefix_chars='+')
 
     g_what = parser.add_argument_group('What to Download',
                                        'Specify a list of profiles or #hashtags. For each of these, Instaloader '
