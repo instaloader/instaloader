@@ -203,11 +203,9 @@ Miscellaneous Options
 
         text file should separate arg with line break.
 
-        args.txt example
+        args.txt example::
 
-        ```
             --login MYUSENAME
             --password MYPASSWORD
             --fast-update
-         ```
 
