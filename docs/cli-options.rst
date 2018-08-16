@@ -192,3 +192,20 @@ Miscellaneous Options
    Disable user interaction, i.e. do not print messages (except errors) and fail
    if login credentials are needed but not given.
    This is handy for running :ref:`instaloader-as-cronjob`.
+
+.. option:: +args.txt
+
+    Read arguments from file `args.txt`, a shortcut to provide argument from
+    file rather than command-line. This provide a convient way to hide login
+    info from CLI. and also can use for simplify managment of long arguments.
+
+    .. note:: text file should separate arg with line break.
+
+        args.txt example
+
+        ```
+            --login MYUSENAME
+            --password MYPASSWORD
+            --fast-update
+         ```
+
