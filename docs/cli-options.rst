@@ -199,7 +199,9 @@ Miscellaneous Options
     file rather than command-line. This provide a convient way to hide login
     info from CLI. and also can use for simplify managment of long arguments.
 
-    .. note:: text file should separate arg with line break.
+    .. note::
+
+        text file should separate arg with line break.
 
         args.txt example
 
