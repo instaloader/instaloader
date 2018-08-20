@@ -62,6 +62,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           profile_pic: bool = True, profile_pic_only: bool = False,
           fast_update: bool = False,
           stories: bool = False, stories_only: bool = False,
+          tagged: bool = False, tagged_only: bool = False,
           post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
@@ -171,7 +172,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             for target in profiles:
                 with instaloader.context.error_catcher(target):
                     instaloader.download_profile(target, download_profile_pic, not download_profile_posts,
-                                                 fast_update, post_filter=post_filter)
+                                                 fast_update, download_tagged=tagged,
+                                                 download_tagged_only=tagged_only, post_filter=post_filter)
             if anonymous_retry_profiles:
                 instaloader.context.log("Downloading anonymously: {}"
                                         .format(' '.join([p.username for p in anonymous_retry_profiles])))
@@ -179,7 +181,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     for target in anonymous_retry_profiles:
                         with instaloader.context.error_catcher(target):
                             anonymous_loader.download_profile(target, download_profile_pic, not download_profile_posts,
-                                                              fast_update, post_filter=post_filter)
+                                                              fast_update, download_tagged=tagged,
+                                                              download_tagged_only=tagged_only, post_filter=post_filter)
         if download_profile_stories and profiles:
             with instaloader.context.error_catcher("Download stories"):
                 instaloader.context.log("Downloading stories")
@@ -254,6 +257,10 @@ def main():
     g_what.add_argument('--stories-only', action='store_true',
                         help='Rather than downloading regular posts of each specified profile, only download '
                              'stories. Requires --login. Does not imply --no-profile-pic.')
+    g_what.add_argument('--tagged', action='store_true',
+                        help='Also download posts where each profile is tagged.')
+    g_what.add_argument('--tagged-only', action='store_true',
+                        help='Download only post where each profile is tagged, not their regular posts.')
     g_what.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
@@ -360,6 +367,8 @@ def main():
               fast_update=args.fast_update,
               stories=args.stories,
               stories_only=args.stories_only,
+              tagged=args.tagged,
+              tagged_only=args.tagged_only,
               post_filter_str=args.post_filter,
               storyitem_filter_str=args.storyitem_filter)
         loader.close()
