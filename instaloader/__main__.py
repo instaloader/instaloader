@@ -133,6 +133,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  post_filter=post_filter)
+                elif target[0] == '-':
+                    instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
                 elif target == ":feed":
                     instaloader.download_feed_posts(fast_update=fast_update, max_count=max_count,
                                                     post_filter=post_filter)

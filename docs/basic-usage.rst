@@ -84,6 +84,10 @@ Instaloader supports the following targets:
    All profiles that are followed by ``profile``, i.e. the *followees* of
    ``profile`` (requires :option:`--login`).
 
+- ``-post``
+   The single **post** with the given shortcode. Must be preceeded by ``--`` in
+   the argument list to not be mistaken as an option flag.
+
 Instaloader goes through all media matching the specified targets and
 downloads the pictures and videos and their captions. You can specify
 
