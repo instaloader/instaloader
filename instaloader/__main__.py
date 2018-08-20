@@ -230,6 +230,9 @@ def main():
                         help='Only download profile picture.')
     g_what.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
+    g_what.add_argument('--no-pictures', action='store_true',
+                        help='Do not download post pictures. Cannot be used together with --fast-update. '
+                             'Implies --no-video-thumbnails, does not imply --no-videos.')
     g_what.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
     g_what.add_argument('--no-video-thumbnails', action='store_true',
@@ -349,8 +352,12 @@ def main():
                 raise SystemExit("--no-captions and --post-metadata-txt or --storyitem-metadata-txt given; "
                                  "That contradicts.")
 
+        if args.no_pictures and args.fast_update:
+            raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
+                             download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
                              download_comments=args.comments, save_metadata=not args.no_metadata_json,

@@ -35,6 +35,12 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
    Do not download profile picture.
 
+.. option:: --no-pictures
+
+   Do not download post pictures. Cannot be used together with
+   :option:`--fast-update`. Implies :option:`--no-video-thumbnails`, does not
+   imply :option:`--no-videos`.
+
 .. option:: --no-videos, -V
 
    Do not download videos.

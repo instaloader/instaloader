@@ -80,6 +80,7 @@ class Instaloader:
     :param user_agent: :option:`--user-agent`
     :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
     :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
+    :param download_pictures: not :option:`--no-pictures`
     :param download_videos: not :option:`--no-videos`
     :param download_video_thumbnails: not :option:`--no-video-thumbnails`
     :param download_geotags: :option:`--geotags`
@@ -102,6 +103,7 @@ class Instaloader:
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
+                 download_pictures=True,
                  download_videos: bool = True,
                  download_video_thumbnails: bool = True,
                  download_geotags: bool = True,
@@ -118,6 +120,7 @@ class Instaloader:
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
         self.filename_pattern = filename_pattern or "{date_utc}_UTC"
+        self.download_pictures = download_pictures
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
         self.download_geotags = download_geotags
@@ -133,11 +136,15 @@ class Instaloader:
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
         new_loader = Instaloader(self.context.sleep, self.context.quiet, self.context.user_agent, self.dirname_pattern,
-                                 self.filename_pattern, self.download_videos, self.download_video_thumbnails,
-                                 self.download_geotags, self.download_comments, self.save_metadata,
-                                 self.compress_json, self.post_metadata_txt_pattern,
-                                 self.storyitem_metadata_txt_pattern, self.context.graphql_count_per_slidingwindow,
-                                 self.context.max_connection_attempts)
+                                 self.filename_pattern, download_pictures=self.download_pictures,
+                                 download_videos=self.download_videos,
+                                 download_video_thumbnails=self.download_video_thumbnails,
+                                 download_geotags=self.download_geotags, download_comments=self.download_comments,
+                                 save_metadata=self.save_metadata, compress_json=self.compress_json,
+                                 post_metadata_txt_pattern=self.post_metadata_txt_pattern,
+                                 storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
+                                 graphql_rate_limit=self.context.graphql_count_per_slidingwindow,
+                                 max_connection_attempts=self.context.max_connection_attempts)
         new_loader.context.query_timestamps = self.context.query_timestamps
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
@@ -343,25 +350,26 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = False
-        if post.typename == 'GraphSidecar':
-            edge_number = 1
-            for sidecar_node in post.get_sidecar_nodes():
-                # Download picture or video thumbnail
-                if not sidecar_node.is_video or self.download_video_thumbnails is True:
-                    downloaded |= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
-                # Additionally download video if available and desired
-                if sidecar_node.is_video and self.download_videos is True:
-                    downloaded |= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
-                edge_number += 1
-        elif post.typename == 'GraphImage':
-            downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
-        elif post.typename == 'GraphVideo':
-            if self.download_video_thumbnails is True:
+        if self.download_pictures:
+            if post.typename == 'GraphSidecar':
+                edge_number = 1
+                for sidecar_node in post.get_sidecar_nodes():
+                    # Download picture or video thumbnail
+                    if not sidecar_node.is_video or self.download_video_thumbnails is True:
+                        downloaded |= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                    # Additionally download video if available and desired
+                    if sidecar_node.is_video and self.download_videos is True:
+                        downloaded |= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                    edge_number += 1
+            elif post.typename == 'GraphImage':
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
-        else:
-            self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
+            elif post.typename == 'GraphVideo':
+                if self.download_video_thumbnails is True:
+                    downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+            else:
+                self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
