@@ -13,27 +13,33 @@ feed), ``:stories`` (stories of your followees) or ``:saved`` (collection of
 posts marked as saved).
 
 Here we explain the additional options that can be given to Instaloader to
-customize its behavior.  To get a list of all flags, their abbreviations and
-their descriptions, you may also run ``instaloader --help``.  For an
+customize its behavior.  For an
 introduction on how to use Instaloader, see
 :ref:`download-pictures-from-instagram`.
 
-What to Download
-^^^^^^^^^^^^^^^^
+To get a list of all flags, their abbreviations and
+their descriptions, you may also run::
 
-Specify a list of targets (profiles, #hashtags, ``:feed``, ``:stories`` or
-``:saved``). For each of these, Instaloader creates a folder and stores all
-posts along with the pictures's captions and the current **profile picture**
-there. If an already-downloaded profile has been renamed, Instaloader
-automatically **finds it by its unique ID** and renames the folder likewise.
+   instaloader --help
 
-.. option:: --profile-pic-only, -P
+Targets
+^^^^^^^
 
-   Only download profile picture.
+Specify a list of targets. For each of these, Instaloader creates a folder and
+stores all posts along with the pictures's captions there.
 
-.. option:: --no-profile-pic
+.. include:: basic-usage.rst
+   :start-after: targets-start
+   :end-before: targets-end
 
-   Do not download profile picture.
+- ``filename.json[.xz]``
+   Re-Download the given object
+
+- ``+args.txt``
+   Read targets (and options) from given textfile. See :option:`+args.txt`.
+
+What to Download of each Post
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. option:: --no-pictures
 
@@ -75,6 +81,26 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    Template to write in txt file for each StoryItem. See
    :ref:`metadata-text-files`.
 
+.. option:: --no-metadata-json
+
+   Do not create a JSON file containing the metadata of each post.
+
+.. option:: --no-compress-json
+
+   Do not xz compress JSON files, rather create pretty formatted JSONs.
+
+
+What to Download of each Profile
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --profile-pic-only, -P
+
+   Only download profile picture.
+
+.. option:: --no-profile-pic
+
+   Do not download profile picture.
+
 .. option:: --stories, -s
 
    Also **download stories** of each profile that is downloaded. Requires
@@ -83,14 +109,6 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 .. option:: --tagged
 
    Also download posts where each profile is tagged.
-
-.. option:: --no-metadata-json
-
-   Do not create a JSON file containing the metadata of each post.
-
-.. option:: --no-compress-json
-
-   Do not xz compress JSON files, rather create pretty formatted JSONs.
 
 .. option:: --stories-only
 
@@ -107,6 +125,15 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
    Download only post where each profile is tagged, not their regular posts.
 
+Which Posts to Download
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --fast-update, -F
+
+   For each target, stop when encountering the first already-downloaded picture.
+   This flag is recommended when you use Instaloader to update your personal
+   Instagram archive.
+
 .. option:: --post-filter filter, --only-if filter
 
    Expression that, if given, must evaluate to True for each post to be
@@ -121,20 +148,6 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    downloaded.  Must be a syntactically valid Python expression. Variables are
    evaluated to :class:`instaloader.StoryItem` attributes.
    See :ref:`filter-posts` for more examples.
-
-
-
-When to Stop Downloading
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-If none of these options are given, Instaloader goes through all pictures
-matching the specified targets.
-
-.. option:: --fast-update, -F
-
-   For each target, stop when encountering the first already-downloaded picture.
-   This flag is recommended when you use Instaloader to update your personal
-   Instagram archive.
 
 .. option:: --count COUNT, -c
 
