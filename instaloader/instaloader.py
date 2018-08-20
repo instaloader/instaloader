@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
-from typing import Any, Callable, Iterator, List, Optional, Union
+from typing import Any, Callable, Iterator, List, Optional, Set, Union
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -707,6 +707,72 @@ class Instaloader:
             return profile
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
 
+    def download_profiles(self, profiles: Set[Profile],
+                          profile_pic: bool = True, posts: bool = True, tagged: bool = False, stories: bool = False,
+                          fast_update: bool = False,
+                          post_filter: Optional[Callable[[Post], bool]] = None,
+                          storyitem_filter: Optional[Callable[[Post], bool]] = None):
+        """High-level method to download set of profiles.
+
+        :param profiles: Set of profiles to download.
+        :param profile_pic: not :option:`--no-profile-pic`.
+        :param posts: not :option:`--no-posts`.
+        :param tagged: :option:`--tagged`.
+        :param stories: :option:`--stories`.
+        :param fast_update: :option:`--fast-update`.
+        :param post_filter: :option:`--post-filter`.
+        :param storyitem_filter: :option:`--post-filter`."""
+
+        for profile in profiles:
+            with self.context.error_catcher(profile.username):
+                profile_name = profile.username
+
+                # Save metadata as JSON if desired.
+                if self.save_metadata:
+                    json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name,
+                                                                                     target=profile_name),
+                                                         profile_name, profile.userid)
+                    self.save_metadata_json(json_filename, profile)
+
+                # Download profile picture
+                if profile_pic:
+                    with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
+                        self.download_profilepic(profile)
+
+                # Catch some errors
+                if profile.is_private:
+                    if not self.context.is_logged_in:
+                        raise LoginRequiredException("--login=USERNAME required.")
+                    if not profile.followed_by_viewer and self.context.username != profile.username:
+                        raise PrivateProfileNotFollowedException("Private but not followed.")
+
+                # Download tagged, if requested
+                if tagged:
+                    with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
+                        self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
+
+                # Iterate over pictures and download them
+                if posts:
+                    self.context.log("Retrieving posts from profile {}.".format(profile_name))
+                    totalcount = profile.mediacount
+                    count = 1
+                    for post in profile.get_posts():
+                        self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                        count += 1
+                        if post_filter is not None and not post_filter(post):
+                            self.context.log('<skipped>')
+                            continue
+                        with self.context.error_catcher("Download {} of {}".format(post, profile_name)):
+                            downloaded = self.download_post(post, target=profile_name)
+                            if fast_update and not downloaded:
+                                break
+
+        if stories and profiles:
+            with self.context.error_catcher("Download stories"):
+                self.context.log("Downloading stories")
+                self.download_stories(userids=list(profiles), fast_update=fast_update, filename_target=None,
+                                      storyitem_filter=storyitem_filter)
+
     def download_profile(self, profile_name: Union[str, Profile],
                          profile_pic: bool = True, profile_pic_only: bool = False,
                          fast_update: bool = False,
@@ -714,7 +780,11 @@ class Instaloader:
                          download_tagged: bool = False, download_tagged_only: bool = False,
                          post_filter: Optional[Callable[[Post], bool]] = None,
                          storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
-        """Download one profile"""
+        """Download one profile
+
+        .. deprecated:: 4.1
+           Use :meth:`Instaloader.download_profiles`.
+        """
 
         # Get profile main page json
         # check if profile does exist or name has changed since last download

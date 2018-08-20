@@ -95,7 +95,14 @@ What to Download of each Profile
 
 .. option:: --profile-pic-only, -P
 
+   .. deprecated:: 4.1
+      Use :option:`--no-posts`.
+
    Only download profile picture.
+
+.. option:: --no-posts
+
+   Do not download regular posts.
 
 .. option:: --no-profile-pic
 
@@ -112,6 +119,9 @@ What to Download of each Profile
 
 .. option:: --stories-only
 
+   .. deprecated:: 4.1
+      Use :option:`--stories` :option:`--no-posts`.
+
    Rather than downloading regular posts of each specified profile, only
    download stories.  Requires :option:`--login`. Does not imply
    :option:`--no-profile-pic`.
@@ -120,10 +130,6 @@ What to Download of each Profile
 
       If possible, use ``:stories`` target rather than :option:`--stories-only`
       with all your followees. ``:stories`` uses fewer API requests.
-
-.. option:: --tagged-only
-
-   Download only post where each profile is tagged, not their regular posts.
 
 Which Posts to Download
 ^^^^^^^^^^^^^^^^^^^^^^^
