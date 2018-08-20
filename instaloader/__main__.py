@@ -207,7 +207,8 @@ def main():
     parser = ArgumentParser(description=__doc__, add_help=False, usage=usage_string(),
                             epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
-                                   "https://instaloader.github.io/.")
+                                   "https://instaloader.github.io/.",
+                            fromfile_prefix_chars='+')
 
     g_what = parser.add_argument_group('What to Download',
                                        'Specify a list of profiles or #hashtags. For each of these, Instaloader '
