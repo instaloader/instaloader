@@ -74,6 +74,10 @@ automatically **finds it by its unique ID** and renames the folder likewise.
    Also **download stories** of each profile that is downloaded. Requires
    :option:`--login`.
 
+.. option:: --tagged
+
+   Also download posts where each profile is tagged.
+
 .. option:: --no-metadata-json
 
    Do not create a JSON file containing the metadata of each post.
@@ -92,6 +96,10 @@ automatically **finds it by its unique ID** and renames the folder likewise.
 
       If possible, use ``:stories`` target rather than :option:`--stories-only`
       with all your followees. ``:stories`` uses fewer API requests.
+
+.. option:: --tagged-only
+
+   Download only post where each profile is tagged, not their regular posts.
 
 .. option:: --post-filter filter, --only-if filter
 
