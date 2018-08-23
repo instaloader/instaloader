@@ -18,3 +18,7 @@ a {
 a:hover {
     color: #f48400;
 }
+
+body {
+    font-size: 16px;
+}
