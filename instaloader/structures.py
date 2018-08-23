@@ -614,7 +614,9 @@ class Profile:
                                                     self._metadata('edge_saved_media')))
 
     def get_tagged_posts(self) -> Iterator[Post]:
-        """Retrieve all posts where a profile is tagged."""
+        """Retrieve all posts where a profile is tagged.
+
+        .. versionadded:: 4.0.7"""
         self._obtain_metadata()
         yield from (Post(self._context, node, self if int(node['owner']['id']) == self.userid else None) for node in
                     self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",

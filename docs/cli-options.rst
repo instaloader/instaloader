@@ -47,6 +47,8 @@ What to Download of each Post
    :option:`--fast-update`. Implies :option:`--no-video-thumbnails`, does not
    imply :option:`--no-videos`.
 
+   .. versionadded:: 4.1
+
 .. option:: --no-videos, -V
 
    Do not download videos.
@@ -116,6 +118,8 @@ What to Download of each Profile
 .. option:: --tagged
 
    Also download posts where each profile is tagged.
+
+   .. versionadded:: 4.1
 
 .. option:: --stories-only
 
@@ -228,17 +232,18 @@ Miscellaneous Options
 
 .. option:: +args.txt
 
-    Read arguments from file `args.txt`, a shortcut to provide argument from
-    file rather than command-line. This provide a convient way to hide login
-    info from CLI. and also can use for simplify managment of long arguments.
+   Read arguments from file `args.txt`, a shortcut to provide argument from
+   file rather than command-line. This provide a convient way to hide login
+   info from CLI. and also can use for simplify managment of long arguments.
 
-    .. note::
+   .. note::
 
-        text file should separate arg with line break.
+      text file should separate arg with line break.
 
-        args.txt example::
+      args.txt example::
 
-            --login MYUSENAME
-            --password MYPASSWORD
-            --fast-update
+         --login MYUSENAME
+         --password MYPASSWORD
+         --fast-update
 
+   .. versionadded:: 4.1

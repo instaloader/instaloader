@@ -96,6 +96,8 @@ Instaloader supports the following targets:
    The single **post** with the given shortcode. Must be preceeded by ``--`` in
    the argument list to not be mistaken as an option flag.
 
+   .. versionadded:: 4.1
+
 .. targets-end
 
 Instaloader goes through all media matching the specified targets and

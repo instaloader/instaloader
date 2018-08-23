@@ -630,6 +630,9 @@ class Instaloader:
     def download_tagged(self, profile: Profile, fast_update: bool = False,
                         target: Optional[str] = None,
                         post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+        """Download all posts where a profile is tagged.
+
+        .. versionadded:: 4.1"""
         if target is None:
             target = profile.username + ':tagged'
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
@@ -721,7 +724,9 @@ class Instaloader:
         :param stories: :option:`--stories`.
         :param fast_update: :option:`--fast-update`.
         :param post_filter: :option:`--post-filter`.
-        :param storyitem_filter: :option:`--post-filter`."""
+        :param storyitem_filter: :option:`--post-filter`.
+
+        .. versionadded:: 4.1"""
 
         for profile in profiles:
             with self.context.error_catcher(profile.username):
