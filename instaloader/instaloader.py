@@ -70,7 +70,10 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
     def vformat(self, format_string, args, kwargs):
         """Override :meth:`string.Formatter.vformat` for character substitution in paths for Windows, see issue #84."""
         ret = super().vformat(format_string, args, kwargs)
-        return ret.replace(':', '\ua789') if platform.system() == 'Windows' else ret
+        if platform.system() == 'Windows':
+            ret = ret.replace(':', '\ua789').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
+            ret = ret.replace('\\', '\uff3c').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
+        return ret
 
 
 class Instaloader:
