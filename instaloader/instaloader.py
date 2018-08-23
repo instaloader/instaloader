@@ -494,7 +494,9 @@ class Instaloader:
     @_requires_login
     def get_highlights(self, user: Union[int, Profile]) -> Iterator[Highlight]:
         """Get all highlights from a user.
-        To use this, one needs to be logged in
+        To use this, one needs to be logged in.
+
+        .. versionadded:: 4.1
 
         :param user: ID or Profile of the user whose highlights should get fetched.
         """
@@ -517,7 +519,9 @@ class Instaloader:
                             storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
         """
         Download available highlights from a user whose ID is given.
-        To use this, one needs to be logged in
+        To use this, one needs to be logged in.
+
+        .. versionadded:: 4.1
 
         :param user: ID or Profile of the user whose highlights should get downloaded.
         :param fast_update: If true, abort when first already-downloaded picture is encountered

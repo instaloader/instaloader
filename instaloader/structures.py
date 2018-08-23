@@ -869,6 +869,28 @@ class Story:
 
 
 class Highlight(Story):
+    """
+    Structure representing a user's highlight with its associated story items.
+
+    Provides methods for accessing highlight properties, as well as :meth:`Highlight.get_items` to request associated
+    :class:`StoryItem` nodes. Highlights are returned by :meth:`Instaloader.get_highlights`.
+
+    With a logged-in :class:`Instaloader` instance `L`, you may download all highlights of a :class:`Profile` instance
+    USER with::
+
+       for highlight in L.get_highlights(USER):
+           # highlight is a Highlight object
+           for item in highlight.get_items():
+               # item is a StoryItem object
+               L.download_storyitem(item, '{}/{}'.format(highlight.owner_username, highlight.title))
+
+    This class implements == and is hashable.
+
+    :param context: :class:`InstaloaderContext` instance used for additional queries if necessary.
+    :param node: Dictionary containing the available information of the highlight as returned by Instagram.
+    :param owner: :class:`Profile` instance representing the owner profile of the highlight.
+
+    .. versionadded:: 4.1"""
 
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
         super().__init__(context, node)

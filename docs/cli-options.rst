@@ -115,6 +115,13 @@ What to Download of each Profile
    Also **download stories** of each profile that is downloaded. Requires
    :option:`--login`.
 
+.. option:: --highlights
+
+   Also **download highlights** of each profile that is downloaded. Requires
+   :option:`--login`.
+
+   .. versionadded:: 4.1
+
 .. option:: --tagged
 
    Also download posts where each profile is tagged.
