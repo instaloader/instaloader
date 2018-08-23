@@ -190,7 +190,7 @@ class Instaloader:
 
     def update_comments(self, filename: str, post: Post) -> None:
         def _postcomment_asdict(comment):
-            return {'id': comment.unique_id,
+            return {'id': comment.id,
                     'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
                     'owner': comment.owner._asdict()}
