@@ -766,7 +766,8 @@ class Instaloader:
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
 
     def download_profiles(self, profiles: Set[Profile],
-                          profile_pic: bool = True, posts: bool = True, tagged: bool = False, stories: bool = False,
+                          profile_pic: bool = True, posts: bool = True,
+                          tagged: bool = False, highlights: bool = False, stories: bool = False,
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None):
@@ -776,6 +777,7 @@ class Instaloader:
         :param profile_pic: not :option:`--no-profile-pic`.
         :param posts: not :option:`--no-posts`.
         :param tagged: :option:`--tagged`.
+        :param highlights: :option: `--highlights`.
         :param stories: :option:`--stories`.
         :param fast_update: :option:`--fast-update`.
         :param post_filter: :option:`--post-filter`.
@@ -810,6 +812,11 @@ class Instaloader:
                 if tagged:
                     with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
                         self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
+
+                # Download highlights, if requested
+                if highlights:
+                    with self.context.error_catcher('Download highlights of {}'.format(profile_name)):
+                        self.download_highlights(profile, fast_update=fast_update, storyitem_filter=storyitem_filter)
 
                 # Iterate over pictures and download them
                 if posts:

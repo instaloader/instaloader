@@ -59,8 +59,8 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
           sessionfile: Optional[str] = None,
-          download_profile_pic: bool = True,
-          download_posts=True, download_stories: bool = False, download_tagged: bool = False,
+          download_profile_pic: bool = True, download_posts=True,
+          download_stories: bool = False, download_highlights: bool = False, download_tagged: bool = False,
           fast_update: bool = False,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
@@ -167,8 +167,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
         instaloader.download_profiles(profiles,
-                                      download_profile_pic, download_posts, download_tagged, download_stories,
-                                      fast_update, post_filter, storyitem_filter)
+                                      download_profile_pic, download_posts, download_tagged, download_highlights,
+                                      download_stories, fast_update, post_filter, storyitem_filter)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
@@ -263,6 +263,8 @@ def main():
                         help='Also download stories of each profile that is downloaded. Requires --login.')
     g_prof.add_argument('--stories-only', action='store_true',
                         help=SUPPRESS)
+    g_prof.add_argument('--highlights', action='store_true',
+                        help='Also download highlights of each profile that is downloaded. Requires --login.')
     g_prof.add_argument('--tagged', action='store_true',
                         help='Also download posts where each profile is tagged.')
 
@@ -378,6 +380,7 @@ def main():
               download_profile_pic=download_profile_pic,
               download_posts=download_posts,
               download_stories=download_stories,
+              download_highlights=args.highlights,
               download_tagged=args.tagged,
               fast_update=args.fast_update,
               max_count=int(args.count) if args.count is not None else None,
