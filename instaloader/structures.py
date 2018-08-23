@@ -870,8 +870,9 @@ class Story:
 
 class Highlight(Story):
 
-    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
         super().__init__(context, node)
+        self._owner_profile = owner
         self._items = None
 
     def __repr__(self):

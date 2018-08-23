@@ -489,24 +489,26 @@ class Instaloader:
         return downloaded
 
     @_requires_login
-    def get_highlights(self, userid: int) -> Iterator[Highlight]:
+    def get_highlights(self, user: Union[int, Profile]) -> Iterator[Highlight]:
         """Get all highlights from a user.
         To use this, one needs to be logged in
 
-        :param userid: ID of the profile whose highlights should get fetched.
+        :param user: ID or Profile of the user whose highlights should get fetched.
         """
 
+        userid = user if isinstance(user, int) else user.userid
         data = self.context.graphql_query("7c16654f22c819fb63d1183034a5162f",
                                           {"user_id": userid, "include_chaining": False, "include_reel": False,
                                            "include_suggested_users": False, "include_logged_out_extras": False,
                                            "include_highlight_reels": True})["data"]["user"]['edge_highlight_reels']
         if data is None:
             raise BadResponseException('Bad highlights reel JSON.')
-        yield from (Highlight(self.context, edge['node']) for edge in data['edges'])
+        yield from (Highlight(self.context, edge['node'], user if isinstance(user, Profile) else None)
+                    for edge in data['edges'])
 
     @_requires_login
     def download_highlights(self,
-                            userid: int,
+                            user: Union[int, Profile],
                             fast_update: bool = False,
                             filename_target: Optional[str] = None,
                             storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
@@ -514,13 +516,13 @@ class Instaloader:
         Download available highlights from a user whose ID is given.
         To use this, one needs to be logged in
 
-        :param userid: ID of the profile whose highlights should get downloaded.
+        :param user: ID or Profile of the user whose highlights should get downloaded.
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
                or None if profile name and the highlights' titles should be used instead
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         """
-        for user_highlight in self.get_highlights(userid):
+        for user_highlight in self.get_highlights(user):
             name = user_highlight.owner_username
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             totalcount = user_highlight.itemcount
