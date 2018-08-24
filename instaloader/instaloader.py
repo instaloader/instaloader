@@ -776,7 +776,8 @@ class Instaloader:
                           tagged: bool = False, highlights: bool = False, stories: bool = False,
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
-                          storyitem_filter: Optional[Callable[[Post], bool]] = None):
+                          storyitem_filter: Optional[Callable[[Post], bool]] = None,
+                          raise_errors: bool = False):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -788,11 +789,19 @@ class Instaloader:
         :param fast_update: :option:`--fast-update`.
         :param post_filter: :option:`--post-filter`.
         :param storyitem_filter: :option:`--post-filter`.
+        :param raise_errors:
+           Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
+           catched and printed with :meth:`InstaloaderContext.error_catcher`.
 
         .. versionadded:: 4.1"""
 
+        def _error_raiser(_str):
+            yield
+
+        error_handler = _error_raiser if raise_errors else self.context.error_catcher
+
         for profile in profiles:
-            with self.context.error_catcher(profile.username):
+            with error_handler(profile.username):
                 profile_name = profile.username
 
                 # Save metadata as JSON if desired.
