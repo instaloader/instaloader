@@ -106,6 +106,8 @@ What to Download of each Profile
 
    Do not download regular posts.
 
+   .. versionadded:: 4.1
+
 .. option:: --no-profile-pic
 
    Do not download profile picture.

@@ -717,6 +717,8 @@ class Instaloader:
     def save_profile_id(self, profile: Profile):
         """
         Store ID of profile locally.
+
+        .. versionadded:: 4.0.6
         """
         os.makedirs(self.dirname_pattern.format(profile=profile.username,
                                                 target=profile.username), exist_ok=True)
@@ -781,7 +783,7 @@ class Instaloader:
         :param profile_pic: not :option:`--no-profile-pic`.
         :param posts: not :option:`--no-posts`.
         :param tagged: :option:`--tagged`.
-        :param highlights: :option: `--highlights`.
+        :param highlights: :option:`--highlights`.
         :param stories: :option:`--stories`.
         :param fast_update: :option:`--fast-update`.
         :param post_filter: :option:`--post-filter`.

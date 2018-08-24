@@ -18,7 +18,7 @@ def usage_string():
     argv0 = os.path.basename(sys.argv[0])
     argv0 = "instaloader" if argv0 == "__main__.py" else argv0
     return """
-{0} [--comments] [--geotags] [--stories] [--tagged]
+{0} [--comments] [--geotags] [--stories] [--highlights] [--tagged]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')

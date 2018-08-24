@@ -574,7 +574,9 @@ class Profile:
 
     @property
     def profile_pic_url(self) -> str:
-        """Return URL of profile picture"""
+        """Return URL of profile picture
+
+        .. versionadded:: 4.0.3"""
         try:
             return self._iphone_struct['hd_profile_pic_url_info']['url']
         except (InstaloaderException, KeyError) as err:
@@ -889,8 +891,7 @@ class Highlight(Story):
     :param context: :class:`InstaloaderContext` instance used for additional queries if necessary.
     :param node: Dictionary containing the available information of the highlight as returned by Instagram.
     :param owner: :class:`Profile` instance representing the owner profile of the highlight.
-
-    .. versionadded:: 4.1"""
+    """
 
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
         super().__init__(context, node)

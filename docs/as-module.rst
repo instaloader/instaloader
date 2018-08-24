@@ -144,6 +144,8 @@ Highlights
 
    Bases: :class:`Story`
 
+   .. versionadded:: 4.1
+
 Profiles
 """"""""
 

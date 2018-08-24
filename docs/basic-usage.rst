@@ -71,9 +71,16 @@ Instaloader supports the following targets:
    finds it by its unique ID and renames the folder accordingly.
 
    Besides the profile's posts, its current profile picture is downloaded. For
-   each profile you download, :option:`--stories` instructs Instaloader to also
-   **download the user's stories**, and :option:`--tagged` to **download posts
-   where the user is tagged**.
+   each profile you download,
+
+   - :option:`--stories`
+      instructs Instaloader to also **download the user's stories**,
+
+   - :option:`--highlights`
+      to **download highlights of each profile that is downloaded**, and
+
+   - :option:`--tagged`
+      to **download posts where the user is tagged**.
 
 - ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually necessary),
