@@ -33,7 +33,6 @@ Install Instaloader
 - On **Windows 10**, you may download the standalone executable from the
   `current release page <https://github.com/instaloader/instaloader/releases/latest>`__.
 
-- To get the most current version of Instaloader from our
-  `Git repository <https://github.com/instaloader/instaloader>`__::
+- To test the most current pre-release or development version of Instaloader::
 
-     pip3 install --upgrade git+https://github.com/instaloader/instaloader
+     pip3 install --pre instaloader
