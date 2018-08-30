@@ -699,7 +699,7 @@ class Instaloader:
 
         .. versionadded:: 4.1"""
         if target is None:
-            target = profile.username + ':tagged'
+            target = profile.username + '/:tagged'
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
         count = 1
         for post in profile.get_tagged_posts():
