@@ -338,6 +338,12 @@ class Instaloader:
         :raises ConnectionException: If connection to Instagram failed."""
         self.context.login(user, passwd)
 
+    def format_filename(self, item: Union[Post, StoryItem], target: Optional[str] = None):
+        """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
+
+        .. versionadded:: 4.1"""
+        return _PostPathFormatter(item).format(self.filename_pattern, target=target)
+
     def download_post(self, post: Post, target: str) -> bool:
         """
         Download everything associated with one instagram post node, i.e. picture, caption and video.
@@ -348,7 +354,7 @@ class Instaloader:
         """
 
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
-        filename = dirname + '/' + _PostPathFormatter(post).format(self.filename_pattern, target=target)
+        filename = dirname + '/' + self.format_filename(post, target=target)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
@@ -473,7 +479,7 @@ class Instaloader:
 
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
-        filename = dirname + '/' + _PostPathFormatter(item).format(self.filename_pattern, target=target)
+        filename = dirname + '/' + self.format_filename(item, target=target)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
