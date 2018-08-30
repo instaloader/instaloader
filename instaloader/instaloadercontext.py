@@ -248,7 +248,8 @@ class InstaloaderContext:
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         # some queries are not rate limited if invoked anonymously:
         query_not_limited = is_graphql_query and not self.is_logged_in \
-                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8']
+                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8',
+                                                         '472f257a40c653c64c666ce877d59d2b']
         if is_graphql_query and not query_not_limited:
             waittime = graphql_query_waittime()
             if waittime > 0:
