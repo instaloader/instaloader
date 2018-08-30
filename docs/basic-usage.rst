@@ -169,11 +169,6 @@ where the attributes from :class:`Post` or
 Id est, the following attributes can be used with both
 :option:`--post-filter` and :option:`--storyitem-filter`:
 
-- :attr:`~Post.is_video` (bool)
-   Post/StoryItem is a video. For example, you may skip videos::
-
-      instaloader --post-filter="not is_video" target
-
 - :attr:`~Post.owner_username` (str), :attr:`~Post.owner_id` (int)
    Owner profile username / userid.
 
@@ -182,6 +177,15 @@ Id est, the following attributes can be used with both
    inside filter strings, this easily allows filtering by creation date. E.g.::
 
       instaloader --post-filter="date_utc <= datetime(2018, 5, 31)" target
+
+- :attr:`~Post.is_video` (bool)
+   Post/StoryItem is a video. For example, you may skip videos::
+
+      instaloader --post-filter="not is_video" target
+
+   This is not the same as :option:`--no-videos` and
+   :option:`--no-video-thumbnails`, since sidecar posts (posts that contain
+   multiple pictures/videos in one post) have this attribute set to False.
 
 As :option:`--post-filter`, the following attributes can be used additionally:
 
