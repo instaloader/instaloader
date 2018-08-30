@@ -402,6 +402,8 @@ class Profile:
         :param profile_id: userid
         :raises: :class:`ProfileNotExistsException`, :class:`ProfileHasNoPicsException`
         """
+        if profile_id in context.profile_id_cache:
+            return context.profile_id_cache[profile_id]
         data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
                                      {'id': str(profile_id), 'first': 1},
                                      rhx_gis=context.root_rhx_gis)['data']['user']
@@ -415,7 +417,9 @@ class Profile:
                 raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
             else:
                 raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        return Post(context, data['edges'][0]['node']).owner_profile
+        profile = Post(context, data['edges'][0]['node']).owner_profile
+        context.profile_id_cache[profile_id] = profile
+        return profile
 
     def _asdict(self):
         json_node = self._node.copy()

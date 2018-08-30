@@ -69,6 +69,9 @@ class InstaloaderContext:
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
 
+        # Cache profile from id (mapping from id to Profile)
+        self.profile_id_cache = dict()
+
     @contextmanager
     def anonymous_copy(self):
         session = self._session
