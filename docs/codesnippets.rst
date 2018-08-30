@@ -14,6 +14,9 @@ Here we present code examples that use the :ref:`python-module-instaloader` for
 more advanced Instagram downloading or metadata mining than what is possible
 with the Instaloader command line interface.
 
+The scripts presented here can be downloaded from our source tree:
+`instaloader/docs/codesnippets/ <https://github.com/instaloader/instaloader/tree/master/docs/codesnippets>`__
+
 .. For each code snippet:
    - title
    - brief description of what it does / motivation / how it works
