@@ -57,7 +57,7 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 20
+        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 200
         self._root_rhx_gis = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
@@ -221,7 +221,7 @@ class InstaloaderContext:
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
         if self.sleep:
-            time.sleep(min(random.expovariate(0.6), 5.0))
+            time.sleep(min(random.expovariate(0.7), 5.0))
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:
@@ -248,8 +248,7 @@ class InstaloaderContext:
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         # some queries are not rate limited if invoked anonymously:
         query_not_limited = is_graphql_query and not self.is_logged_in \
-                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8',
-                                                         '472f257a40c653c64c666ce877d59d2b']
+                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8']
         if is_graphql_query and not query_not_limited:
             waittime = graphql_query_waittime()
             if waittime > 0:
