@@ -135,6 +135,17 @@ User Stories
 .. autoclass:: StoryItem
    :no-show-inheritance:
 
+Highlights
+""""""""""
+
+.. autoclass:: Highlight
+   :no-show-inheritance:
+   :inherited-members:
+
+   Bases: :class:`Story`
+
+   .. versionadded:: 4.1
+
 Profiles
 """"""""
 

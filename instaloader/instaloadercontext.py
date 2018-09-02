@@ -57,7 +57,7 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 20
+        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 200
         self._root_rhx_gis = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
@@ -68,6 +68,9 @@ class InstaloaderContext:
 
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
+
+        # Cache profile from id (mapping from id to Profile)
+        self.profile_id_cache = dict()
 
     @contextmanager
     def anonymous_copy(self):
@@ -218,7 +221,7 @@ class InstaloaderContext:
     def _sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
         if self.sleep:
-            time.sleep(min(random.expovariate(0.6), 5.0))
+            time.sleep(min(random.expovariate(0.7), 5.0))
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:

@@ -60,12 +60,27 @@ already have a valid session cookie file.
 What to Download
 ^^^^^^^^^^^^^^^^
 
+.. targets-start
+
 Instaloader supports the following targets:
 
 - ``profile``
-   Public profile, or private profile with :option:`--login`. For each profile
-   you download, :option:`--stories` instructs Instaloader to also
-   **download the user's stories**.
+   Public profile, or private profile with :option:`--login`.
+
+   If an already-downloaded profile has been renamed, Instaloader automatically
+   finds it by its unique ID and renames the folder accordingly.
+
+   Besides the profile's posts, its current profile picture is downloaded. For
+   each profile you download,
+
+   - :option:`--stories`
+      instructs Instaloader to also **download the user's stories**,
+
+   - :option:`--highlights`
+      to **download highlights of each profile that is downloaded**, and
+
+   - :option:`--tagged`
+      to **download posts where the user is tagged**.
 
 - ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually necessary),
@@ -83,6 +98,14 @@ Instaloader supports the following targets:
 - ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
    ``profile`` (requires :option:`--login`).
+
+- ``-post``
+   The single **post** with the given shortcode. Must be preceeded by ``--`` in
+   the argument list to not be mistaken as an option flag.
+
+   .. versionadded:: 4.1
+
+.. targets-end
 
 Instaloader goes through all media matching the specified targets and
 downloads the pictures and videos and their captions. You can specify

@@ -21,7 +21,7 @@
 
 ::
 
-    instaloader [--comments] [--geotags] [--stories]
+    instaloader [--comments] [--geotags] [--stories] [--highlights] [--tagged]
                 [--login YOUR-USERNAME] [--fast-update]
                 profile | "#hashtag" | :stories | :feed | :saved
 

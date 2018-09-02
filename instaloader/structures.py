@@ -402,6 +402,8 @@ class Profile:
         :param profile_id: userid
         :raises: :class:`ProfileNotExistsException`, :class:`ProfileHasNoPicsException`
         """
+        if profile_id in context.profile_id_cache:
+            return context.profile_id_cache[profile_id]
         data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
                                      {'id': str(profile_id), 'first': 1},
                                      rhx_gis=context.root_rhx_gis)['data']['user']
@@ -415,7 +417,9 @@ class Profile:
                 raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
             else:
                 raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        return Post(context, data['edges'][0]['node']).owner_profile
+        profile = Post(context, data['edges'][0]['node']).owner_profile
+        context.profile_id_cache[profile_id] = profile
+        return profile
 
     def _asdict(self):
         json_node = self._node.copy()
@@ -574,7 +578,9 @@ class Profile:
 
     @property
     def profile_pic_url(self) -> str:
-        """Return URL of profile picture"""
+        """Return URL of profile picture
+
+        .. versionadded:: 4.0.3"""
         try:
             return self._iphone_struct['hd_profile_pic_url_info']['url']
         except (InstaloaderException, KeyError) as err:
@@ -614,7 +620,9 @@ class Profile:
                                                     self._metadata('edge_saved_media')))
 
     def get_tagged_posts(self) -> Iterator[Post]:
-        """Retrieve all posts where a profile is tagged."""
+        """Retrieve all posts where a profile is tagged.
+
+        .. versionadded:: 4.0.7"""
         self._obtain_metadata()
         yield from (Post(self._context, node, self if int(node['owner']['id']) == self.userid else None) for node in
                     self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",
@@ -780,7 +788,7 @@ class Story:
            # story is a Story object
            for item in story.get_items():
                # item is a StoryItem object
-               L.download_storyitem(item, ':stores')
+               L.download_storyitem(item, ':stories')
 
     This class implements == and is hashable.
 
@@ -803,7 +811,7 @@ class Story:
         return NotImplemented
 
     def __hash__(self) -> int:
-        return hash(self._unique_id)
+        return hash(self.unique_id)
 
     @property
     def unique_id(self) -> str:
@@ -864,6 +872,83 @@ class Story:
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
         yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+
+
+class Highlight(Story):
+    """
+    Structure representing a user's highlight with its associated story items.
+
+    Provides methods for accessing highlight properties, as well as :meth:`Highlight.get_items` to request associated
+    :class:`StoryItem` nodes. Highlights are returned by :meth:`Instaloader.get_highlights`.
+
+    With a logged-in :class:`Instaloader` instance `L`, you may download all highlights of a :class:`Profile` instance
+    USER with::
+
+       for highlight in L.get_highlights(USER):
+           # highlight is a Highlight object
+           for item in highlight.get_items():
+               # item is a StoryItem object
+               L.download_storyitem(item, '{}/{}'.format(highlight.owner_username, highlight.title))
+
+    This class implements == and is hashable.
+
+    :param context: :class:`InstaloaderContext` instance used for additional queries if necessary.
+    :param node: Dictionary containing the available information of the highlight as returned by Instagram.
+    :param owner: :class:`Profile` instance representing the owner profile of the highlight.
+    """
+
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
+        super().__init__(context, node)
+        self._owner_profile = owner
+        self._items = None
+
+    def __repr__(self):
+        return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
+
+    @property
+    def unique_id(self) -> int:
+        """A unique ID identifying this set of highlights."""
+        return int(self._node['id'])
+
+    @property
+    def owner_profile(self) -> Profile:
+        """:class:`Profile` instance of the highlights' owner."""
+        if not self._owner_profile:
+            self._owner_profile = Profile(self._context, self._node['owner'])
+        return self._owner_profile
+
+    @property
+    def title(self) -> str:
+        """The title of these highlights."""
+        return self._node['title']
+
+    @property
+    def cover_url(self) -> str:
+        """URL of the highlights' cover."""
+        return self._node['cover_media']['thumbnail_src']
+
+    @property
+    def cover_cropped_url(self) -> str:
+        """URL of the cropped version of the cover."""
+        return self._node['cover_media_cropped_thumbnail']['url']
+
+    def _fetch_items(self):
+        if not self._items:
+            self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
+                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
+                                                       "highlight_reel_ids": [str(self.unique_id)],
+                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
+
+    @property
+    def itemcount(self) -> int:
+        """Count of items associated with the :class:`Highlight` instance."""
+        self._fetch_items()
+        return len(self._items)
+
+    def get_items(self) -> Iterator[StoryItem]:
+        """Retrieve all associated highlight items."""
+        self._fetch_items()
+        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
 
 
 JsonExportable = Union[Post, Profile, StoryItem]

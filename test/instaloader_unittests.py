@@ -8,6 +8,7 @@ from itertools import islice
 
 import instaloader
 
+PROFILE_WITH_HIGHLIGHTS = 325732271
 PUBLIC_PROFILE = "selenagomez"
 PUBLIC_PROFILE_ID = 460563723
 HASHTAG = "kitten"
@@ -100,6 +101,14 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
         for user_story in self.L.get_stories():
             print("profile {}.".format(user_story.owner_username))
             for item in user_story.get_items():
+                print(item)
+
+    def test_highlights_paging(self):
+        for user_highlight in self.L.get_highlights(PROFILE_WITH_HIGHLIGHTS):
+            print("Retrieving {} highlights \"{}\" from profile {}".format(user_highlight.itemcount,
+                                                                           user_highlight.title,
+                                                                           user_highlight.owner_username))
+            for item in user_highlight.get_items():
                 print(item)
 
     def test_private_profile_paging(self):

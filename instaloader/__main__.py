@@ -18,7 +18,7 @@ def usage_string():
     argv0 = os.path.basename(sys.argv[0])
     argv0 = "instaloader" if argv0 == "__main__.py" else argv0
     return """
-{0} [--comments] [--geotags] [--stories]
+{0} [--comments] [--geotags] [--stories] [--highlights] [--tagged]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
@@ -58,11 +58,11 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
-          sessionfile: Optional[str] = None, max_count: Optional[int] = None,
-          profile_pic: bool = True, profile_pic_only: bool = False,
+          sessionfile: Optional[str] = None,
+          download_profile_pic: bool = True, download_posts=True,
+          download_stories: bool = False, download_highlights: bool = False, download_tagged: bool = False,
           fast_update: bool = False,
-          stories: bool = False, stories_only: bool = False,
-          post_filter_str: Optional[str] = None,
+          max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
@@ -88,10 +88,6 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             else:
                 instaloader.interactive_login(username)
         instaloader.context.log("Logged in as %s." % username)
-    # Determine what to download
-    download_profile_pic = profile_pic or profile_pic_only
-    download_profile_posts = not (stories_only or profile_pic_only)
-    download_profile_stories = stories or stories_only
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
     anonymous_retry_profiles = set()
@@ -132,6 +128,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  post_filter=post_filter)
+                elif target[0] == '-':
+                    instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
                 elif target == ":feed":
                     instaloader.download_feed_posts(fast_update=fast_update, max_count=max_count,
                                                     post_filter=post_filter)
@@ -144,7 +142,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     try:
                         profile = instaloader.check_profile_id(target)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
-                            if download_profile_pic or (download_profile_posts and not profile.is_private):
+                            if download_profile_pic or ((download_posts or download_tagged) and not profile.is_private):
                                 raise ProfileNotExistsException("{} blocked you; But we download her anonymously."
                                                                 .format(target))
                             else:
@@ -154,37 +152,30 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     except ProfileNotExistsException as err:
                         # Not only our profile.has_blocked_viewer condition raises ProfileNotExistsException,
                         # check_profile_id() also does, since access to blocked profile may be responded with 404.
-                        if instaloader.context.is_logged_in and (download_profile_pic or download_profile_posts):
+                        if instaloader.context.is_logged_in and (download_profile_pic or download_posts or
+                                                                 download_tagged):
                             instaloader.context.log(err)
                             instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
                             with instaloader.anonymous_copy() as anonymous_loader:
                                 with instaloader.context.error_catcher():
                                     anonymous_retry_profiles.add(anonymous_loader.check_profile_id(target))
-                                    instaloader.context.log("Looks good.")
+                                    instaloader.context.error("Warning: {} will be downloaded anonymously (\"{}\")."
+                                                              .format(target, err))
                         else:
                             raise
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
-        if download_profile_pic or download_profile_posts:
-            # Iterate through profiles list and download them
-            for target in profiles:
-                with instaloader.context.error_catcher(target):
-                    instaloader.download_profile(target, download_profile_pic, not download_profile_posts,
-                                                 fast_update, post_filter=post_filter)
-            if anonymous_retry_profiles:
-                instaloader.context.log("Downloading anonymously: {}"
-                                        .format(' '.join([p.username for p in anonymous_retry_profiles])))
-                with instaloader.anonymous_copy() as anonymous_loader:
-                    for target in anonymous_retry_profiles:
-                        with instaloader.context.error_catcher(target):
-                            anonymous_loader.download_profile(target, download_profile_pic, not download_profile_posts,
-                                                              fast_update, post_filter=post_filter)
-        if download_profile_stories and profiles:
-            with instaloader.context.error_catcher("Download stories"):
-                instaloader.context.log("Downloading stories")
-                instaloader.download_stories(userids=list(profiles), fast_update=fast_update,
-                                             filename_target=None, storyitem_filter=storyitem_filter)
+        instaloader.download_profiles(profiles,
+                                      download_profile_pic, download_posts, download_tagged, download_highlights,
+                                      download_stories, fast_update, post_filter, storyitem_filter)
+        if anonymous_retry_profiles:
+            instaloader.context.log("Downloading anonymously: {}"
+                                    .format(' '.join([p.username for p in anonymous_retry_profiles])))
+            with instaloader.anonymous_copy() as anonymous_loader:
+                anonymous_loader.download_profiles(anonymous_retry_profiles,
+                                                   download_profile_pic, download_posts, download_tagged,
+                                                   fast_update=fast_update, post_filter=post_filter)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     # Save session if it is useful
@@ -204,72 +195,95 @@ def main():
     parser = ArgumentParser(description=__doc__, add_help=False, usage=usage_string(),
                             epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
                                    "The complete documentation can be found at "
-                                   "https://instaloader.github.io/.")
+                                   "https://instaloader.github.io/.",
+                            fromfile_prefix_chars='+')
 
-    g_what = parser.add_argument_group('What to Download',
-                                       'Specify a list of profiles or #hashtags. For each of these, Instaloader '
-                                       'creates a folder and '
-                                       'downloads all posts along with the pictures\'s '
-                                       'captions and the current profile picture. '
-                                       'If an already-downloaded profile has been renamed, Instaloader automatically '
-                                       'finds it by its unique ID and renames the folder likewise.')
-    g_what.add_argument('profile', nargs='*', metavar='profile|#hashtag',
-                        help='Name of profile or #hashtag to download. '
-                             'Alternatively, if --login is given: @<profile> to download all followees of '
-                             '<profile>; the special targets '
-                             ':feed to download pictures from your feed; '
-                             ':stories to download the stories of your followees; or '
-                             ':saved to download the posts marked as saved.')
-    g_what.add_argument('-P', '--profile-pic-only', action='store_true',
-                        help='Only download profile picture.')
-    g_what.add_argument('--no-profile-pic', action='store_true',
+    g_targets = parser.add_argument_group("What to Download",
+                                          "Specify a list of targets. For each of these, Instaloader creates a folder "
+                                          "and downloads all posts. The following targets are supported:")
+    g_targets.add_argument('profile', nargs='*',
+                           help="Download profile. If an already-downloaded profile has been renamed, Instaloader "
+                                "automatically finds it by its unique ID and renames the folder likewise.")
+    g_targets.add_argument('_at_profile', nargs='*', metavar="@profile",
+                           help="Download all followees of profile. Requires --login. "
+                                "Consider using :feed rather than @yourself.")
+    g_targets.add_argument('_hashtag', nargs='*', metavar='"#hashtag"', help="Download #hashtag.")
+    g_targets.add_argument('_feed', nargs='*', metavar=":feed",
+                           help="Download pictures from your feed. Requires --login.")
+    g_targets.add_argument('_stories', nargs='*', metavar=":stories",
+                           help="Download the stories of your followees. Requires --login.")
+    g_targets.add_argument('_saved', nargs='*', metavar=":saved",
+                           help="Download the posts that you marked as saved. Requires --login.")
+    g_targets.add_argument('_singlepost', nargs='*', metavar="-- -shortcode",
+                           help="Download the post with the given shortcode")
+    g_targets.add_argument('_json', nargs='*', metavar="filename.json[.xz]",
+                           help="Re-Download the given object.")
+    g_targets.add_argument('_fromfile', nargs='*', metavar="+args.txt",
+                           help="Read targets (and options) from given textfile.")
+
+    g_post = parser.add_argument_group("What to Download of each Post")
+
+    g_prof = parser.add_argument_group("What to Download of each Profile")
+
+    g_prof.add_argument('-P', '--profile-pic-only', action='store_true',
+                        help=SUPPRESS)
+    g_prof.add_argument('--no-posts', action='store_true',
+                        help="Do not download regular posts.")
+    g_prof.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
-    g_what.add_argument('-V', '--no-videos', action='store_true',
+    g_post.add_argument('--no-pictures', action='store_true',
+                        help='Do not download post pictures. Cannot be used together with --fast-update. '
+                             'Implies --no-video-thumbnails, does not imply --no-videos.')
+    g_post.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
-    g_what.add_argument('--no-video-thumbnails', action='store_true',
+    g_post.add_argument('--no-video-thumbnails', action='store_true',
                         help='Do not download thumbnails of videos.')
-    g_what.add_argument('-G', '--geotags', action='store_true',
+    g_post.add_argument('-G', '--geotags', action='store_true',
                         help='Download geotags when available. Geotags are stored as a '
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
                              'server for each picture, which is why it is disabled by default.')
-    g_what.add_argument('-C', '--comments', action='store_true',
+    g_post.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
                              'server for each post, which is why it is disabled by default.')
-    g_what.add_argument('--no-captions', action='store_true',
+    g_post.add_argument('--no-captions', action='store_true',
                         help='Do not create txt files.')
-    g_what.add_argument('--post-metadata-txt', action='append',
+    g_post.add_argument('--post-metadata-txt', action='append',
                         help='Template to write in txt file for each Post.')
-    g_what.add_argument('--storyitem-metadata-txt', action='append',
+    g_post.add_argument('--storyitem-metadata-txt', action='append',
                         help='Template to write in txt file for each StoryItem.')
-    g_what.add_argument('--no-metadata-json', action='store_true',
+    g_post.add_argument('--no-metadata-json', action='store_true',
                         help='Do not create a JSON file containing the metadata of each post.')
-    g_what.add_argument('--metadata-json', action='store_true',
+    g_post.add_argument('--metadata-json', action='store_true',
                         help=SUPPRESS)
-    g_what.add_argument('--no-compress-json', action='store_true',
+    g_post.add_argument('--no-compress-json', action='store_true',
                         help='Do not xz compress JSON files, rather create pretty formatted JSONs.')
-    g_what.add_argument('-s', '--stories', action='store_true',
+    g_prof.add_argument('-s', '--stories', action='store_true',
                         help='Also download stories of each profile that is downloaded. Requires --login.')
-    g_what.add_argument('--stories-only', action='store_true',
-                        help='Rather than downloading regular posts of each specified profile, only download '
-                             'stories. Requires --login. Does not imply --no-profile-pic.')
-    g_what.add_argument('--post-filter', '--only-if', metavar='filter',
+    g_prof.add_argument('--stories-only', action='store_true',
+                        help=SUPPRESS)
+    g_prof.add_argument('--highlights', action='store_true',
+                        help='Also download highlights of each profile that is downloaded. Requires --login.')
+    g_prof.add_argument('--tagged', action='store_true',
+                        help='Also download posts where each profile is tagged.')
+
+    g_cond = parser.add_argument_group("Which Posts to Download")
+
+    g_cond.add_argument('-F', '--fast-update', action='store_true',
+                        help='For each target, stop when encountering the first already-downloaded picture. This '
+                             'flag is recommended when you use Instaloader to update your personal Instagram archive.')
+
+    g_cond.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
                              'instaloader.Post attributes. Example: --post-filter=viewer_has_liked.')
-    g_what.add_argument('--storyitem-filter', metavar='filter',
+    g_cond.add_argument('--storyitem-filter', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each storyitem to be downloaded. '
                              'Must be a syntactically valid python expression. Variables are evaluated to '
                              'instaloader.StoryItem attributes.')
 
-    g_stop = parser.add_argument_group('When to Stop Downloading',
-                                       'If none of these options are given, Instaloader goes through all pictures '
-                                       'matching the specified targets.')
-    g_stop.add_argument('-F', '--fast-update', action='store_true',
-                        help='For each target, stop when encountering the first already-downloaded picture. This '
-                             'flag is recommended when you use Instaloader to update your personal Instagram archive.')
-    g_stop.add_argument('-c', '--count',
+    g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
                              'Applies only to #hashtag and :feed.')
 
@@ -339,8 +353,17 @@ def main():
                 raise SystemExit("--no-captions and --post-metadata-txt or --storyitem-metadata-txt given; "
                                  "That contradicts.")
 
+        if args.no_pictures and args.fast_update:
+            raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+
+        # Determine what to download
+        download_profile_pic = not args.no_profile_pic or args.profile_pic_only
+        download_posts = not (args.no_posts or args.stories_only or args.profile_pic_only)
+        download_stories = args.stories or args.stories_only
+
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
+                             download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
                              download_comments=args.comments, save_metadata=not args.no_metadata_json,
@@ -354,12 +377,13 @@ def main():
               username=args.login.lower() if args.login is not None else None,
               password=args.password,
               sessionfile=args.sessionfile,
-              max_count=int(args.count) if args.count is not None else None,
-              profile_pic=not args.no_profile_pic,
-              profile_pic_only=args.profile_pic_only,
+              download_profile_pic=download_profile_pic,
+              download_posts=download_posts,
+              download_stories=download_stories,
+              download_highlights=args.highlights,
+              download_tagged=args.tagged,
               fast_update=args.fast_update,
-              stories=args.stories,
-              stories_only=args.stories_only,
+              max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
               storyitem_filter_str=args.storyitem_filter)
         loader.close()
