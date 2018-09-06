@@ -306,6 +306,7 @@ class InstaloaderContext:
                 if isinstance(err, TooManyRequestsException):
                     print(textwrap.fill(text_for_429), file=sys.stderr)
                     if is_graphql_query:
+                        print("Made {} GraphQL requests.".format(len(self.query_timestamps)), file=sys.stderr)
                         waittime = graphql_query_waittime(untracked_queries=True)
                         if waittime > 0:
                             self.log('The request will be retried in {} seconds, at {:%H:%M}.'
