@@ -116,9 +116,18 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  graphql_rate_limit: Optional[int] = None,
-                 max_connection_attempts: int = 3):
+                 max_connection_attempts: int = 3,
+                 proxy: Optional[str] = None,
+                 ):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
+        self.context = InstaloaderContext(
+            sleep,
+            quiet,
+            user_agent,
+            graphql_rate_limit,
+            max_connection_attempts,
+            proxy,
+        )
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"

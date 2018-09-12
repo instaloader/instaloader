@@ -303,6 +303,10 @@ def main():
                               'there is not yet a valid session file.')
 
     g_how = parser.add_argument_group('How to Download')
+    g_how.add_argument('--proxy', metavar='PROXY-SERVER',
+                       help='Set an SSL Proxy for requests. Without this option, '
+                            'requests will be done from your IP address. '
+                            'Valid formats are: "https://IP_ADDRESS:PORT" or "IP_ADDRESS:PORT"')
     g_how.add_argument('--dirname-pattern',
                        help='Name of directory where to store posts. {profile} is replaced by the profile name, '
                             '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
@@ -371,7 +375,8 @@ def main():
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              graphql_rate_limit=args.graphql_rate_limit,
-                             max_connection_attempts=args.max_connection_attempts)
+                             max_connection_attempts=args.max_connection_attempts,
+                             proxy=args.proxy)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

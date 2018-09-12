@@ -47,8 +47,15 @@ class InstaloaderContext:
     class :class:`Instaloader`.
     """
 
-    def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 graphql_count_per_slidingwindow: Optional[int] = None, max_connection_attempts: int = 3):
+    def __init__(
+            self,
+            sleep: bool = True,
+            quiet: bool = False,
+            user_agent: Optional[str] = None,
+            graphql_count_per_slidingwindow: Optional[int] = None,
+            max_connection_attempts: int = 3,
+            proxy: Optional[str] = None,
+    ):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self._session = self.get_anonymous_session()
@@ -56,6 +63,14 @@ class InstaloaderContext:
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
+        if proxy:
+            if 'https' not in proxy:
+                self.proxy = {'https': 'https://' + proxy}
+            else:
+                self.proxy = {'https': proxy}
+        else:
+            self.proxy = None
+
         self._graphql_page_length = 50
         self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 200
         self._root_rhx_gis = None
@@ -262,13 +277,22 @@ class InstaloaderContext:
         sess = session if session else self._session
         try:
             self._sleep()
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+            resp = sess.get(
+                'https://{0}/{1}'.format(host, path),
+                params=params,
+                allow_redirects=False,
+                proxies=self.proxy,
+            )
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
                 if redirect_url.startswith('https://{}/'.format(host)):
-                    resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
-                                    params=params, allow_redirects=False)
+                    resp = sess.get(
+                        redirect_url if redirect_url.endswith('/') else redirect_url + '/',
+                        params=params,
+                        allow_redirects=False,
+                        proxies=self.proxy,
+                    )
                 else:
                     break
             if resp.status_code == 400:
@@ -394,7 +418,11 @@ class InstaloaderContext:
         :raises ConnectionException: When download repeatedly failed."""
         try:
             with self.get_anonymous_session() as anonymous_session:
-                resp = anonymous_session.get(url, stream=True)
+                resp = anonymous_session.get(
+                    url,
+                    stream=True,
+                    proxies=self.proxy,
+                )
             if resp.status_code == 200:
                 self.log(filename, end=' ', flush=True)
                 with open(filename, 'wb') as file:
