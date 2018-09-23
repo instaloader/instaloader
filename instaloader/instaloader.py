@@ -823,7 +823,7 @@ class Instaloader:
                         self.download_profilepic(profile)
 
                 # Catch some errors
-                if profile.is_private:
+                if profile.is_private and (tagged or highlights or posts):
                     if not self.context.is_logged_in:
                         raise LoginRequiredException("--login=USERNAME required.")
                     if not profile.followed_by_viewer and self.context.username != profile.username:
