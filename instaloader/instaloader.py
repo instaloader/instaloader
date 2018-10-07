@@ -358,18 +358,18 @@ class Instaloader:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
-        downloaded = False
+        downloaded = True
         if self.download_pictures:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
                 for sidecar_node in post.get_sidecar_nodes():
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
-                        downloaded |= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
                                                         mtime=post.date_local, filename_suffix=str(edge_number))
                     # Additionally download video if available and desired
                     if sidecar_node.is_video and self.download_videos is True:
-                        downloaded |= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=str(edge_number))
                     edge_number += 1
             elif post.typename == 'GraphImage':
@@ -387,7 +387,7 @@ class Instaloader:
 
         # Download video if desired
         if post.is_video and self.download_videos is True:
-            downloaded |= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
+            downloaded &= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
         if self.download_geotags and post.location:

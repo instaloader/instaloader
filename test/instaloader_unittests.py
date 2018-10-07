@@ -63,6 +63,12 @@ class TestInstaloaderAnonymously(unittest.TestCase):
     def test_hashtag_download(self):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
 
+    def test_hashtag_paging(self):
+        for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
+
     def test_get_id_by_username(self):
         self.assertEqual(PUBLIC_PROFILE_ID,
                          instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).userid)
