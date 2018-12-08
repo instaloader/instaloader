@@ -457,8 +457,8 @@ class Profile:
     def _iphone_struct(self) -> Dict[str, Any]:
         if not self._iphone_struct_:
             with self._context.anonymous_copy() as anonymous_context:
-                data = anonymous_context.get_json(path='api/v1/users/{}/info/'.format(self.userid),
-                                                  params={}, host='i.instagram.com')
+                data = anonymous_context.get_json(path='accounts/login/?next=api/v1/users/{}/info/'.format(self.userid),
+                                                  params={}, host='www.instagram.com')
             self._iphone_struct_ = data['user']
         return self._iphone_struct_
 
