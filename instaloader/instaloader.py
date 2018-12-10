@@ -671,13 +671,13 @@ class Instaloader:
         for post in self.get_location_posts(location):
             if max_count is not None and count > max_count:
                 break
-            self.context.log('[{0:3d}] #{1} '.format(count, location), end='', flush=True)
+            self.context.log('[{0:3d}] %{1} '.format(count, location), end='', flush=True)
             if post_filter is not None and not post_filter(post):
                 self.context.log('<skipped>')
                 continue
             count += 1
             with self.context.error_catcher('Download location {}'.format(location)):
-                downloaded = self.download_post(post, target='#' + location)
+                downloaded = self.download_post(post, target='%' + location)
                 if fast_update and not downloaded:
                     break
 
