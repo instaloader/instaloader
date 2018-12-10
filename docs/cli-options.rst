@@ -8,7 +8,7 @@ Instaloader is invoked with::
    $ instaloader [options] target [target ...]
 
 where ``target`` is a ``profile``, a ``"#hashtag"``, ``@profile`` (all profiles
-that *profile* is following), or if logged in ``:feed`` (pictures from your
+that *profile* is following), ``%location ID``, or if logged in ``:feed`` (pictures from your
 feed), ``:stories`` (stories of your followees) or ``:saved`` (collection of
 posts marked as saved).
 
@@ -171,7 +171,7 @@ Which Posts to Download
 .. option:: --count COUNT, -c
 
    Do not attempt to download more than COUNT posts.  Applies only to
-   ``#hashtag`` and ``:feed``.
+   ``#hashtag``, ``%location id``, and ``:feed``.
 
 
 Login (Download Private Profiles)

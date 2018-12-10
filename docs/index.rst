@@ -43,7 +43,7 @@ See :ref:`install` for more options on how to install Instaloader.
 
     instaloader [--comments] [--geotags] [--stories] [--highlights] [--tagged]
                 [--login YOUR-USERNAME] [--fast-update]
-                profile | "#hashtag" |
+                profile | "#hashtag" | %location_id |
                 :stories | :feed | :saved
 
 See :ref:`download-pictures-from-instagram` for a detailed introduction on how

@@ -85,6 +85,11 @@ Instaloader supports the following targets:
 - ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually necessary),
 
+- ``%location id``
+   Posts tagged with a given location; the location ID is the numerical ID
+   Instagram labels a location with (e.g.
+   \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/).
+
 - ``:stories``
    The currently-visible **stories** of your followees (requires
    :option:`--login`),
@@ -126,7 +131,7 @@ Filename Specification
 ^^^^^^^^^^^^^^^^^^^^^^
 
 For each target, Instaloader creates a directory named after the target,
-i.e. ``profile``, ``#hashtag``, ``:feed``, etc. and therein saves the
+i.e. ``profile``, ``#hashtag``, ``%location id``, ``:feed``, etc. and therein saves the
 posts in files named after the post's timestamp.
 
 :option:`--dirname-pattern` allows to configure the directory name of each
