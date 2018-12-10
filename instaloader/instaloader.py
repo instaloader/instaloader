@@ -645,15 +645,15 @@ class Instaloader:
             else:
                 params = {'__a': 1}
             location_data = self.context.get_json('explore/locations/{0}/'.format(location),
-                                                 params)['graphql']['location']['edge_location_to_media']
+                                                  params)['graphql']['location']['edge_location_to_media']
             yield from (Post(self.context, edge['node']) for edge in location_data['edges'])
             has_next_page = location_data['page_info']['has_next_page']
             end_cursor = location_data['page_info']['end_cursor']
 
     def download_location(self, location: str,
-                         max_count: Optional[int] = None,
-                         post_filter: Optional[Callable[[Post], bool]] = None,
-                         fast_update: bool = False) -> None:
+                          max_count: Optional[int] = None,
+                          post_filter: Optional[Callable[[Post], bool]] = None,
+                          fast_update: bool = False) -> None:
         """Download pictures of one location.
 
         To download the last 30 pictures with location 362629379, do::
