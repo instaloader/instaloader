@@ -20,7 +20,7 @@ def usage_string():
     return """
 {0} [--comments] [--geotags] [--stories] [--highlights] [--tagged]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
-{2:{1}} profile | "#hashtag" | :stories | :feed | :saved
+{2:{1}} profile | "#hashtag" | %location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
 
 
@@ -130,6 +130,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                  post_filter=post_filter)
                 elif target[0] == '-':
                     instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
+                elif target[0] == "%":
+                    instaloader.download_location(location=target[1:], max_count=max_count, fast_update=fast_update,
+                                                  post_filter=post_filter)
                 elif target == ":feed":
                     instaloader.download_feed_posts(fast_update=fast_update, max_count=max_count,
                                                     post_filter=post_filter)
