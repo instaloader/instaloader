@@ -1,4 +1,4 @@
-# sphinx_autodoc_typehints from Mar 18 2018.
+# sphinx_autodoc_typehints from Nov 20 2018 (version 1.5.2).
 #  https://github.com/agronholm/sphinx-autodoc-typehints
 # (slightly modified to fix class links, maybe related to agronholm/sphinx-autodoc-typehints#38)
 #
@@ -27,8 +27,8 @@
 import inspect
 from typing import get_type_hints, TypeVar, Any, AnyStr, Generic, Union
 
-from sphinx.util.inspect import getargspec
-from sphinx.ext.autodoc import formatargspec
+from sphinx.util import logging
+from sphinx.util.inspect import Signature
 
 try:
     from inspect import unwrap
@@ -50,6 +50,8 @@ except ImportError:
                 raise ValueError('wrapper loop when unwrapping {!r}'.format(f))
             memo.add(id_func)
         return func
+
+logger = logging.getLogger(__name__)
 
 
 def format_annotation(annotation):
@@ -162,23 +164,37 @@ def process_signature(app, what: str, name: str, obj, options, signature, return
         return
 
     obj = unwrap(obj)
-    try:
-        argspec = getargspec(obj)
-    except (TypeError, ValueError):
-        return
+    signature = Signature(obj)
+    parameters = [
+        param.replace(annotation=inspect.Parameter.empty)
+        for param in signature.signature.parameters.values()
+    ]
 
-    if argspec.args:
+    if parameters:
         if what in ('class', 'exception'):
-            del argspec.args[0]
+            del parameters[0]
         elif what == 'method':
             outer = inspect.getmodule(obj)
             for clsname in obj.__qualname__.split('.')[:-1]:
                 outer = getattr(outer, clsname)
-            method_object = outer.__dict__[obj.__name__]
-            if not isinstance(method_object, (classmethod, staticmethod)):
-                del argspec.args[0]
 
-    return formatargspec(obj, *argspec[:-1]), None
+            method_name = obj.__name__
+            if method_name.startswith("__") and not method_name.endswith("__"):
+                # If the method starts with double underscore (dunder)
+                # Python applies mangling so we need to prepend the class name.
+                # This doesn't happen if it always ends with double underscore.
+                class_name = obj.__qualname__.split('.')[-2]
+                method_name = "_{c}{m}".format(c=class_name, m=method_name)
+
+            method_object = outer.__dict__[method_name]
+            if not isinstance(method_object, (classmethod, staticmethod)):
+                del parameters[0]
+
+    signature.signature = signature.signature.replace(
+        parameters=parameters,
+        return_annotation=inspect.Signature.empty)
+
+    return signature.format_args().replace('\\', '\\\\'), None
 
 
 def process_docstring(app, what, name, obj, options, lines):
@@ -195,8 +211,15 @@ def process_docstring(app, what, name, obj, options, lines):
         except (AttributeError, TypeError):
             # Introspecting a slot wrapper will raise TypeError
             return
+        except NameError as exc:
+            logger.warning('Cannot resolve forward reference in type annotations of "%s": %s',
+                           name, exc)
+            type_hints = obj.__annotations__
 
         for argname, annotation in type_hints.items():
+            if argname.endswith('_'):
+                argname = '{}\\_'.format(argname[:-1])
+
             formatted_annotation = format_annotation(annotation)
 
             if argname == 'return':

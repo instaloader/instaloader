@@ -20,6 +20,7 @@
 import os
 import subprocess
 import sys
+import typing
 
 import sphinx_bootstrap_theme
 
@@ -374,6 +375,7 @@ html_context = {'current_release': current_release, 'current_release_date': curr
 
 
 def setup(app):
+    typing.TYPE_CHECKING = True
     app.add_stylesheet("style.css")
     app.connect('autodoc-process-signature', sphinx_autodoc_typehints.process_signature)
     app.connect('autodoc-process-docstring', sphinx_autodoc_typehints.process_docstring)
