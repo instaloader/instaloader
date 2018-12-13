@@ -8,7 +8,7 @@ install:
  - pip install pylint requests
  - pip install -r docs/requirements.txt
 script:
- - python3 -m pylint -r n -d bad-whitespace,missing-docstring,too-many-arguments,locally-disabled,line-too-long,too-many-public-methods,too-many-lines,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,inconsistent-return-statements,invalid-name,wildcard-import,unused-wildcard-import,no-else-return instaloader
+ - python3 -m pylint -r n -d bad-whitespace,missing-docstring,too-many-arguments,locally-disabled,line-too-long,too-many-public-methods,too-many-lines,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,inconsistent-return-statements,invalid-name,wildcard-import,unused-wildcard-import,no-else-return,cyclic-import,unnecessary-pass instaloader
  - make -C docs html SPHINXOPTS="-W -n"
 deploy:
   - provider: pypi
