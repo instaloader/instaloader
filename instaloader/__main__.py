@@ -20,7 +20,7 @@ def usage_string():
     return """
 {0} [--comments] [--geotags] [--stories] [--highlights] [--tagged]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
-{2:{1}} profile | "#hashtag" | %location_id | :stories | :feed | :saved
+{2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
 
 
@@ -211,6 +211,7 @@ def main():
                            help="Download all followees of profile. Requires --login. "
                                 "Consider using :feed rather than @yourself.")
     g_targets.add_argument('_hashtag', nargs='*', metavar='"#hashtag"', help="Download #hashtag.")
+    g_targets.add_argument('_location', nargs='*', metavar='%location_id', help="Download %%location_id.")
     g_targets.add_argument('_feed', nargs='*', metavar=":feed",
                            help="Download pictures from your feed. Requires --login.")
     g_targets.add_argument('_stories', nargs='*', metavar=":stories",
