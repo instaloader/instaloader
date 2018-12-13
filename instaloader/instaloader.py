@@ -1,5 +1,6 @@
 import getpass
 import json
+import lzma
 import os
 import platform
 import re
@@ -15,7 +16,7 @@ from typing import Any, Callable, Iterator, List, Optional, Set, Union
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file
+from .structures import Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file, load_structure_from_file
 
 
 def get_default_session_filename(username: str) -> str:
@@ -116,7 +117,8 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  graphql_rate_limit: Optional[int] = None,
-                 max_connection_attempts: int = 3):
+                 max_connection_attempts: int = 3,
+                 commit_mode: bool = False):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
 
@@ -134,6 +136,12 @@ class Instaloader:
             else post_metadata_txt_pattern
         self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
             else storyitem_metadata_txt_pattern
+        self.commit_mode = commit_mode
+        if self.commit_mode and not self.save_metadata:
+            raise InvalidArgumentException("Commit mode requires JSON metadata to be saved.")
+
+        # Used to keep state in commit mode
+        self._committed = None
 
     @contextmanager
     def anonymous_copy(self):
@@ -173,9 +181,15 @@ class Instaloader:
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
-        if os.path.isfile(filename):
-            self.context.log(filename + ' exists', end=' ', flush=True)
-            return False
+        # A post is considered "commited" if the json file exists and is not malformed.
+        if self.commit_mode:
+            if self._committed and os.path.isfile(filename):
+                self.context.log(filename + ' exists', end=' ', flush=True)
+                return False
+        else:
+            if os.path.isfile(filename):
+                self.context.log(filename + ' exists', end=' ', flush=True)
+                return False
         self.context.get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
@@ -359,6 +373,7 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
+        self._committed = self.check_if_committed(filename)
         if self.download_pictures:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
@@ -944,6 +959,21 @@ class Instaloader:
                 downloaded = self.download_post(post, target=profile_name)
                 if fast_update and not downloaded:
                     break
+
+    def check_if_committed(self, filename: str) -> bool:
+        """Checks to see if the current post has been committed."""
+        # A post is considered committed if its json metadata file exists and is not malformed.
+        if os.path.isfile(filename + '.json.xz'):
+            filename += '.json.xz'
+        elif os.path.isfile(filename + '.json'):
+            filename += '.json'
+        else:
+            return False
+        try:
+            load_structure_from_file(self.context, filename)
+            return True
+        except (FileNotFoundError, lzma.LZMAError, json.decoder.JSONDecodeError):
+            return False
 
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.
