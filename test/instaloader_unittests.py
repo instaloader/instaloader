@@ -64,11 +64,17 @@ class TestInstaloaderAnonymously(unittest.TestCase):
     def test_hashtag_download(self):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
 
+    def test_hashtag_paging(self):
+        for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
+
     def test_location_download(self):
         self.L.download_location(LOCATION, NORMAL_MAX_COUNT)
 
-    def test_hashtag_paging(self):
-        for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
+    def test_location_paging(self):
+        for count, post in enumerate(self.L.get_location_posts(LOCATION)):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break
