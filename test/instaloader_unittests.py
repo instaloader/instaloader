@@ -12,6 +12,7 @@ PROFILE_WITH_HIGHLIGHTS = 325732271
 PUBLIC_PROFILE = "selenagomez"
 PUBLIC_PROFILE_ID = 460563723
 HASHTAG = "kitten"
+LOCATION = "362629379"
 OWN_USERNAME = "aandergr"
 NORMAL_MAX_COUNT = 2
 PAGING_MAX_COUNT = 15
@@ -62,6 +63,9 @@ class TestInstaloaderAnonymously(unittest.TestCase):
 
     def test_hashtag_download(self):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
+
+    def test_location_download(self):
+        self.L.download_location(LOCATION, NORMAL_MAX_COUNT)
 
     def test_hashtag_paging(self):
         for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
