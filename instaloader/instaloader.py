@@ -647,6 +647,55 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    def get_location_posts(self, location: str) -> Iterator[Post]:
+        """Get Posts which are listed by Instagram for a given Location.
+
+        :return:  Iterator over Posts of a location's posts
+        """
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            if end_cursor:
+                params = {'__a': 1, 'max_id': end_cursor}
+            else:
+                params = {'__a': 1}
+            location_data = self.context.get_json('explore/locations/{0}/'.format(location),
+                                                  params)['graphql']['location']['edge_location_to_media']
+            yield from (Post(self.context, edge['node']) for edge in location_data['edges'])
+            has_next_page = location_data['page_info']['has_next_page']
+            end_cursor = location_data['page_info']['end_cursor']
+
+    def download_location(self, location: str,
+                          max_count: Optional[int] = None,
+                          post_filter: Optional[Callable[[Post], bool]] = None,
+                          fast_update: bool = False) -> None:
+        """Download pictures of one location.
+
+        To download the last 30 pictures with location 362629379, do::
+
+            loader = Instaloader()
+            loader.download_location(362629379, max_count=30)
+
+        :param location: Location to download, as Instagram numerical ID
+        :param max_count: Maximum count of pictures to download
+        :param post_filter: function(post), which returns True if given picture should be downloaded
+        :param fast_update: If true, abort when first already-downloaded picture is encountered
+        """
+        self.context.log("Retrieving pictures for location {}...".format(location))
+        count = 1
+        for post in self.get_location_posts(location):
+            if max_count is not None and count > max_count:
+                break
+            self.context.log('[{0:3d}] %{1} '.format(count, location), end='', flush=True)
+            if post_filter is not None and not post_filter(post):
+                self.context.log('<skipped>')
+                continue
+            count += 1
+            with self.context.error_catcher('Download location {}'.format(location)):
+                downloaded = self.download_post(post, target='%' + location)
+                if fast_update and not downloaded:
+                    break
+
     @_requires_login
     def get_explore_posts(self) -> Iterator[Post]:
         """Get Posts which are worthy of exploring suggested by Instagram.
