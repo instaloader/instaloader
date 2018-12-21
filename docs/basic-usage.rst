@@ -90,6 +90,8 @@ Instaloader supports the following targets:
    Instagram labels a location with (e.g.
    \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/).
 
+   .. versionadded:: 4.2
+
 - ``:stories``
    The currently-visible **stories** of your followees (requires
    :option:`--login`),

@@ -236,6 +236,8 @@ How to Download
    interruption. If the last picture is corrupted, Instaloader will fix the
    picture the next time it is run.
 
+   .. versionadded:: 4.2
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 

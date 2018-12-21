@@ -96,6 +96,7 @@ class Instaloader:
        txt file.
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
+    :param commit_mode: :option:`--commit-mode`
 
     .. attribute:: context
 
@@ -651,6 +652,8 @@ class Instaloader:
         """Get Posts which are listed by Instagram for a given Location.
 
         :return:  Iterator over Posts of a location's posts
+
+        .. versionadded:: 4.2
         """
         has_next_page = True
         end_cursor = None
@@ -680,6 +683,8 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
+
+        .. versionadded:: 4.2
         """
         self.context.log("Retrieving pictures for location {}...".format(location))
         count = 1
@@ -1010,8 +1015,12 @@ class Instaloader:
                     break
 
     def check_if_committed(self, filename: str) -> bool:
-        """Checks to see if the current post has been committed."""
-        # A post is considered committed if its json metadata file exists and is not malformed.
+        """Checks to see if the current post has been committed.
+
+        A post is considered committed if its json metadata file exists and is not malformed.
+
+        .. versionadded:: 4.2
+        """
         if os.path.isfile(filename + '.json.xz'):
             filename += '.json.xz'
         elif os.path.isfile(filename + '.json'):
