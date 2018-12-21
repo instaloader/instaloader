@@ -350,8 +350,19 @@ class Instaloader:
 
         :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
-        :raises ConnectionException: If connection to Instagram failed."""
+        :raises ConnectionException: If connection to Instagram failed.
+        :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call :meth:`Instaloader.two_factor_login`."""
         self.context.login(user, passwd)
+
+    def two_factor_login(self, two_factor_code) -> None:
+        """Second step of login if 2FA is enabled.
+        Not meant to be used directly, use :meth:`Instaloader.two_factor_login`.
+
+        :raises InvalidArgumentException: No two-factor authentication pending.
+        :raises BadCredentialsException: 2FA verification code invalid.
+
+        .. versionadded:: 4.2"""
+        self.context.two_factor_login(two_factor_code)
 
     def format_filename(self, item: Union[Post, StoryItem], target: Optional[str] = None):
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
@@ -1041,11 +1052,20 @@ class Instaloader:
         :raises ConnectionException: If connection to Instagram failed."""
         if self.context.quiet:
             raise LoginRequiredException("Quiet mode requires given password or valid session file.")
-        password = None
-        while password is None:
-            password = getpass.getpass(prompt="Enter Instagram password for %s: " % username)
-            try:
-                self.login(username, password)
-            except BadCredentialsException as err:
-                print(err, file=sys.stderr)
-                password = None
+        try:
+            password = None
+            while password is None:
+                password = getpass.getpass(prompt="Enter Instagram password for %s: " % username)
+                try:
+                    self.login(username, password)
+                except BadCredentialsException as err:
+                    print(err, file=sys.stderr)
+                    password = None
+        except TwoFactorAuthRequiredException:
+            while True:
+                try:
+                    code = input("Enter 2FA verification code: ")
+                    self.two_factor_login(code)
+                    break
+                except BadCredentialsException:
+                    pass

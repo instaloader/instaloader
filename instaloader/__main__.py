@@ -8,7 +8,8 @@ from argparse import ArgumentParser, SUPPRESS
 from typing import List, Optional
 
 from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
-               StoryItem, __version__, load_structure_from_file)
+               StoryItem, __version__, load_structure_from_file, TwoFactorAuthRequiredException,
+               BadCredentialsException)
 from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
 
@@ -84,7 +85,16 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.log("Session file does not exist yet - Logging in.")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
-                instaloader.login(username, password)
+                try:
+                    instaloader.login(username, password)
+                except TwoFactorAuthRequiredException:
+                    while True:
+                        try:
+                            code = input("Enter 2FA verification code: ")
+                            instaloader.two_factor_login(code)
+                            break
+                        except BadCredentialsException:
+                            pass
             else:
                 instaloader.interactive_login(username)
         instaloader.context.log("Logged in as %s." % username)

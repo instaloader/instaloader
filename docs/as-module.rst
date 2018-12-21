@@ -188,6 +188,10 @@ Exceptions
 
 .. autoexception:: LoginRequiredException
 
+.. autoexception:: TwoFactorAuthRequiredException
+
+   .. versionadded:: 4.2
+
 .. autoexception:: InvalidArgumentException
 
 .. autoexception:: BadResponseException

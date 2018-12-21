@@ -33,6 +33,10 @@ class LoginRequiredException(InstaloaderException):
     pass
 
 
+class TwoFactorAuthRequiredException(InstaloaderException):
+    pass
+
+
 class InvalidArgumentException(InstaloaderException):
     pass
 
