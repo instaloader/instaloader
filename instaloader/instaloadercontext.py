@@ -195,6 +195,8 @@ class InstaloaderContext:
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'password': passwd, 'username': user}, allow_redirects=True)
         if login.status_code != 200:
+            if login.status_code == 400 and login.json().get('two_factor_required', None):
+                raise ConnectionException("Login error: Two factor authorization not yet supported.")
             raise ConnectionException("Login error: {} {}".format(login.status_code, login.reason))
         resp_json = login.json()
         if resp_json['status'] != 'ok':
