@@ -373,10 +373,6 @@ class Profile:
         self._has_public_story = None
         self._node = node
         self._rhx_gis = None
-        self._iphone_struct_ = None
-        if 'iphone_struct' in node:
-            # if loaded from JSON with load_structure_from_file()
-            self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
@@ -427,8 +423,6 @@ class Profile:
         json_node.pop('edge_media_collections', None)
         json_node.pop('edge_owner_to_timeline_media', None)
         json_node.pop('edge_saved_media', None)
-        if self._iphone_struct_:
-            json_node['iphone_struct'] = self._iphone_struct_
         return json_node
 
     def _obtain_metadata(self):
@@ -452,15 +446,6 @@ class Profile:
             for key in keys:
                 d = d[key]
             return d
-
-    @property
-    def _iphone_struct(self) -> Dict[str, Any]:
-        if not self._iphone_struct_:
-            with self._context.anonymous_copy() as anonymous_context:
-                data = anonymous_context.get_json(path='api/v1/users/{}/info/'.format(self.userid),
-                                                  params={}, host='i.instagram.com')
-            self._iphone_struct_ = data['user']
-        return self._iphone_struct_
 
     @property
     def userid(self) -> int:
@@ -581,11 +566,7 @@ class Profile:
         """Return URL of profile picture
 
         .. versionadded:: 4.0.3"""
-        try:
-            return self._iphone_struct['hd_profile_pic_url_info']['url']
-        except (InstaloaderException, KeyError) as err:
-            self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
-            return self._metadata("profile_pic_url_hd")
+        return self._metadata("profile_pic_url_hd")
 
     def get_profile_pic_url(self) -> str:
         """.. deprecated:: 4.0.3
