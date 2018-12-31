@@ -22,8 +22,6 @@ import subprocess
 import sys
 import typing
 
-import sphinx_bootstrap_theme
-
 sys.path.insert(0, os.path.abspath('..'))
 
 import docs.sphinx_autodoc_typehints as sphinx_autodoc_typehints
