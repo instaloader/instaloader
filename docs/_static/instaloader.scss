@@ -1,0 +1,114 @@
+@import 'bootstrap-4.1.3.min.css';
+
+$color_instaloader_main: #008d06;
+$color_instaloader_accent: #f48400;
+$color_instaloader_hyper: #ff7efd;
+$color_normal_text: #212529;
+$color_light_bg: #f8f9fa;
+
+a {
+  color: $color_instaloader_main;
+
+  &:hover {
+    color: $color_instaloader_accent;
+  }
+}
+
+code {
+  color: $color_normal_text;
+}
+
+.highlight {
+  border-radius: 0.3em;
+
+  pre {
+    padding: 0.7em;
+    color: #fff;
+  }
+
+  .c1 {
+    color: $color_instaloader_main
+  }
+
+  .kn {
+    color: $color_instaloader_accent
+  }
+
+  .s1, .s2, .mi {
+    color: $color_instaloader_hyper
+  }
+}
+
+.doc-content {
+  top: 4.0625em;
+  position: relative;
+  height: calc(100vh - 4.0625em);
+  overflow-y: auto;
+}
+
+.doc-sidebar {
+  position: fixed;
+  padding-top: 0.5em;
+  top: 3.5625em;
+  bottom: 0;
+  right: 0;
+  overflow-y: auto;
+
+  ul {
+    padding-left: 1em;
+
+    &.current {
+      list-style-type: none;
+      padding-left: 0;
+    }
+  }
+
+  li {
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+
+    a {
+      color: $color_instaloader_main;
+
+      &.current, &.active {
+        color: $color_instaloader_accent;
+        font-weight: 500;
+      }
+
+      &:hover {
+        color: $color_instaloader_accent;
+        text-decoration: none;
+      }
+    }
+  }
+}
+
+.admonition {
+  border-radius: 0.3em;
+  border: 1px solid #ccc;
+  background-color: $color_light_bg;
+
+  .admonition-title {
+    color: $color_instaloader_hyper;
+  }
+}
+
+.topic {
+  border-radius: 0.3em;
+  background-color: $color_light_bg;
+}
+
+.nav-link {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.btn-success {
+  background-color: $color_instaloader_main;
+  border-color: $color_instaloader_main;
+
+  &:hover {
+    background-color: $color_instaloader_accent;
+    border-color: $color_instaloader_accent;
+  }
+}
