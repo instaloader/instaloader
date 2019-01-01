@@ -1,8 +1,13 @@
 @import url(bootstrap-4.1.3.min.css);
 a {
   color: #008d06; }
-  a:hover {
+  a:hover, a.current, a.active {
     color: #f48400; }
+  a.current, a.active {
+    font-weight: 500; }
+
+.doc-sidebar a:hover, .modal-body a:hover {
+  text-decoration: none; }
 
 code {
   color: #212529; }
@@ -20,9 +25,10 @@ code {
     color: #ff7efd; }
 
 .doc-content {
-  top: 4.0625em;
-  position: relative;
-  height: calc(100vh - 4.0625em);
+  padding-top: 0.5em;
+  top: 3.5625em;
+  position: fixed;
+  bottom: 0;
   overflow-y: auto; }
 
 .doc-sidebar {
@@ -33,21 +39,13 @@ code {
   right: 0;
   overflow-y: auto; }
   .doc-sidebar ul {
+    list-style-type: none;
     padding-left: 1em; }
     .doc-sidebar ul.current {
-      list-style-type: none;
       padding-left: 0; }
   .doc-sidebar li {
     padding-top: 0.2em;
     padding-bottom: 0.2em; }
-    .doc-sidebar li a {
-      color: #008d06; }
-      .doc-sidebar li a.current, .doc-sidebar li a.active {
-        color: #f48400;
-        font-weight: 500; }
-      .doc-sidebar li a:hover {
-        color: #f48400;
-        text-decoration: none; }
 
 .admonition {
   border-radius: 0.3em;

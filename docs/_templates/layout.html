@@ -30,7 +30,7 @@
       Instaloader
     </a>
     <ul class="navbar-nav mr-auto">
-      <li class="nav-item">
+      <li class="nav-item ml-0 ml-sm-2 ml-md-0">
         <a target="_blank" class="nav-link"
            href="https://github.com/instaloader/instaloader/releases/tag/v{{ current_release }}"
            title="Released on {{ current_release_date }}" data-toggle="tooltip">v<b>{{ current_release }}</b></a>
@@ -52,27 +52,40 @@
           <a target="_blank" class="nav-link" href="https://github.com/instaloader/instaloader">GitHub</a>
         </li>
       </ul>
-    </div>
-    <button type="button" class="btn btn-success d-md-none btn-small ml-2" data-toggle="modal" data-target="#navbarToc">
-      TOC
-    </button>
-  </nav>
-  <div class="modal fade" id="navbarToc" tabindex="-1" role="dialog"
-       aria-hidden="true" aria-labelledby="navbarTocTitle">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="navbarTocTitle">Contents</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+      <form class="form-inline" action="search.html" method="get">
+        <div class="input-group my-2 my-sm-0 ml-2">
+          <input class="form-control" type="search" placeholder="Search" aria-label="Search" name="q">
+          <div class="input-group-append">
+            <button class="btn btn-success btn-small" type="submit">Go</button>
+          </div>
         </div>
-        <div class="modal-body">
-          {{ toctree(maxdepth=-1) }}
+      </form>
+    </div>
+    {% if pagename != "index" %}
+      <button type="button" class="btn btn-success d-md-none btn-small ml-2" data-toggle="modal"
+              data-target="#navbarToc">
+        TOC
+      </button>
+    {% endif %}
+  </nav>
+  {% if pagename != "index" %}
+    <div class="modal fade" id="navbarToc" tabindex="-1" role="dialog"
+         aria-hidden="true" aria-labelledby="navbarTocTitle">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="navbarTocTitle">Contents</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            {{ toctree(maxdepth=-1) }}
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  {% endif %}
 {% endblock %}
 
 {% block relbar1 %}{% endblock %}
@@ -89,9 +102,9 @@
         <h3>{{ _('Table of Contents') }}</h3>
         {{ toctree(maxdepth=-1) }}
 
-        <div class="d-flex justify-content-between small mt-auto mb-3">
-          <a class="reference internal" href="genindex.html">Index</a>
-          {% if pagename != "genindex" %}
+        <div class="d-flex justify-content-between small mt-auto mb-2">
+          <a class="reference internal{% if pagename == "genindex" %} current{% endif %}" href="genindex.html">Index</a>
+          {% if pagename != "genindex" and pagename != "search" %}
             <a class="reference external"
                href="https://github.com/instaloader/instaloader/edit/master/docs/{{ pagename }}.rst">Edit this page</a>
           {% endif %}

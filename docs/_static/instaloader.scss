@@ -9,8 +9,18 @@ $color_light_bg: #f8f9fa;
 a {
   color: $color_instaloader_main;
 
-  &:hover {
+  &:hover, &.current, &.active {
     color: $color_instaloader_accent;
+  }
+
+  &.current, &.active {
+    font-weight: 500;
+  }
+}
+
+.doc-sidebar, .modal-body {
+  a:hover {
+    text-decoration: none
   }
 }
 
@@ -40,9 +50,10 @@ code {
 }
 
 .doc-content {
-  top: 4.0625em;
-  position: relative;
-  height: calc(100vh - 4.0625em);
+  padding-top: 0.5em;
+  top: 3.5625em;
+  position: fixed;
+  bottom: 0;
   overflow-y: auto;
 }
 
@@ -55,10 +66,10 @@ code {
   overflow-y: auto;
 
   ul {
+    list-style-type: none;
     padding-left: 1em;
 
     &.current {
-      list-style-type: none;
       padding-left: 0;
     }
   }
@@ -67,19 +78,6 @@ code {
     padding-top: 0.2em;
     padding-bottom: 0.2em;
 
-    a {
-      color: $color_instaloader_main;
-
-      &.current, &.active {
-        color: $color_instaloader_accent;
-        font-weight: 500;
-      }
-
-      &:hover {
-        color: $color_instaloader_accent;
-        text-decoration: none;
-      }
-    }
   }
 }
 
