@@ -11,6 +11,7 @@ import tempfile
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
+from hashlib import md5
 from io import BytesIO
 from typing import Any, Callable, Iterator, List, Optional, Set, Union
 
@@ -289,26 +290,32 @@ class Instaloader:
         """Downloads and saves profile pic."""
 
         def _epoch_to_string(epoch: datetime) -> str:
-            return epoch.strftime('%Y-%m-%d_%H-%M-%S')
+            return epoch.strftime('%Y-%m-%d_%H-%M-%S_UTC')
 
-        profile_pic_url = profile.profile_pic_url
-        with self.context.get_anonymous_session() as anonymous_session:
-            date_object = datetime.strptime(anonymous_session.head(profile_pic_url).headers["Last-Modified"],
-                                            '%a, %d %b %Y %H:%M:%S GMT')
+        profile_pic_response = self.context.get_raw(profile.profile_pic_url)
+        if 'Last-Modified' in profile_pic_response.headers:
+            date_object = datetime.strptime(profile_pic_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
+            profile_pic_bytes = None
+            profile_pic_identifier = _epoch_to_string(date_object)
+        else:
+            date_object = None
+            profile_pic_bytes = profile_pic_response.content
+            profile_pic_identifier = md5(profile_pic_bytes).hexdigest()[:16]
         profile_pic_extension = 'jpg'
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
-            filename = '{0}/{1}_UTC_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
-                                                                                        target=profile.username.lower()),
-                                                            _epoch_to_string(date_object), profile_pic_extension)
+            filename = '{0}/{1}_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
+                                                                                    target=profile.username.lower()),
+                                                        profile_pic_identifier, profile_pic_extension)
         else:
-            filename = '{0}/{1}_{2}_UTC_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
-                                                                _epoch_to_string(date_object), profile_pic_extension)
+            filename = '{0}/{1}_{2}_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
+                                                            profile_pic_identifier, profile_pic_extension)
         if os.path.isfile(filename):
             self.context.log(filename + ' already exists')
             return None
-        self.context.get_and_write_raw(profile_pic_url, filename)
-        os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
+        self.context.write_raw(profile_pic_bytes if profile_pic_bytes else profile_pic_response, filename)
+        if date_object:
+            os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self.context.log('')  # log output of _get_and_write_raw() does not produce \n
 
     @_requires_login

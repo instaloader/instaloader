@@ -10,7 +10,7 @@ import time
 import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Optional, Union
 
 import requests
 import requests.utils
@@ -429,8 +429,17 @@ class InstaloaderContext:
             data = _query()
             yield from (edge['node'] for edge in data['edges'])
 
-    def get_and_write_raw(self, url: str, filename: str, _attempt=1) -> None:
-        """Downloads raw data.
+    def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
+        """Write raw response data into a file."""
+        self.log(filename, end=' ', flush=True)
+        with open(filename, 'wb') as file:
+            if isinstance(resp, requests.Response):
+                shutil.copyfileobj(resp.raw, file)
+            else:
+                file.write(resp)
+
+    def get_raw(self, url: str, _attempt=1) -> requests.Response:
+        """Downloads a file anonymously.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
@@ -439,10 +448,8 @@ class InstaloaderContext:
             with self.get_anonymous_session() as anonymous_session:
                 resp = anonymous_session.get(url, stream=True)
             if resp.status_code == 200:
-                self.log(filename, end=' ', flush=True)
-                with open(filename, 'wb') as file:
-                    resp.raw.decode_content = True
-                    shutil.copyfileobj(resp.raw, file)
+                resp.raw.decode_content = True
+                return resp
             else:
                 if resp.status_code == 403:
                     # suspected invalid URL signature
@@ -458,10 +465,18 @@ class InstaloaderContext:
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
             try:
                 self._sleep()
-                self.get_and_write_raw(url, filename, _attempt + 1)
+                return self.get_raw(url, _attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string) from err
+
+    def get_and_write_raw(self, url: str, filename: str) -> None:
+        """Downloads and writes anonymously-requested raw data into a file.
+
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises QueryReturnedForbiddenException: When the server responds with a 403.
+        :raises ConnectionException: When download repeatedly failed."""
+        self.write_raw(self.get_raw(url), filename)
 
     @property
     def root_rhx_gis(self) -> Optional[str]:
