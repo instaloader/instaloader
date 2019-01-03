@@ -249,18 +249,20 @@ Miscellaneous Options
 
 .. option:: +args.txt
 
-   Read arguments from file `args.txt`, a shortcut to provide argument from
-   file rather than command-line. This provide a convient way to hide login
-   info from CLI. and also can use for simplify managment of long arguments.
+   Read arguments from file `args.txt`, a shortcut to provide arguments from
+   file rather than command-line. This provides a convenient way to hide login
+   info from CLI, and can also be used to simplify managment of long arguments.
 
    .. note::
 
-      text file should separate arg with line break.
+      Text file should separate arguments with line breaks.
 
       args.txt example::
 
-         --login MYUSENAME
-         --password MYPASSWORD
+         --login=MYUSERNAME
+         --password=MYPASSWORD
          --fast-update
+         profile1
+         profile2
 
    .. versionadded:: 4.1
