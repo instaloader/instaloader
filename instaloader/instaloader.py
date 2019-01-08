@@ -255,8 +255,7 @@ class Instaloader:
                 return None
             else:
                 def get_filename(index):
-                    return filename if index == 0 else (filename[:-4] + '_old_' +
-                                                        (str(0) if index < 10 else str()) + str(index) + filename[-4:])
+                    return filename if index == 0 else '{0}_old_{2:02}{1}'.format(*os.path.splitext(filename), index)
 
                 i = 0
                 while os.path.isfile(get_filename(i)):
