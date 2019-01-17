@@ -130,6 +130,9 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
     def test_private_profile_paging(self):
         self.post_paging_test(instaloader.Profile.from_username(self.L.context, PRIVATE_PROFILE).get_posts())
 
+    def test_profile_pic_download(self):
+        self.L.download_profile(PUBLIC_PROFILE, profile_pic_only=True)
+
     def test_feed_download(self):
         self.L.download_feed_posts(NORMAL_MAX_COUNT)
 
