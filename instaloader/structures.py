@@ -373,6 +373,10 @@ class Profile:
         self._has_public_story = None
         self._node = node
         self._rhx_gis = None
+        self._iphone_struct_ = None
+        if 'iphone_struct' in node:
+            # if loaded from JSON with load_structure_from_file()
+            self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
@@ -423,6 +427,8 @@ class Profile:
         json_node.pop('edge_media_collections', None)
         json_node.pop('edge_owner_to_timeline_media', None)
         json_node.pop('edge_saved_media', None)
+        if self._iphone_struct_:
+            json_node['iphone_struct'] = self._iphone_struct_
         return json_node
 
     def _obtain_metadata(self):
@@ -446,6 +452,15 @@ class Profile:
             for key in keys:
                 d = d[key]
             return d
+
+    @property
+    def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access iPhone profile info endpoint.")
+        if not self._iphone_struct_:
+            data = self._context.get_iphone_json(path='api/v1/users/{}/info/'.format(self.userid), params={})
+            self._iphone_struct_ = data['user']
+        return self._iphone_struct_
 
     @property
     def userid(self) -> int:
@@ -563,10 +578,20 @@ class Profile:
 
     @property
     def profile_pic_url(self) -> str:
-        """Return URL of profile picture
+        """Return URL of profile picture. If logged in, the HD version is returned, otherwise a lower-quality version.
 
-        .. versionadded:: 4.0.3"""
-        return self._metadata("profile_pic_url_hd")
+        .. versionadded:: 4.0.3
+
+        .. versionchanged:: 4.2.1
+           Require being logged in for HD version (as required by Instagram)."""
+        if self._context.is_logged_in:
+            try:
+                return self._iphone_struct['hd_profile_pic_url_info']['url']
+            except (InstaloaderException, KeyError) as err:
+                self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
+                return self._metadata("profile_pic_url_hd")
+        else:
+            return self._metadata("profile_pic_url_hd")
 
     def get_profile_pic_url(self) -> str:
         """.. deprecated:: 4.0.3

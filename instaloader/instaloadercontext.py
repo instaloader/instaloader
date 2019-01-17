@@ -429,6 +429,24 @@ class InstaloaderContext:
             data = _query()
             yield from (edge['node'] for edge in data['edges'])
 
+    def get_iphone_json(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """JSON request to ``i.instagram.com``.
+
+        :param path: URL, relative to ``i.instagram.com/``
+        :param params: GET parameters
+        :return: Decoded response dictionary
+        :raises QueryReturnedBadRequestException: When the server responds with a 400.
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises ConnectionException: When query repeatedly failed.
+
+        .. versionadded:: 4.2.1"""
+        tempsession = copy_session(self._session)
+        tempsession.headers['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; ' \
+                                            'scale=2.00; 750x1334) AppleWebKit/420+'
+        for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:
+            tempsession.headers.pop(header, None)
+        return self.get_json(path, params, 'i.instagram.com', tempsession)
+
     def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
         """Write raw response data into a file."""
         self.log(filename, end=' ', flush=True)

@@ -309,7 +309,9 @@ class Instaloader:
         else:
             filename = '{0}/{1}_{2}_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
                                                             profile_pic_identifier, profile_pic_extension)
-        if os.path.isfile(filename):
+        content_length = profile_pic_response.headers.get('Content-Length', None)
+        if os.path.isfile(filename) and (not self.context.is_logged_in or
+                                         content_length is not None and os.path.getsize(filename) >= int(content_length)):
             self.context.log(filename + ' already exists')
             return None
         self.context.write_raw(profile_pic_bytes if profile_pic_bytes else profile_pic_response, filename)
