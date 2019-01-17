@@ -19,7 +19,10 @@ code {
     color: #fff; }
   .highlight .c1 {
     color: #008d06; }
-  .highlight .kn {
+  .highlight .k, .highlight .kn, .highlight .ow {
+    color: #f48400;
+    font-weight: bold; }
+  .highlight .nb {
     color: #f48400; }
   .highlight .s1, .highlight .s2, .highlight .mi {
     color: #ff7efd; }

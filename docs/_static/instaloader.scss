@@ -40,7 +40,12 @@ code {
     color: $color_instaloader_main
   }
 
-  .kn {
+  .k, .kn, .ow {
+    color: $color_instaloader_accent;
+    font-weight: bold
+  }
+
+  .nb {
     color: $color_instaloader_accent
   }
 
