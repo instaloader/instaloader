@@ -448,7 +448,9 @@ class InstaloaderContext:
             return self.get_json(path, params, 'i.instagram.com', tempsession)
 
     def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
-        """Write raw response data into a file."""
+        """Write raw response data into a file.
+
+        .. versionadded:: 4.2.1"""
         self.log(filename, end=' ', flush=True)
         with open(filename, 'wb') as file:
             if isinstance(resp, requests.Response):
@@ -461,7 +463,9 @@ class InstaloaderContext:
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
-        :raises ConnectionException: When download repeatedly failed."""
+        :raises ConnectionException: When download repeatedly failed.
+
+        .. versionadded:: 4.2.1"""
         try:
             with self.get_anonymous_session() as anonymous_session:
                 resp = anonymous_session.get(url, stream=True)
