@@ -60,6 +60,7 @@ Instaloader Documentation
    cli-options
    as-module
    codesnippets
+   troubleshooting
    contributing
 
 Useful Links

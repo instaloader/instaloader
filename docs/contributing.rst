@@ -17,11 +17,13 @@ Reporting Bugs
 If you encounter a bug, do not hesitate to report it in our
 `Issue Tracker <https://github.com/instaloader/instaloader/issues>`__. Since
 Instaloader is actively developed, the majority of bugs is fixed within only
-**3 days** after being reported. When reporting a problem, please keep the
+**4 days** after being reported. When reporting a problem, please keep the
 following in mind:
 
 - Ensure you **use the latest version** of Instaloader. The currently-installed
   version can be found out with ``instaloader --version``.
+
+- Check whether there is a valid solution in our :ref:`troubleshooting` section.
 
 - Briefly **check whether the bug has already been reported**. If you find an
   issue reporting the same bug you encountered, comment there rather than
