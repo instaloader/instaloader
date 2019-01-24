@@ -898,17 +898,17 @@ class Instaloader:
             with error_handler(profile.username):
                 profile_name = profile.username
 
+                # Download profile picture
+                if profile_pic:
+                    with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
+                        self.download_profilepic(profile)
+
                 # Save metadata as JSON if desired.
                 if self.save_metadata:
                     json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name,
                                                                                      target=profile_name),
                                                          profile_name, profile.userid)
                     self.save_metadata_json(json_filename, profile)
-
-                # Download profile picture
-                if profile_pic:
-                    with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
-                        self.download_profilepic(profile)
 
                 # Catch some errors
                 if profile.is_private and (tagged or highlights or posts):
