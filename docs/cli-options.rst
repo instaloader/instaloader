@@ -143,6 +143,10 @@ What to Download of each Profile
 
       If possible, use ``:stories`` target rather than :option:`--stories-only`
       with all your followees. ``:stories`` uses fewer API requests.
+	  
+.. option:: --story-folder
+
+   Save stories to a subdirectory in each profiles folder
 
 Which Posts to Download
 ^^^^^^^^^^^^^^^^^^^^^^^

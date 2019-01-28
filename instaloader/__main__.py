@@ -340,6 +340,8 @@ def main():
                        help='Tries to ensure downloaded images avoid corruption in case of unexpected interruption. '
                        'If the last picture is corrupted, Instaloader will fix the picture the next time it is run. '
                        'Requires the JSON metadata to be saved.')
+    g_how.add_argument('--story-folder', action='store_true',
+                       help='Save stories to a subdirectory in each profiles folder')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -395,7 +397,7 @@ def main():
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              graphql_rate_limit=args.graphql_rate_limit,
                              max_connection_attempts=args.max_connection_attempts,
-                             commit_mode=args.commit_mode)
+                             commit_mode=args.commit_mode, story_folder=args.story_folder)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

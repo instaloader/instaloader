@@ -120,7 +120,8 @@ class Instaloader:
                  storyitem_metadata_txt_pattern: str = None,
                  graphql_rate_limit: Optional[int] = None,
                  max_connection_attempts: int = 3,
-                 commit_mode: bool = False):
+                 commit_mode: bool = False,
+                 story_folder: bool = False):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
 
@@ -141,6 +142,7 @@ class Instaloader:
         self.commit_mode = commit_mode
         if self.commit_mode and not self.save_metadata:
             raise InvalidArgumentException("Commit mode requires JSON metadata to be saved.")
+        self.story_folder = story_folder
 
         # Used to keep state in commit mode
         self._committed = None
@@ -514,7 +516,10 @@ class Instaloader:
 
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
-        filename = dirname + '/' + self.format_filename(item, target=target)
+        filename = dirname + '/'
+        if self.story_folder:
+            filename += 'stories/'
+        filename += self.format_filename(item, target=target)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
