@@ -939,8 +939,22 @@ class Instaloader:
                             self.context.log('<skipped>')
                             continue
                         with self.context.error_catcher("Download {} of {}".format(post, profile_name)):
-                            downloaded = self.download_post(post, target=profile_name)
-                            if fast_update and not downloaded:
+                            # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
+                            # additional metadata. This is most likely the case if a HTTP redirect takes place while
+                            # resolving the shortcode URL.
+                            # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
+                            # obained after a redirect has probably already been downloaded as a previous Post of the
+                            # same Profile.
+                            # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
+                            post_changed = False
+                            while True:
+                                try:
+                                    downloaded = self.download_post(post, target=profile_name)
+                                    break
+                                except PostChangedException:
+                                    post_changed = True
+                                    continue
+                            if fast_update and not downloaded and not post_changed:
                                 break
 
         if stories and profiles:

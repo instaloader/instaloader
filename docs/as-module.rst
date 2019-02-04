@@ -198,6 +198,8 @@ Exceptions
 
 .. autoexception:: BadCredentialsException
 
+.. autoexception:: PostChangedException
+
 .. autoexception:: TooManyRequestsException
 
 ``InstaloaderContext`` (Low-level functions)

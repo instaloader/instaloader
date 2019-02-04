@@ -57,5 +57,10 @@ class ConnectionException(InstaloaderException):
     pass
 
 
+class PostChangedException(InstaloaderException):
+    """.. versionadded:: 4.2.2"""
+    pass
+
+
 class TooManyRequestsException(ConnectionException):
     pass
