@@ -396,28 +396,27 @@ class Profile:
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
         """Create a Profile instance from a given userid. If possible, use :meth:`Profile.from_username`
-        or constructor directly rather than this method, since it does many requests.
+        or constructor directly rather than this method, since it requires more requests.
 
         :param context: :attr:`Instaloader.context`
         :param profile_id: userid
-        :raises: :class:`ProfileNotExistsException`, :class:`ProfileHasNoPicsException`
+        :raises: :class:`ProfileNotExistsException`
         """
         if profile_id in context.profile_id_cache:
             return context.profile_id_cache[profile_id]
-        data = context.graphql_query("472f257a40c653c64c666ce877d59d2b",
-                                     {'id': str(profile_id), 'first': 1},
+        data = context.graphql_query('7c16654f22c819fb63d1183034a5162f',
+                                     {'user_id': str(profile_id),
+                                      'include_chaining': False,
+                                      'include_reel': True,
+                                      'include_suggested_users': False,
+                                      'include_logged_out_extras': False,
+                                      'include_highlight_reels': False},
                                      rhx_gis=context.root_rhx_gis)['data']['user']
         if data:
-            data = data["edge_owner_to_timeline_media"]
+            profile = cls(context, data['reel']['owner'])
         else:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
-        if not data['edges']:
-            if data['count'] == 0:
-                raise ProfileHasNoPicsException("Profile with ID {0}: no pics found.".format(str(profile_id)))
-            else:
-                raise LoginRequiredException("Login required to determine username (ID: " + str(profile_id) + ").")
-        profile = Post(context, data['edges'][0]['node']).owner_profile
         context.profile_id_cache[profile_id] = profile
         return profile
 

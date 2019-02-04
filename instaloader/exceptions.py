@@ -22,6 +22,10 @@ class ProfileNotExistsException(InstaloaderException):
 
 
 class ProfileHasNoPicsException(InstaloaderException):
+    """
+    .. deprecated:: 4.2.2
+       Not raised anymore.
+    """
     pass
 
 

@@ -17,6 +17,9 @@ OWN_USERNAME = "aandergr"
 NORMAL_MAX_COUNT = 2
 PAGING_MAX_COUNT = 15
 PRIVATE_PROFILE = "aandergr"
+PRIVATE_PROFILE_ID = 1706625676
+EMPTY_PROFILE = "not_public"
+EMPTY_PROFILE_ID = 1928659031
 
 # Preserve query timestamps (rate control) between tests to not get rate limited
 instaloadercontext_query_timestamps = list()
@@ -83,9 +86,17 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         self.assertEqual(PUBLIC_PROFILE_ID,
                          instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).userid)
 
-    def test_get_username_by_id(self):
+    def test_get_username_by_id_private(self):
+        self.assertEqual(PRIVATE_PROFILE.lower(),
+                         instaloader.Profile.from_id(self.L.context, PRIVATE_PROFILE_ID).username)
+
+    def test_get_username_by_id_public(self):
         self.assertEqual(PUBLIC_PROFILE.lower(),
                          instaloader.Profile.from_id(self.L.context, PUBLIC_PROFILE_ID).username)
+
+    def test_get_username_by_id_empty(self):
+        self.assertEqual(EMPTY_PROFILE.lower(),
+                         instaloader.Profile.from_id(self.L.context, EMPTY_PROFILE_ID).username)
 
     def test_post_from_mediaid(self):
         for post in instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts():
@@ -168,10 +179,6 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
         for f in profile.get_followers():
             print(f.username)
-
-    def test_get_username_by_id(self):
-        self.assertEqual(PUBLIC_PROFILE.lower(),
-                         instaloader.Profile.from_id(self.L.context, PUBLIC_PROFILE_ID).username)
 
     def test_get_likes(self):
         for post in instaloader.Profile.from_username(self.L.context, OWN_USERNAME).get_posts():
