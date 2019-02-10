@@ -14,7 +14,6 @@ from typing import Any, Callable, Dict, Iterator, Optional, Union
 
 import requests
 import requests.utils
-import urllib3
 
 from .exceptions import *
 
@@ -195,7 +194,7 @@ class InstaloaderContext:
         csrf_token = session.cookies.get_dict()['csrftoken']
         session.headers.update({'X-CSRFToken': csrf_token})
         # Not using self.get_json() here, because we need to access csrftoken cookie
-        self._sleep()
+        self.do_sleep()
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'password': passwd, 'username': user}, allow_redirects=True)
         try:
@@ -261,7 +260,7 @@ class InstaloaderContext:
         self.username = user
         self.two_factor_auth_pending = None
 
-    def _sleep(self):
+    def do_sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
         if self.sleep:
             time.sleep(min(random.expovariate(0.7), 5.0))
@@ -304,7 +303,7 @@ class InstaloaderContext:
                 self.query_timestamps = [time.monotonic()]
         sess = session if session else self._session
         try:
-            self._sleep()
+            self.do_sleep()
             resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
@@ -355,7 +354,7 @@ class InstaloaderContext:
                             self.log('The request will be retried in {} seconds, at {:%H:%M}.'
                                      .format(waittime, datetime.now() + timedelta(seconds=waittime)))
                             time.sleep(waittime)
-                self._sleep()
+                self.do_sleep()
                 return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
@@ -463,34 +462,22 @@ class InstaloaderContext:
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
-        :raises ConnectionException: When download repeatedly failed.
+        :raises ConnectionException: When download failed.
 
         .. versionadded:: 4.2.1"""
-        try:
-            with self.get_anonymous_session() as anonymous_session:
-                resp = anonymous_session.get(url, stream=True)
-            if resp.status_code == 200:
-                resp.raw.decode_content = True
-                return resp
-            else:
-                if resp.status_code == 403:
-                    # suspected invalid URL signature
-                    raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
-                if resp.status_code == 404:
-                    # 404 not worth retrying.
-                    raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
-                raise ConnectionException("HTTP error code {}.".format(resp.status_code))
-        except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
-            error_string = "URL {}: {}".format(url, err)
-            if _attempt == self.max_connection_attempts:
-                raise ConnectionException(error_string) from err
-            self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
-            try:
-                self._sleep()
-                return self.get_raw(url, _attempt + 1)
-            except KeyboardInterrupt:
-                self.error("[skipped by user]", repeat_at_end=False)
-                raise ConnectionException(error_string) from err
+        with self.get_anonymous_session() as anonymous_session:
+            resp = anonymous_session.get(url, stream=True)
+        if resp.status_code == 200:
+            resp.raw.decode_content = True
+            return resp
+        else:
+            if resp.status_code == 403:
+                # suspected invalid URL signature
+                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+            if resp.status_code == 404:
+                # 404 not worth retrying.
+                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
+            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
 
     def get_and_write_raw(self, url: str, filename: str) -> None:
         """Downloads and writes anonymously-requested raw data into a file.

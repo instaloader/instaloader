@@ -15,6 +15,9 @@ from hashlib import md5
 from io import BytesIO
 from typing import Any, Callable, Iterator, List, Optional, Set, Union
 
+import requests
+import urllib3
+
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .structures import Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file, load_structure_from_file
@@ -44,6 +47,37 @@ def _requires_login(func: Callable) -> Callable:
         return func(instaloader, *args, **kwargs)
     # pylint:disable=no-member
     call.__doc__ += ":raises LoginRequiredException: If called without being logged in.\n"
+    return call
+
+
+def _retry_on_connection_error(func: Callable) -> Callable:
+    """Decorator to retry the function max_connection_attemps number of times.
+
+    Herewith-decorated functions need an ``_attempt`` keyword argument.
+
+    This is to decorate functions that do network requests that may fail. Note that
+    :meth:`.get_json`, :meth:`.get_iphone_json`, :meth:`.graphql_query` and :meth:`.graphql_node_list` already have
+    their own logic for retrying, hence functions that only use these for network access must not be decorated with this
+    decorator."""
+    @wraps(func)
+    def call(instaloader, *args, **kwargs):
+        try:
+            return func(instaloader, *args, **kwargs)
+        except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
+            error_string = "{}({}): {}".format(func.__name__, ', '.join([repr(arg) for arg in args]), err)
+            if (kwargs.get('_attempt') or 1) == instaloader.context.max_connection_attempts:
+                raise ConnectionException(error_string) from None
+            instaloader.context.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+            try:
+                if kwargs.get('_attempt'):
+                    kwargs['_attempt'] += 1
+                else:
+                    kwargs['_attempt'] = 2
+                instaloader.context.do_sleep()
+                return call(instaloader, *args, **kwargs)
+            except KeyboardInterrupt:
+                instaloader.context.error("[skipped by user]", repeat_at_end=False)
+                raise ConnectionException(error_string) from None
     return call
 
 
@@ -175,7 +209,9 @@ class Instaloader:
     def __exit__(self, *args):
         self.close()
 
-    def download_pic(self, filename: str, url: str, mtime: datetime, filename_suffix: Optional[str] = None) -> bool:
+    @_retry_on_connection_error
+    def download_pic(self, filename: str, url: str, mtime: datetime,
+                     filename_suffix: Optional[str] = None, _attempt: int = 1) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
@@ -285,7 +321,8 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         self.context.log('geo', end=' ', flush=True)
 
-    def download_profilepic(self, profile: Profile) -> None:
+    @_retry_on_connection_error
+    def download_profilepic(self, profile: Profile, _attempt: int = 1) -> None:
         """Downloads and saves profile pic."""
 
         def _epoch_to_string(epoch: datetime) -> str:
