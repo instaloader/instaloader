@@ -22,7 +22,7 @@ EMPTY_PROFILE = "not_public"
 EMPTY_PROFILE_ID = 1928659031
 
 # Preserve query timestamps (rate control) between tests to not get rate limited
-instaloadercontext_query_timestamps = list()
+instaloadercontext_query_timestamps = dict()
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):
@@ -35,11 +35,11 @@ class TestInstaloaderAnonymously(unittest.TestCase):
                                          download_comments=True,
                                          save_metadata=True)
         self.L.context.raise_all_errors = True
-        self.L.context.query_timestamps = instaloadercontext_query_timestamps
+        self.L.context.query_timestamps = instaloadercontext_query_timestamps.copy()
 
     def tearDown(self):
         global instaloadercontext_query_timestamps
-        instaloadercontext_query_timestamps = self.L.context.query_timestamps
+        instaloadercontext_query_timestamps = self.L.context.query_timestamps.copy()
         self.L.close()
         os.chdir('/')
         print("Removing {}".format(self.dir))

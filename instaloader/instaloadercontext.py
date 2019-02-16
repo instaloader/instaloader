@@ -47,7 +47,7 @@ class InstaloaderContext:
     """
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 graphql_count_per_slidingwindow: Optional[int] = None, max_connection_attempts: int = 3):
+                 max_connection_attempts: int = 3):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self._session = self.get_anonymous_session()
@@ -56,7 +56,6 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self.graphql_count_per_slidingwindow = graphql_count_per_slidingwindow or 200
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
 
@@ -64,7 +63,8 @@ class InstaloaderContext:
         self.error_log = []
 
         # For the adaption of sleep intervals (rate control)
-        self.query_timestamps = list()
+        self._graphql_query_timestamps = dict()
+        self._graphql_earliest_next_request_time = 0
 
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
@@ -265,6 +265,72 @@ class InstaloaderContext:
         if self.sleep:
             time.sleep(min(random.expovariate(0.7), 5.0))
 
+    def _dump_query_timestamps(self, current_time: float):
+        """Output the number of GraphQL queries grouped by their query_hash within the last time."""
+        windows = [10, 11, 15, 20, 30, 60]
+        print("GraphQL requests:", file=sys.stderr)
+        for query_hash, times in self._graphql_query_timestamps.items():
+            print("  {}".format(query_hash), file=sys.stderr)
+            for window in windows:
+                reqs_in_sliding_window = sum(t > current_time - window * 60 for t in times)
+                print("    last {} minutes: {} requests".format(window, reqs_in_sliding_window), file=sys.stderr)
+
+    def _graphql_request_count_per_sliding_window(self, query_hash: str) -> int:
+        """Return how many GraphQL requests can be done within the sliding window."""
+        if self.is_logged_in:
+            max_reqs = {'1cb6ec562846122743b61e492c85999f': 20, '33ba35852cb50da46f5b5e889df7d159': 20}
+        else:
+            max_reqs = {'1cb6ec562846122743b61e492c85999f': 200, '33ba35852cb50da46f5b5e889df7d159': 200}
+        return max_reqs.get(query_hash) or min(max_reqs.values())
+
+    def _graphql_query_waittime(self, query_hash: str, current_time: float, untracked_queries: bool = False) -> int:
+        """Calculate time needed to wait before GraphQL query can be executed."""
+        sliding_window = 660
+        if query_hash not in self._graphql_query_timestamps:
+            self._graphql_query_timestamps[query_hash] = []
+        self._graphql_query_timestamps[query_hash] = list(filter(lambda t: t > current_time - 60 * 60,
+                                                                 self._graphql_query_timestamps[query_hash]))
+        reqs_in_sliding_window = list(filter(lambda t: t > current_time - sliding_window,
+                                             self._graphql_query_timestamps[query_hash]))
+        count_per_sliding_window = self._graphql_request_count_per_sliding_window(query_hash)
+        if len(reqs_in_sliding_window) < count_per_sliding_window and not untracked_queries:
+            return max(0, self._graphql_earliest_next_request_time - current_time)
+        next_request_time = min(reqs_in_sliding_window) + sliding_window + 6
+        if untracked_queries:
+            self._graphql_earliest_next_request_time = next_request_time
+        return round(max(next_request_time, self._graphql_earliest_next_request_time) - current_time)
+
+    def _ratecontrol_graphql_query(self, query_hash: str, untracked_queries: bool = False):
+        """Called before a GraphQL query is made in order to stay within Instagram's rate limits.
+
+        :param query_hash: The query_hash parameter of the query.
+        :param untracked_queries: True, if 429 has been returned to apply 429 logic.
+        """
+        if not untracked_queries:
+            waittime = self._graphql_query_waittime(query_hash, time.monotonic(), untracked_queries)
+            assert waittime >= 0
+            if waittime > 10:
+                self.log('\nToo many queries in the last time. Need to wait {} seconds, until {:%H:%M}.'
+                         .format(waittime, datetime.now() + timedelta(seconds=waittime)))
+            time.sleep(waittime)
+            if query_hash not in self._graphql_query_timestamps:
+                self._graphql_query_timestamps[query_hash] = [time.monotonic()]
+            else:
+                self._graphql_query_timestamps[query_hash].append(time.monotonic())
+        else:
+            text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
+                            "Please do not use Instagram in your browser or run multiple instances of Instaloader "
+                            "in parallel.")
+            print(textwrap.fill(text_for_429), file=sys.stderr)
+            current_time = time.monotonic()
+            waittime = self._graphql_query_waittime(query_hash, current_time, untracked_queries)
+            assert waittime >= 0
+            if waittime > 10:
+                self.log('The request will be retried in {} seconds, at {:%H:%M}.'
+                         .format(waittime, datetime.now() + timedelta(seconds=waittime)))
+            self._dump_query_timestamps(current_time)
+            time.sleep(waittime)
+
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:
         """JSON request to Instagram.
@@ -278,32 +344,12 @@ class InstaloaderContext:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
         """
-        def graphql_query_waittime(untracked_queries: bool = False) -> int:
-            sliding_window = 660
-            if not self.query_timestamps:
-                return sliding_window if untracked_queries else 0
-            current_time = time.monotonic()
-            self.query_timestamps = list(filter(lambda t: t > current_time - sliding_window, self.query_timestamps))
-            if len(self.query_timestamps) < self.graphql_count_per_slidingwindow and not untracked_queries:
-                return 0
-            return round(min(self.query_timestamps) + sliding_window - current_time) + 6
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
-        # some queries are not rate limited if invoked anonymously:
-        query_not_limited = is_graphql_query and not self.is_logged_in \
-                            and params['query_hash'] in ['9ca88e465c3f866a76f7adee3871bdd8']
-        if is_graphql_query and not query_not_limited:
-            waittime = graphql_query_waittime()
-            if waittime > 0:
-                self.log('\nToo many queries in the last time. Need to wait {} seconds, until {:%H:%M}.'
-                         .format(waittime, datetime.now() + timedelta(seconds=waittime)))
-                time.sleep(waittime)
-            if self.query_timestamps is not None:
-                self.query_timestamps.append(time.monotonic())
-            else:
-                self.query_timestamps = [time.monotonic()]
         sess = session if session else self._session
         try:
             self.do_sleep()
+            if is_graphql_query:
+                self._ratecontrol_graphql_query(params['query_hash'])
             resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
@@ -341,20 +387,9 @@ class InstaloaderContext:
             if _attempt == self.max_connection_attempts:
                 raise ConnectionException(error_string) from err
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
-            text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
-                            "Please do not use Instagram in your browser or run multiple instances of Instaloader "
-                            "in parallel.")
             try:
                 if isinstance(err, TooManyRequestsException):
-                    print(textwrap.fill(text_for_429), file=sys.stderr)
-                    if is_graphql_query:
-                        print("Made {} GraphQL requests.".format(len(self.query_timestamps)), file=sys.stderr)
-                        waittime = graphql_query_waittime(untracked_queries=True)
-                        if waittime > 0:
-                            self.log('The request will be retried in {} seconds, at {:%H:%M}.'
-                                     .format(waittime, datetime.now() + timedelta(seconds=waittime)))
-                            time.sleep(waittime)
-                self.do_sleep()
+                    self._ratecontrol_graphql_query(params['query_hash'], untracked_queries=True)
                 return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)

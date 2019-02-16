@@ -152,11 +152,10 @@ class Instaloader:
                  compress_json: bool = True,
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
-                 graphql_rate_limit: Optional[int] = None,
                  max_connection_attempts: int = 3,
                  commit_mode: bool = False):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, graphql_rate_limit, max_connection_attempts)
+        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -190,13 +189,10 @@ class Instaloader:
                                  save_metadata=self.save_metadata, compress_json=self.compress_json,
                                  post_metadata_txt_pattern=self.post_metadata_txt_pattern,
                                  storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
-                                 graphql_rate_limit=self.context.graphql_count_per_slidingwindow,
                                  max_connection_attempts=self.context.max_connection_attempts)
-        new_loader.context.query_timestamps = self.context.query_timestamps
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
-        self.context.query_timestamps = new_loader.context.query_timestamps
         new_loader.close()
 
     def close(self):
