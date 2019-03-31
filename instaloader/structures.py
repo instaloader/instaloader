@@ -4,8 +4,6 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
-from functools import reduce
-from operator import add
 from typing import Any, Dict, Iterator, List, Optional, Union
 
 from . import __version__
@@ -25,6 +23,11 @@ PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when com
 PostCommentAnswer.text.__doc__ = "Comment text."
 PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
 
+PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers'))
+for field in PostCommentAnswer._fields:
+    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__
+PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."
+
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
 PostLocation.id.__doc__ = "ID number of location."
 PostLocation.name.__doc__ = "Location name."
@@ -32,21 +35,6 @@ PostLocation.slug.__doc__ = "URL friendly variant of location name."
 PostLocation.has_public_page.__doc__ = "Whether location has a public page."
 PostLocation.lat.__doc__ = "Latitude (:class:`float`)."
 PostLocation.lng.__doc__ = "Longitude (:class:`float`)."
-
-
-class PostComment(namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers'))):
-    __slots__ = ()
-
-    def __new__(cls, pca: PostCommentAnswer, answers: Iterator[PostCommentAnswer]):
-        return super(cls, PostComment).__new__(cls,
-                                               *(getattr(pca, field) for field in PostCommentAnswer._fields),
-                                               answers)
-
-
-PostComment.__doc__ = PostComment.__bases__[0].__doc__
-for field in PostCommentAnswer._fields:
-    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__
-PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."
 
 
 class Post:
@@ -338,14 +326,14 @@ class Post:
                                                         lambda d: d['data']['comment']['edge_threaded_comments']))
 
         def _postcomment(node):
-            return PostComment(_postcommentanswer(node),
+            return PostComment(*_postcommentanswer(node),
                                answers=_postcommentanswers(node))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
         try:
             comment_edges = self._field('edge_media_to_parent_comment', 'edges')
-            answers_count = reduce(add, [edge['node']['edge_threaded_comments']['count'] for edge in comment_edges], 0)
+            answers_count = sum([edge['node']['edge_threaded_comments']['count'] for edge in comment_edges])
             threaded_comments_available = True
         except KeyError:
             comment_edges = self._field('edge_media_to_comment', 'edges')
