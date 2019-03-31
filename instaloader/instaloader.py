@@ -240,11 +240,33 @@ class Instaloader:
             self.context.log('json', end=' ', flush=True)
 
     def update_comments(self, filename: str, post: Post) -> None:
-        def _postcomment_asdict(comment):
+        def _postcommentanswer_asdict(comment):
             return {'id': comment.id,
                     'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
                     'owner': comment.owner._asdict()}
+
+        def _postcomment_asdict(comment):
+            return {**_postcommentanswer_asdict(comment),
+                    'answers': sorted([_postcommentanswer_asdict(answer) for answer in comment.answers],
+                                      key=lambda t: int(t['id']),
+                                      reverse=True)}
+
+        def get_unique_comments(comments, combine_answers=False):
+            if not comments:
+                return list()
+            comments_list = sorted(sorted(list(comments), key=lambda t: int(t['id'])),
+                                   key=lambda t: int(t['created_at']), reverse=True)
+            unique_comments_list = [comments_list[0]]
+            for x, y in zip(comments_list[:-1], comments_list[1:]):
+                if x['id'] != y['id']:
+                    unique_comments_list.append(y)
+                elif combine_answers:
+                    combined_answers = unique_comments_list[-1].get('answers') or list()
+                    if 'answers' in y:
+                        combined_answers.extend(y['answers'])
+                    unique_comments_list[-1]['answers'] = get_unique_comments(combined_answers)
+            return unique_comments_list
         filename += '_comments.json'
         try:
             with open(filename) as fp:
@@ -253,18 +275,10 @@ class Instaloader:
             comments = list()
         comments.extend(_postcomment_asdict(comment) for comment in post.get_comments())
         if comments:
-            comments_list = sorted(sorted(list(comments), key=lambda t: int(t['id'])),
-                                   key=lambda t: int(t['created_at']), reverse=True)
-            unique_comments_list = [comments_list[0]]
-            #for comment in comments_list:
-            #    if unique_comments_list[-1]['id'] != comment['id']:
-            #        unique_comments_list.append(comment)
-            #file.write(json.dumps(unique_comments_list, indent=4))
-            for x, y in zip(comments_list[:-1], comments_list[1:]):
-                if x['id'] != y['id']:
-                    unique_comments_list.append(y)
+            comments = get_unique_comments(comments, combine_answers=True)
+            answer_ids = set(int(answer['id']) for comment in comments for answer in comment.get('answers'))
             with open(filename, 'w') as file:
-                file.write(json.dumps(unique_comments_list, indent=4))
+                file.write(json.dumps(list(filter(lambda t: int(t['id']) not in answer_ids, comments)), indent=4))
             self.context.log('comments', end=' ', flush=True)
 
     def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:

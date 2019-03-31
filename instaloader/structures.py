@@ -4,6 +4,8 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
+from functools import reduce
+from operator import add
 from typing import Any, Dict, Iterator, List, Optional, Union
 
 from . import __version__
@@ -17,11 +19,11 @@ PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
 PostSidecarNode.video_url.__doc__ = "URL of video or None."
 
-PostComment = namedtuple('PostComment', ['id', 'created_at_utc', 'text', 'owner'])
-PostComment.id.__doc__ = "ID number of comment."
-PostComment.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
-PostComment.text.__doc__ = "Comment text."
-PostComment.owner.__doc__ = "Owner :class:`Profile` of the comment."
+PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner'])
+PostCommentAnswer.id.__doc__ = "ID number of comment."
+PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
+PostCommentAnswer.text.__doc__ = "Comment text."
+PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
 
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
 PostLocation.id.__doc__ = "ID number of location."
@@ -30,6 +32,21 @@ PostLocation.slug.__doc__ = "URL friendly variant of location name."
 PostLocation.has_public_page.__doc__ = "Whether location has a public page."
 PostLocation.lat.__doc__ = "Latitude (:class:`float`)."
 PostLocation.lng.__doc__ = "Longitude (:class:`float`)."
+
+
+class PostComment(namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers'))):
+    __slots__ = ()
+
+    def __new__(cls, pca: PostCommentAnswer, answers: Iterator[PostCommentAnswer]):
+        return super(cls, PostComment).__new__(cls,
+                                               *(getattr(pca, field) for field in PostCommentAnswer._fields),
+                                               answers)
+
+
+PostComment.__doc__ = PostComment.__bases__[0].__doc__
+for field in PostCommentAnswer._fields:
+    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__
+PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."
 
 
 class Post:
@@ -283,34 +300,72 @@ class Post:
 
     @property
     def comments(self) -> int:
-        """Comment count"""
-        return self._field('edge_media_to_comment', 'count')
+        """Comment count including answers"""
+        try:
+            return self._field('edge_media_to_parent_comment', 'count')
+        except KeyError:
+            return self._field('edge_media_to_comment', 'count')
 
     def get_comments(self) -> Iterator[PostComment]:
-        """Iterate over all comments of the post.
+        r"""Iterate over all comments of the post.
 
         Each comment is represented by a PostComment namedtuple with fields text (string), created_at (datetime),
-        id (int) and owner (:class:`Profile`).
+        id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
+        if available.
         """
+        def _postcommentanswer(node):
+            return PostCommentAnswer(id=int(node['id']),
+                                     created_at_utc=datetime.utcfromtimestamp(node['created_at']),
+                                     text=node['text'],
+                                     owner=Profile(self._context, node['owner']))
+
+        def _postcommentanswers(node):
+            if 'edge_threaded_comments' not in node:
+                return
+            answer_count = node['edge_threaded_comments']['count']
+            if answer_count == 0:
+                # Avoid doing additional requests if there are no comment answers
+                return
+            answer_edges = node['edge_threaded_comments']['edges']
+            if answer_count == len(answer_edges):
+                # If the answer's metadata already contains all comments, don't do GraphQL requests to obtain them
+                yield from (_postcommentanswer(comment['node']) for comment in answer_edges)
+                return
+            yield from (_postcommentanswer(answer_node) for answer_node in
+                        self._context.graphql_node_list("51fdd02b67508306ad4484ff574a0b62",
+                                                        {'comment_id': node['id']},
+                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
+                                                        lambda d: d['data']['comment']['edge_threaded_comments']))
+
         def _postcomment(node):
-            return PostComment(id=int(node['id']),
-                               created_at_utc=datetime.utcfromtimestamp(node['created_at']),
-                               text=node['text'],
-                               owner=Profile(self._context, node['owner']))
+            return PostComment(_postcommentanswer(node),
+                               answers=_postcommentanswers(node))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
-        comment_edges = self._field('edge_media_to_comment', 'edges')
-        if self.comments == len(comment_edges):
-            # If the Post's metadata already contains all comments, don't do GraphQL requests to obtain them
+        try:
+            comment_edges = self._field('edge_media_to_parent_comment', 'edges')
+            answers_count = reduce(add, [edge['node']['edge_threaded_comments']['count'] for edge in comment_edges], 0)
+            threaded_comments_available = True
+        except KeyError:
+            comment_edges = self._field('edge_media_to_comment', 'edges')
+            answers_count = 0
+            threaded_comments_available = False
+
+        if self.comments == len(comment_edges) + answers_count:
+            # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
             yield from (_postcomment(comment['node']) for comment in comment_edges)
             return
         yield from (_postcomment(node) for node in
-                    self._context.graphql_node_list("33ba35852cb50da46f5b5e889df7d159",
-                                                    {'shortcode': self.shortcode},
-                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                    lambda d: d['data']['shortcode_media']['edge_media_to_comment'],
-                                                    self._rhx_gis))
+                    self._context.graphql_node_list(
+                        "97b41c52301f77ce508f55e66d17620e" if threaded_comments_available
+                        else "f0986789a5c5d17c2400faebf16efd0d",
+                        {'shortcode': self.shortcode},
+                        'https://www.instagram.com/p/' + self.shortcode + '/',
+                        lambda d:
+                        d['data']['shortcode_media'][
+                            'edge_media_to_parent_comment' if threaded_comments_available else 'edge_media_to_comment'],
+                        self._rhx_gis))
 
     def get_likes(self) -> Iterator['Profile']:
         """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""

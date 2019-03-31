@@ -122,6 +122,11 @@ Additionally, the following trivial structures are defined:
 
 .. autoclass:: PostComment
    :no-show-inheritance:
+   :inherited-members:
+   :exclude-members: count, index
+
+.. autoclass:: PostCommentAnswer
+   :no-show-inheritance:
 
 .. autoclass:: PostLocation
    :no-show-inheritance:
