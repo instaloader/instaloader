@@ -253,6 +253,14 @@ class Post:
         return re.findall(mention_regex, self.caption.lower())
 
     @property
+    def pcaption(self) -> str:
+        """Printable caption, useful as a format specifier for --filename-pattern."""
+        def _elliptify(caption):
+            pcaption = ' '.join([s.replace('/', '∕') for s in caption.splitlines() if s]).strip()
+            return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
+        return _elliptify(self.caption) if self.caption else ''
+
+    @property
     def tagged_users(self) -> List[str]:
         """List of all lowercased users that are tagged in the Post."""
         try:
