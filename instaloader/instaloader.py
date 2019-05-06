@@ -111,6 +111,16 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
             ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
         return ret
 
+    def get_value(self, key, args, kwargs):
+        """Replaces '/' with similar looking Division Slash and on windows newline with space"""
+        ret = super().get_value(key, args, kwargs)
+        if not isinstance(ret, str):
+            return ret
+        ret = ret.replace('/', '\u2215')
+        if platform.system() == 'Windows':
+            ret = ret.replace('\n', ' ')
+        return ret
+
 
 class Instaloader:
     """Instaloader Class.
