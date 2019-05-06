@@ -256,7 +256,7 @@ class Post:
     def pcaption(self) -> str:
         """Printable caption, useful as a format specifier for --filename-pattern."""
         def _elliptify(caption):
-            pcaption = ' '.join([s.replace('/', '∕') for s in caption.splitlines() if s]).strip()
+            pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
             return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
         return _elliptify(self.caption) if self.caption else ''
 
