@@ -6,7 +6,7 @@ __version__ = '4.2.4'
 
 try:
     # pylint:disable=wrong-import-position
-    import win_unicode_console
+    import win_unicode_console  # type: ignore
 except ImportError:
     pass
 else:

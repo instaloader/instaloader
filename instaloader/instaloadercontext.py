@@ -10,7 +10,7 @@ import time
 import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Iterator, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 import requests
 import requests.utils
@@ -22,7 +22,7 @@ def copy_session(session: requests.Session) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
-    new.headers = session.headers.copy()
+    new.headers = session.headers.copy() # type: ignore
     return new
 
 
@@ -60,17 +60,17 @@ class InstaloaderContext:
         self.two_factor_auth_pending = None
 
         # error log, filled with error() and printed at the end of Instaloader.main()
-        self.error_log = []
+        self.error_log = []                      # type: List[str]
 
         # For the adaption of sleep intervals (rate control)
-        self._graphql_query_timestamps = dict()
-        self._graphql_earliest_next_request_time = 0
+        self._graphql_query_timestamps = dict()  # type: Dict[str, List[float]]
+        self._graphql_earliest_next_request_time = 0.0
 
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
 
         # Cache profile from id (mapping from id to Profile)
-        self.profile_id_cache = dict()
+        self.profile_id_cache = dict()           # type: Dict[int, Any]
 
     @contextmanager
     def anonymous_copy(self):
@@ -283,7 +283,7 @@ class InstaloaderContext:
             max_reqs = {'1cb6ec562846122743b61e492c85999f': 200, '33ba35852cb50da46f5b5e889df7d159': 200}
         return max_reqs.get(query_hash) or min(max_reqs.values())
 
-    def _graphql_query_waittime(self, query_hash: str, current_time: float, untracked_queries: bool = False) -> int:
+    def _graphql_query_waittime(self, query_hash: str, current_time: float, untracked_queries: bool = False) -> float:
         """Calculate time needed to wait before GraphQL query can be executed."""
         sliding_window = 660
         if query_hash not in self._graphql_query_timestamps:

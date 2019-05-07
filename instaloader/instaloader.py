@@ -13,10 +13,10 @@ from datetime import datetime, timezone
 from functools import wraps
 from hashlib import md5
 from io import BytesIO
-from typing import Any, Callable, Iterator, List, Optional, Set, Union
+from typing import Any, Callable, ContextManager, Iterator, List, Optional, Set, Union, cast
 
 import requests
-import urllib3
+import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -45,8 +45,8 @@ def _requires_login(func: Callable) -> Callable:
         if not instaloader.context.is_logged_in:
             raise LoginRequiredException("--login=USERNAME required.")
         return func(instaloader, *args, **kwargs)
-    # pylint:disable=no-member
-    call.__doc__ += ":raises LoginRequiredException: If called without being logged in.\n"
+    docstring_text = ":raises LoginRequiredException: If called without being logged in.\n"
+    call.__doc__ = call.__doc__ + docstring_text if call.__doc__ is not None else docstring_text
     return call
 
 
@@ -186,7 +186,7 @@ class Instaloader:
             raise InvalidArgumentException("Commit mode requires JSON metadata to be saved.")
 
         # Used to keep state in commit mode
-        self._committed = None
+        self._committed = None  # type: Optional[bool]
 
     @contextmanager
     def anonymous_copy(self):
@@ -299,11 +299,11 @@ class Instaloader:
         filename += '.txt'
         caption += '\n'
         pcaption = _elliptify(caption)
-        caption = caption.encode("UTF-8")
+        bcaption = caption.encode("UTF-8")
         with suppress(FileNotFoundError):
             with open(filename, 'rb') as file:
                 file_caption = file.read()
-            if file_caption.replace(b'\r\n', b'\n') == caption.replace(b'\r\n', b'\n'):
+            if file_caption.replace(b'\r\n', b'\n') == bcaption.replace(b'\r\n', b'\n'):
                 try:
                     self.context.log(pcaption + ' unchanged', end=' ', flush=True)
                 except UnicodeEncodeError:
@@ -327,7 +327,7 @@ class Instaloader:
         except UnicodeEncodeError:
             self.context.log('txt', end=' ', flush=True)
         with open(filename, 'wb') as text_file:
-            shutil.copyfileobj(BytesIO(caption), text_file)
+            shutil.copyfileobj(BytesIO(bcaption), text_file)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
     def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
@@ -349,12 +349,12 @@ class Instaloader:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S_UTC')
 
         profile_pic_response = self.context.get_raw(profile.profile_pic_url)
+        date_object = None  # type: Optional[datetime]
         if 'Last-Modified' in profile_pic_response.headers:
             date_object = datetime.strptime(profile_pic_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
             profile_pic_bytes = None
             profile_pic_identifier = _epoch_to_string(date_object)
         else:
-            date_object = None
             profile_pic_bytes = profile_pic_response.content
             profile_pic_identifier = md5(profile_pic_bytes).hexdigest()[:16]
         profile_pic_extension = 'jpg'
@@ -383,6 +383,7 @@ class Instaloader:
         :param filename: Filename, or None to use default filename.
         """
         if filename is None:
+            assert self.context.username is not None
             filename = get_default_session_filename(self.context.username)
         dirname = os.path.dirname(filename)
         if dirname != '' and not os.path.exists(dirname):
@@ -513,6 +514,7 @@ class Instaloader:
             userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
 
         def _userid_chunks():
+            assert userids is not None
             userids_per_query = 100
             for i in range(0, len(userids), userids_per_query):
                 yield userids[i:i + userids_per_query]
@@ -711,6 +713,7 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         count = 1
+        assert self.context.username is not None
         for post in Profile.from_username(self.context, self.context.username).get_saved_posts():
             if max_count is not None and count > max_count:
                 break
@@ -946,10 +949,12 @@ class Instaloader:
 
         .. versionadded:: 4.1"""
 
+        @contextmanager
         def _error_raiser(_str):
             yield
 
-        error_handler = _error_raiser if raise_errors else self.context.error_catcher
+        error_handler = cast(Callable[[Optional[str]], ContextManager[None]],
+                             _error_raiser if raise_errors else self.context.error_catcher)
 
         for profile in profiles:
             with error_handler(profile.username):
