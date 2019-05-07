@@ -11,6 +11,8 @@ script:
  - python3 -m pylint instaloader
  - python3 -m mypy -m instaloader
  - make -C docs html SPHINXOPTS="-W -n"
+addons:
+  ssh_known_hosts: aur.archlinux.org
 deploy:
   - provider: pypi
     user: aandergr
@@ -27,4 +29,9 @@ deploy:
     target-branch: master
     on:
       branch: master
+      python: 3.6
+  - provider: script
+    script: deploy/arch/deploy.sh $TRAVIS_TAG
+    on:
+      tags: true
       python: 3.6
