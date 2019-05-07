@@ -15,6 +15,10 @@ Instaloader
 **Instaloader** is a tool to download pictures (or videos) along with
 their captions and other metadata from Instagram.
 
+.. include:: ../README.rst
+   :start-after: badges-start
+   :end-before: badges-end
+
 With `Python <https://www.python.org/>`__ installed, do::
 
     $ pip3 install instaloader
