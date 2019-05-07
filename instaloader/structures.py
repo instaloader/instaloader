@@ -285,6 +285,20 @@ class Post:
         return None
 
     @property
+    def video_view_count(self) -> Optional[int]:
+        """View count of the video, or None."""
+        if self.is_video:
+            return self._field('video_view_count')
+        return None
+
+    @property
+    def video_duration(self) -> Optional[float]:
+        """Duration of the video in seconds, or None."""
+        if self.is_video:
+            return self._field('video_duration')
+        return None
+
+    @property
     def viewer_has_liked(self) -> Optional[bool]:
         """Whether the viewer has liked the post, or None if not logged in."""
         if not self._context.is_logged_in:
