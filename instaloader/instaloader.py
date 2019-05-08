@@ -21,7 +21,8 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, save_structure_to_file, load_structure_from_file
+from .structures import (Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
+                         save_structure_to_file, load_structure_from_file)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -369,7 +370,8 @@ class Instaloader:
                                                             profile_pic_identifier, profile_pic_extension)
         content_length = profile_pic_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
-                                         content_length is not None and os.path.getsize(filename) >= int(content_length)):
+                                         (content_length is not None and
+                                          os.path.getsize(filename) >= int(content_length))):
             self.context.log(filename + ' already exists')
             return None
         self.context.write_raw(profile_pic_bytes if profile_pic_bytes else profile_pic_response, filename)
@@ -418,7 +420,8 @@ class Instaloader:
         :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
         :raises ConnectionException: If connection to Instagram failed.
-        :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call :meth:`Instaloader.two_factor_login`."""
+        :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
+           :meth:`Instaloader.two_factor_login`."""
         self.context.login(user, passwd)
 
     def two_factor_login(self, two_factor_code) -> None:
@@ -641,7 +644,8 @@ class Instaloader:
                     continue
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
-                with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title, name)):
+                with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title,
+                                                                                                 name)):
                     downloaded = self.download_storyitem(item, filename_target
                                                          if filename_target
                                                          else Path(name) / Path(user_highlight.title))

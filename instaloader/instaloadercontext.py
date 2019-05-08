@@ -181,7 +181,8 @@ class InstaloaderContext:
         :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
         :raises ConnectionException: If connection to Instagram failed.
-        :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call :meth:`Instaloader.two_factor_login`."""
+        :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
+           :meth:`Instaloader.two_factor_login`."""
         import http.client
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200

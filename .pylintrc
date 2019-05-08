@@ -62,9 +62,7 @@ confidence=
 # --disable=W".
 disable=invalid-name,
         missing-docstring,
-        line-too-long,
         too-many-lines,
-        bad-whitespace,
         print-statement,
         parameter-unpacking,
         unpacking-in-except,
@@ -83,7 +81,6 @@ disable=invalid-name,
         useless-suppression,
         deprecated-pragma,
         use-symbolic-message-instead,
-        cyclic-import,
         too-many-instance-attributes,
         too-many-public-methods,
         too-many-branches,
@@ -91,7 +88,6 @@ disable=invalid-name,
         too-many-locals,
         too-many-statements,
         no-else-return,
-        inconsistent-return-statements,
         no-else-raise,
         unnecessary-pass,
         wildcard-import,
@@ -362,7 +358,7 @@ indent-after-paren=4
 indent-string='    '
 
 # Maximum number of characters on a single line.
-max-line-length=100
+max-line-length=120
 
 # Maximum number of lines in a module.
 max-module-lines=1000
