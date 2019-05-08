@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from hashlib import md5
 from io import BytesIO
+from pathlib import Path
 from typing import Any, Callable, ContextManager, Iterator, List, Optional, Set, Union, cast
 
 import requests
@@ -430,13 +431,13 @@ class Instaloader:
         .. versionadded:: 4.2"""
         self.context.two_factor_login(two_factor_code)
 
-    def format_filename(self, item: Union[Post, StoryItem], target: Optional[str] = None):
+    def format_filename(self, item: Union[Post, StoryItem], target: Optional[Union[str, Path]] = None):
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item).format(self.filename_pattern, target=target)
 
-    def download_post(self, post: Post, target: str) -> bool:
+    def download_post(self, post: Post, target: Union[str, Path]) -> bool:
         """
         Download everything associated with one instagram post node, i.e. picture, caption and video.
 
@@ -563,7 +564,7 @@ class Instaloader:
                     if fast_update and not downloaded:
                         break
 
-    def download_storyitem(self, item: StoryItem, target: str) -> bool:
+    def download_storyitem(self, item: StoryItem, target: Union[str, Path]) -> bool:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
@@ -643,7 +644,7 @@ class Instaloader:
                 with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title, name)):
                     downloaded = self.download_storyitem(item, filename_target
                                                          if filename_target
-                                                         else '{}/{}'.format(name, user_highlight.title))
+                                                         else Path(name) / Path(user_highlight.title))
                     if fast_update and not downloaded:
                         break
 
@@ -846,8 +847,6 @@ class Instaloader:
         """Download all posts where a profile is tagged.
 
         .. versionadded:: 4.1"""
-        if target is None:
-            target = profile.username + '/:tagged'
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
         count = 1
         for post in profile.get_tagged_posts():
@@ -856,7 +855,7 @@ class Instaloader:
             if post_filter is not None and not post_filter(post):
                 self.context.log('<{} skipped>'.format(post))
             with self.context.error_catcher('Download tagged {}'.format(profile.username)):
-                downloaded = self.download_post(post, target)
+                downloaded = self.download_post(post, target if target else Path(profile.username) / Path(':tagged'))
                 if fast_update and not downloaded:
                     break
 
