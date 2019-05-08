@@ -257,7 +257,9 @@ class Post:
 
     @property
     def pcaption(self) -> str:
-        """Printable caption, useful as a format specifier for --filename-pattern."""
+        """Printable caption, useful as a format specifier for --filename-pattern.
+
+        .. versionadded:: 4.2.6"""
         def _elliptify(caption):
             pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
             return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
@@ -286,14 +288,18 @@ class Post:
 
     @property
     def video_view_count(self) -> Optional[int]:
-        """View count of the video, or None."""
+        """View count of the video, or None.
+
+        .. versionadded:: 4.2.6"""
         if self.is_video:
             return self._field('video_view_count')
         return None
 
     @property
     def video_duration(self) -> Optional[float]:
-        """Duration of the video in seconds, or None."""
+        """Duration of the video in seconds, or None.
+
+        .. versionadded:: 4.2.6"""
         if self.is_video:
             return self._field('video_duration')
         return None
