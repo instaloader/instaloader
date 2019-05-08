@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+VERSION=${1:1}
+
+# do not deploy pre-releases
+echo $VERSION | grep -qe "[abc]" && exit 0
+
 cd $(dirname $0)
 
 # decrypt and add ssh key
@@ -12,7 +17,6 @@ ssh-add /tmp/AUR_openssh
 git clone --depth 1 ssh://aur@aur.archlinux.org/instaloader.git
 
 curl -sSfOJ https://codeload.github.com/instaloader/instaloader/tar.gz/$1
-VERSION=${1:1}
 HASH=$(sha512sum instaloader-$VERSION.tar.gz | cut -f1 -d " ")
 sed -e "s/{{version}}/$VERSION/g" -e "s/{{hash}}/$HASH/g" PKGBUILD.template > instaloader/PKGBUILD
 sed -e "s/{{version}}/$VERSION/g" -e "s/{{hash}}/$HASH/g" .SRCINFO.template > instaloader/.SRCINFO
