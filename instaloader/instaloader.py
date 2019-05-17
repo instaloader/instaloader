@@ -796,7 +796,7 @@ class Instaloader:
                     for node in self.context.graphql_node_list("df0dcc250c2b18d9fd27c5581ef33c7c",
                                                                {}, 'https://www.instagram.com/explore/',
                                                                lambda d: d['data']['user']['edge_web_discover_media'],
-                                                               data['rhx_gis']))
+                                                               data.get('rhx_gis')))
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag."""

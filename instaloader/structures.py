@@ -132,7 +132,7 @@ class Post:
         if not self._full_metadata_dict:
             pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
             self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
-            self._rhx_gis_str = pic_json['rhx_gis']
+            self._rhx_gis_str = pic_json.get('rhx_gis')
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
                 raise PostChangedException
@@ -144,9 +144,8 @@ class Post:
         return self._full_metadata_dict
 
     @property
-    def _rhx_gis(self) -> str:
+    def _rhx_gis(self) -> Optional[str]:
         self._obtain_metadata()
-        assert self._rhx_gis_str is not None
         return self._rhx_gis_str
 
     def _field(self, *keys) -> Any:
@@ -454,6 +453,7 @@ class Profile:
         self._context = context
         self._has_public_story = None  # type: Optional[bool]
         self._node = node
+        self._has_full_metadata = False
         self._rhx_gis = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
@@ -514,10 +514,11 @@ class Profile:
 
     def _obtain_metadata(self):
         try:
-            if not self._rhx_gis:
+            if not self._has_full_metadata:
                 metadata = self._context.get_json('{}/'.format(self.username), params={})
                 self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
-                self._rhx_gis = metadata['rhx_gis']
+                self._has_full_metadata = True
+                self._rhx_gis = metadata.get('rhx_gis')
         except (QueryReturnedNotFoundException, KeyError) as err:
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
 
