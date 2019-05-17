@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import unittest
 from itertools import islice
+from typing import Dict, List
 
 import instaloader
 
@@ -22,7 +23,7 @@ EMPTY_PROFILE = "not_public"
 EMPTY_PROFILE_ID = 1928659031
 
 # Preserve query timestamps (rate control) between tests to not get rate limited
-instaloadercontext_query_timestamps = dict()
+instaloadercontext_query_timestamps = dict()  # type: Dict[str, List[float]]
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):
@@ -35,11 +36,13 @@ class TestInstaloaderAnonymously(unittest.TestCase):
                                          download_comments=True,
                                          save_metadata=True)
         self.L.context.raise_all_errors = True
-        self.L.context.query_timestamps = instaloadercontext_query_timestamps.copy()
+        # pylint:disable=protected-access
+        self.L.context._graphql_query_timestamps = instaloadercontext_query_timestamps.copy()
 
     def tearDown(self):
+        # pylint:disable=global-statement,protected-access
         global instaloadercontext_query_timestamps
-        instaloadercontext_query_timestamps = self.L.context.query_timestamps.copy()
+        instaloadercontext_query_timestamps = self.L.context._graphql_query_timestamps.copy()
         self.L.close()
         os.chdir('/')
         print("Removing {}".format(self.dir))
@@ -53,16 +56,17 @@ class TestInstaloaderAnonymously(unittest.TestCase):
                 self.assertTrue(post.date_utc < previous_post.date_utc)
             previous_post = post
 
-    @unittest.SkipTest
+    @unittest.skip('')
     def test_public_profile_download(self):
-        self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
-        self.L.download_profile(PUBLIC_PROFILE, profile_pic=False, fast_update=True)
+        profiles = {self.L.check_profile_id(PUBLIC_PROFILE)}
+        self.L.download_profiles(profiles, profile_pic=False, fast_update=True, raise_errors=True)
+        self.L.download_profiles(profiles, profile_pic=False, fast_update=True, raise_errors=True)
 
     def test_public_profile_paging(self):
         self.post_paging_test(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts())
 
     def test_profile_pic_download(self):
-        self.L.download_profile(PUBLIC_PROFILE, profile_pic_only=True)
+        self.L.download_profiles({self.L.check_profile_id(PUBLIC_PROFILE)}, posts=False, raise_errors=True)
 
     def test_hashtag_download(self):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
@@ -116,13 +120,13 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
         super().setUp()
         self.L.load_session_from_file(OWN_USERNAME)
 
-    @unittest.SkipTest
+    @unittest.skip('')
     def test_stories_download(self):
         self.L.download_stories()
 
-    @unittest.SkipTest
+    @unittest.skip('')
     def test_private_profile_download(self):
-        self.L.download_profile(PRIVATE_PROFILE, download_stories=True)
+        self.L.download_profiles({self.L.check_profile_id(PRIVATE_PROFILE)}, stories=True, raise_errors=True)
 
     def test_stories_paging(self):
         for user_story in self.L.get_stories():
@@ -140,9 +144,6 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_private_profile_paging(self):
         self.post_paging_test(instaloader.Profile.from_username(self.L.context, PRIVATE_PROFILE).get_posts())
-
-    def test_profile_pic_download(self):
-        self.L.download_profile(PUBLIC_PROFILE, profile_pic_only=True)
 
     def test_feed_download(self):
         self.L.download_feed_posts(NORMAL_MAX_COUNT)
@@ -167,8 +168,8 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_followees_and_stories(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
-        for f in islice(profile.get_followees(), PAGING_MAX_COUNT):
-            self.L.download_profile(f.username, profile_pic=False, download_stories_only=True)
+        followees = set(islice(profile.get_followees(), PAGING_MAX_COUNT))
+        self.L.download_profiles(followees, profile_pic=False, stories=True, posts=False, raise_errors=True)
 
     def test_get_followees(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
