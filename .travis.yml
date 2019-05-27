@@ -6,11 +6,10 @@ python:
  - "3.7"
  - "3.8-dev"
 install:
- - pip install pylint~=2.3.1 requests mypy
- - pip install -r docs/requirements.txt
+ - pipenv sync --dev
 script:
- - python3 -m pylint instaloader
- - python3 -m mypy -m instaloader
+ - pylint instaloader
+ - mypy -m instaloader
  - make -C docs html SPHINXOPTS="-W -n"
 addons:
   ssh_known_hosts: aur.archlinux.org
