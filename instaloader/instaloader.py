@@ -246,6 +246,7 @@ class Instaloader:
             filename += '.json.xz'
         else:
             filename += '.json'
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         save_structure_to_file(structure, filename)
         if isinstance(structure, (Post, StoryItem)):
             # log 'json ' message when saving Post or StoryItem
@@ -374,6 +375,7 @@ class Instaloader:
                                           os.path.getsize(filename) >= int(content_length))):
             self.context.log(filename + ' already exists')
             return None
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         self.context.write_raw(profile_pic_bytes if profile_pic_bytes else profile_pic_response, filename)
         if date_object:
             os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
