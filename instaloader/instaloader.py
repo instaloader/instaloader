@@ -934,6 +934,7 @@ class Instaloader:
                           profile_pic: bool = True, posts: bool = True,
                           tagged: bool = False, highlights: bool = False, stories: bool = False,
                           fast_update: bool = False,
+                          max_count: Optional[int] = None,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
                           raise_errors: bool = False):
@@ -999,6 +1000,7 @@ class Instaloader:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
                     totalcount = profile.mediacount
                     count = 1
+                    downloaded_count = 0
                     for post in profile.get_posts():
                         self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                         count += 1
@@ -1021,7 +1023,9 @@ class Instaloader:
                                 except PostChangedException:
                                     post_changed = True
                                     continue
-                            if fast_update and not downloaded and not post_changed:
+                            if downloaded:
+                                downloaded_count += 1
+                            if fast_update and not downloaded and not post_changed or downloaded_count >= max_count:
                                 break
 
         if stories and profiles:

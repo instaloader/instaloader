@@ -183,14 +183,14 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.error("Warning: Use --login to download HD version of profile pictures.")
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_highlights,
-                                      download_stories, fast_update, post_filter, storyitem_filter)
+                                      download_stories, fast_update, max_count, post_filter, storyitem_filter)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
             with instaloader.anonymous_copy() as anonymous_loader:
                 anonymous_loader.download_profiles(anonymous_retry_profiles,
                                                    download_profile_pic, download_posts, download_tagged,
-                                                   fast_update=fast_update, post_filter=post_filter)
+                                                   fast_update=fast_update, max_count=max_count, post_filter=post_filter)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     # Save session if it is useful
@@ -301,7 +301,7 @@ def main():
 
     g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
-                             'Applies only to #hashtag and :feed.')
+                             'Applies only to #hashtag, %location id, :feed and profile(s).')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
