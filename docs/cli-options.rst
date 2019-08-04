@@ -171,7 +171,7 @@ Which Posts to Download
 .. option:: --count COUNT, -c
 
    Do not attempt to download more than COUNT posts.  Applies only to
-   ``#hashtag``, ``%location id``, and ``:feed``.
+   ``#hashtag``, ``%location id``, ``:feed`` and ``profile(s)``.
 
 
 Login (Download Private Profiles)
