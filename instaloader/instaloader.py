@@ -1025,7 +1025,7 @@ class Instaloader:
                                     continue
                             if downloaded:
                                 downloaded_count += 1
-                            if fast_update and not downloaded and not post_changed or downloaded_count >= max_count:
+                            if fast_update and not downloaded and not post_changed or max_count and downloaded_count >= max_count:
                                 break
 
         if stories and profiles:
