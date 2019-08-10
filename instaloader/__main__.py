@@ -98,6 +98,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             else:
                 instaloader.interactive_login(username)
         instaloader.context.log("Logged in as %s." % username)
+    # since 4.2.9 login is required for geotags
+    if instaloader.download_geotags and not instaloader.context.is_logged_in:
+        instaloader.context.error("Warning: Use --login to download geotags of posts.")
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
     anonymous_retry_profiles = set()
@@ -223,7 +226,8 @@ def main():
                            help="Download all followees of profile. Requires --login. "
                                 "Consider using :feed rather than @yourself.")
     g_targets.add_argument('_hashtag', nargs='*', metavar='"#hashtag"', help="Download #hashtag.")
-    g_targets.add_argument('_location', nargs='*', metavar='%location_id', help="Download %%location_id.")
+    g_targets.add_argument('_location', nargs='*', metavar='%location_id',
+                           help="Download %%location_id. Requires --login.")
     g_targets.add_argument('_feed', nargs='*', metavar=":feed",
                            help="Download pictures from your feed. Requires --login.")
     g_targets.add_argument('_stories', nargs='*', metavar=":stories",
@@ -258,7 +262,7 @@ def main():
                         help='Download geotags when available. Geotags are stored as a '
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
-                             'server for each picture, which is why it is disabled by default.')
+                             'server for each picture. Requires --login.')
     g_post.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '

@@ -89,6 +89,7 @@ Instaloader supports the following targets:
    Posts tagged with a given location; the location ID is the numerical ID
    Instagram labels a location with (e.g.
    \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/).
+   Requires :option:`--login`.
 
    .. versionadded:: 4.2
 
@@ -122,7 +123,7 @@ downloads the pictures and videos and their captions. You can specify
 
 - :option:`--geotags`
    **download geotags** of each post and save them as
-   Google Maps link,
+   Google Maps link (requires :option:`--login`),
 
 For a reference of all supported command line options, see
 :ref:`command-line-options`.

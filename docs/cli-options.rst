@@ -61,8 +61,7 @@ What to Download of each Post
 
    **Download geotags** when available. Geotags are stored as a text file with
    the location's name and a Google Maps link. This requires an additional
-   request to the Instagram server for each picture, which is why it is disabled
-   by default.
+   request to the Instagram server for each picture. Requires :option:`--login`.
 
 .. option:: --comments, -C
 

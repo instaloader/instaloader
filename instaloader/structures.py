@@ -408,10 +408,17 @@ class Post:
 
     @property
     def location(self) -> Optional[PostLocation]:
-        """If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'."""
+        """
+        If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'.
+
+        .. versionchanged:: 4.2.9
+           Require being logged in (as required by Instagram), return None if not logged-in.
+        """
         loc = self._field("location")
         if self._location or not loc:
             return self._location
+        if not self._context.is_logged_in:
+            return None
         location_id = int(loc['id'])
         if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
             loc = self._context.get_json("explore/locations/{0}/".format(location_id),

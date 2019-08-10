@@ -47,8 +47,6 @@ def _requires_login(func: Callable) -> Callable:
         if not instaloader.context.is_logged_in:
             raise LoginRequiredException("--login=USERNAME required.")
         return func(instaloader, *args, **kwargs)
-    docstring_text = ":raises LoginRequiredException: If called without being logged in.\n"
-    call.__doc__ = call.__doc__ + docstring_text if call.__doc__ is not None else docstring_text
     return call
 
 
@@ -386,6 +384,7 @@ class Instaloader:
         """Saves internally stored :class:`requests.Session` object.
 
         :param filename: Filename, or None to use default filename.
+        :raises LoginRequiredException: If called without being logged in.
         """
         if filename is None:
             assert self.context.username is not None
@@ -510,6 +509,7 @@ class Instaloader:
         To use this, one needs to be logged in
 
         :param userids: List of user IDs to be processed in terms of downloading their stories, or None.
+        :raises LoginRequiredException: If called without being logged in.
         """
 
         if not userids:
@@ -546,6 +546,7 @@ class Instaloader:
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
                or None if profile name should be used instead
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
+        :raises LoginRequiredException: If called without being logged in.
         """
 
         if not userids:
@@ -605,6 +606,7 @@ class Instaloader:
         .. versionadded:: 4.1
 
         :param user: ID or Profile of the user whose highlights should get fetched.
+        :raises LoginRequiredException: If called without being logged in.
         """
 
         userid = user if isinstance(user, int) else user.userid
@@ -634,6 +636,7 @@ class Instaloader:
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
                or None if profile name and the highlights' titles should be used instead
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
+        :raises LoginRequiredException: If called without being logged in.
         """
         for user_highlight in self.get_highlights(user):
             name = user_highlight.owner_username
@@ -659,6 +662,7 @@ class Instaloader:
         """Get Posts of the user's feed.
 
         :return: Iterator over Posts of the user's feed.
+        :raises LoginRequiredException: If called without being logged in.
         """
 
         data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
@@ -692,6 +696,7 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param post_filter: function(post), which returns True if given picture should be downloaded
+        :raises LoginRequiredException: If called without being logged in.
         """
         self.context.log("Retrieving pictures from your feed...")
         count = 1
@@ -717,6 +722,7 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param post_filter: function(post), which returns True if given picture should be downloaded
+        :raises LoginRequiredException: If called without being logged in.
         """
         self.context.log("Retrieving saved posts...")
         count = 1
@@ -734,12 +740,17 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    @_requires_login
     def get_location_posts(self, location: str) -> Iterator[Post]:
         """Get Posts which are listed by Instagram for a given Location.
 
         :return:  Iterator over Posts of a location's posts
+        :raises LoginRequiredException: If called without being logged in.
 
         .. versionadded:: 4.2
+
+        .. versionchanged:: 4.2.9
+           Require being logged in (as required by Instagram)
         """
         has_next_page = True
         end_cursor = None
@@ -754,6 +765,7 @@ class Instaloader:
             has_next_page = location_data['page_info']['has_next_page']
             end_cursor = location_data['page_info']['end_cursor']
 
+    @_requires_login
     def download_location(self, location: str,
                           max_count: Optional[int] = None,
                           post_filter: Optional[Callable[[Post], bool]] = None,
@@ -769,8 +781,12 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :raises LoginRequiredException: If called without being logged in.
 
         .. versionadded:: 4.2
+
+        .. versionchanged:: 4.2.9
+           Require being logged in (as required by Instagram)
         """
         self.context.log("Retrieving pictures for location {}...".format(location))
         count = 1
@@ -792,6 +808,7 @@ class Instaloader:
         """Get Posts which are worthy of exploring suggested by Instagram.
 
         :return: Iterator over Posts of the user's suggested posts.
+        :raises LoginRequiredException: If called without being logged in.
         """
         data = self.context.get_json('explore/', {})
         yield from (Post(self.context, node)

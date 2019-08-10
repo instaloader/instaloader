@@ -77,15 +77,6 @@ class TestInstaloaderAnonymously(unittest.TestCase):
             if count == PAGING_MAX_COUNT:
                 break
 
-    def test_location_download(self):
-        self.L.download_location(LOCATION, NORMAL_MAX_COUNT)
-
-    def test_location_paging(self):
-        for count, post in enumerate(self.L.get_location_posts(LOCATION)):
-            print(post)
-            if count == PAGING_MAX_COUNT:
-                break
-
     def test_get_id_by_username(self):
         self.assertEqual(PUBLIC_PROFILE_ID,
                          instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).userid)
@@ -189,6 +180,15 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_explore_paging(self):
         for count, post in enumerate(self.L.get_explore_posts()):
+            print(post)
+            if count == PAGING_MAX_COUNT:
+                break
+
+    def test_location_download(self):
+        self.L.download_location(LOCATION, NORMAL_MAX_COUNT)
+
+    def test_location_paging(self):
+        for count, post in enumerate(self.L.get_location_posts(LOCATION)):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break
