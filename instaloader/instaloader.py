@@ -650,7 +650,7 @@ class Instaloader:
                                                                                                  name)):
                     downloaded = self.download_storyitem(item, filename_target
                                                          if filename_target
-                                                         else Path(name) / Path(user_highlight.title + ' '))
+                                                         else Path(name) / Path(user_highlight.title + 'ㅤㅤ ㅤㅤ'))
                     if fast_update and not downloaded:
                         break
 
