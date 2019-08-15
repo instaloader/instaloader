@@ -342,10 +342,10 @@ class Post:
         
         def _postcommentanswer(node):
             return PostCommentAnswer(id=int(node['id']),
-                                        created_at_utc=datetime.utcfromtimestamp(node['created_at']),
-                                        text=node['text'],
-                                        owner=Profile(self._context, node['owner']),
-                                        likes_count=node['edge_liked_by']['count'])
+                                    created_at_utc=datetime.utcfromtimestamp(node['created_at']),
+                                    text=node['text'],
+                                    owner=Profile(self._context, node['owner']),
+                                    likes_count=node['edge_liked_by']['count'])
 
 
         def _postcommentanswers(node):
