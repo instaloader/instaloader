@@ -17,11 +17,14 @@ PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
 PostSidecarNode.video_url.__doc__ = "URL of video or None."
 
-PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner'])
+PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner', 'likes_count'])
 PostCommentAnswer.id.__doc__ = "ID number of comment."
 PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
 PostCommentAnswer.text.__doc__ = "Comment text."
 PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
+PostCommentAnswer.likes_count.__doc__ = "Number of likes of on comment."
+
+
 
 PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers')) # type: ignore
 for field in PostCommentAnswer._fields:
@@ -336,11 +339,14 @@ class Post:
         id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
         if available.
         """
+        
         def _postcommentanswer(node):
             return PostCommentAnswer(id=int(node['id']),
-                                     created_at_utc=datetime.utcfromtimestamp(node['created_at']),
-                                     text=node['text'],
-                                     owner=Profile(self._context, node['owner']))
+                                        created_at_utc=datetime.utcfromtimestamp(node['created_at']),
+                                        text=node['text'],
+                                        owner=Profile(self._context, node['owner']),
+                                        likes_count=node['edge_liked_by']['count'])
+
 
         def _postcommentanswers(node):
             if 'edge_threaded_comments' not in node:
