@@ -22,7 +22,7 @@ PostCommentAnswer.id.__doc__ = "ID number of comment."
 PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
 PostCommentAnswer.text.__doc__ = "Comment text."
 PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
-PostCommentAnswer.likes_count.__doc__ = "Number of likes of on comment."
+PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 
 
