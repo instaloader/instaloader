@@ -257,7 +257,8 @@ class Instaloader:
             return {'id': comment.id,
                     'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
-                    'owner': comment.owner._asdict()}
+                    'owner': comment.owner._asdict(),
+                    'likes_count': comment.likes_count}
 
         def _postcomment_asdict(comment):
             return {**_postcommentanswer_asdict(comment),
