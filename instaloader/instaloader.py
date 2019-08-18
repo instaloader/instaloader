@@ -275,11 +275,13 @@ class Instaloader:
             for x, y in zip(comments_list[:-1], comments_list[1:]):
                 if x['id'] != y['id']:
                     unique_comments_list.append(y)
-                elif combine_answers:
-                    combined_answers = unique_comments_list[-1].get('answers') or list()
-                    if 'answers' in y:
-                        combined_answers.extend(y['answers'])
-                    unique_comments_list[-1]['answers'] = get_unique_comments(combined_answers)
+                else:
+                    unique_comments_list[-1]['likes_count'] = y.get('likes_count')
+                    if combine_answers:
+                        combined_answers = unique_comments_list[-1].get('answers') or list()
+                        if 'answers' in y:
+                            combined_answers.extend(y['answers'])
+                        unique_comments_list[-1]['answers'] = get_unique_comments(combined_answers)
             return unique_comments_list
         filename += '_comments.json'
         try:
