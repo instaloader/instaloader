@@ -1,6 +1,7 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
+name: 🚀 Feature Suggestion
+about: Suggest an idea for this project 💡
+labels: "feature suggestion"
 
 ---
 
@@ -13,5 +14,11 @@ A clear and concise description of what you want to happen.
 **Describe alternatives you've considered**
 A clear and concise description of any alternative solutions or features you've considered.
 
+**If the feature request is accepted, would you be willing to submit a PR?**
+
+Yes / No _(Help can be provided if you need assistance submitting a PR)_
+
 **Additional context**
 Add any other context about the feature request here.
+
+(please also see https://instaloader.github.io/contributing.html for how to suggest a feature)

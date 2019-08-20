@@ -15,10 +15,8 @@ Reporting Bugs
 --------------
 
 If you encounter a bug, do not hesitate to report it in our
-`Issue Tracker <https://github.com/instaloader/instaloader/issues>`__. Since
-Instaloader is actively developed, the majority of bugs is fixed within only
-**4 days** after being reported. When reporting a problem, please keep the
-following in mind:
+`Issue Tracker <https://github.com/instaloader/instaloader/issues>`__. When
+reporting a problem, please keep the following in mind:
 
 - Ensure you **use the latest version** of Instaloader. The currently-installed
   version can be found out with ``instaloader --version``.
@@ -66,6 +64,16 @@ few things to consider:
 Suggesting Features
 -------------------
 
+.. goal-start
+
+Instaloader's goal is to mimick the browser's behavior to access the data that
+is available through the Instagram web interface, pack this data into complete
+and easily-(re)usable python objects, and provide a user interface for the most
+common downloading and metadata collection tasks, without changing any of the
+online data.
+
+.. goal-end
+
 If you have an idea of how Instaloader should be enhanced, but do not want to
 implement the feature yourself, feel free to open a ticket in our 
 `Issue Tracker <https://github.com/instaloader/instaloader/issues>`__.
@@ -81,6 +89,9 @@ Please consider the following:
 - If possible, provide us a **use case of the feature**: How could the user
   invoke the new function? Which problem would it solve? If new information is
   obtained, how would it be further processed?
+
+- If not obvious, briefly motivate how your suggested feature **conforms with
+  Instaloader's project goal**.
 
 - **Be patient**. Naturally, bugs and pull requests have a higher priority than
   feature suggestions. Keep in mind that this is a free software project, and
