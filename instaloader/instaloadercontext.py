@@ -358,6 +358,9 @@ class InstaloaderContext:
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
+                if redirect_url.startswith('https://www.instagram.com/accounts/login'):
+                    # alternate rate limit exceeded behavior
+                    raise TooManyRequestsException("429 Too Many Requests: redirected to login")
                 if redirect_url.startswith('https://{}/'.format(host)):
                     resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
                                     params=params, allow_redirects=False)
