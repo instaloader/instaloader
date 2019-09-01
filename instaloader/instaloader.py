@@ -1000,7 +1000,7 @@ class Instaloader:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
                     totalcount = profile.mediacount
                     count = 1
-                    downloaded_count = 0
+                    downloaded_now_or_earlier_count = 0
                     for post in profile.get_posts():
                         self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                         count += 1
@@ -1023,9 +1023,8 @@ class Instaloader:
                                 except PostChangedException:
                                     post_changed = True
                                     continue
-                            if downloaded:
-                                downloaded_count += 1
-                            if fast_update and not downloaded and not post_changed or max_count and downloaded_count >= max_count:
+                            downloaded_now_or_earlier_count += 1
+                            if fast_update and not downloaded and not post_changed or max_count and downloaded_now_or_earlier_count >= max_count:
                                 break
 
         if stories and profiles:
@@ -1037,6 +1036,7 @@ class Instaloader:
     def download_profile(self, profile_name: Union[str, Profile],
                          profile_pic: bool = True, profile_pic_only: bool = False,
                          fast_update: bool = False,
+                         max_count: Optional[int] = None,
                          download_stories: bool = False, download_stories_only: bool = False,
                          download_tagged: bool = False, download_tagged_only: bool = False,
                          post_filter: Optional[Callable[[Post], bool]] = None,
@@ -1107,6 +1107,7 @@ class Instaloader:
         self.context.log("Retrieving posts from profile {}.".format(profile_name))
         totalcount = profile.mediacount
         count = 1
+        downloaded_now_or_earlier_count = 0
         for post in profile.get_posts():
             self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
             count += 1
@@ -1115,7 +1116,8 @@ class Instaloader:
                 continue
             with self.context.error_catcher('Download profile {}'.format(profile_name)):
                 downloaded = self.download_post(post, target=profile_name)
-                if fast_update and not downloaded:
+                downloaded_now_or_earlier_count += 1
+                if fast_update and not downloaded or max_count and downloaded_now_or_earlier_count >= max_count:
                     break
 
     def check_if_committed(self, filename: str) -> bool:
