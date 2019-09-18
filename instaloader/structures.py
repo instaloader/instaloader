@@ -132,7 +132,10 @@ class Post:
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
             pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
-            self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
+            try:
+                self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
+            except KeyError:
+                self._full_metadata_dict = pic_json['graphql']['shortcode_media']
             self._rhx_gis_str = pic_json.get('rhx_gis')
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)

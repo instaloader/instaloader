@@ -376,10 +376,13 @@ class InstaloaderContext:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
             if is_html_query:
-                match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
+                match = re.search(r"window\.__additionalDataLoaded\(\'/"+path+"\',(.*)\);</script>", resp.text)
                 if match is None:
-                    raise ConnectionException("Could not find \"window._sharedData\" in html response.")
+                    match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
+                    if match is None:
+                        raise ConnectionException("Could not find \"window._sharedData\" in html response.")
                 return json.loads(match.group(1))
+
             else:
                 resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
