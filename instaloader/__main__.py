@@ -343,6 +343,8 @@ def main():
                        help='Tries to ensure downloaded images avoid corruption in case of unexpected interruption. '
                        'If the last picture is corrupted, Instaloader will fix the picture the next time it is run. '
                        'Requires the JSON metadata to be saved.')
+    g_how.add_argument('--request-timeout', action='store_true', metavar='N', type=int,
+                       help='seconds to wait before timing out a connection request')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -397,6 +399,7 @@ def main():
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              max_connection_attempts=args.max_connection_attempts,
+                             request_timeout=args.request_timeout,
                              commit_mode=args.commit_mode)
         _main(loader,
               args.profile,
