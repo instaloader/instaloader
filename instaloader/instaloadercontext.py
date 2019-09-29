@@ -10,6 +10,7 @@ import time
 import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 import requests
@@ -47,9 +48,10 @@ class InstaloaderContext:
     """
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 max_connection_attempts: int = 3):
+                 max_connection_attempts: int = 3, request_timeout: Optional[int] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
+        self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
@@ -155,6 +157,8 @@ class InstaloaderContext:
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header(empty_session_only=True))
+        if self.request_timeout is not None:
+            session.request = partial(session.request, timeout=self.request_timeout)
         return session
 
     def save_session_to_file(self, sessionfile):
