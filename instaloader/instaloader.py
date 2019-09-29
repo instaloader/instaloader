@@ -142,6 +142,7 @@ class Instaloader:
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
     :param commit_mode: :option:`--commit-mode`
+    :param request_timeout: override default per-request timeout
 
     .. attribute:: context
 
@@ -150,6 +151,7 @@ class Instaloader:
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
+                 request_timeout: Optional[int] = None,
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
@@ -165,7 +167,7 @@ class Instaloader:
                  max_connection_attempts: int = 3,
                  commit_mode: bool = False):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts)
+        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts, request_timeout)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
