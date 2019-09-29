@@ -158,7 +158,9 @@ class InstaloaderContext:
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header(empty_session_only=True))
         if self.request_timeout is not None:
-            session.request = partial(session.request, timeout=self.request_timeout)
+            # Override default timeout behavior.
+            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         return session
 
     def save_session_to_file(self, sessionfile):
