@@ -47,7 +47,7 @@ autodoc_default_flags = ['show-inheritance', 'members', 'undoc-members']
 autodoc_member_order = 'bysource'
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
-                       'requests': ('http://docs.python-requests.org/en/master', None)}
+                       'requests': ('https://requests.kennethreitz.org/en/master/', None)}
 
 extlinks = {'issue': ('https://github.com/instaloader/instaloader/issues/%s', 'issue #')}
 
