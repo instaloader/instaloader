@@ -5,7 +5,7 @@ import instaloader
 
 L = instaloader.Instaloader()
 
-posts = L.get_hashtag_posts('milfgarden')
+posts = L.get_hashtag_posts('urbanphotography')
 # or
 # posts = instaloader.Profile.from_username(L.context, PROFILE).get_posts()
 
@@ -14,4 +14,4 @@ UNTIL = datetime(2015, 3, 1)
 
 for post in takewhile(lambda p: p.date > UNTIL, dropwhile(lambda p: p.date > SINCE, posts)):
     print(post.date)
-    L.download_post(post, '#milfgarden')
+    L.download_post(post, '#urbanphotography')
