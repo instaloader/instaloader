@@ -376,7 +376,7 @@ class InstaloaderContext:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
             if is_html_query:
-                match = re.search(r"window\.__additionalDataLoaded\(\'/"+path+"\',(.*)\);</script>", resp.text)
+                match = re.search(r"window\.__additionalDataLoaded\(\'/"+path+r"\',(.*)\);</script>", resp.text)
                 if match is None:
                     match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
                     if match is None:
