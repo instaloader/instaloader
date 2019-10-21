@@ -389,8 +389,7 @@ class InstaloaderContext:
                     match = re.search(r'window\.__additionalDataLoaded\([^{]+{"graphql":({.*})}\);</script>',
                                       resp.text)
                     if match is None:
-                        raise ConnectionException("Could not find \"graphql\" in \"window.__additionalDataLoaded\"")
-                    post_or_profile_page[0]['graphql'] = json.loads(match.group(1))
+                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))
                 return resp_json
             else:
                 resp_json = resp.json()
