@@ -379,7 +379,18 @@ class InstaloaderContext:
                 match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
                 if match is None:
                     raise ConnectionException("Could not find \"window._sharedData\" in html response.")
-                return json.loads(match.group(1))
+                resp_json = json.loads(match.group(1))
+                entry_data = resp_json.get('entry_data')
+                post_or_profile_page = list(entry_data.values())[0] if entry_data is not None else None
+                if post_or_profile_page is None:
+                    raise ConnectionException("\"window._sharedData\" does not contain required keys.")
+                # If GraphQL data is missing in `window._sharedData`, search for it in `__additionalDataLoaded`.
+                if 'graphql' not in post_or_profile_page[0]:
+                    match = re.search(r'window\.__additionalDataLoaded\([^{]+{"graphql":({.*})}\);</script>',
+                                      resp.text)
+                    if match is not None:
+                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))
+                return resp_json
             else:
                 resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
