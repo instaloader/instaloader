@@ -326,9 +326,9 @@ class Post:
     def comments(self) -> int:
         """Comment count including answers"""
         try:
-            return self._field('edge_media_to_parent_comment', 'count')
-        except KeyError:
             return self._field('edge_media_to_comment', 'count')
+        except KeyError:
+            return self._field('edge_media_to_parent_comment', 'count')
 
     def get_comments(self) -> Iterator[PostComment]:
         r"""Iterate over all comments of the post.
