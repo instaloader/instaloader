@@ -193,15 +193,23 @@ class Instaloader:
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
-        new_loader = Instaloader(self.context.sleep, self.context.request_timeout, self.context.quiet, self.context.user_agent, self.dirname_pattern,
-                                 self.filename_pattern, download_pictures=self.download_pictures,
-                                 download_videos=self.download_videos,
-                                 download_video_thumbnails=self.download_video_thumbnails,
-                                 download_geotags=self.download_geotags, download_comments=self.download_comments,
-                                 save_metadata=self.save_metadata, compress_json=self.compress_json,
-                                 post_metadata_txt_pattern=self.post_metadata_txt_pattern,
-                                 storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
-                                 max_connection_attempts=self.context.max_connection_attempts)
+        new_loader = Instaloader(
+            self.context.sleep,
+            self.context.request_timeout,
+            self.context.quiet,
+            self.context.user_agent,
+            self.dirname_pattern,
+            self.filename_pattern,
+            download_pictures=self.download_pictures,
+            download_videos=self.download_videos,
+            download_video_thumbnails=self.download_video_thumbnails,
+            download_geotags=self.download_geotags,
+            download_comments=self.download_comments,
+            save_metadata=self.save_metadata,
+            compress_json=self.compress_json,
+            post_metadata_txt_pattern=self.post_metadata_txt_pattern,
+            storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
+            max_connection_attempts=self.context.max_connection_attempts)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
