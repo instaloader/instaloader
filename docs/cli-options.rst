@@ -246,6 +246,10 @@ Miscellaneous Options
    if login credentials are needed but not given.
    This is handy for running :ref:`instaloader-as-cronjob`.
 
+.. option:: --request-timeout N
+
+   Seconds to wait before timing out a connection request.
+
 .. option:: +args.txt
 
    Read arguments from file `args.txt`, a shortcut to provide arguments from

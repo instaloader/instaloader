@@ -19,11 +19,15 @@ import requests.utils
 from .exceptions import *
 
 
-def copy_session(session: requests.Session) -> requests.Session:
+def copy_session(session: requests.Session, request_timeout: Optional[int] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy() # type: ignore
+    if request_timeout is not None:
+        # Override default timeout behavior.
+        # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+        new.request = partial(new.request, timeout=request_timeout) # type: ignore
     return new
 
 
@@ -173,6 +177,10 @@ class InstaloaderContext:
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
+        if self.request_timeout is not None:
+            # Override default timeout behavior.
+            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         self._session = session
         self.username = username
 
@@ -197,6 +205,10 @@ class InstaloaderContext:
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header())
+        if self.request_timeout is not None:
+            # Override default timeout behavior.
+            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         session.get('https://www.instagram.com/web/__mid/')
         csrf_token = session.cookies.get_dict()['csrftoken']
         session.headers.update({'X-CSRFToken': csrf_token})
@@ -209,7 +221,7 @@ class InstaloaderContext:
         except json.decoder.JSONDecodeError:
             raise ConnectionException("Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason))
         if resp_json.get('two_factor_required'):
-            two_factor_session = copy_session(session)
+            two_factor_session = copy_session(session, self.request_timeout)
             two_factor_session.headers.update({'X-CSRFToken': csrf_token})
             two_factor_session.cookies.update({'csrftoken': csrf_token})
             self.two_factor_auth_pending = (two_factor_session,
@@ -421,7 +433,7 @@ class InstaloaderContext:
         :param rhx_gis: 'rhx_gis' variable as somewhere returned by Instagram, needed to 'sign' request
         :return: The server's response dictionary.
         """
-        with copy_session(self._session) as tmpsession:
+        with copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
             del tmpsession.headers['Content-Length']
@@ -489,7 +501,7 @@ class InstaloaderContext:
         :raises ConnectionException: When query repeatedly failed.
 
         .. versionadded:: 4.2.1"""
-        with copy_session(self._session) as tempsession:
+        with copy_session(self._session, self.request_timeout) as tempsession:
             tempsession.headers['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; ' \
                                                 'scale=2.00; 750x1334) AppleWebKit/420+'
             for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:

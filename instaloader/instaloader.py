@@ -201,7 +201,8 @@ class Instaloader:
                                  save_metadata=self.save_metadata, compress_json=self.compress_json,
                                  post_metadata_txt_pattern=self.post_metadata_txt_pattern,
                                  storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
-                                 max_connection_attempts=self.context.max_connection_attempts)
+                                 max_connection_attempts=self.context.max_connection_attempts,
+                                 request_timeout=self.context.request_timeout)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
