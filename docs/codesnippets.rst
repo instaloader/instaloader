@@ -91,6 +91,15 @@ With Instaloader, it is easy to download the few most-liked pictres of a user.
 
 Discussed in :issue:`194`.
 
+Top X Comments of Post
+-------------------
+
+With Instaloader, it is easy to download the few most-liked comments of a post.
+
+.. literalinclude:: codesnippets/457_top_x_comments_of_post.py
+
+Discussed in :issue:`457`.
+
 Upgrade Images by Local Copies
 ------------------------------
 
