@@ -92,7 +92,7 @@ With Instaloader, it is easy to download the few most-liked pictres of a user.
 Discussed in :issue:`194`.
 
 Top X Comments of Post
--------------------
+----------------------
 
 With Instaloader, it is easy to download the few most-liked comments of a post.
 
