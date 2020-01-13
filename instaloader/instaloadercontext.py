@@ -19,7 +19,7 @@ import requests.utils
 from .exceptions import *
 
 
-def copy_session(session: requests.Session, request_timeout: Optional[int] = None) -> requests.Session:
+def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
@@ -52,7 +52,7 @@ class InstaloaderContext:
     """
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 max_connection_attempts: int = 3, request_timeout: Optional[int] = None):
+                 max_connection_attempts: int = 3, request_timeout: Optional[float] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
