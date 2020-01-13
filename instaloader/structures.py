@@ -325,6 +325,11 @@ class Post:
     @property
     def comments(self) -> int:
         """Comment count including answers"""
+        # If the count is already present in `self._node`, do not use `self._field` which could trigger fetching the
+        # full metadata dict.
+        comments = self._node.get('edge_media_to_comment')
+        if comments and 'count' in comments:
+            return comments['count']
         try:
             return self._field('edge_media_to_parent_comment', 'count')
         except KeyError:
