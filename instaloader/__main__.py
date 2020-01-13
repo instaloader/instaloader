@@ -343,7 +343,7 @@ def main():
                        help='Tries to ensure downloaded images avoid corruption in case of unexpected interruption. '
                        'If the last picture is corrupted, Instaloader will fix the picture the next time it is run. '
                        'Requires the JSON metadata to be saved.')
-    g_how.add_argument('--request-timeout', action='store_true', metavar='N', type=int,
+    g_how.add_argument('--request-timeout', metavar='N', type=int,
                        help='seconds to wait before timing out a connection request')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
