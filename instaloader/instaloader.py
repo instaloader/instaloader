@@ -151,7 +151,7 @@ class Instaloader:
 
     def __init__(self,
                  sleep: bool = True, quiet: bool = False,
-                 request_timeout: Optional[int] = None,
+                 request_timeout: Optional[float] = None,
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
