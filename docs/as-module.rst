@@ -155,6 +155,14 @@ Profiles
 .. autoclass:: Profile
    :no-show-inheritance:
 
+TopSearchResults
+""""""""""""""""
+
+.. autoclass:: TopSearchResults
+   :no-show-inheritance:
+
+   .. versionadded:: 4.3
+
 Loading and Saving
 """"""""""""""""""
 

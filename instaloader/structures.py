@@ -1060,6 +1060,73 @@ class Highlight(Story):
         yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
 
 
+class TopSearchResults:
+    """
+    An invocation of this class triggers a search on Instagram for the provided search string.
+
+    Provides methods to access the search results as profiles (:class:`Profile`), locations (:class:`PostLocation`) and
+    hashtags.
+
+    :param context: :attr:`Instaloader.context` used to send the query for the search.
+    :param searchstring: String to search for with Instagram's "top search".
+    """
+
+    def __init__(self, context: InstaloaderContext, searchstring: str):
+        self._context = context
+        self._searchstring = searchstring
+        # The `__a` param is only needed to prevent `get_json()` from searching for 'window._sharedData'.
+        self._node = context.get_json('web/search/topsearch/',
+                                      params={'context': 'blended',
+                                              'query': searchstring,
+                                              'include_reel': False,
+                                              '__a': 1})
+
+    def get_profiles(self) -> Iterator[Profile]:
+        """
+        Provides the :class:`Profile` instances from the search result.
+        """
+        for user in self._node.get('users', []):
+            user_node = user['user']
+            if 'pk' in user_node:
+                user_node['id'] = user_node['pk']
+            yield Profile(self._context, user_node)
+
+    def get_prefixed_usernames(self) -> Iterator[str]:
+        """
+        Provides all profile names from the search result that start with the search string.
+        """
+        for user in self._node.get('users', []):
+            username = user.get('user', {}).get('username', '')
+            if username.startswith(self._searchstring):
+                yield username
+
+    def get_locations(self) -> Iterator[PostLocation]:
+        """
+        Provides instances of :class:`PostLocation` from the search result.
+        """
+        for location in self._node.get('places', []):
+            place = location.get('place', {})
+            slug = place.get('slug')
+            loc = place.get('location', {})
+            yield PostLocation(int(loc['pk']), loc['name'], slug, None, loc['lat'], loc['lng'])
+
+    def get_hashtag_strings(self) -> Iterator[str]:
+        """
+        Provides the hashtags from the search result as strings.
+        """
+        for hashtag in self._node.get('hashtags', []):
+            name = hashtag.get('hashtag', {}).get('name')
+            if name:
+                yield name
+
+    @property
+    def searchstring(self) -> str:
+        """
+        The string that was searched for on Instagram to produce this :class:`TopSearchResults` instance.
+        """
+        return self._searchstring
+
+
 JsonExportable = Union[Post, Profile, StoryItem]
 
 
