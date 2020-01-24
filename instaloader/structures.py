@@ -1,6 +1,8 @@
+import sys
 import json
 import lzma
 import re
+from itertools import islice
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
@@ -696,16 +698,17 @@ class Profile:
 	   Use :attr:`profile_pic_url`."""
         return self.profile_pic_url
 
-    def get_posts(self) -> Iterator[Post]:
-        """Retrieve all posts from a profile."""
+    def get_posts(self, count=sys.maxsize) -> Iterator[Post]:
+        """Retrieve all posts from a profile.
+        :param count: Number of posts to retrieve. By default, returns all (count=sys.maxsize)."""
         self._obtain_metadata()
-        yield from (Post(self._context, node, self) for node in
+        yield from islice((Post(self._context, node, self) for node in
                     self._context.graphql_node_list("472f257a40c653c64c666ce877d59d2b",
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_owner_to_timeline_media'],
                                                     self._rhx_gis,
-                                                    self._metadata('edge_owner_to_timeline_media')))
+                                                    self._metadata('edge_owner_to_timeline_media'))), count)
 
     def get_saved_posts(self) -> Iterator[Post]:
         """Get Posts that are marked as saved by the user."""
