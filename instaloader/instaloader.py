@@ -150,8 +150,8 @@ class Instaloader:
     """
 
     def __init__(self,
-                 sleep: bool = True, quiet: bool = False,
-                 request_timeout: Optional[float] = None,
+                 sleep: bool = True,
+                 quiet: bool = False,
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
@@ -165,6 +165,7 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
+                 request_timeout: Optional[float] = None,
                  commit_mode: bool = False):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts, request_timeout)
@@ -194,12 +195,11 @@ class Instaloader:
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
         new_loader = Instaloader(
-            self.context.sleep,
-            self.context.request_timeout,
-            self.context.quiet,
-            self.context.user_agent,
-            self.dirname_pattern,
-            self.filename_pattern,
+            sleep=self.context.sleep,
+            quiet=self.context.quiet,
+            user_agent=self.context.user_agent,
+            dirname_pattern=self.dirname_pattern,
+            filename_pattern=self.filename_pattern,
             download_pictures=self.download_pictures,
             download_videos=self.download_videos,
             download_video_thumbnails=self.download_video_thumbnails,
@@ -209,7 +209,9 @@ class Instaloader:
             compress_json=self.compress_json,
             post_metadata_txt_pattern=self.post_metadata_txt_pattern,
             storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
-            max_connection_attempts=self.context.max_connection_attempts)
+            max_connection_attempts=self.context.max_connection_attempts,
+            request_timeout=self.context.request_timeout,
+            commit_mode=self.commit_mode)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
