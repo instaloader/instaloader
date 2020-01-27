@@ -9,10 +9,6 @@ class QueryReturnedBadRequestException(InstaloaderException):
     pass
 
 
-class QueryReturnedNotFoundException(InstaloaderException):
-    pass
-
-
 class QueryReturnedForbiddenException(InstaloaderException):
     pass
 
@@ -59,6 +55,10 @@ class ConnectionException(InstaloaderException):
 
 class PostChangedException(InstaloaderException):
     """.. versionadded:: 4.2.2"""
+    pass
+
+
+class QueryReturnedNotFoundException(ConnectionException):
     pass
 
 

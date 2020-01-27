@@ -397,7 +397,7 @@ class InstaloaderContext:
             if is_html_query:
                 match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
                 if match is None:
-                    raise ConnectionException("Could not find \"window._sharedData\" in html response.")
+                    raise QueryReturnedNotFoundException("Could not find \"window._sharedData\" in html response.")
                 resp_json = json.loads(match.group(1))
                 entry_data = resp_json.get('entry_data')
                 post_or_profile_page = list(entry_data.values())[0] if entry_data is not None else None
@@ -422,7 +422,10 @@ class InstaloaderContext:
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = "JSON Query to {}: {}".format(path, err)
             if _attempt == self.max_connection_attempts:
-                raise ConnectionException(error_string) from err
+                if isinstance(err, QueryReturnedNotFoundException):
+                    raise QueryReturnedNotFoundException(error_string) from err
+                else:
+                    raise ConnectionException(error_string) from err
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
             try:
                 if is_graphql_query and isinstance(err, TooManyRequestsException):
