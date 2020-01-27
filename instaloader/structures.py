@@ -534,6 +534,13 @@ class Profile:
                 self._has_full_metadata = True
                 self._rhx_gis = metadata.get('rhx_gis')
         except (QueryReturnedNotFoundException, KeyError) as err:
+            top_search_results = TopSearchResults(self._context, self.username)
+            similar_profiles = [profile.username for profile in top_search_results.get_profiles()]
+            if similar_profiles:
+                raise ProfileNotExistsException('Profile {} does not exist.\nThe most similar profile{}: {}.'
+                                                .format(self.username,
+                                                        's are' if len(similar_profiles) > 1 else ' is',
+                                                        ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
 
     def _metadata(self, *keys) -> Any:

@@ -926,8 +926,11 @@ class Instaloader:
         :return: Instance of current profile
         """
         profile = None
-        with suppress(ProfileNotExistsException):
+        profile_name_not_exists_err = None
+        try:
             profile = Profile.from_username(self.context, profile_name)
+        except ProfileNotExistsException as err:
+            profile_name_not_exists_err = err
         id_filename = self._get_id_filename(profile_name)
         try:
             with open(id_filename, 'rb') as id_file:
@@ -960,6 +963,8 @@ class Instaloader:
         if profile is not None:
             self.save_profile_id(profile)
             return profile
+        if profile_name_not_exists_err:
+            raise profile_name_not_exists_err
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
 
     def download_profiles(self, profiles: Set[Profile],
