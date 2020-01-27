@@ -928,14 +928,13 @@ class Instaloader:
         profile = None
         with suppress(ProfileNotExistsException):
             profile = Profile.from_username(self.context, profile_name)
-        profile_exists = profile is not None
         id_filename = self._get_id_filename(profile_name)
         try:
             with open(id_filename, 'rb') as id_file:
                 profile_id = int(id_file.read())
-            if (not profile_exists) or \
+            if (profile is None) or \
                     (profile_id != profile.userid):
-                if profile_exists:
+                if profile is not None:
                     self.context.log("Profile {0} does not match the stored unique ID {1}.".format(profile_name,
                                                                                                    profile_id))
                 else:
@@ -954,10 +953,11 @@ class Instaloader:
                     os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower()),
                               '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
                 return profile_from_id
+            # profile exists and profile id matches saved id
             return profile
         except (FileNotFoundError, ValueError):
             pass
-        if profile_exists:
+        if profile is not None:
             self.save_profile_id(profile)
             return profile
         raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))

@@ -197,6 +197,7 @@ class InstaloaderContext:
         :raises ConnectionException: If connection to Instagram failed.
         :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
            :meth:`Instaloader.two_factor_login`."""
+        # pylint:disable=import-outside-toplevel
         import http.client
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
