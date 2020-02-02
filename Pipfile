@@ -7,6 +7,10 @@ verify_ssl = true
 pylint = "*"
 mypy = "*"
 sphinx = "*"
+pyinstaller = "*"
+pefile = "*"
+pywin32-ctypes = "*"
+psutil = "*"
 
 [packages]
 requests = "*"
