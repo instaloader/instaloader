@@ -298,9 +298,14 @@ class InstaloaderContext:
     def _graphql_request_count_per_sliding_window(self, query_hash: str) -> int:
         """Return how many GraphQL requests can be done within the sliding window."""
         if self.is_logged_in:
-            max_reqs = {'1cb6ec562846122743b61e492c85999f': 20, '33ba35852cb50da46f5b5e889df7d159': 20, 'iphone': 100}
+            max_reqs = {'1cb6ec562846122743b61e492c85999f': 20,
+                        '33ba35852cb50da46f5b5e889df7d159': 20,
+                        'iphone': 100,
+                        'other': 100}
         else:
-            max_reqs = {'1cb6ec562846122743b61e492c85999f': 200, '33ba35852cb50da46f5b5e889df7d159': 200}
+            max_reqs = {'1cb6ec562846122743b61e492c85999f': 200,
+                        '33ba35852cb50da46f5b5e889df7d159': 200,
+                        'other': 200}
         return max_reqs.get(query_hash) or min(max_reqs.values())
 
     def _graphql_query_waittime(self, query_hash: str, current_time: float, untracked_queries: bool = False) -> float:
@@ -366,6 +371,7 @@ class InstaloaderContext:
         """
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         is_iphone_query = host == 'i.instagram.com'
+        is_other_query = not is_graphql_query and host == "www.instagram.com"
         sess = session if session else self._session
         try:
             self.do_sleep()
@@ -373,6 +379,8 @@ class InstaloaderContext:
                 self._ratecontrol_graphql_query(params['query_hash'])
             if is_iphone_query:
                 self._ratecontrol_graphql_query('iphone')
+            if is_other_query:
+                self._ratecontrol_graphql_query('other')
             resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
@@ -432,6 +440,8 @@ class InstaloaderContext:
                     self._ratecontrol_graphql_query(params['query_hash'], untracked_queries=True)
                 if is_iphone_query and isinstance(err, TooManyRequestsException):
                     self._ratecontrol_graphql_query('iphone', untracked_queries=True)
+                if is_other_query and isinstance(err, TooManyRequestsException):
+                    self._ratecontrol_graphql_query('other', untracked_queries=True)
                 return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
