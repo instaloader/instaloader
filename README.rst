@@ -2,7 +2,7 @@
 
 .. badges-start
 
-|travis| |pypi| |pyversion| |license| |aur| |contributors| |downloads|
+|travis| |pypi| |pyversion| |license| |aur| |contributors| |downloads| |saythanks|
 
 .. |travis| image:: https://img.shields.io/travis/instaloader/instaloader/master.svg
    :alt: Travis-CI Build Status
@@ -22,6 +22,10 @@
 .. |contributors| image:: https://img.shields.io/github/contributors/instaloader/instaloader.svg
    :alt: Contributor Count
    :target: https://github.com/instaloader/instaloader/graphs/contributors
+
+.. |saythanks| image:: https://img.shields.io/badge/Say%20Thanks-!-ff7efd.svg
+   :alt: Say Thanks!
+   :target: https://saythanks.io/to/aandergr
 
 .. |aur| image:: https://img.shields.io/aur/version/instaloader.svg
    :alt: Arch User Repository Package
