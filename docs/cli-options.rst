@@ -237,6 +237,12 @@ How to Download
 
    .. versionadded:: 4.2
 
+.. option:: --request-timeout N
+
+   Seconds to wait before timing out a connection request.
+
+   .. versionadded:: 4.3
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -245,12 +251,6 @@ Miscellaneous Options
    Disable user interaction, i.e. do not print messages (except errors) and fail
    if login credentials are needed but not given.
    This is handy for running :ref:`instaloader-as-cronjob`.
-
-.. option:: --request-timeout N
-
-   Seconds to wait before timing out a connection request.
-
-   .. versionadded:: 4.3
 
 .. option:: +args.txt
 
