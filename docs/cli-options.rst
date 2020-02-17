@@ -250,6 +250,8 @@ Miscellaneous Options
 
    Seconds to wait before timing out a connection request.
 
+   .. versionadded:: 4.3
+
 .. option:: +args.txt
 
    Read arguments from file `args.txt`, a shortcut to provide arguments from

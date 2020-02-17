@@ -187,8 +187,6 @@ Exceptions
 
 .. autoexception:: QueryReturnedBadRequestException
 
-.. autoexception:: QueryReturnedNotFoundException
-
 .. autoexception:: QueryReturnedForbiddenException
 
 .. autoexception:: ProfileNotExistsException
@@ -210,6 +208,13 @@ Exceptions
 .. autoexception:: BadCredentialsException
 
 .. autoexception:: PostChangedException
+
+.. autoexception:: QueryReturnedNotFoundException
+
+   .. versionchanged:: 4.3
+      QueryReturnedNotFoundException now inherits ConnectionException
+      to retry on 404 errors.
+
 
 .. autoexception:: TooManyRequestsException
 
