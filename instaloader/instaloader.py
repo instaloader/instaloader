@@ -358,41 +358,55 @@ class Instaloader:
         self.context.log('geo', end=' ', flush=True)
 
     @_retry_on_connection_error
-    def download_profilepic(self, profile: Profile, _attempt: int = 1) -> None:
-        """Downloads and saves profile pic."""
+    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Profile,
+                           _attempt: int = 1) -> None:
+        """Downloads and saves a picture that does not have an association with a Post or StoryItem, such as a
+        Profile picture or a Highlight cover picture. Modification time is taken from the HTTP response headers.
+
+        .. versionadded:: 4.3"""
 
         def _epoch_to_string(epoch: datetime) -> str:
             return epoch.strftime('%Y-%m-%d_%H-%M-%S_UTC')
 
-        profile_pic_response = self.context.get_raw(profile.profile_pic_url)
+        http_response = self.context.get_raw(url)
         date_object = None  # type: Optional[datetime]
-        if 'Last-Modified' in profile_pic_response.headers:
-            date_object = datetime.strptime(profile_pic_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
-            profile_pic_bytes = None
-            profile_pic_identifier = _epoch_to_string(date_object)
+        if 'Last-Modified' in http_response.headers:
+            date_object = datetime.strptime(http_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
+            pic_bytes = None
+            pic_identifier = _epoch_to_string(date_object)
         else:
-            profile_pic_bytes = profile_pic_response.content
-            profile_pic_identifier = md5(profile_pic_bytes).hexdigest()[:16]
-        profile_pic_extension = 'jpg'
+            pic_bytes = http_response.content
+            pic_identifier = md5(pic_bytes).hexdigest()[:16]
+        pic_extension = 'jpg'
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
-            filename = '{0}/{1}_profile_pic.{2}'.format(self.dirname_pattern.format(profile=profile.username.lower(),
-                                                                                    target=profile.username.lower()),
-                                                        profile_pic_identifier, profile_pic_extension)
+            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=owner_profile.username.lower(),
+                                                                            target=target),
+                                                pic_identifier, name_suffix, pic_extension)
         else:
-            filename = '{0}/{1}_{2}_profile_pic.{3}'.format(self.dirname_pattern.format(), profile.username.lower(),
-                                                            profile_pic_identifier, profile_pic_extension)
-        content_length = profile_pic_response.headers.get('Content-Length', None)
+            filename = '{0}/{1}_{2}_{3}.{4}'.format(self.dirname_pattern.format(), target,
+                                                    pic_identifier, name_suffix, pic_extension)
+        content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
                                           os.path.getsize(filename) >= int(content_length))):
             self.context.log(filename + ' already exists')
             return None
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        self.context.write_raw(profile_pic_bytes if profile_pic_bytes else profile_pic_response, filename)
+        self.context.write_raw(pic_bytes if pic_bytes else http_response, filename)
         if date_object:
             os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self.context.log('')  # log output of _get_and_write_raw() does not produce \n
+
+    def download_profilepic(self, profile: Profile) -> None:
+        """Downloads and saves profile pic."""
+        self.download_title_pic(profile.profile_pic_url, profile.username.lower(), 'profile_pic', profile)
+
+    def download_highlight_cover(self, highlight: Highlight, target: Union[str, Path]) -> None:
+        """Downloads and saves Highlight cover picture.
+
+        .. versionadded:: 4.3"""
+        self.download_title_pic(highlight.cover_url, target, 'cover', highlight.owner_profile)
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
@@ -646,6 +660,9 @@ class Instaloader:
 
         .. versionadded:: 4.1
 
+        .. versionchanged:: 4.3
+           Also downloads and saves the Highlight's cover pictures.
+
         :param user: ID or Profile of the user whose highlights should get downloaded.
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
@@ -655,7 +672,11 @@ class Instaloader:
         """
         for user_highlight in self.get_highlights(user):
             name = user_highlight.owner_username
+            highlight_target = (filename_target
+                                if filename_target
+                                else Path(name) / Path(user_highlight.title))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
+            self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
             count = 1
             for item in user_highlight.get_items():
@@ -666,9 +687,7 @@ class Instaloader:
                 count += 1
                 with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title,
                                                                                                  name)):
-                    downloaded = self.download_storyitem(item, filename_target
-                                                         if filename_target
-                                                         else Path(name) / Path(user_highlight.title))
+                    downloaded = self.download_storyitem(item, highlight_target)
                     if fast_update and not downloaded:
                         break
 
