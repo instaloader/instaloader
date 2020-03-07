@@ -142,7 +142,7 @@ class Instaloader:
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
     :param commit_mode: :option:`--commit-mode`
-    :param request_timeout: "option:`--request-timeout`, set per-request timeout (seconds)
+    :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
 
     .. attribute:: context
 
