@@ -77,10 +77,13 @@ Instaloader supports the following targets:
       instructs Instaloader to also **download the user's stories**,
 
    - :option:`--highlights`
-      to **download highlights of each profile that is downloaded**, and
+      to **download highlights of each profile that is downloaded**,
 
    - :option:`--tagged`
-      to **download posts where the user is tagged**.
+      to **download posts where the user is tagged**, and
+
+   - :option:`--igtv`
+      to **download IGTV videos**.
 
 - ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually necessary),

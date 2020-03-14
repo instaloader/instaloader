@@ -518,10 +518,11 @@ class Profile:
 
     def _asdict(self):
         json_node = self._node.copy()
-        # remove posts
+        # remove posts to avoid "Circular reference detected" exception
         json_node.pop('edge_media_collections', None)
         json_node.pop('edge_owner_to_timeline_media', None)
         json_node.pop('edge_saved_media', None)
+        json_node.pop('edge_felix_video_timeline', None)
         if self._iphone_struct_:
             json_node['iphone_struct'] = self._iphone_struct_
         return json_node
@@ -597,6 +598,10 @@ class Profile:
     @property
     def mediacount(self) -> int:
         return self._metadata('edge_owner_to_timeline_media', 'count')
+
+    @property
+    def igtvcount(self) -> int:
+        return self._metadata('edge_felix_video_timeline', 'count')
 
     @property
     def followers(self) -> int:
@@ -740,6 +745,19 @@ class Profile:
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_user_to_photos_of_you'],
                                                     self._rhx_gis))
+
+    def get_igtv_posts(self) -> Iterator[Post]:
+        """Retrieve all IGTV posts.
+
+        .. versionadded:: 4.3"""
+        self._obtain_metadata()
+        yield from (Post(self._context, node, self) for node in
+                    self._context.graphql_node_list('bc78b344a68ed16dd5d7f264681c4c76',
+                                                    {'id': self.userid},
+                                                    'https://www.instagram.com/{0}/channel/'.format(self.username),
+                                                    lambda d: d['data']['user']['edge_felix_video_timeline'],
+                                                    self._rhx_gis,
+                                                    self._metadata('edge_felix_video_timeline')))
 
     def get_followers(self) -> Iterator['Profile']:
         """

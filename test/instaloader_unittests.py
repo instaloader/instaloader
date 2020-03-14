@@ -12,6 +12,7 @@ import instaloader
 PROFILE_WITH_HIGHLIGHTS = 325732271
 PUBLIC_PROFILE = "selenagomez"
 PUBLIC_PROFILE_ID = 460563723
+PUBLIC_PROFILE_WITH_IGTV = "natgeo"
 HASHTAG = "kitten"
 LOCATION = "362629379"
 OWN_USERNAME = "aandergr"
@@ -101,6 +102,11 @@ class TestInstaloaderAnonymously(unittest.TestCase):
 
     def test_public_profile_tagged_paging(self):
         for post in islice(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_tagged_posts(),
+                           PAGING_MAX_COUNT):
+            print(post)
+
+    def test_public_profile_igtv(self):
+        for post in islice(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE_WITH_IGTV).get_igtv_posts(),
                            PAGING_MAX_COUNT):
             print(post)
 

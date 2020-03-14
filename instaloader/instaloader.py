@@ -917,6 +917,23 @@ class Instaloader:
                 if fast_update and not downloaded:
                     break
 
+    def download_igtv(self, profile: Profile, fast_update: bool = False,
+                      post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+        """Download IGTV videos of a profile.
+
+        .. versionadded:: 4.3"""
+        self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
+        for number, post in enumerate(profile.get_igtv_posts()):
+            self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, profile.igtvcount, w=len(str(profile.igtvcount))),
+                             end="", flush=True)
+            if post_filter is not None and not post_filter(post):
+                self.context.log('<{} skipped>'.format(post))
+                continue
+            with self.context.error_catcher('Download IGTV {}'.format(post.shortcode)):
+                downloaded = self.download_post(post, target=profile.username)
+                if fast_update and not downloaded:
+                    break
+
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
@@ -989,7 +1006,10 @@ class Instaloader:
 
     def download_profiles(self, profiles: Set[Profile],
                           profile_pic: bool = True, posts: bool = True,
-                          tagged: bool = False, highlights: bool = False, stories: bool = False,
+                          tagged: bool = False,
+                          igtv: bool = False,
+                          highlights: bool = False,
+                          stories: bool = False,
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
@@ -1000,6 +1020,7 @@ class Instaloader:
         :param profile_pic: not :option:`--no-profile-pic`.
         :param posts: not :option:`--no-posts`.
         :param tagged: :option:`--tagged`.
+        :param igtv: :option:`--igtv`.
         :param highlights: :option:`--highlights`.
         :param stories: :option:`--stories`.
         :param fast_update: :option:`--fast-update`.
@@ -1009,7 +1030,11 @@ class Instaloader:
            Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
 
-        .. versionadded:: 4.1"""
+        .. versionadded:: 4.1
+
+        .. versionchanged:: 4.3
+           Add `igtv` parameter.
+        """
 
         @contextmanager
         def _error_raiser(_str):
@@ -1035,7 +1060,7 @@ class Instaloader:
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
-                if profile.is_private and (tagged or highlights or posts):
+                if profile.is_private and (tagged or igtv or highlights or posts):
                     if not self.context.is_logged_in:
                         raise LoginRequiredException("--login=USERNAME required.")
                     if not profile.followed_by_viewer and self.context.username != profile.username:
@@ -1045,6 +1070,11 @@ class Instaloader:
                 if tagged:
                     with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
                         self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
+
+                # Download IGTV, if requested
+                if igtv:
+                    with self.context.error_catcher('Download IGTV of {}'.format(profile_name)):
+                        self.download_igtv(profile, fast_update=fast_update, post_filter=post_filter)
 
                 # Download highlights, if requested
                 if highlights:

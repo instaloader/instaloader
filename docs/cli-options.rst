@@ -129,6 +129,12 @@ What to Download of each Profile
 
    .. versionadded:: 4.1
 
+.. option:: --igtv
+
+   Also download IGTV videos.
+
+   .. versionadded:: 4.3
+
 .. option:: --stories-only
 
    .. deprecated:: 4.1

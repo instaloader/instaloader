@@ -19,7 +19,8 @@ def usage_string():
     argv0 = os.path.basename(sys.argv[0])
     argv0 = "instaloader" if argv0 == "__main__.py" else argv0
     return """
-{0} [--comments] [--geotags] [--stories] [--highlights] [--tagged]
+{0} [--comments] [--geotags]
+{2:{1}} [--stories] [--highlights] [--tagged] [--igtv]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
@@ -61,7 +62,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
           sessionfile: Optional[str] = None,
           download_profile_pic: bool = True, download_posts=True,
-          download_stories: bool = False, download_highlights: bool = False, download_tagged: bool = False,
+          download_stories: bool = False,
+          download_highlights: bool = False,
+          download_tagged: bool = False,
+          download_igtv: bool = False,
           fast_update: bool = False,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
@@ -158,7 +162,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     try:
                         profile = instaloader.check_profile_id(target)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
-                            if download_profile_pic or ((download_posts or download_tagged) and not profile.is_private):
+                            if download_profile_pic or ((download_posts or download_tagged or download_igtv)
+                                                        and not profile.is_private):
                                 raise ProfileNotExistsException("{} blocked you; But we download her anonymously."
                                                                 .format(target))
                             else:
@@ -169,7 +174,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         # Not only our profile.has_blocked_viewer condition raises ProfileNotExistsException,
                         # check_profile_id() also does, since access to blocked profile may be responded with 404.
                         if instaloader.context.is_logged_in and (download_profile_pic or download_posts or
-                                                                 download_tagged):
+                                                                 download_tagged or download_igtv):
                             instaloader.context.log(err)
                             instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
                             with instaloader.anonymous_copy() as anonymous_loader:
@@ -185,14 +190,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         if profiles and download_profile_pic and not instaloader.context.is_logged_in:
             instaloader.context.error("Warning: Use --login to download HD version of profile pictures.")
         instaloader.download_profiles(profiles,
-                                      download_profile_pic, download_posts, download_tagged, download_highlights,
-                                      download_stories, fast_update, post_filter, storyitem_filter)
+                                      download_profile_pic, download_posts, download_tagged, download_igtv,
+                                      download_highlights, download_stories,
+                                      fast_update, post_filter, storyitem_filter)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
             with instaloader.anonymous_copy() as anonymous_loader:
                 anonymous_loader.download_profiles(anonymous_retry_profiles,
-                                                   download_profile_pic, download_posts, download_tagged,
+                                                   download_profile_pic, download_posts, download_tagged, download_igtv,
                                                    fast_update=fast_update, post_filter=post_filter)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
@@ -287,6 +293,8 @@ def main():
                         help='Also download highlights of each profile that is downloaded. Requires --login.')
     g_prof.add_argument('--tagged', action='store_true',
                         help='Also download posts where each profile is tagged.')
+    g_prof.add_argument('--igtv', action='store_true',
+                        help='Also download IGTV videos.')
 
     g_cond = parser.add_argument_group("Which Posts to Download")
 
@@ -411,6 +419,7 @@ def main():
               download_stories=download_stories,
               download_highlights=args.highlights,
               download_tagged=args.tagged,
+              download_igtv=args.igtv,
               fast_update=args.fast_update,
               max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
