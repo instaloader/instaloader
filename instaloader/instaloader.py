@@ -911,6 +911,7 @@ class Instaloader:
             count += 1
             if post_filter is not None and not post_filter(post):
                 self.context.log('<{} skipped>'.format(post))
+                continue
             with self.context.error_catcher('Download tagged {}'.format(profile.username)):
                 downloaded = self.download_post(post, target if target else Path(profile.username) / Path(':tagged'))
                 if fast_update and not downloaded:
