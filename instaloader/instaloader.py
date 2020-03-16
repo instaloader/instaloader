@@ -924,7 +924,7 @@ class Instaloader:
         .. versionadded:: 4.3"""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
         for number, post in enumerate(profile.get_igtv_posts()):
-            self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, profile.igtvcount, w=len(str(profile.igtvcount))),
+            self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number+1, profile.igtvcount, w=len(str(profile.igtvcount))),
                              end="", flush=True)
             if post_filter is not None and not post_filter(post):
                 self.context.log('<{} skipped>'.format(post))
