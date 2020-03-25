@@ -239,6 +239,12 @@ class InstaloaderContext:
                                                                                                resp_json['message']))
             else:
                 raise ConnectionException("Login error: \"{}\" status.".format(resp_json['status']))
+        if 'authenticated' not in resp_json:
+            # Issue #472
+            if 'message' in resp_json:
+                raise ConnectionException("Login error: Unexpected response, \"{}\".".format(resp_json['message']))
+            else:
+                raise ConnectionException("Login error: Unexpected response, this might indicate a blocked IP.")
         if not resp_json['authenticated']:
             if resp_json['user']:
                 # '{"authenticated": false, "user": true, "status": "ok"}'
