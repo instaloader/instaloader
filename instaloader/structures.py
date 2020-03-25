@@ -414,6 +414,30 @@ class Post:
                                                     self._rhx_gis))
 
     @property
+    def is_sponsored(self) -> bool:
+        """
+        Whether Post is a sponsored post, equivalent to non-empty :meth:`Post.sponsor_users`.
+
+        .. versionadded:: 4.4
+        """
+        try:
+            sponsor_edges = self._field('edge_media_to_sponsor_user', 'edges')
+        except KeyError:
+            return False
+        return bool(sponsor_edges)
+
+    @property
+    def sponsor_users(self) -> List['Profile']:
+        """
+        The Post's sponsors.
+
+        .. versionadded:: 4.4
+        """
+        return ([] if not self.is_sponsored else
+                [Profile(self._context, edge['node']['sponsor']) for edge in
+                 self._field('edge_media_to_sponsor_user', 'edges')])
+
+    @property
     def location(self) -> Optional[PostLocation]:
         """
         If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'.
