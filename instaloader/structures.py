@@ -813,6 +813,22 @@ class Profile:
                                                     lambda d: d['data']['user']['edge_follow'],
                                                     self._rhx_gis))
 
+    def get_similar_accounts(self) -> Iterator['Profile']:
+        """
+        Retrieve list of suggested / similar accounts for this profile.
+        To use this, one needs to be logged in.
+
+        .. versionadded:: 4.4
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to get a profile's similar accounts.")
+        self._obtain_metadata()
+        yield from (Profile(self._context, edge["node"]) for edge in
+                    self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
+                                                {"user_id": str(self.userid), "include_chaining": True},
+                                                "https://www.instagram.com/{0}/".format(self.username),
+                                                self._rhx_gis)["data"]["user"]["edge_chaining"]["edges"])
+
 
 class StoryItem:
     """
