@@ -178,6 +178,11 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
         for f in profile.get_followers():
             print(f.username)
 
+    def test_get_similar_accounts(self):
+        profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
+        for f in profile.get_similar_accounts():
+            print(f.username)
+
     def test_get_likes(self):
         for post in instaloader.Profile.from_username(self.L.context, OWN_USERNAME).get_posts():
             for like in post.get_likes():
