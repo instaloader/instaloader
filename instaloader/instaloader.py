@@ -108,7 +108,7 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
         ret = super().vformat(format_string, args, kwargs)
         if platform.system() == 'Windows':
             ret = ret.replace(':', '\ua789').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
-            ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
+            ret = ret.replace('\\', '\u005c').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
         return ret
 
     def get_value(self, key, args, kwargs):
