@@ -224,7 +224,11 @@ class Post:
     def get_sidecar_nodes(self) -> Iterator[PostSidecarNode]:
         """Sidecar nodes of a Post with typename==GraphSidecar."""
         if self.typename == 'GraphSidecar':
-            for edge in self._field('edge_sidecar_to_children', 'edges'):
+            edges = self._field('edge_sidecar_to_children', 'edges')
+            if any(edge['node']['is_video'] for edge in edges):
+                # video_url is only present in full metadata, issue #558.
+                edges = self._full_metadata['edge_sidecar_to_children']['edges']
+            for edge in edges:
                 node = edge['node']
                 is_video = node['is_video']
                 yield PostSidecarNode(is_video=is_video, display_url=node['display_url'],
