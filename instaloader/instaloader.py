@@ -703,8 +703,10 @@ class Instaloader:
 
         while True:
             feed = data["user"]["edge_web_feed_timeline"]
-            yield from (Post(self.context, edge["node"]) for edge in feed["edges"]
-                        if not edge["node"]["__typename"] == "GraphSuggestedUserFeedUnit")
+            for edge in feed["edges"]:
+                node = edge["node"]
+                if node.get("__typename") in Post.supported_graphql_types() and node.get("shortcode") is not None:
+                    yield Post(self.context, node)
             if not feed["page_info"]["has_next_page"]:
                 break
             data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3",
