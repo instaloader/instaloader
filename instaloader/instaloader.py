@@ -723,7 +723,7 @@ class Instaloader:
                 else:
                     self.context.log("[{:3d}] ".format(number + 1), end="", flush=True)
             if post_filter is not None and not post_filter(post):
-                self.context.log("<{} skipped>".format(post))
+                self.context.log("{} skipped".format(post))
                 continue
             with self.context.error_catcher("Download {} of {}".format(post, target)):
                 # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
