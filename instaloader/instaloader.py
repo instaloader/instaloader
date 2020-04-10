@@ -701,6 +701,8 @@ class Instaloader:
         """
         Download the Posts returned by given Post Iterator.
 
+        ..versionadded:: 4.4
+
         :param posts: Post Iterator to loop through.
         :param target: Target name
         :param fast_update: :option:`--fast-update`
@@ -722,9 +724,14 @@ class Instaloader:
                                      end="", flush=True)
                 else:
                     self.context.log("[{:3d}] ".format(number + 1), end="", flush=True)
-            if post_filter is not None and not post_filter(post):
-                self.context.log("{} skipped".format(post))
-                continue
+            if post_filter is not None:
+                try:
+                    if not post_filter(post):
+                        self.context.log("{} skipped".format(post))
+                        continue
+                except (InstaloaderException, KeyError, TypeError) as err:
+                    self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
+                    continue
             with self.context.error_catcher("Download {} of {}".format(post, target)):
                 # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
                 # additional metadata. This is most likely the case if a HTTP redirect takes place while
