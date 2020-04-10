@@ -98,6 +98,11 @@ class Post:
             raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
         return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
 
+    @staticmethod
+    def supported_graphql_types() -> List[str]:
+        """The values of __typename fields that the :class:`Post` class can handle."""
+        return ["GraphImage", "GraphVideo", "GraphSidecar"]
+
     def _asdict(self):
         node = self._node
         if self._full_metadata_dict:
