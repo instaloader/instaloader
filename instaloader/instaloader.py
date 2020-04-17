@@ -21,7 +21,7 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import (Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
+from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          save_structure_to_file, load_structure_from_file)
 
 
@@ -879,21 +879,13 @@ class Instaloader:
                                                                data.get('rhx_gis')))
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
-        """Get Posts associated with a #hashtag."""
-        has_next_page = True
-        end_cursor = None
-        while has_next_page:
-            if end_cursor:
-                params = {'__a': 1, 'max_id': end_cursor}
-            else:
-                params = {'__a': 1}
-            hashtag_data = self.context.get_json('explore/tags/{0}/'.format(hashtag),
-                                                 params)['graphql']['hashtag']['edge_hashtag_to_media']
-            yield from (Post(self.context, edge['node']) for edge in hashtag_data['edges'])
-            has_next_page = hashtag_data['page_info']['has_next_page']
-            end_cursor = hashtag_data['page_info']['end_cursor']
+        """Get Posts associated with a #hashtag.
 
-    def download_hashtag(self, hashtag: str,
+        .. deprecated:: 4.4
+           Use :meth:`Hashtag.get_posts`."""
+        return Hashtag.from_name(self.context, hashtag).get_posts()
+
+    def download_hashtag(self, hashtag: Union[Hashtag, str],
                          max_count: Optional[int] = None,
                          post_filter: Optional[Callable[[Post], bool]] = None,
                          fast_update: bool = False) -> None:
@@ -904,14 +896,17 @@ class Instaloader:
             loader = Instaloader()
             loader.download_hashtag('cat', max_count=30)
 
-        :param hashtag: Hashtag to download, without leading '#'
+        :param hashtag: Hashtag to download, as instance of :class:`Hashtag`, or string without leading '#'
         :param max_count: Maximum count of pictures to download
         :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         """
-        hashtag = hashtag.lower()
-        self.context.log("Retrieving pictures with hashtag {}...".format(hashtag))
-        self.posts_download_loop(self.get_hashtag_posts(hashtag), "#" + hashtag, fast_update, post_filter,
+        if isinstance(hashtag, str):
+            with self.context.error_catcher("Get hashtag #{}".format(hashtag)):
+                hashtag = Hashtag.from_name(self.context, hashtag)
+        assert isinstance(hashtag, Hashtag)
+        self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
+        self.posts_download_loop(hashtag.get_posts(), "#" + hashtag.name, fast_update, post_filter,
                                  max_count=max_count)
 
     def download_tagged(self, profile: Profile, fast_update: bool = False,

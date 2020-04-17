@@ -73,7 +73,7 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
 
     def test_hashtag_paging(self):
-        for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
+        for count, post in enumerate(instaloader.Hashtag.from_name(L.context, HASHTAG).get_posts()):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break

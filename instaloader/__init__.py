@@ -15,5 +15,5 @@ else:
 from .exceptions import *
 from .instaloader import Instaloader
 from .instaloadercontext import InstaloaderContext
-from .structures import (Highlight, Post, PostSidecarNode, PostComment, PostCommentAnswer, PostLocation, Profile, Story,
-                         StoryItem, TopSearchResults, load_structure_from_file, save_structure_to_file)
+from .structures import (Hashtag, Highlight, Post, PostSidecarNode, PostComment, PostCommentAnswer, PostLocation,
+                         Profile, Story, StoryItem, TopSearchResults, load_structure_from_file, save_structure_to_file)
