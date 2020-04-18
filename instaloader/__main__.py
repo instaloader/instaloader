@@ -3,6 +3,7 @@
 import ast
 import datetime
 import os
+import re
 import sys
 from argparse import ArgumentParser, SUPPRESS
 from typing import List, Optional
@@ -136,19 +137,19 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             # strip '/' characters to be more shell-autocompletion-friendly
             target = target.rstrip('/')
             with instaloader.context.error_catcher(target):
-                if target[0] == '@':
+                if re.match(r"^@\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?$", target):
                     instaloader.context.log("Retrieving followees of %s..." % target[1:])
                     profile = Profile.from_username(instaloader.context, target[1:])
                     for followee in profile.get_followees():
                         instaloader.save_profile_id(followee)
                         profiles.add(followee)
-                elif target[0] == '#':
+                elif re.match(r"^#[A-Za-z0-9]+$", target):
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  post_filter=post_filter,
                                                  profile_pic=download_profile_pic, posts=download_posts)
-                elif target[0] == '-':
+                elif re.match(r"^-[A-Za-z0-9-_]+$", target):
                     instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
-                elif target[0] == "%":
+                elif re.match(r"^%[0-9]+$", target):
                     instaloader.download_location(location=target[1:], max_count=max_count, fast_update=fast_update,
                                                   post_filter=post_filter)
                 elif target == ":feed":
@@ -159,7 +160,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 elif target == ":saved":
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
                                                      post_filter=post_filter)
-                else:
+                elif re.match(r"^\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?$", target):
                     try:
                         profile = instaloader.check_profile_id(target)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
@@ -185,6 +186,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                               .format(target, err))
                         else:
                             raise
+                else:
+                    raise ProfileNotExistsException('Invalid username {}'.format(target))
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
