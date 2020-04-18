@@ -137,7 +137,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             # strip '/' characters to be more shell-autocompletion-friendly
             target = target.rstrip('/')
             with instaloader.context.error_catcher(target):
-                if re.match(r"^@\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?$", target):
+                if re.match(r"^@[A-Za-z0-9._]+$", target):
                     instaloader.context.log("Retrieving followees of %s..." % target[1:])
                     profile = Profile.from_username(instaloader.context, target[1:])
                     for followee in profile.get_followees():
@@ -160,7 +160,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 elif target == ":saved":
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
                                                      post_filter=post_filter)
-                elif re.match(r"^\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?$", target):
+                elif re.match(r"^[A-Za-z0-9._]+$", target):
                     try:
                         profile = instaloader.check_profile_id(target)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
@@ -187,7 +187,12 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         else:
                             raise
                 else:
-                    raise ProfileNotExistsException('Invalid username {}'.format(target))
+                    target_type = {
+                        '#': 'hashtag',
+                        '%': 'location',
+                        '-': 'shortcode',
+                    }.get(target[0], 'username')
+                    raise ProfileNotExistsException('Invalid {} {}'.format(target_type, target))
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
