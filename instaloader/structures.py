@@ -1182,7 +1182,11 @@ class Hashtag:
             self._has_full_metadata = True
 
     def _asdict(self):
-        return self._node
+        json_node = self._node.copy()
+        # remove posts
+        json_node.pop("edge_hashtag_to_top_posts", None)
+        json_node.pop("edge_hashtag_to_media", None)
+        return json_node
 
     def __repr__(self):
         return "<Hashtag #{}>".format(self.name)
