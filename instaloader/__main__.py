@@ -144,7 +144,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         profiles.add(followee)
                 elif target[0] == '#':
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
-                                                 post_filter=post_filter)
+                                                 post_filter=post_filter,
+                                                 profile_pic=download_profile_pic, posts=download_posts)
                 elif target[0] == '-':
                     instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
                 elif target[0] == "%":

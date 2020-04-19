@@ -358,7 +358,7 @@ class Instaloader:
         self.context.log('geo', end=' ', flush=True)
 
     @_retry_on_connection_error
-    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Profile,
+    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile],
                            _attempt: int = 1) -> None:
         """Downloads and saves a picture that does not have an association with a Post or StoryItem, such as a
         Profile picture or a Highlight cover picture. Modification time is taken from the HTTP response headers.
@@ -380,7 +380,8 @@ class Instaloader:
         pic_extension = 'jpg'
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
-            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=owner_profile.username.lower(),
+            profile_str = owner_profile.username.lower() if owner_profile is not None else target
+            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=profile_str,
                                                                             target=target),
                                                 pic_identifier, name_suffix, pic_extension)
         else:
@@ -407,6 +408,12 @@ class Instaloader:
 
         .. versionadded:: 4.3"""
         self.download_title_pic(highlight.cover_url, target, 'cover', highlight.owner_profile)
+
+    def download_hashtag_profilepic(self, hashtag: Hashtag) -> None:
+        """Downloads and saves the profile picture of a Hashtag.
+
+        .. versionadded:: 4.4"""
+        self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
@@ -888,7 +895,9 @@ class Instaloader:
     def download_hashtag(self, hashtag: Union[Hashtag, str],
                          max_count: Optional[int] = None,
                          post_filter: Optional[Callable[[Post], bool]] = None,
-                         fast_update: bool = False) -> None:
+                         fast_update: bool = False,
+                         profile_pic: bool = True,
+                         posts: bool = True) -> None:
         """Download pictures of one hashtag.
 
         To download the last 30 pictures with hashtag #cat, do::
@@ -900,14 +909,30 @@ class Instaloader:
         :param max_count: Maximum count of pictures to download
         :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param profile_pic: not :option:`--no-profile-pic`.
+        :param posts: not :option:`--no-posts`.
+
+        .. versionchanged:: 4.4
+           Add parameters `profile_pic` and `posts`.
         """
         if isinstance(hashtag, str):
             with self.context.error_catcher("Get hashtag #{}".format(hashtag)):
                 hashtag = Hashtag.from_name(self.context, hashtag)
-        assert isinstance(hashtag, Hashtag)
-        self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
-        self.posts_download_loop(hashtag.get_posts(), "#" + hashtag.name, fast_update, post_filter,
-                                 max_count=max_count)
+        if not isinstance(hashtag, Hashtag):
+            return
+        target = "#" + hashtag.name
+        if profile_pic:
+            with self.context.error_catcher("Download profile picture of {}".format(target)):
+                self.download_hashtag_profilepic(hashtag)
+        if posts:
+            self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
+            self.posts_download_loop(hashtag.get_posts(), target, fast_update, post_filter,
+                                     max_count=max_count)
+        if self.save_metadata:
+            json_filename = '{0}/{1}'.format(self.dirname_pattern.format(profile=target,
+                                                                         target=target),
+                                             target)
+            self.save_metadata_json(json_filename, hashtag)
 
     def download_tagged(self, profile: Profile, fast_update: bool = False,
                         target: Optional[str] = None,

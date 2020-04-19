@@ -1169,8 +1169,8 @@ class Hashtag:
 
     @property
     def name(self):
-        """Hashtag name, without preceeding '#'"""
-        return self._node["name"]
+        """Hashtag name lowercased, without preceeding '#'"""
+        return self._node["name"].lower()
 
     def _query(self, params):
         return self._context.get_json("explore/tags/{0}/".format(self.name),
@@ -1189,7 +1189,7 @@ class Hashtag:
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Hashtag):
-            return self.name.lower() == other.name.lower()
+            return self.name == other.name
         return NotImplemented
 
     def __hash__(self) -> int:
