@@ -113,7 +113,7 @@ class InstaloaderContext:
     def close(self):
         """Print error log and close session"""
         if self.error_log and not self.quiet:
-            print("\nErrors occured:", file=sys.stderr)
+            print("\nErrors occurred:", file=sys.stderr)
             for err in self.error_log:
                 print(err, file=sys.stderr)
         self._session.close()
@@ -349,7 +349,7 @@ class InstaloaderContext:
             else:
                 self._graphql_query_timestamps[query_hash].append(time.monotonic())
         else:
-            text_for_429 = ("HTTP error code 429 was returned because too many queries occured in the last time. "
+            text_for_429 = ("HTTP error code 429 was returned because too many queries occurred in the last time. "
                             "Please do not use Instagram in your browser or run multiple instances of Instaloader "
                             "in parallel.")
             print(textwrap.fill(text_for_429), file=sys.stderr)

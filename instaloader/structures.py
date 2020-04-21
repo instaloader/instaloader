@@ -139,6 +139,12 @@ class Post:
             pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
             self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
             self._rhx_gis_str = pic_json.get('rhx_gis')
+            if self._full_metadata_dict is None:
+                # issue #449
+                self._context.error("Fetching Post metadata failed (issue #449). "
+                                    "The following data has been returned:\n"
+                                    + json.dumps(pic_json['entry_data'], indent=2))
+                raise BadResponseException("Fetching Post metadata failed.")
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
                 raise PostChangedException
@@ -229,7 +235,11 @@ class Post:
     def get_sidecar_nodes(self) -> Iterator[PostSidecarNode]:
         """Sidecar nodes of a Post with typename==GraphSidecar."""
         if self.typename == 'GraphSidecar':
-            for edge in self._field('edge_sidecar_to_children', 'edges'):
+            edges = self._field('edge_sidecar_to_children', 'edges')
+            if any(edge['node']['is_video'] for edge in edges):
+                # video_url is only present in full metadata, issue #558.
+                edges = self._full_metadata['edge_sidecar_to_children']['edges']
+            for edge in edges:
                 node = edge['node']
                 is_video = node['is_video']
                 yield PostSidecarNode(is_video=is_video, display_url=node['display_url'],
