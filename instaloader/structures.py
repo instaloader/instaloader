@@ -655,6 +655,14 @@ class Profile:
         return self._metadata('external_url')
 
     @property
+    def is_business_account(self) -> bool:
+        return self._metadata('is_business_account')
+
+    @property
+    def business_category_name(self) -> str:
+        return self._metadata('business_category_name')
+
+    @property
     def biography(self) -> str:
         return self._metadata('biography')
 
