@@ -215,11 +215,12 @@ class Instaloader:
                  slide: Optional[str] = None,
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
-                 title_pattern: Optional[str] = None):
+                 title_pattern: Optional[str] = None,
+                 proxies: Optional[dict] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+                                          iphone_support, proxies)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -1212,7 +1213,7 @@ class Instaloader:
         self.posts_download_loop(tagged_posts,
                                  target if target
                                  else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
-                                       _PostPathFormatter.sanitize_path(':tagged')),
+                                       _PostPathFormatter.sanitize_path('__tagged')),
                                  fast_update, post_filter, takewhile=posts_takewhile)
         if latest_stamps is not None and tagged_posts.first_item is not None:
             latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local.astimezone())

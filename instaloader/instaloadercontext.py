@@ -55,10 +55,12 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True,
+                 proxies: Optional[dict] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
+        self._proxies = proxies
         self._session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
@@ -161,6 +163,8 @@ class InstaloaderContext:
     def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
         session = requests.Session()
+        if self._proxies is not None:
+            session.proxies = self._proxies
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -183,6 +187,8 @@ class InstaloaderContext:
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
+        if self._proxies is not None:
+            session.proxies = self._proxies
         self._session = session
         self.username = username
 
@@ -204,6 +210,8 @@ class InstaloaderContext:
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
         session = requests.Session()
+        if self._proxies is not None:
+            session.proxies = self._proxies
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -220,7 +228,7 @@ class InstaloaderContext:
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
+                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True, proxies=self._proxies)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError as err:
@@ -280,7 +288,7 @@ class InstaloaderContext:
 
         login = session.post('https://www.instagram.com/accounts/login/ajax/two_factor/',
                              data={'username': user, 'verificationCode': two_factor_code, 'identifier': two_factor_id},
-                             allow_redirects=True)
+                             allow_redirects=True, proxies=self._proxies)
         resp_json = login.json()
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
@@ -322,12 +330,14 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+
+            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False, proxies=self._proxies)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
                 raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}".format(
                     host, path, resp.status_code, resp.reason, redirect
                 ))
+
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
@@ -338,7 +348,7 @@ class InstaloaderContext:
                     raise TooManyRequestsException("Redirected to login")
                 if redirect_url.startswith('https://{}/'.format(host)):
                     resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
-                                    params=params, allow_redirects=False)
+                                    params=params, allow_redirects=False, proxies=self._proxies)
                 else:
                     break
             if resp.status_code == 400:
@@ -508,7 +518,7 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         with self.get_anonymous_session() as anonymous_session:
-            resp = anonymous_session.get(url, stream=True)
+            resp = anonymous_session.get(url, stream=True, proxies=self._proxies)
         if resp.status_code == 200:
             resp.raw.decode_content = True
             return resp
