@@ -656,10 +656,12 @@ class Profile:
 
     @property
     def is_business_account(self) -> bool:
+        """.. versionadded:: 4.4"""
         return self._metadata('is_business_account')
 
     @property
     def business_category_name(self) -> str:
+        """.. versionadded:: 4.4"""
         return self._metadata('business_category_name')
 
     @property
