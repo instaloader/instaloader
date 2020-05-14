@@ -143,7 +143,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     for followee in profile.get_followees():
                         instaloader.save_profile_id(followee)
                         profiles.add(followee)
-                elif re.match(r"^#[A-Za-z0-9]+$", target):
+                elif re.match(r"^#\w+$", target):
                     instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
                                                  post_filter=post_filter,
                                                  profile_pic=download_profile_pic, posts=download_posts)
