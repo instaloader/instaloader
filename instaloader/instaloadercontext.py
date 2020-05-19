@@ -215,8 +215,11 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': csrf_token})
         # Not using self.get_json() here, because we need to access csrftoken cookie
         self.do_sleep()
+        # Workaround credits to pgrimaud.
+        # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
+        enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'password': passwd, 'username': user}, allow_redirects=True)
+                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError:
