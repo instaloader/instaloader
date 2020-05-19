@@ -7,6 +7,7 @@ import shutil
 import sys
 import textwrap
 import time
+import calendar
 import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime, timedelta
@@ -215,8 +216,9 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': csrf_token})
         # Not using self.get_json() here, because we need to access csrftoken cookie
         self.do_sleep()
+        # Workaround credits to pgrimaud. See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'password': passwd, 'username': user}, allow_redirects=True)
+                             data={'enc_password': f'#PWD_INSTAGRAM_BROWSER:0:{calendar.timegm(time.gmtime())}:{passwd}', 'username': user}, allow_redirects=True)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError:
