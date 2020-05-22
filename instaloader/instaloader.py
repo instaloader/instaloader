@@ -679,8 +679,8 @@ class Instaloader:
             name = user_highlight.owner_username
             highlight_target = (filename_target
                                 if filename_target
-                                else Path(_PostPathFormatter.sanitize_path(name))
-                                / _PostPathFormatter.sanitize_path(user_highlight.title))  # type: Union[str, Path]
+                                else (Path(_PostPathFormatter.sanitize_path(name)) /
+                                      _PostPathFormatter.sanitize_path(user_highlight.title)))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
@@ -942,8 +942,8 @@ class Instaloader:
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
         self.posts_download_loop(profile.get_tagged_posts(),
                                  target if target
-                                 else Path(_PostPathFormatter.sanitize_path(profile.username))
-                                 / _PostPathFormatter.sanitize_path(':tagged'),
+                                 else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
+                                       _PostPathFormatter.sanitize_path(':tagged')),
                                  fast_update, post_filter)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
