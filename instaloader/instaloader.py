@@ -104,10 +104,14 @@ class _ArbitraryItemFormatter(string.Formatter):
 
 class _PostPathFormatter(_ArbitraryItemFormatter):
     def get_value(self, key, args, kwargs):
-        """Replaces '/' with similar looking Division Slash. Also replaces illegal filename characters on windows."""
         ret = super().get_value(key, args, kwargs)
         if not isinstance(ret, str):
             return ret
+        return self.sanitize_path(ret)
+
+    @staticmethod
+    def sanitize_path(ret: str) -> str:
+        """Replaces '/' with similar looking Division Slash and some other illegal filename characters on Windows."""
         ret = ret.replace('/', '\u2215')
         if platform.system() == 'Windows':
             ret = ret.replace(':', '\uff1a').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
@@ -675,7 +679,8 @@ class Instaloader:
             name = user_highlight.owner_username
             highlight_target = (filename_target
                                 if filename_target
-                                else Path(name) / Path(user_highlight.title))  # type: Union[str, Path]
+                                else Path(_PostPathFormatter.sanitize_path(name))
+                                / _PostPathFormatter.sanitize_path(user_highlight.title))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
@@ -936,8 +941,10 @@ class Instaloader:
         .. versionadded:: 4.1"""
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
         self.posts_download_loop(profile.get_tagged_posts(),
-                                 target if target else Path(profile.username) / Path(':tagged'), fast_update,
-                                 post_filter)
+                                 target if target
+                                 else Path(_PostPathFormatter.sanitize_path(profile.username))
+                                 / _PostPathFormatter.sanitize_path(':tagged'),
+                                 fast_update, post_filter)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None) -> None:
