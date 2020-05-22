@@ -103,22 +103,16 @@ class _ArbitraryItemFormatter(string.Formatter):
 
 
 class _PostPathFormatter(_ArbitraryItemFormatter):
-    def vformat(self, format_string, args, kwargs):
-        """Override :meth:`string.Formatter.vformat` for character substitution in paths for Windows, see issue #84."""
-        ret = super().vformat(format_string, args, kwargs)
-        if platform.system() == 'Windows':
-            ret = ret.replace(':', '\ua789').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
-            ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
-        return ret
-
     def get_value(self, key, args, kwargs):
-        """Replaces '/' with similar looking Division Slash and on windows newline with space"""
+        """Replaces '/' with similar looking Division Slash. Also replaces illegal filename characters on windows."""
         ret = super().get_value(key, args, kwargs)
         if not isinstance(ret, str):
             return ret
         ret = ret.replace('/', '\u2215')
         if platform.system() == 'Windows':
-            ret = ret.replace('\n', ' ')
+            ret = ret.replace(':', '\uff1a').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
+            ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
+            ret = ret.replace('\n', ' ').replace('\r', ' ')
         return ret
 
 
