@@ -2,7 +2,7 @@ name: Mark stale issues and pull requests
 
 on:
   schedule:
-  - cron: "27 9 * * *"
+  - cron: "10 14 * * *"
 
 jobs:
   stale:
@@ -19,18 +19,15 @@ jobs:
         exempt-issue-labels: 'leave open'
         days-before-stale: 15
         days-before-close: -1
-        operations-per-run: 7
         remove-stale-when-updated: false
-    - uses: actions/stale@v3
+    - uses: actions/stale@v1
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-issue-message: 'There has been no activity on this issue for an extended period of time. This issue will be closed after further 14 days of inactivity.'
         stale-pr-message: 'There has been no activity on this Pull Request for an extended period of time. This Pull Request will be closed after further 14 days of inactivity.'
         stale-issue-label: 'stale'
         stale-pr-label: 'stale'
-        exempt-issue-labels: 'leave open'
-        exempt-pr-labels: 'leave open'
+        exempt-issue-label: 'leave open'
+        exempt-pr-label: 'leave open'
         days-before-stale: 90
         days-before-close: 14
-        operations-per-run: 7
-        remove-stale-when-updated: false
