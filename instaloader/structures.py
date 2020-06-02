@@ -569,8 +569,8 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_json('{}/'.format(self.username), params={})
-                self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
+                metadata = self._context.get_json('{}/'.format(self.username), params={'__a': 1})
+           	self._node = metadata['graphql']['user']
                 self._has_full_metadata = True
                 self._rhx_gis = metadata.get('rhx_gis')
         except (QueryReturnedNotFoundException, KeyError) as err:
