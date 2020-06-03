@@ -37,7 +37,7 @@ picture, video or sidecar (set of multiple pictures/videos) posted in a user's
 profile. :class:`Instaloader` provides methods to iterate over Posts from a
 certain source::
 
-    for post in L.get_hashtag_posts('cat'):
+    for post in instaloader.Hashtag.from_name(L.context, 'cat').get_posts():
         # post is an instance of instaloader.Post
         L.download_post(post, target='#cat')
 
@@ -63,7 +63,7 @@ certain source::
 - :meth:`Instaloader.get_explore_posts`
    Media that is suggested by Instagram to explore.
 
-- :meth:`Instaloader.get_hashtag_posts`
+- :meth:`Hashtag.get_posts`
    Media associated with given hashtag.
 
 With the :class:`Profile` class, Instaloader also makes it easy to access
@@ -155,6 +155,14 @@ Profiles
 .. autoclass:: Profile
    :no-show-inheritance:
 
+Hashtags
+""""""""
+
+.. autoclass:: Hashtag
+   :no-show-inheritance:
+
+   .. versionadded:: 4.4
+
 TopSearchResults
 """"""""""""""""
 
@@ -166,7 +174,7 @@ TopSearchResults
 Loading and Saving
 """"""""""""""""""
 
-:class:`Post`, :class:`StoryItem` and :class:`Profile` can be saved and loaded
+:class:`Post`, :class:`StoryItem`, :class:`Profile` and :class:`Hashtag` can be saved and loaded
 to/from JSON files.
 
 .. autofunction:: load_structure_from_file

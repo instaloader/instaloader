@@ -5,7 +5,7 @@ import instaloader
 
 L = instaloader.Instaloader()
 
-posts = L.get_hashtag_posts('urbanphotography')
+posts = instaloader.Hashtag.from_name(L.context, 'urbanphotography').get_posts()
 # or
 # posts = instaloader.Profile.from_username(L.context, PROFILE).get_posts()
 

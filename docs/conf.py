@@ -49,7 +49,22 @@ autodoc_member_order = 'bysource'
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'requests': ('https://requests.kennethreitz.org/en/master/', None)}
 
-extlinks = {'issue': ('https://github.com/instaloader/instaloader/issues/%s', 'issue #')}
+current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
+current_release_date = subprocess.check_output(
+    ["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
+
+html_context = {'current_release': current_release, 'current_release_date': current_release_date}
+
+extlinks = {
+    'issue': (
+        'https://github.com/instaloader/instaloader/issues/%s',
+        'Issue #'
+    ),
+    'example': (
+        'https://raw.githubusercontent.com/instaloader/instaloader/v' + current_release + '/docs/codesnippets/%s',
+        'Example '
+    ),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -69,7 +84,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Instaloader'
-copyright = '2017, Alexander Graf and Andre Koch-Kramer'
+copyright = '2017-2020, Alexander Graf and Andre Koch-Kramer'
 author = 'Alexander Graf and Andre Koch-Kramer'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -351,12 +366,6 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #
 # texinfo_no_detailmenu = False
-
-
-current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
-current_release_date = subprocess.check_output(["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
-
-html_context = {'current_release': current_release, 'current_release_date': current_release_date}
 
 
 def setup(app):

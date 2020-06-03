@@ -17,15 +17,16 @@ code {
   .highlight pre {
     padding: 0.7em;
     color: #fff; }
-  .highlight .c1 {
+  .highlight .c1, .highlight .k, .highlight .kn, .highlight .ow {
     color: #008d06; }
-  .highlight .k, .highlight .kn, .highlight .ow {
-    color: #f48400;
-    font-weight: bold; }
-  .highlight .nb {
+  .highlight .nb, .highlight .ne, .highlight .nf, .highlight .vm {
     color: #f48400; }
-  .highlight .s1, .highlight .s2, .highlight .mi {
+  .highlight .s1, .highlight .s2, .highlight .sa, .highlight .se, .highlight .si, .highlight .mi {
     color: #ff7efd; }
+  .highlight .c1, .highlight .nf, .highlight .sa, .highlight .se, .highlight .si {
+    font-style: italic; }
+  .highlight .k, .highlight .kn, .highlight .ow {
+    font-weight: bold; }
 
 .doc-content {
   padding-top: 0.5em;

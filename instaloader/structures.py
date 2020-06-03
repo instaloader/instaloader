@@ -429,6 +429,30 @@ class Post:
                                                     self._rhx_gis))
 
     @property
+    def is_sponsored(self) -> bool:
+        """
+        Whether Post is a sponsored post, equivalent to non-empty :meth:`Post.sponsor_users`.
+
+        .. versionadded:: 4.4
+        """
+        try:
+            sponsor_edges = self._field('edge_media_to_sponsor_user', 'edges')
+        except KeyError:
+            return False
+        return bool(sponsor_edges)
+
+    @property
+    def sponsor_users(self) -> List['Profile']:
+        """
+        The Post's sponsors.
+
+        .. versionadded:: 4.4
+        """
+        return ([] if not self.is_sponsored else
+                [Profile(self._context, edge['node']['sponsor']) for edge in
+                 self._field('edge_media_to_sponsor_user', 'edges')])
+
+    @property
     def location(self) -> Optional[PostLocation]:
         """
         If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'.
@@ -631,6 +655,16 @@ class Profile:
         return self._metadata('external_url')
 
     @property
+    def is_business_account(self) -> bool:
+        """.. versionadded:: 4.4"""
+        return self._metadata('is_business_account')
+
+    @property
+    def business_category_name(self) -> str:
+        """.. versionadded:: 4.4"""
+        return self._metadata('business_category_name')
+
+    @property
     def biography(self) -> str:
         return self._metadata('biography')
 
@@ -803,6 +837,22 @@ class Profile:
                                                     'https://www.instagram.com/' + self.username + '/',
                                                     lambda d: d['data']['user']['edge_follow'],
                                                     self._rhx_gis))
+
+    def get_similar_accounts(self) -> Iterator['Profile']:
+        """
+        Retrieve list of suggested / similar accounts for this profile.
+        To use this, one needs to be logged in.
+
+        .. versionadded:: 4.4
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to get a profile's similar accounts.")
+        self._obtain_metadata()
+        yield from (Profile(self._context, edge["node"]) for edge in
+                    self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
+                                                {"user_id": str(self.userid), "include_chaining": True},
+                                                "https://www.instagram.com/{0}/".format(self.username),
+                                                self._rhx_gis)["data"]["user"]["edge_chaining"]["edges"])
 
 
 class StoryItem:
@@ -1100,6 +1150,169 @@ class Highlight(Story):
         yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
 
 
+class Hashtag:
+    """
+    An Hashtag.
+
+    Analogous to :class:`Profile`, get an instance with::
+
+       L = Instaloader()
+       hashtag = Hashtag.from_name(L.context, HASHTAG)
+
+    To then download the Hashtag's Posts, do::
+
+       for post in hashtag.get_posts():
+          L.download_post(post, target="#"+hashtag.name)
+
+    Also, this class implements == and is hashable.
+    """
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+        assert "name" in node
+        self._context = context
+        self._node = node
+        self._has_full_metadata = False
+
+    @classmethod
+    def from_name(cls, context: InstaloaderContext, name: str):
+        """
+        Create a Hashtag instance from a given hashtag name, without preceeding '#'. Raises an Exception if there is no
+        hashtag with the given name.
+
+        :param context: :attr:`Instaloader.context`
+        :param name: Hashtag, without preceeding '#'
+        :raises: :class:`QueryReturnedNotFoundException`
+        """
+        # pylint:disable=protected-access
+        hashtag = cls(context, {'name': name.lower()})
+        hashtag._obtain_metadata()
+        return hashtag
+
+    @property
+    def name(self):
+        """Hashtag name lowercased, without preceeding '#'"""
+        return self._node["name"].lower()
+
+    def _query(self, params):
+        return self._context.get_json("explore/tags/{0}/".format(self.name),
+                                      params)["graphql"]["hashtag"]
+
+    def _obtain_metadata(self):
+        if not self._has_full_metadata:
+            self._node = self._query({"__a": 1})
+            self._has_full_metadata = True
+
+    def _asdict(self):
+        json_node = self._node.copy()
+        # remove posts
+        json_node.pop("edge_hashtag_to_top_posts", None)
+        json_node.pop("edge_hashtag_to_media", None)
+        return json_node
+
+    def __repr__(self):
+        return "<Hashtag #{}>".format(self.name)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Hashtag):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def _metadata(self, *keys) -> Any:
+        try:
+            d = self._node
+            for key in keys:
+                d = d[key]
+            return d
+        except KeyError:
+            self._obtain_metadata()
+            d = self._node
+            for key in keys:
+                d = d[key]
+            return d
+
+    @property
+    def hashtagid(self) -> int:
+        return int(self._metadata("id"))
+
+    @property
+    def profile_pic_url(self) -> str:
+        return self._metadata("profile_pic_url")
+
+    @property
+    def description(self) -> str:
+        return self._metadata("description")
+
+    @property
+    def allow_following(self) -> bool:
+        return self._metadata("allow_following")
+
+    @property
+    def is_following(self) -> bool:
+        return self._metadata("is_following")
+
+    @property
+    def is_top_media_only(self) -> bool:
+        return self._metadata("is_top_media_only")
+
+    def get_related_tags(self) -> Iterator["Hashtag"]:
+        """Yields similar hashtags."""
+        yield from (Hashtag(self._context, edge["node"])
+                    for edge in self._metadata("edge_hashtag_to_related_tags", "edges"))
+
+    def get_top_posts(self) -> Iterator[Post]:
+        """Yields the top posts of the hashtag."""
+        yield from (Post(self._context, edge["node"])
+                    for edge in self._metadata("edge_hashtag_to_top_posts", "edges"))
+
+    @property
+    def mediacount(self) -> int:
+        """
+        The count of all media associated with this hashtag.
+
+        The number of posts with a certain hashtag may differ from the number of posts that can actually be accessed, as
+        the hashtag count might include private posts
+        """
+        return self._metadata("edge_hashtag_to_media", "count")
+
+    def get_posts(self) -> Iterator[Post]:
+        """Yields the posts associated with this hashtag."""
+        self._metadata("edge_hashtag_to_media", "edges")
+        self._metadata("edge_hashtag_to_media", "page_info")
+        conn = self._metadata("edge_hashtag_to_media")
+        yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
+        while conn["page_info"]["has_next_page"]:
+            data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
+            conn = data["edge_hashtag_to_media"]
+            yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
+
+    def get_all_posts(self) -> Iterator[Post]:
+        """Yields all posts, i.e. all most recent posts and the top posts, in chronological order."""
+        sorted_top_posts = iter(sorted(self.get_top_posts(), key=lambda p: p.date_utc, reverse=True))
+        other_posts = self.get_posts()
+        next_top = next(sorted_top_posts, None)
+        next_other = next(other_posts, None)
+        while next_top is not None or next_other is not None:
+            if next_other is None:
+                yield from sorted_top_posts
+                break
+            if next_top is None:
+                yield from other_posts
+                break
+            if next_top == next_other:
+                yield next_top
+                next_top = next(sorted_top_posts, None)
+                next_other = next(other_posts, None)
+                continue
+            if next_top.date_utc > next_other.date_utc:
+                yield next_top
+                next_top = next(sorted_top_posts, None)
+            else:
+                yield next_other
+                next_other = next(other_posts, None)
+
+
 class TopSearchResults:
     """
     An invocation of this class triggers a search on Instagram for the provided search string.
@@ -1159,6 +1372,17 @@ class TopSearchResults:
             if name:
                 yield name
 
+    def get_hashtags(self) -> Iterator[Hashtag]:
+        """
+        Provides the hashtags from the search result.
+
+        .. versionadded:: 4.4
+        """
+        for hashtag in self._node.get('hashtags', []):
+            node = hashtag.get('hashtag', {})
+            if 'name' in node:
+                yield Hashtag(self._context, node)
+
     @property
     def searchstring(self) -> str:
         """
@@ -1167,17 +1391,17 @@ class TopSearchResults:
         return self._searchstring
 
 
-JsonExportable = Union[Post, Profile, StoryItem]
+JsonExportable = Union[Post, Profile, StoryItem, Hashtag]
 
 
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
-    """Saves a :class:`Post`, :class:`Profile` or :class:`StoryItem` to a '.json' or '.json.xz' file such that it can
-    later be loaded by :func:`load_structure_from_file`.
+    """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` to a '.json' or '.json.xz' file
+    such that it can later be loaded by :func:`load_structure_from_file`.
 
     If the specified filename ends in '.xz', the file will be LZMA compressed. Otherwise, a pretty-printed JSON file
     will be created.
 
-    :param structure: :class:`Post`, :class:`Profile` or :class:`StoryItem`
+    :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
     :param filename: Filename, ends in '.json' or '.json.xz'
     """
     json_structure = {'node': structure._asdict(),
@@ -1192,8 +1416,8 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
-    """Loads a :class:`Post`, :class:`Profile` or :class:`StoryItem` from a '.json' or '.json.xz' file that
-    has been saved by :func:`save_structure_to_file`.
+    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` from a '.json' or '.json.xz' file
+    that has been saved by :func:`save_structure_to_file`.
 
     :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
     :param filename: Filename, ends in '.json' or '.json.xz'
@@ -1214,6 +1438,8 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
             return Profile(context, json_structure['node'])
         elif node_type == "StoryItem":
             return StoryItem(context, json_structure['node'])
+        elif node_type == "Hashtag":
+            return Hashtag(context, json_structure['node'])
         else:
             raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
     elif 'shortcode' in json_structure:

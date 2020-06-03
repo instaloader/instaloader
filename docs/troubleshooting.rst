@@ -32,7 +32,7 @@ rate limit has almost been reached, according to Instaloader's own rate
 accounting mechanism. We regularly adjust this mechanism to match Instagram's
 current rate limiting.
 
-Login error
+Login Error
 -----------
 
 Instaloader's login *should* work fine, both with and without
@@ -40,21 +40,31 @@ Two-Factor-Authentication. It also supports handling the *checkpoint challenge*,
 issued when Instagram suspects authentication activity on your account, by
 pointing the user to an URL to be opened in a browser.
 
-Nevertheless, in :issue:`92` users report problems with logging in. To still use
-Instaloader's logged-in functionality, you may use the following script to
-workaround login problems by importing the session cookies from Firefox and
-bypassing Instaloader's login.
+Nevertheless, in :issue:`92` and :issue:`615` users reported problems with
+logging in. We recommend to always keep the sessionfile which Instaloader
+creates when using :option:`--login`. If a sessionfile is present,
+:option:`--login` does not make make use of the failure-prone login procedure.
+Also, sessionfiles usually do not expire and can be copied between different
+computers without any problems.
 
-.. literalinclude:: codesnippets/92_import_firefox_session.py
+If you do not have a sessionfile present, you may use the following script
+(:example:`615_import_firefox_session.py`) to workaround login problems by
+importing the session cookies from Firefox and bypassing Instaloader's login and
+so still use Instaloader's logged-in functionality.
 
-To use this,
+.. literalinclude:: codesnippets/615_import_firefox_session.py
 
-#. login to Instagram in Firefox, 
+To use this script,
 
-#. execute the snippet,
+#. Download the script: :example:`615_import_firefox_session.py`,
 
-#. then, ``instaloader -l USERNAME`` should work fine.
+#. Login to Instagram in Firefox,
 
-If you do not use your default firefox profile, or your operating system has the
-paths differently set up, you may have to alter the ``FIREFOXCOOKIEFILE``
-variable first.
+#. Execute the snippet, e.g. with ``python 615_import_firefox_session.py``,
+
+#. Then, ``instaloader -l USERNAME`` should work fine.
+
+This script also supports specifying a cookiefile path, which may be useful if
+you use multiple Firefox profiles or if your operating system has the directory
+structure differently set up. Also, you can specify an alternative sessionfile
+path.

@@ -73,7 +73,7 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         self.L.download_hashtag(HASHTAG, NORMAL_MAX_COUNT)
 
     def test_hashtag_paging(self):
-        for count, post in enumerate(self.L.get_hashtag_posts(HASHTAG)):
+        for count, post in enumerate(instaloader.Hashtag.from_name(self.L.context, HASHTAG).get_all_posts()):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break
@@ -176,6 +176,11 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
     def test_get_followers(self):
         profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
         for f in profile.get_followers():
+            print(f.username)
+
+    def test_get_similar_accounts(self):
+        profile = instaloader.Profile.from_username(self.L.context, OWN_USERNAME)
+        for f in profile.get_similar_accounts():
             print(f.username)
 
     def test_get_likes(self):

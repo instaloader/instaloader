@@ -21,7 +21,7 @@ import urllib3  # type: ignore
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         save_structure_to_file)
+                         save_structure_to_file, load_structure_from_file)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -102,22 +102,20 @@ class _ArbitraryItemFormatter(string.Formatter):
 
 
 class _PostPathFormatter(_ArbitraryItemFormatter):
-    def vformat(self, format_string, args, kwargs):
-        """Override :meth:`string.Formatter.vformat` for character substitution in paths for Windows, see issue #84."""
-        ret = super().vformat(format_string, args, kwargs)
-        if platform.system() == 'Windows':
-            ret = ret.replace(':', '\ua789').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
-            ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
-        return ret
-
     def get_value(self, key, args, kwargs):
-        """Replaces '/' with similar looking Division Slash and on windows newline with space"""
         ret = super().get_value(key, args, kwargs)
         if not isinstance(ret, str):
             return ret
+        return self.sanitize_path(ret)
+
+    @staticmethod
+    def sanitize_path(ret: str) -> str:
+        """Replaces '/' with similar looking Division Slash and some other illegal filename characters on Windows."""
         ret = ret.replace('/', '\u2215')
         if platform.system() == 'Windows':
-            ret = ret.replace('\n', ' ')
+            ret = ret.replace(':', '\uff1a').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
+            ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
+            ret = ret.replace('\n', ' ').replace('\r', ' ')
         return ret
 
 
@@ -342,7 +340,7 @@ class Instaloader:
         self.context.log('geo', end=' ', flush=True)
 
     @_retry_on_connection_error
-    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Profile,
+    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile],
                            _attempt: int = 1) -> None:
         """Downloads and saves a picture that does not have an association with a Post or StoryItem, such as a
         Profile picture or a Highlight cover picture. Modification time is taken from the HTTP response headers.
@@ -364,7 +362,8 @@ class Instaloader:
         pic_extension = 'jpg'
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
-            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=owner_profile.username.lower(),
+            profile_str = owner_profile.username.lower() if owner_profile is not None else target
+            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=profile_str,
                                                                             target=target),
                                                 pic_identifier, name_suffix, pic_extension)
         else:
@@ -391,6 +390,12 @@ class Instaloader:
 
         .. versionadded:: 4.3"""
         self.download_title_pic(highlight.cover_url, target, 'cover', highlight.owner_profile)
+
+    def download_hashtag_profilepic(self, hashtag: Hashtag) -> None:
+        """Downloads and saves the profile picture of a Hashtag.
+
+        .. versionadded:: 4.4"""
+        self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
@@ -657,7 +662,8 @@ class Instaloader:
             name = user_highlight.owner_username
             highlight_target = (filename_target
                                 if filename_target
-                                else Path(name) / Path(user_highlight.title))  # type: Union[str, Path]
+                                else (Path(_PostPathFormatter.sanitize_path(name)) /
+                                      _PostPathFormatter.sanitize_path(user_highlight.title)))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
@@ -673,6 +679,66 @@ class Instaloader:
                     downloaded = self.download_storyitem(item, highlight_target)
                     if fast_update and not downloaded:
                         break
+
+    def posts_download_loop(self,
+                            posts: Iterator[Post],
+                            target: Union[str, Path],
+                            fast_update: bool = False,
+                            post_filter: Optional[Callable[[Post], bool]] = None,
+                            max_count: Optional[int] = None,
+                            total_count: Optional[int] = None) -> None:
+        """
+        Download the Posts returned by given Post Iterator.
+
+        ..versionadded:: 4.4
+
+        :param posts: Post Iterator to loop through.
+        :param target: Target name
+        :param fast_update: :option:`--fast-update`
+        :param post_filter: :option:`--post-filter`
+        :param max_count: Maximum count of Posts to download (:option:`--count`)
+        :param total_count: Total number of posts returned by given iterator
+        """
+        for number, post in enumerate(posts):
+            if max_count is not None and number >= max_count:
+                break
+            if total_count is not None:
+                self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + 1, total_count,
+                                                               w=len(str(total_count))),
+                                 end="", flush=True)
+            else:
+                if max_count is not None:
+                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + 1, max_count,
+                                                                   w=len(str(max_count))),
+                                     end="", flush=True)
+                else:
+                    self.context.log("[{:3d}] ".format(number + 1), end="", flush=True)
+            if post_filter is not None:
+                try:
+                    if not post_filter(post):
+                        self.context.log("{} skipped".format(post))
+                        continue
+                except (InstaloaderException, KeyError, TypeError) as err:
+                    self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
+                    continue
+            with self.context.error_catcher("Download {} of {}".format(post, target)):
+                # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
+                # additional metadata. This is most likely the case if a HTTP redirect takes place while
+                # resolving the shortcode URL.
+                # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
+                # obained after a redirect has probably already been downloaded as a previous Post of the
+                # same Profile.
+                # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
+                post_changed = False
+                while True:
+                    try:
+                        downloaded = self.download_post(post, target=target)
+                        break
+                    except PostChangedException:
+                        post_changed = True
+                        continue
+                if fast_update and not downloaded and not post_changed:
+                    break
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
@@ -718,20 +784,7 @@ class Instaloader:
         :raises LoginRequiredException: If called without being logged in.
         """
         self.context.log("Retrieving pictures from your feed...")
-        count = 1
-        for post in self.get_feed_posts():
-            if max_count is not None and count > max_count:
-                break
-            name = post.owner_username
-            if post_filter is not None and not post_filter(post):
-                self.context.log("<pic by %s skipped>" % name, flush=True)
-                continue
-            self.context.log("[%3i] %s " % (count, name), end="", flush=True)
-            count += 1
-            with self.context.error_catcher('Download feed'):
-                downloaded = self.download_post(post, target=':feed')
-                if fast_update and not downloaded:
-                    break
+        self.posts_download_loop(self.get_feed_posts(), ":feed", fast_update, post_filter, max_count=max_count)
 
     @_requires_login
     def download_saved_posts(self, max_count: int = None, fast_update: bool = False,
@@ -744,20 +797,9 @@ class Instaloader:
         :raises LoginRequiredException: If called without being logged in.
         """
         self.context.log("Retrieving saved posts...")
-        count = 1
-        assert self.context.username is not None
-        for post in Profile.from_username(self.context, self.context.username).get_saved_posts():
-            if max_count is not None and count > max_count:
-                break
-            if post_filter is not None and not post_filter(post):
-                self.context.log("<{} skipped>".format(post), flush=True)
-                continue
-            self.context.log("[{:>3}] ".format(count), end=str(), flush=True)
-            count += 1
-            with self.context.error_catcher('Download saved posts'):
-                downloaded = self.download_post(post, target=':saved')
-                if fast_update and not downloaded:
-                    break
+        assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
+        self.posts_download_loop(Profile.from_username(self.context, self.context.username).get_saved_posts(), ":saved",
+                                 fast_update, post_filter, max_count=max_count)
 
     @_requires_login
     def get_location_posts(self, location: str) -> Iterator[Post]:
@@ -808,19 +850,8 @@ class Instaloader:
            Require being logged in (as required by Instagram)
         """
         self.context.log("Retrieving pictures for location {}...".format(location))
-        count = 1
-        for post in self.get_location_posts(location):
-            if max_count is not None and count > max_count:
-                break
-            self.context.log('[{0:3d}] %{1} '.format(count, location), end='', flush=True)
-            if post_filter is not None and not post_filter(post):
-                self.context.log('<skipped>')
-                continue
-            count += 1
-            with self.context.error_catcher('Download location {}'.format(location)):
-                downloaded = self.download_post(post, target='%' + location)
-                if fast_update and not downloaded:
-                    break
+        self.posts_download_loop(self.get_location_posts(location), "%" + location, fast_update, post_filter,
+                                 max_count=max_count)
 
     @_requires_login
     def get_explore_posts(self) -> Iterator[Post]:
@@ -837,24 +868,18 @@ class Instaloader:
                                                                data.get('rhx_gis')))
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
-        """Get Posts associated with a #hashtag."""
-        has_next_page = True
-        end_cursor = None
-        while has_next_page:
-            if end_cursor:
-                params = {'__a': 1, 'max_id': end_cursor}
-            else:
-                params = {'__a': 1}
-            hashtag_data = self.context.get_json('explore/tags/{0}/'.format(hashtag),
-                                                 params)['graphql']['hashtag']['edge_hashtag_to_media']
-            yield from (Post(self.context, edge['node']) for edge in hashtag_data['edges'])
-            has_next_page = hashtag_data['page_info']['has_next_page']
-            end_cursor = hashtag_data['page_info']['end_cursor']
+        """Get Posts associated with a #hashtag.
 
-    def download_hashtag(self, hashtag: str,
+        .. deprecated:: 4.4
+           Use :meth:`Hashtag.get_posts`."""
+        return Hashtag.from_name(self.context, hashtag).get_posts()
+
+    def download_hashtag(self, hashtag: Union[Hashtag, str],
                          max_count: Optional[int] = None,
                          post_filter: Optional[Callable[[Post], bool]] = None,
-                         fast_update: bool = False) -> None:
+                         fast_update: bool = False,
+                         profile_pic: bool = True,
+                         posts: bool = True) -> None:
         """Download pictures of one hashtag.
 
         To download the last 30 pictures with hashtag #cat, do::
@@ -862,26 +887,34 @@ class Instaloader:
             loader = Instaloader()
             loader.download_hashtag('cat', max_count=30)
 
-        :param hashtag: Hashtag to download, without leading '#'
+        :param hashtag: Hashtag to download, as instance of :class:`Hashtag`, or string without leading '#'
         :param max_count: Maximum count of pictures to download
         :param post_filter: function(post), which returns True if given picture should be downloaded
         :param fast_update: If true, abort when first already-downloaded picture is encountered
+        :param profile_pic: not :option:`--no-profile-pic`.
+        :param posts: not :option:`--no-posts`.
+
+        .. versionchanged:: 4.4
+           Add parameters `profile_pic` and `posts`.
         """
-        hashtag = hashtag.lower()
-        self.context.log("Retrieving pictures with hashtag {}...".format(hashtag))
-        count = 1
-        for post in self.get_hashtag_posts(hashtag):
-            if max_count is not None and count > max_count:
-                break
-            self.context.log('[{0:3d}] #{1} '.format(count, hashtag), end='', flush=True)
-            if post_filter is not None and not post_filter(post):
-                self.context.log('<skipped>')
-                continue
-            count += 1
-            with self.context.error_catcher('Download hashtag #{}'.format(hashtag)):
-                downloaded = self.download_post(post, target='#' + hashtag)
-                if fast_update and not downloaded:
-                    break
+        if isinstance(hashtag, str):
+            with self.context.error_catcher("Get hashtag #{}".format(hashtag)):
+                hashtag = Hashtag.from_name(self.context, hashtag)
+        if not isinstance(hashtag, Hashtag):
+            return
+        target = "#" + hashtag.name
+        if profile_pic:
+            with self.context.error_catcher("Download profile picture of {}".format(target)):
+                self.download_hashtag_profilepic(hashtag)
+        if posts:
+            self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
+            self.posts_download_loop(hashtag.get_all_posts(), target, fast_update, post_filter,
+                                     max_count=max_count)
+        if self.save_metadata:
+            json_filename = '{0}/{1}'.format(self.dirname_pattern.format(profile=target,
+                                                                         target=target),
+                                             target)
+            self.save_metadata_json(json_filename, hashtag)
 
     def download_tagged(self, profile: Profile, fast_update: bool = False,
                         target: Optional[str] = None,
@@ -890,17 +923,11 @@ class Instaloader:
 
         .. versionadded:: 4.1"""
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
-        count = 1
-        for post in profile.get_tagged_posts():
-            self.context.log("[%3i/???] " % (count), end="", flush=True)
-            count += 1
-            if post_filter is not None and not post_filter(post):
-                self.context.log('<{} skipped>'.format(post))
-                continue
-            with self.context.error_catcher('Download tagged {}'.format(profile.username)):
-                downloaded = self.download_post(post, target if target else Path(profile.username) / Path(':tagged'))
-                if fast_update and not downloaded:
-                    break
+        self.posts_download_loop(profile.get_tagged_posts(),
+                                 target if target
+                                 else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
+                                       _PostPathFormatter.sanitize_path(':tagged')),
+                                 fast_update, post_filter)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None) -> None:
@@ -908,16 +935,8 @@ class Instaloader:
 
         .. versionadded:: 4.3"""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
-        for number, post in enumerate(profile.get_igtv_posts()):
-            self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number+1, profile.igtvcount, w=len(str(profile.igtvcount))),
-                             end="", flush=True)
-            if post_filter is not None and not post_filter(post):
-                self.context.log('<{} skipped>'.format(post))
-                continue
-            with self.context.error_catcher('Download IGTV {}'.format(post.shortcode)):
-                downloaded = self.download_post(post, target=profile.username)
-                if fast_update and not downloaded:
-                    break
+        self.posts_download_loop(profile.get_igtv_posts(), profile.username, fast_update, post_filter,
+                                 total_count=profile.igtvcount)
 
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -1069,32 +1088,8 @@ class Instaloader:
                 # Iterate over pictures and download them
                 if posts:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
-                    totalcount = profile.mediacount
-                    count = 1
-                    for post in profile.get_posts():
-                        self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
-                        count += 1
-                        if post_filter is not None and not post_filter(post):
-                            self.context.log('<skipped>')
-                            continue
-                        with self.context.error_catcher("Download {} of {}".format(post, profile_name)):
-                            # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
-                            # additional metadata. This is most likely the case if a HTTP redirect takes place while
-                            # resolving the shortcode URL.
-                            # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
-                            # obained after a redirect has probably already been downloaded as a previous Post of the
-                            # same Profile.
-                            # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
-                            post_changed = False
-                            while True:
-                                try:
-                                    downloaded = self.download_post(post, target=profile_name)
-                                    break
-                                except PostChangedException:
-                                    post_changed = True
-                                    continue
-                            if fast_update and not downloaded and not post_changed:
-                                break
+                    self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
+                                             total_count=profile.mediacount)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
@@ -1173,18 +1168,8 @@ class Instaloader:
 
         # Iterate over pictures and download them
         self.context.log("Retrieving posts from profile {}.".format(profile_name))
-        totalcount = profile.mediacount
-        count = 1
-        for post in profile.get_posts():
-            self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
-            count += 1
-            if post_filter is not None and not post_filter(post):
-                self.context.log('<skipped>')
-                continue
-            with self.context.error_catcher('Download profile {}'.format(profile_name)):
-                downloaded = self.download_post(post, target=profile_name)
-                if fast_update and not downloaded:
-                    break
+        self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
+                                 total_count=profile.mediacount)
 
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.
