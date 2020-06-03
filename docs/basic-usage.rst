@@ -51,7 +51,7 @@ invoke it with
     instaloader --login=your_username profile [profile ...]
 
 When logging in, Instaloader **stores the session cookies** in a file in your
-temporary directory, which will be reused later the next time :option:`--login`
+home directory, which will be reused later the next time :option:`--login`
 is given.  So you can download private profiles **non-interactively** when you
 already have a valid session cookie file.
 
@@ -291,17 +291,18 @@ Instaloader as Cronjob
 Instaloader is suitable for running as a cronjob to periodically update your
 personal Instagram archive. The :option:`--quiet` option disables user
 interactions and logging of non-error messages. To non-interactively use
-Instaloader logged-in, create a session file, e.g. in your home directory::
+Instaloader logged-in, create a session file::
 
-   instaloader --login=your_username --sessionfile=~/.instaloader-session
+   instaloader --login=your_username
 
-Then use the same parameters in your cronjob to load the session and download
+Then use the same parameter in your cronjob to load the session and download
 the given targets::
 
-   instaloader --login=your_username --sessionfile=~/.instaloader-session --quiet <target> [...]
+   instaloader --login=your_username --quiet <target> [...]
 
-Without :option:`--sessionfile` option, Instaloader saves the session file in
-a path within your temporary directory.
+Instaloader saves the session file to
+``~/.config/instaloader/session-YOUR-USERNAME``. See
+:option:`--sessionfile` option for how to override this path.
 
 Programming Instaloader
 ^^^^^^^^^^^^^^^^^^^^^^^

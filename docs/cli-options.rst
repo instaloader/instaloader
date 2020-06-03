@@ -193,9 +193,8 @@ Instaloader to login.
 
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
-   Path for loading and storing session key file.  Defaults to a path within
-   your temporary directory, encoding your local username and your Instagram
-   profile name.
+   Path for loading and storing session key file.  Defaults to
+   ``~/.config/instaloader/session-YOUR-USERNAME``.
 
 .. option:: --password YOUR-PASSWORD, -p YOUR-PASSWORD
 
