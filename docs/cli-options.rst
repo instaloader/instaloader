@@ -243,6 +243,11 @@ How to Download
 
    .. versionadded:: 4.2
 
+   .. warning::
+      We discourage from using the "commit mode" due to its bugs when being used
+      with other command line options (e.g. :issue:`257` with
+      :option:`--fast-update` and :issue:`483` with :option:`--tagged`).
+
 .. option:: --request-timeout N
 
    Seconds to wait before timing out a connection request.
