@@ -20,7 +20,7 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-from .structures import (Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
+from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          save_structure_to_file)
 
 
