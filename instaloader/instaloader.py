@@ -30,12 +30,13 @@ def get_default_session_filename(username: str) -> str:
     sessionfilename = "session-{}".format(username)
     if platform.system() == "Windows":
         # on Windows, use %LOCALAPPDATA%\Instaloader\session-USERNAME
-        if os.getenv("LOCALAPPDATA") is not None:
-            return os.path.expandvars("%LOCALAPPDATA%\\Instaloader\\") + sessionfilename
+        localappdata = os.getenv("LOCALAPPDATA")
+        if localappdata is not None:
+            return os.path.join(localappdata, "Instaloader", sessionfilename)
         # legacy fallback - store in temp dir if %LOCALAPPDATA% is not set
-        return tempfile.gettempdir() + "\\" + ".instaloader-{}".format(getpass.getuser()) + "\\" + sessionfilename
+        return os.path.join(tempfile.gettempdir(), ".instaloader-" + getpass.getuser(), sessionfilename)
     # on Unix, use ~/.config/instaloader/session-USERNAME
-    return "{0}/instaloader/{1}".format(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), sessionfilename)
+    return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader", sessionfilename)
 
 
 def get_legacy_session_filename(username: str) -> str:
