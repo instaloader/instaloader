@@ -36,21 +36,24 @@ code {
     color: #fff;
   }
 
-  .c1 {
+  .c1, .k, .kn, .ow {
     color: $color_instaloader_main
   }
 
-  .k, .kn, .ow {
-    color: $color_instaloader_accent;
-    font-weight: bold
-  }
-
-  .nb {
+  .nb, .ne, .nf, .vm {
     color: $color_instaloader_accent
   }
 
-  .s1, .s2, .mi {
+  .s1, .s2, .sa, .se, .si, .mi {
     color: $color_instaloader_hyper
+  }
+
+  .c1, .nf, .sa, .se, .si {
+    font-style: italic;
+  }
+
+  .k, .kn, .ow {
+    font-weight: bold
   }
 }
 

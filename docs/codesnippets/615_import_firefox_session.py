@@ -10,7 +10,7 @@ except ModuleNotFoundError:
     raise SystemExit("Instaloader not found.\n  pip install [--user] instaloader")
 
 
-def get_cookiefile() -> str:
+def get_cookiefile():
     default_cookiefile = {
         "Windows": "~/AppData/Roaming/Mozilla/Firefox/Profiles/*/cookies.sqlite",
         "Darwin": "~/Library/Application Support/Firefox/Profiles/*.default/cookies.sqlite",
@@ -22,7 +22,7 @@ def get_cookiefile() -> str:
 
 
 def import_session(cookiefile, sessionfile):
-    print(f"Using cookies from {cookiefile}.")
+    print("Using cookies from {}.".format(cookiefile))
     conn = connect(cookiefile)
     try:
         cookie_data = conn.execute(
@@ -37,7 +37,7 @@ def import_session(cookiefile, sessionfile):
     username = instaloader.test_login()
     if not username:
         raise SystemExit("Not logged in. Are you logged in successfully in Firefox?")
-    print(f"Imported session cookie for {username}.")
+    print("Imported session cookie for {}.".format(username))
     instaloader.context.username = username
     instaloader.save_session_to_file(sessionfile)
 
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     try:
         import_session(args.cookiefile or get_cookiefile(), args.sessionfile)
     except (ConnectionException, OperationalError) as e:
-        raise SystemExit(f"Cookie import failed: {e}")
+        raise SystemExit("Cookie import failed: {}".format(e))
