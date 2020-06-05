@@ -5,7 +5,7 @@ block_cipher = None
 
 a = Analysis(['__main__.py'],
              binaries=[],
-             datas=[('tasklist.exe', '.'), ('framedyn.dll', '.')],
+             datas=[],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

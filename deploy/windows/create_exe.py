@@ -8,33 +8,18 @@ import sys
 # copy the required files into repo root
 shutil.copy('docs/favicon.ico', '.')
 shutil.copy('deploy/windows/instaloader.spec', '.')
-shutil.unpack_archive('deploy/windows/ps', '.', 'xztar')
 
 code = """
+import contextlib
 import psutil
 import subprocess
 
 def __main():
-    grandparentpid = psutil.Process(os.getppid()).ppid()
-    grandparentpidsearchstring = ' ' + str(grandparentpid) + ' '
-    if hasattr(sys, "_MEIPASS"):
-        ps = os.path.join(sys._MEIPASS, 'tasklist.exe')
-    else:
-        ps = 'tasklist'
-    popen = subprocess.Popen(ps, stdout=subprocess.PIPE, universal_newlines=True)
-    for examine in iter(popen.stdout.readline, ""):
-        if grandparentpidsearchstring in examine:
-            pname = examine
-            break
-    popen.stdout.close()
-    return_code = popen.wait()
-    if return_code:
-        raise subprocess.CalledProcessError(return_code, ps)
-    if pname[0:12] == 'explorer.exe':
-        subprocess.Popen("cmd /K \\\"{0}\\\"".format(os.path.splitext(os.path.basename(sys.argv[0]))[0]))
-    else:
-        main()
-
+    with contextlib.suppress(AttributeError, psutil.Error):
+        if psutil.Process().parent().parent().name() == "explorer.exe":
+            subprocess.Popen("cmd /K \\\"{0}\\\"".format(os.path.splitext(os.path.basename(sys.argv[0]))[0]))
+            return
+    main()
 
 if __name__ == "__main__":
     __main()
