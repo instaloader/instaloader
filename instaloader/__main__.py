@@ -207,8 +207,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
-        if profiles and download_profile_pic and not instaloader.context.is_logged_in:
-            instaloader.context.error("Warning: Use --login to download HD version of profile pictures.")
+        if ((profiles and download_profile_pic) or download_posts) and not instaloader.context.is_logged_in:
+            instaloader.context.error("Warning: Use --login to download higher-quality versions of pictures.")
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
                                       download_highlights, download_stories,

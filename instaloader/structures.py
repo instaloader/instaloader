@@ -71,6 +71,10 @@ class Post:
         self._full_metadata_dict = None  # type: Optional[Dict[str, Any]]
         self._rhx_gis_str = None         # type: Optional[str]
         self._location = None            # type: Optional[PostLocation]
+        self._iphone_struct_ = None
+        if 'iphone_struct' in node:
+            # if loaded from JSON with load_structure_from_file()
+            self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
     def from_shortcode(cls, context: InstaloaderContext, shortcode: str):
@@ -111,6 +115,8 @@ class Post:
             node['owner'] = self.owner_profile._asdict()
         if self._location:
             node['location'] = self._location._asdict()
+        if self._iphone_struct_:
+            node['iphone_struct'] = self._iphone_struct_
         return node
 
     @property
@@ -159,6 +165,15 @@ class Post:
     def _rhx_gis(self) -> Optional[str]:
         self._obtain_metadata()
         return self._rhx_gis_str
+
+    @property
+    def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access iPhone media info endpoint.")
+        if not self._iphone_struct_:
+            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            self._iphone_struct_ = data['items'][0]
+        return self._iphone_struct_
 
     def _field(self, *keys) -> Any:
         """Lookups given fields in _node, and if not found in _full_metadata. Raises KeyError if not found anywhere."""
@@ -225,6 +240,11 @@ class Post:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the post"""
+        if self.typename == "GraphImage" and self._context.is_logged_in:
+            try:
+                return self._iphone_struct['image_versions2']['candidates'][0]['url']
+            except (InstaloaderException, KeyError, IndexError) as err:
+                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -239,10 +259,17 @@ class Post:
             if any(edge['node']['is_video'] for edge in edges):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
-            for edge in edges:
+            for idx, edge in enumerate(edges):
                 node = edge['node']
                 is_video = node['is_video']
-                yield PostSidecarNode(is_video=is_video, display_url=node['display_url'],
+                display_url = node['display_url']
+                if not is_video and self._context.is_logged_in:
+                    try:
+                        carousel_media = self._iphone_struct['carousel_media']
+                        display_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
+                    except (InstaloaderException, KeyError, IndexError) as err:
+                        self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                       video_url=node['video_url'] if is_video else None)
 
     @property

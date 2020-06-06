@@ -113,7 +113,7 @@ class InstaloaderContext:
     def close(self):
         """Print error log and close session"""
         if self.error_log and not self.quiet:
-            print("\nErrors occurred:", file=sys.stderr)
+            print("\nErrors or warnings occurred:", file=sys.stderr)
             for err in self.error_log:
                 print(err, file=sys.stderr)
         self._session.close()
@@ -536,8 +536,8 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
-            tempsession.headers['User-Agent'] = 'Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; ' \
-                                                'scale=2.00; 750x1334) AppleWebKit/420+'
+            tempsession.headers['User-Agent'] = 'Instagram 123.1.0.26.115 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
+                                                'scale=2.00; 1656x3584; 190542906)'
             for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:
                 tempsession.headers.pop(header, None)
             return self.get_json(path, params, 'i.instagram.com', tempsession)
