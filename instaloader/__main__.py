@@ -3,6 +3,7 @@
 import ast
 import datetime
 import os
+import platform
 import re
 import sys
 from argparse import ArgumentParser, SUPPRESS
@@ -15,10 +16,20 @@ from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
 
 
+def get_simple_argv0() -> str:
+    if platform.system() != "Windows":
+        argv0 = os.path.basename(sys.argv[0])
+    else:
+        dirname = os.path.relpath(os.path.dirname(sys.argv[0]))
+        basename = os.path.basename(sys.argv[0])
+        argv0 = os.path.join(dirname, basename)
+    argv0 = "instaloader" if argv0 == "__main__.py" else argv0
+    return argv0
+
+
 def usage_string():
     # NOTE: duplicated in README.rst and docs/index.rst
-    argv0 = os.path.basename(sys.argv[0])
-    argv0 = "instaloader" if argv0 == "__main__.py" else argv0
+    argv0 = get_simple_argv0()
     return """
 {0} [--comments] [--geotags]
 {2:{1}} [--stories] [--highlights] [--tagged] [--igtv]
