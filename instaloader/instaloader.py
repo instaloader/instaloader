@@ -27,6 +27,20 @@ from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation,
 
 def get_default_session_filename(username: str) -> str:
     """Returns default session filename for given username."""
+    sessionfilename = "session-{}".format(username)
+    if platform.system() == "Windows":
+        # on Windows, use %LOCALAPPDATA%\Instaloader\session-USERNAME
+        localappdata = os.getenv("LOCALAPPDATA")
+        if localappdata is not None:
+            return os.path.join(localappdata, "Instaloader", sessionfilename)
+        # legacy fallback - store in temp dir if %LOCALAPPDATA% is not set
+        return os.path.join(tempfile.gettempdir(), ".instaloader-" + getpass.getuser(), sessionfilename)
+    # on Unix, use ~/.config/instaloader/session-USERNAME
+    return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader", sessionfilename)
+
+
+def get_legacy_session_filename(username: str) -> str:
+    """Returns legacy (until v4.4.3) default session filename for given username."""
     dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
     filename = dirname + "/" + "session-" + username
     return filename.lower()
@@ -441,6 +455,8 @@ class Instaloader:
         """
         if filename is None:
             filename = get_default_session_filename(username)
+            if not os.path.exists(filename):
+                filename = get_legacy_session_filename(username)
         with open(filename, 'rb') as sessionfile:
             self.context.load_session_from_file(username, sessionfile)
             self.context.log("Loaded session from %s." % filename)
