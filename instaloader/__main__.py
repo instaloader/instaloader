@@ -3,7 +3,6 @@
 import ast
 import datetime
 import os
-import platform
 import re
 import sys
 from argparse import ArgumentParser, SUPPRESS
