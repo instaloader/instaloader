@@ -242,7 +242,9 @@ class Post:
         """URL of the picture / video thumbnail of the post"""
         if self.typename == "GraphImage" and self._context.is_logged_in:
             try:
-                return self._iphone_struct['image_versions2']['candidates'][0]['url']
+                orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
+                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                return url
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
@@ -266,7 +268,8 @@ class Post:
                 if not is_video and self._context.is_logged_in:
                     try:
                         carousel_media = self._iphone_struct['carousel_media']
-                        display_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
+                        orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
+                        display_url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
                     except (InstaloaderException, KeyError, IndexError) as err:
                         self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
                 yield PostSidecarNode(is_video=is_video, display_url=display_url,
