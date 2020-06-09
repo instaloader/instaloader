@@ -18,6 +18,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import platform
 import subprocess
 import sys
 import typing
@@ -50,8 +51,9 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'requests': ('https://requests.kennethreitz.org/en/master/', None)}
 
 current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
+date_format = "%e %b %Y" if platform.system() != "Windows" else "%d %b %Y"
 current_release_date = subprocess.check_output(
-    ["git", "log", "-1", "--tags", "--format=%ad", "--date=format:%e %b %Y"]).decode("ascii")[:-1]
+    ["git", "log", "-1", "--tags", "--format=%ad", "--date=format:"+date_format]).decode("ascii")[:-1]
 
 html_context = {'current_release': current_release, 'current_release_date': current_release_date}
 
