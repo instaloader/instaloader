@@ -21,7 +21,7 @@ def get_version():
 if sys.version_info < (3, 6):
     sys.exit('Instaloader requires Python >= 3.6.')
 
-requirements = ['requests>=2.4']
+requirements = ['requests>=2.4', 'pycryptodome~=3.9', 'PyNaCl~=1.4']
 
 keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-feed', 'downloader', 'videos', 'photos',
              'pictures', 'instagram-user-photos', 'instagram-photos', 'instagram-metadata', 'instagram-downloader',

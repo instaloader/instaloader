@@ -15,3 +15,5 @@ typing-extensions = "*"
 
 [packages]
 requests = "*"
+pycryptodome = "*"
+pynacl = "*"
