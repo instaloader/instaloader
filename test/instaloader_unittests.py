@@ -94,6 +94,10 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         self.assertEqual(EMPTY_PROFILE.lower(),
                          instaloader.Profile.from_id(self.L.context, EMPTY_PROFILE_ID).username)
 
+    def test_get_username_by_name_empty(self):
+        self.assertEqual(EMPTY_PROFILE_ID,
+                         instaloader.Profile.from_username(self.L.context, EMPTY_PROFILE).userid)
+
     def test_post_from_mediaid(self):
         for post in instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_posts():
             post2 = instaloader.Post.from_mediaid(self.L.context, post.mediaid)
