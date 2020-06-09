@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import os
@@ -12,10 +13,13 @@ import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union, Tuple
 
 import requests
 import requests.utils
+from Crypto import Random
+from Crypto.Cipher import AES
+from nacl.public import PublicKey, SealedBox  # type:ignore
 
 from .exceptions import *
 
@@ -215,9 +219,7 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': csrf_token})
         # Not using self.get_json() here, because we need to access csrftoken cookie
         self.do_sleep()
-        # Workaround credits to pgrimaud.
-        # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
-        enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
+        enc_password = self._get_encrypted_password(passwd)
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
         try:
@@ -529,6 +531,39 @@ class InstaloaderContext:
         if self._root_rhx_gis is None:
             self._root_rhx_gis = self.get_json('', {}).get('rhx_gis', '')
         return self._root_rhx_gis or None
+
+    def _get_encryption_data(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        resp = self._session.get("https://www.instagram.com/accounts/login/")
+        return (resp.headers.get("ig-set-password-encryption-web-key-id"),
+                resp.headers.get("ig-set-password-encryption-web-key-version"),
+                resp.headers.get("ig-set-password-encryption-web-pub-key"))
+
+    def _get_encrypted_password(self, password):
+        # contributed by @twitter-79 in
+        # https://github.com/instaloader/instaloader/issues/615#issuecomment-630631930
+        key_id, app_id, public_key = self._get_encryption_data()
+        timestamp = str(int(datetime.now().timestamp()))
+
+        # create a random key of length 32 bytes (for AES 256)
+        key = Random.get_random_bytes(32)
+        # create a buffer of length 12 bytes filled with 0
+        iv = bytearray(12)
+
+        aes = AES.new(key, AES.MODE_GCM, nonce=iv)
+        aes.update(bytearray(timestamp, 'utf-8'))
+        ciphertext, tag = aes.encrypt_and_digest(bytearray(password, 'utf-8'))
+
+        # get a byte array of the given public key
+        public_key_seal = PublicKey(bytes.fromhex(public_key))
+        sealed_box = SealedBox(public_key_seal)
+        sealed = sealed_box.encrypt(key)
+
+        enc_password = bytearray()
+        enc_password += bytearray(
+            [1, int(key_id), len(sealed) & 255, (len(sealed) >> 8) & 255]) + sealed + tag + ciphertext
+
+        return ('#PWD_INSTAGRAM_BROWSER' + ':' + app_id + ':' + timestamp + ':' +
+                str(base64.b64encode(enc_password), 'utf-8'))
 
 
 class RateController:

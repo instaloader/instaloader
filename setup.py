@@ -22,7 +22,7 @@ def get_version():
 if sys.version_info < (3, 5):
     sys.exit('Instaloader requires Python >= 3.5.')
 
-requirements = ['requests>=2.4']
+requirements = ['requests>=2.4', 'pycryptodome~=3.9', 'PyNaCl~=1.4']
 
 if platform.system() == 'Windows' and sys.version_info < (3, 6):
     requirements.append('win_unicode_console')
