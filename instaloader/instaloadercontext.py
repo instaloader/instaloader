@@ -78,6 +78,9 @@ class InstaloaderContext:
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache = dict()           # type: Dict[int, Any]
 
+        # Cache profile from name (mapping from username to Profile)
+        self.profile_name_cache = dict()         # type: Dict[str, Any]
+
     @contextmanager
     def anonymous_copy(self):
         session = self._session
@@ -185,7 +188,12 @@ class InstaloaderContext:
         self.username = username
 
     def test_login(self) -> Optional[str]:
-        """Not meant to be used directly, use :meth:`Instaloader.test_login`."""
+        """Not meant to be used directly, use :meth:`Instaloader.test_login`.
+
+           .. deprecated:: 4.5
+              :meth:`Instaloader.test_login` now calls :meth:`InstaloaderContext.graphql_query` directly
+              without using this function.
+        """
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 

@@ -196,7 +196,7 @@ class Post:
                 # is contained.
                 # Note that we cannot use Profile.from_id() here since that would lead us into a recursion.
                 owner_struct = self._full_metadata['owner']
-            self._owner_profile = Profile(self._context, owner_struct)
+            self._owner_profile = Profile.from_node(self._context, owner_struct)
         return self._owner_profile
 
     @property
@@ -387,7 +387,7 @@ class Post:
             return PostCommentAnswer(id=int(node['id']),
                                      created_at_utc=datetime.utcfromtimestamp(node['created_at']),
                                      text=node['text'],
-                                     owner=Profile(self._context, node['owner']),
+                                     owner=Profile.from_node(self._context, node['owner']),
                                      likes_count=node.get('edge_liked_by', {}).get('count', 0))
 
         def _postcommentanswers(node):
@@ -442,13 +442,13 @@ class Post:
         likes_edges = self._field('edge_media_preview_like', 'edges')
         if self.likes == len(likes_edges):
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
-            yield from (Profile(self._context, like['node']) for like in likes_edges)
+            yield from (Profile.from_node(self._context, like['node']) for like in likes_edges)
             return
         yield from NodeIterator(
             self._context,
             '1cb6ec562846122743b61e492c85999f',
             lambda d: d['data']['shortcode_media']['edge_liked_by'],
-            lambda n: Profile(self._context, n),
+            lambda n: Profile.from_node(self._context, n),
             {'shortcode': self.shortcode},
             'https://www.instagram.com/p/{0}/'.format(self.shortcode),
         )
@@ -474,7 +474,7 @@ class Post:
         .. versionadded:: 4.4
         """
         return ([] if not self.is_sponsored else
-                [Profile(self._context, edge['node']['sponsor']) for edge in
+                [Profile.from_node(self._context, edge['node']['sponsor']) for edge in
                  self._field('edge_media_to_sponsor_user', 'edges')])
 
     @property
@@ -538,6 +538,17 @@ class Profile:
             self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
+    def from_node(cls, context: InstaloaderContext, node: Dict[str, Any]) -> 'Profile':
+        assert 'username' in node
+        if node['username'] in context.profile_name_cache:
+            return context.profile_name_cache[node['username']]
+        profile = cls(context, node)
+        if 'id' in node:
+            context.profile_id_cache[node['id']] = profile
+        context.profile_name_cache[profile.username] = profile
+        return profile
+
+    @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
         """Create a Profile instance from a given username, raise exception if it does not exist.
 
@@ -548,8 +559,11 @@ class Profile:
         :raises: :class:`ProfileNotExistsException`
         """
         # pylint:disable=protected-access
-        profile = cls(context, {'username': username.lower()})
+        if username.lower() in context.profile_name_cache:
+            return context.profile_name_cache[username.lower()]
+        profile = cls.from_node(context, {'username': username.lower()})
         profile._obtain_metadata()  # to raise ProfileNotExistException now in case username is invalid
+        context.profile_id_cache[profile.userid] = profile
         return profile
 
     @classmethod
@@ -572,12 +586,10 @@ class Profile:
                                       'include_highlight_reels': False},
                                      rhx_gis=context.root_rhx_gis)['data']['user']
         if data:
-            profile = cls(context, data['reel']['owner'])
+            return cls.from_node(context, data['reel']['owner'])
         else:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
-        context.profile_id_cache[profile_id] = profile
-        return profile
 
     def _asdict(self):
         json_node = self._node.copy()
@@ -860,7 +872,7 @@ class Profile:
             self._context,
             '37479f2b8209594dde7facb0d904896a',
             lambda d: d['data']['user']['edge_followed_by'],
-            lambda n: Profile(self._context, n),
+            lambda n: Profile.from_node(self._context, n),
             {'id': str(self.userid)},
             'https://www.instagram.com/{0}/'.format(self.username),
         )
@@ -879,7 +891,7 @@ class Profile:
             self._context,
             '58712303d941c6855d4e888c5f0cd22f',
             lambda d: d['data']['user']['edge_follow'],
-            lambda n: Profile(self._context, n),
+            lambda n: Profile.from_node(self._context, n),
             {'id': str(self.userid)},
             'https://www.instagram.com/{0}/'.format(self.username),
         )
@@ -894,7 +906,7 @@ class Profile:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's similar accounts.")
         self._obtain_metadata()
-        yield from (Profile(self._context, edge["node"]) for edge in
+        yield from (Profile.from_node(self._context, edge["node"]) for edge in
                     self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
                                                 {"user_id": str(self.userid), "include_chaining": True},
                                                 "https://www.instagram.com/{0}/"
@@ -1099,7 +1111,7 @@ class Story:
     def owner_profile(self) -> Profile:
         """:class:`Profile` instance of the story owner."""
         if not self._owner_profile:
-            self._owner_profile = Profile(self._context, self._node['user'])
+            self._owner_profile = Profile.from_node(self._context, self._node['user'])
         return self._owner_profile
 
     @property
@@ -1157,7 +1169,7 @@ class Highlight(Story):
     def owner_profile(self) -> Profile:
         """:class:`Profile` instance of the highlights' owner."""
         if not self._owner_profile:
-            self._owner_profile = Profile(self._context, self._node['owner'])
+            self._owner_profile = Profile.from_node(self._context, self._node['owner'])
         return self._owner_profile
 
     @property
@@ -1388,7 +1400,7 @@ class TopSearchResults:
             user_node = user['user']
             if 'pk' in user_node:
                 user_node['id'] = user_node['pk']
-            yield Profile(self._context, user_node)
+            yield Profile.from_node(self._context, user_node)
 
     def get_prefixed_usernames(self) -> Iterator[str]:
         """
@@ -1481,7 +1493,7 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
         if node_type == "Post":
             return Post(context, json_structure['node'])
         elif node_type == "Profile":
-            return Profile(context, json_structure['node'])
+            return Profile.from_node(context, json_structure['node'])
         elif node_type == "StoryItem":
             return StoryItem(context, json_structure['node'])
         elif node_type == "Hashtag":
