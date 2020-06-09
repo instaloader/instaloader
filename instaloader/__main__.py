@@ -82,6 +82,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.context.log('Only download storyitems with property "{}".'.format(storyitem_filter_str))
     # Login, if desired
     if username is not None:
+        if not re.match(r"^[A-Za-z0-9._]+$", username):
+            instaloader.context.error("Warning: Parameter \"{}\" for --login is not a valid username.".format(username))
         try:
             instaloader.load_session_from_file(username, sessionfile)
         except FileNotFoundError as err:
