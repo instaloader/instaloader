@@ -27,10 +27,24 @@ expired. In case the retry continuously fails for some reason, which should not
 happen in normal conditions, consider adjusting the
 :option:`--max-connection-attempts` option.
 
+There have been observations that services, that in their nature offer
+promiscious IP addresses, such as cloud, VPN and public proxy services, might be
+subject to significantly stricter limits for anonymous access. However,
+logged-in accesses (see :option:`--login`) do not seem to be affected.
+
+Too many queries in the last time
+---------------------------------
+
 **"Too many queries in the last time"** is not an error. It is a notice that the
 rate limit has almost been reached, according to Instaloader's own rate
 accounting mechanism. We regularly adjust this mechanism to match Instagram's
 current rate limiting.
+
+Private but not followed
+------------------------
+
+You have to follow a private account to access most of its associated
+information.
 
 Login Error
 -----------

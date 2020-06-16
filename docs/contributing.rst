@@ -46,13 +46,13 @@ Changes of the Instaloader source can be proposed as a
 few things to consider:
 
 - Base your Pull Request on the ``master`` branch if it fixes a bug,
-  or the ``upcoming/v4.X`` (if it exists at the moment of submitting the PR)
-  branch otherwise.
+  or the ``upcoming/v4.X`` branch (if it exists at the moment of submitting the PR)
+  otherwise.
 
 - We use `Pylint <https://www.pylint.org/>`__ for error and syntax checking of
-  the source and `MyPy <https://github.com/python/mypy>`__ for type checking
-  (Note that sometimes it might be better to disable a warning rather than
-  adapting the code to a tool's desires).
+  the source and `MyPy <https://github.com/python/mypy>`__ for type checking.
+  Beware that sometimes it might be better to disable a warning rather than
+  adapting the code to a tool's desires.
 
 - The documentation source is located in the ``docs`` folder. The file
   ``cli-options.rst`` is merely an RST-formatted copy of ``instaloader --help``
@@ -89,14 +89,14 @@ details. If you feel the need to do so, please create a "feature suggestion".
     obtained, how would it be further processed?
 
   - Describe already-working **alternatives of the feature** and how they
-    compare with your proposed solution.
+    compare to your proposed feature.
 
   - Briefly describe how your suggested feature **conforms with Instaloader's
     project goal**.
 
 - Explain your **solution ideas**. Describe your ideas on how the feature could
-  be implemented and the underlying problem could be solved. Also describe
-  alternatives that you have considered.
+  be implemented and the underlying problem could be solved. Also **describe
+  alternatives** that you have considered.
 
 Donations
 ---------
