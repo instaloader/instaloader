@@ -1,0 +1,30 @@
+name: PyLint and MyPy
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    name: PyLint and MyPy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8]
+    steps:
+      - name: Checkout Instaloader Repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # needed for building docs
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Dependencies
+        run: |
+          python -m pip install pipenv==2020.6.2
+          pipenv sync --dev
+      - name: PyLint
+        run: pipenv run pylint instaloader
+      - name: MyPy
+        run: pipenv run mypy -m instaloader
+      - name: Build Documentation
+        run: pipenv run make -C docs html SPHINXOPTS="-W -n"

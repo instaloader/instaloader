@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
+    name: Windows EXE build
     runs-on: windows-latest
     steps:
       - name: Checkout Instaloader repository

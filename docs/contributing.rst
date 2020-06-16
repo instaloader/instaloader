@@ -35,8 +35,8 @@ reporting a problem, please keep the following in mind:
 - If not obvious, describe **which behavior you expected**
   instead of what actually happened.
 
-- If you think an issue has been closed accidentally or inappropriately, feel
-  free to reopen it.
+- If we have closed an issue apparently inadvertently or inappropriately, please
+  let us know.
 
 Writing Code or Improving the Documentation
 -------------------------------------------
@@ -45,28 +45,25 @@ Changes of the Instaloader source can be proposed as a
 `Pull Request <https://github.com/instaloader/instaloader/pulls>`__. There are only
 few things to consider:
 
-- Sometimes, the most current code is not in the ``master`` branch. Check that
-  you forked from the most recent branch.
+- Base your Pull Request on the ``master`` branch if it fixes a bug,
+  or the ``upcoming/v4.X`` (if it exists at the moment of submitting the PR)
+  branch otherwise.
 
 - We use `Pylint <https://www.pylint.org/>`__ for error and syntax checking of
-  the source. The file ``.travis.yml`` in the project's root directory
-  shows how it is invoked. Note that sometimes it might be better to disable a
-  warning rather than adapting the code to Pylint's desires.
+  the source and `MyPy <https://github.com/python/mypy>`__ for type checking
+  (Note that sometimes it might be better to disable a warning rather than
+  adapting the code to a tool's desires).
 
 - The documentation source is located in the ``docs`` folder. The file
   ``cli-options.rst`` is merely an RST-formatted copy of ``instaloader --help``
   output, of which the source is in ``instaloader/__main__.py``.
 
-- Feel free to contact us, even if you "only" have Proof-of-Concepts or
-  not-fully integrated changes. They already might be an advance for the
-  project.
-
-Suggesting Features
--------------------
+Proposing Features
+------------------
 
 .. goal-start
 
-Instaloader's goal is to mimick the browser's behavior to access the data that
+Instaloader's goal is to mimic the browser's behavior to access the data that
 is available through the Instagram web interface, pack this data into complete
 and easily-(re)usable python objects, and provide a user interface for the most
 common downloading and metadata collection tasks, without changing any of the
@@ -74,10 +71,9 @@ online data.
 
 .. goal-end
 
-If you have an idea of how Instaloader should be enhanced, but do not want to
-implement the feature yourself, feel free to open a ticket in our 
-`Issue Tracker <https://github.com/instaloader/instaloader/issues>`__.
-Please consider the following:
+Prior spending effort on implementing a new feature, it might be appropriate to
+clarify how it could fit into the project's scope or discuss implementation
+details. If you feel the need to do so, please create a "feature suggestion".
 
 - Instaloader already has plenty of features. **Check the documentation**
   beforehand to ensure your desired suggestion is not already implemented.
@@ -86,16 +82,21 @@ Please consider the following:
   an issue suggesting the same or a similar feature, share your thoughts in a
   comment there, instead of opening a new issue.
 
-- If possible, provide us a **use case of the feature**: How could the user
-  invoke the new function? Which problem would it solve? If new information is
-  obtained, how would it be further processed?
+- **Motivate the feature**, i.e.
 
-- If not obvious, briefly motivate how your suggested feature **conforms with
-  Instaloader's project goal**.
+  - Provide us a **use case of the feature**: How could the user
+    invoke the new function? Which problem would it solve? If new information is
+    obtained, how would it be further processed?
 
-- **Be patient**. Naturally, bugs and pull requests have a higher priority than
-  feature suggestions. Keep in mind that this is a free software project, and
-  unfortunately we only have limited time to work on it.
+  - Describe already-working **alternatives of the feature** and how they
+    compare with your proposed solution.
+
+  - Briefly describe how your suggested feature **conforms with Instaloader's
+    project goal**.
+
+- Explain your **solution ideas**. Describe your ideas on how the feature could
+  be implemented and the underlying problem could be solved. Also describe
+  alternatives that you have considered.
 
 Donations
 ---------

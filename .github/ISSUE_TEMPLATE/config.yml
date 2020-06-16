@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing to Instaloader
+    url: https://instaloader.github.io/contributing.html
+    about: Guidelines for how to report an issue.
+  - name: Instaloader Troubleshooting
+    url: https://instaloader.github.io/troubleshooting.html
+    about: Many common problems and their workarounds are described here.
+  - name: Instaloader Documentation
+    url: https://instaloader.github.io/
+    about: Many questions might be already answered here.

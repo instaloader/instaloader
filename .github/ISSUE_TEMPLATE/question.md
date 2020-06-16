@@ -6,3 +6,7 @@ labels: question
 ---
 
 Your question here...
+
+<!-- Please see our documentation: https://instaloader.github.io/ -->
+
+<!-- Basic questions regarding Instaloader's usage might be more appropriate to ask on Stack Overflow -->

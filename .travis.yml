@@ -27,7 +27,7 @@ deploy:
     repo: instaloader/instaloader.github.io
     target-branch: master
     on:
-      tags: true
+      branch: master
       python: 3.6
   - provider: script
     script: deploy/arch/deploy.sh $TRAVIS_TAG
