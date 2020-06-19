@@ -393,12 +393,12 @@ class Instaloader:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
             profile_str = owner_profile.username.lower() if owner_profile is not None else target
-            filename = '{0}/{1}_{2}.{3}'.format(self.dirname_pattern.format(profile=profile_str,
-                                                                            target=target),
-                                                pic_identifier, name_suffix, pic_extension)
+            filename = os.path.join(self.dirname_pattern.format(profile=profile_str,
+                                                                target=target),
+                                    '{0}_{1}.{2}'.format(pic_identifier, name_suffix, pic_extension))
         else:
-            filename = '{0}/{1}_{2}_{3}.{4}'.format(self.dirname_pattern.format(), target,
-                                                    pic_identifier, name_suffix, pic_extension)
+            filename = os.path.join(self.dirname_pattern.format(),
+                                    '{0}_{1}_{2}.{3}'.format(target, pic_identifier, name_suffix, pic_extension))
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
@@ -501,7 +501,7 @@ class Instaloader:
         """
 
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
-        filename = dirname + '/' + self.format_filename(post, target=target)
+        filename = os.path.join(dirname, self.format_filename(post, target=target))
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
@@ -630,7 +630,7 @@ class Instaloader:
 
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
-        filename = dirname + '/' + self.format_filename(item, target=target)
+        filename = os.path.join(dirname, self.format_filename(item, target=target))
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
@@ -974,10 +974,12 @@ class Instaloader:
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
-            return '{0}/id'.format(self.dirname_pattern.format(profile=profile_name.lower(),
-                                                               target=profile_name.lower()))
+            return os.path.join(self.dirname_pattern.format(profile=profile_name.lower(),
+                                                            target=profile_name.lower()),
+                                'id')
         else:
-            return '{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower())
+            return os.path.join(self.dirname_pattern.format(),
+                                '{0}_id'.format(profile_name.lower()))
 
     def save_profile_id(self, profile: Profile):
         """
@@ -1091,9 +1093,9 @@ class Instaloader:
 
                 # Save metadata as JSON if desired.
                 if self.save_metadata:
-                    json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name,
-                                                                                     target=profile_name),
-                                                         profile_name, profile.userid)
+                    json_filename = os.path.join(self.dirname_pattern.format(profile=profile_name,
+                                                                             target=profile_name),
+                                                 '{0}_{1}'.format(profile_name, profile.userid))
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
