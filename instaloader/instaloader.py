@@ -1,6 +1,5 @@
 import getpass
 import json
-import lzma
 import os
 import platform
 import re
@@ -22,7 +21,7 @@ import urllib3  # type: ignore
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         save_structure_to_file, load_structure_from_file)
+                         save_structure_to_file)
 
 
 def get_default_session_filename(username: str) -> str:
