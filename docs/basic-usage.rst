@@ -111,8 +111,12 @@ Instaloader supports the following targets:
    ``profile`` (requires :option:`--login`).
 
 - ``-post``
-   The single **post** with the given shortcode. Must be preceeded by ``--`` in
-   the argument list to not be mistaken as an option flag.
+   Replace **post** with the post's shortcode to download single post. Must be preceeded by ``--`` in
+   the argument list to not be mistaken as an option flag::
+
+    instaloader -- -B_K4CykAOtf
+
+
 
    .. versionadded:: 4.1
 
