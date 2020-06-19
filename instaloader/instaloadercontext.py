@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import pickle
 import random
 import re
@@ -547,11 +548,12 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         self.log(filename, end=' ', flush=True)
-        with open(filename, 'wb') as file:
+        with open(filename + '.temp', 'wb') as file:
             if isinstance(resp, requests.Response):
                 shutil.copyfileobj(resp.raw, file)
             else:
                 file.write(resp)
+        os.rename(filename + '.temp', filename)
 
     def get_raw(self, url: str, _attempt=1) -> requests.Response:
         """Downloads a file anonymously.
