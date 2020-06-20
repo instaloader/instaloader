@@ -1,6 +1,5 @@
 import getpass
 import json
-import lzma
 import os
 import platform
 import re
@@ -22,7 +21,7 @@ import urllib3  # type: ignore
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         save_structure_to_file, load_structure_from_file)
+                         save_structure_to_file)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -153,7 +152,6 @@ class Instaloader:
        txt file.
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
-    :param commit_mode: :option:`--commit-mode`
     :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
 
     .. attribute:: context
@@ -177,8 +175,7 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
-                 request_timeout: Optional[float] = None,
-                 commit_mode: bool = False):
+                 request_timeout: Optional[float] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts, request_timeout)
 
@@ -196,12 +193,6 @@ class Instaloader:
             else post_metadata_txt_pattern
         self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
             else storyitem_metadata_txt_pattern
-        self.commit_mode = commit_mode
-        if self.commit_mode and not self.save_metadata:
-            raise InvalidArgumentException("Commit mode requires JSON metadata to be saved.")
-
-        # Used to keep state in commit mode
-        self._committed = None  # type: Optional[bool]
 
     @contextmanager
     def anonymous_copy(self):
@@ -222,8 +213,7 @@ class Instaloader:
             post_metadata_txt_pattern=self.post_metadata_txt_pattern,
             storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
             max_connection_attempts=self.context.max_connection_attempts,
-            request_timeout=self.context.request_timeout,
-            commit_mode=self.commit_mode)
+            request_timeout=self.context.request_timeout)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -249,15 +239,9 @@ class Instaloader:
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
-        # A post is considered "commited" if the json file exists and is not malformed.
-        if self.commit_mode:
-            if self._committed and os.path.isfile(filename):
-                self.context.log(filename + ' exists', end=' ', flush=True)
-                return False
-        else:
-            if os.path.isfile(filename):
-                self.context.log(filename + ' exists', end=' ', flush=True)
-                return False
+        if os.path.isfile(filename):
+            self.context.log(filename + ' exists', end=' ', flush=True)
+            return False
         self.context.get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
@@ -506,7 +490,6 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
-        self._committed = self.check_if_committed(filename)
         if self.download_pictures:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
@@ -1205,25 +1188,6 @@ class Instaloader:
         self.context.log("Retrieving posts from profile {}.".format(profile_name))
         self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
                                  total_count=profile.mediacount)
-
-    def check_if_committed(self, filename: str) -> bool:
-        """Checks to see if the current post has been committed.
-
-        A post is considered committed if its json metadata file exists and is not malformed.
-
-        .. versionadded:: 4.2
-        """
-        if os.path.isfile(filename + '.json.xz'):
-            filename += '.json.xz'
-        elif os.path.isfile(filename + '.json'):
-            filename += '.json'
-        else:
-            return False
-        try:
-            load_structure_from_file(self.context, filename)
-            return True
-        except (FileNotFoundError, lzma.LZMAError, json.decoder.JSONDecodeError):
-            return False
 
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.

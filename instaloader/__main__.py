@@ -358,10 +358,7 @@ def main():
                        help='Maximum number of connection attempts until a request is aborted. Defaults to 3. If a '
                             'connection fails, it can be manually skipped by hitting CTRL+C. Set this to 0 to retry '
                             'infinitely.')
-    g_how.add_argument('--commit-mode', action='store_true',
-                       help='Tries to ensure downloaded images avoid corruption in case of unexpected interruption. '
-                       'If the last picture is corrupted, Instaloader will fix the picture the next time it is run. '
-                       'Requires the JSON metadata to be saved.')
+    g_how.add_argument('--commit-mode', action='store_true', help=SUPPRESS)
     g_how.add_argument('--request-timeout', metavar='N', type=float,
                        help='seconds to wait before timing out a connection request')
 
@@ -405,9 +402,6 @@ def main():
         download_posts = not (args.no_posts or args.stories_only or args.profile_pic_only)
         download_stories = args.stories or args.stories_only
 
-        if args.commit_mode and args.no_metadata_json:
-            raise SystemExit('--commit-mode requires JSON metadata to be saved.')
-
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_pictures=not args.no_pictures,
@@ -418,8 +412,7 @@ def main():
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              max_connection_attempts=args.max_connection_attempts,
-                             request_timeout=args.request_timeout,
-                             commit_mode=args.commit_mode)
+                             request_timeout=args.request_timeout)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
