@@ -17,7 +17,9 @@ code {
   .highlight pre {
     padding: 0.7em;
     color: #fff; }
-  .highlight .c1, .highlight .k, .highlight .kn, .highlight .ow {
+  .highlight .c1 {
+    color: #666; }
+  .highlight .k, .highlight .kn, .highlight .ow {
     color: #008d06; }
   .highlight .nb, .highlight .ne, .highlight .nf, .highlight .vm {
     color: #f48400; }
