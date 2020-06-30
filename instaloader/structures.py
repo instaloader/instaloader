@@ -328,6 +328,12 @@ class Post:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
+            if self._context.is_logged_in:
+                try:
+                    url = self._iphone_struct['video_versions'][0]['url']
+                    return url
+                except (InstaloaderException, KeyError, IndexError) as err:
+                    self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))        
             return self._field('video_url')
         return None
 
