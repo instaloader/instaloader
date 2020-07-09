@@ -922,6 +922,7 @@ class StoryItem:
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
+        self._iphone_struct_ = None
 
     def _asdict(self):
         node = self._node
@@ -950,6 +951,15 @@ class StoryItem:
 
     def __hash__(self) -> int:
         return hash(self.mediaid)
+
+    @property
+    def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access iPhone media info endpoint.")
+        if not self._iphone_struct_:
+            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            self._iphone_struct_ = data['items'][0]
+        return self._iphone_struct_
 
     @property
     def owner_profile(self) -> Profile:
@@ -1002,6 +1012,13 @@ class StoryItem:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the StoryItem"""
+        if self.typename == "GraphStoryImage" and self._context.is_logged_in:
+            try:
+                orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
+                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                return url
+            except (InstaloaderException, KeyError, IndexError) as err:
+                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
         return self._node['display_resources'][-1]['src']
 
     @property
