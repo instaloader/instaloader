@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 from itertools import islice
-from typing import Dict, List
+from typing import Optional
 
 import instaloader
 
@@ -23,8 +23,7 @@ PRIVATE_PROFILE_ID = 1706625676
 EMPTY_PROFILE = "not_public"
 EMPTY_PROFILE_ID = 1928659031
 
-# Preserve query timestamps (rate control) between tests to not get rate limited
-instaloadercontext_query_timestamps = dict()  # type: Dict[str, List[float]]
+ratecontroller = None  # type: Optional[instaloader.RateController]
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):
@@ -37,13 +36,15 @@ class TestInstaloaderAnonymously(unittest.TestCase):
                                          download_comments=True,
                                          save_metadata=True)
         self.L.context.raise_all_errors = True
-        # pylint:disable=protected-access
-        self.L.context._graphql_query_timestamps = instaloadercontext_query_timestamps.copy()
+        if ratecontroller is not None:
+            # pylint:disable=protected-access
+            ratecontroller._context = self.L.context
+            self.L.context._rate_controller = ratecontroller
 
     def tearDown(self):
         # pylint:disable=global-statement,protected-access
-        global instaloadercontext_query_timestamps
-        instaloadercontext_query_timestamps = self.L.context._graphql_query_timestamps.copy()
+        global ratecontroller
+        ratecontroller = self.L.context._rate_controller
         self.L.close()
         os.chdir('/')
         print("Removing {}".format(self.dir))

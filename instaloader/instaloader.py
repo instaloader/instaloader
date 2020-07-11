@@ -19,7 +19,7 @@ import requests
 import urllib3  # type: ignore
 
 from .exceptions import *
-from .instaloadercontext import InstaloaderContext
+from .instaloadercontext import InstaloaderContext, RateController
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          save_structure_to_file)
 
@@ -153,6 +153,7 @@ class Instaloader:
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
     :param max_connection_attempts: :option:`--max-connection-attempts`
     :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
+    :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
 
     .. attribute:: context
 
@@ -175,9 +176,11 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
-                 request_timeout: Optional[float] = None):
+                 request_timeout: Optional[float] = None,
+                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts, request_timeout)
+        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
+                                          request_timeout, rate_controller)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
