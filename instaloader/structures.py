@@ -142,9 +142,12 @@ class Post:
 
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
-            pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
-            self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
-            self._rhx_gis_str = pic_json.get('rhx_gis')
+            pic_json = self._context.graphql_query(
+                '2b0673e0dc4580674a88d426fe00ea90',
+                {'shortcode': self.shortcode}
+            )
+            self._full_metadata_dict = pic_json['data']['shortcode_media']
+            # self._rhx_gis_str = pic_json.get('rhx_gis')
             if self._full_metadata_dict is None:
                 # issue #449
                 self._context.error("Fetching Post metadata failed (issue #449). "
@@ -599,7 +602,7 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_json('{}/'.format(self.username), params={})
+                metadata = self._context.get_json('{}/feed/'.format(self.username), params={})
                 self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
                 self._has_full_metadata = True
                 self._rhx_gis = metadata.get('rhx_gis')
