@@ -923,6 +923,9 @@ class StoryItem:
         self._node = node
         self._owner_profile = owner_profile
         self._iphone_struct_ = None
+        if 'iphone_struct' in node:
+            # if loaded from JSON with load_structure_from_file()
+            self._iphone_struct_ = node['iphone_struct']
 
     def _asdict(self):
         node = self._node
