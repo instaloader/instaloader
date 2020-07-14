@@ -395,7 +395,7 @@ class Post:
                                      created_at_utc=datetime.utcfromtimestamp(node['created_at']),
                                      text=node['text'],
                                      owner=Profile(self._context, node['owner']),
-                                     likes_count=node['edge_liked_by']['count'])
+                                     likes_count=node.get('edge_liked_by', {}).get('count', 0))
 
         def _postcommentanswers(node):
             if 'edge_threaded_comments' not in node:
@@ -421,14 +421,9 @@ class Post:
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return
-        try:
-            comment_edges = self._field('edge_media_to_parent_comment', 'edges')
-            answers_count = sum([edge['node']['edge_threaded_comments']['count'] for edge in comment_edges])
-            threaded_comments_available = True
-        except KeyError:
-            comment_edges = self._field('edge_media_to_comment', 'edges')
-            answers_count = 0
-            threaded_comments_available = False
+
+        comment_edges = self._field('edge_media_to_comment', 'edges')
+        answers_count = sum([edge['node']['edge_threaded_comments']['count'] for edge in comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
@@ -436,13 +431,10 @@ class Post:
             return
         yield from (_postcomment(node) for node in
                     self._context.graphql_node_list(
-                        "97b41c52301f77ce508f55e66d17620e" if threaded_comments_available
-                        else "f0986789a5c5d17c2400faebf16efd0d",
+                        "97b41c52301f77ce508f55e66d17620e",
                         {'shortcode': self.shortcode},
                         'https://www.instagram.com/p/' + self.shortcode + '/',
-                        lambda d:
-                        d['data']['shortcode_media'][
-                            'edge_media_to_parent_comment' if threaded_comments_available else 'edge_media_to_comment'],
+                        lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
                         self._rhx_gis))
 
     def get_likes(self) -> Iterator['Profile']:
