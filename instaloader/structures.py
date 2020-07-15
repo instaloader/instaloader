@@ -69,7 +69,6 @@ class Post:
         self._node = node
         self._owner_profile = owner_profile
         self._full_metadata_dict = None  # type: Optional[Dict[str, Any]]
-        self._rhx_gis_str = None         # type: Optional[str]
         self._location = None            # type: Optional[PostLocation]
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
@@ -147,7 +146,6 @@ class Post:
                 {'shortcode': self.shortcode}
             )
             self._full_metadata_dict = pic_json['data']['shortcode_media']
-            # self._rhx_gis_str = pic_json.get('rhx_gis')
             if self._full_metadata_dict is None:
                 # issue #449
                 self._context.error("Fetching Post metadata failed (issue #449). "
@@ -163,11 +161,6 @@ class Post:
         self._obtain_metadata()
         assert self._full_metadata_dict is not None
         return self._full_metadata_dict
-
-    @property
-    def _rhx_gis(self) -> Optional[str]:
-        self._obtain_metadata()
-        return self._rhx_gis_str
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
@@ -434,8 +427,7 @@ class Post:
                         "97b41c52301f77ce508f55e66d17620e",
                         {'shortcode': self.shortcode},
                         'https://www.instagram.com/p/' + self.shortcode + '/',
-                        lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
-                        self._rhx_gis))
+                        lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment']))
 
     def get_likes(self) -> Iterator['Profile']:
         """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
@@ -450,8 +442,7 @@ class Post:
         yield from (Profile(self._context, node) for node in
                     self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
                                                     'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                    lambda d: d['data']['shortcode_media']['edge_liked_by'],
-                                                    self._rhx_gis))
+                                                    lambda d: d['data']['shortcode_media']['edge_liked_by']))
 
     @property
     def is_sponsored(self) -> bool:
@@ -532,7 +523,6 @@ class Profile:
         self._has_public_story = None  # type: Optional[bool]
         self._node = node
         self._has_full_metadata = False
-        self._rhx_gis = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
@@ -597,7 +587,6 @@ class Profile:
                 metadata = self._context.get_json('{}/feed/'.format(self.username), params={})
                 self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
                 self._has_full_metadata = True
-                self._rhx_gis = metadata.get('rhx_gis')
         except (QueryReturnedNotFoundException, KeyError) as err:
             top_search_results = TopSearchResults(self._context, self.username)
             similar_profiles = [profile.username for profile in top_search_results.get_profiles()]
@@ -730,8 +719,7 @@ class Profile:
                                                         'include_reel': False, 'include_suggested_users': False,
                                                         'include_logged_out_extras': True,
                                                         'include_highlight_reels': False},
-                                                       'https://www.instagram.com/{}/'.format(self.username),
-                                                       self._rhx_gis)
+                                                       'https://www.instagram.com/{}/'.format(self.username))
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story
@@ -790,8 +778,7 @@ class Profile:
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-                                                    self._rhx_gis,
-                                                    self._metadata('edge_owner_to_timeline_media')))
+                                                    first_data=self._metadata('edge_owner_to_timeline_media')))
 
     def get_saved_posts(self) -> Iterator[Post]:
         """Get Posts that are marked as saved by the user."""
@@ -805,8 +792,7 @@ class Profile:
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_saved_media'],
-                                                    self._rhx_gis,
-                                                    self._metadata('edge_saved_media')))
+                                                    first_data=self._metadata('edge_saved_media')))
 
     def get_tagged_posts(self) -> Iterator[Post]:
         """Retrieve all posts where a profile is tagged.
@@ -817,8 +803,7 @@ class Profile:
                     self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/'.format(self.username),
-                                                    lambda d: d['data']['user']['edge_user_to_photos_of_you'],
-                                                    self._rhx_gis))
+                                                    lambda d: d['data']['user']['edge_user_to_photos_of_you']))
 
     def get_igtv_posts(self) -> Iterator[Post]:
         """Retrieve all IGTV posts.
@@ -830,8 +815,7 @@ class Profile:
                                                     {'id': self.userid},
                                                     'https://www.instagram.com/{0}/channel/'.format(self.username),
                                                     lambda d: d['data']['user']['edge_felix_video_timeline'],
-                                                    self._rhx_gis,
-                                                    self._metadata('edge_felix_video_timeline')))
+                                                    first_data=self._metadata('edge_felix_video_timeline')))
 
     def get_followers(self) -> Iterator['Profile']:
         """
@@ -845,8 +829,7 @@ class Profile:
                     self._context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
                                                     {'id': str(self.userid)},
                                                     'https://www.instagram.com/' + self.username + '/',
-                                                    lambda d: d['data']['user']['edge_followed_by'],
-                                                    self._rhx_gis))
+                                                    lambda d: d['data']['user']['edge_followed_by']))
 
     def get_followees(self) -> Iterator['Profile']:
         """
@@ -860,8 +843,7 @@ class Profile:
                     self._context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
                                                     {'id': str(self.userid)},
                                                     'https://www.instagram.com/' + self.username + '/',
-                                                    lambda d: d['data']['user']['edge_follow'],
-                                                    self._rhx_gis))
+                                                    lambda d: d['data']['user']['edge_follow']))
 
     def get_similar_accounts(self) -> Iterator['Profile']:
         """
@@ -876,8 +858,8 @@ class Profile:
         yield from (Profile(self._context, edge["node"]) for edge in
                     self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
                                                 {"user_id": str(self.userid), "include_chaining": True},
-                                                "https://www.instagram.com/{0}/".format(self.username),
-                                                self._rhx_gis)["data"]["user"]["edge_chaining"]["edges"])
+                                                "https://www.instagram.com/{0}/"
+                                                .format(self.username))["data"]["user"]["edge_chaining"]["edges"])
 
 
 class StoryItem:
