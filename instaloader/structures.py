@@ -416,7 +416,7 @@ class Post:
             return
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
-        answers_count = sum([edge['node']['edge_threaded_comments']['count'] for edge in comment_edges])
+        answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
