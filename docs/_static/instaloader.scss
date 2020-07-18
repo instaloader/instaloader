@@ -36,7 +36,11 @@ code {
     color: #fff;
   }
 
-  .c1, .k, .kn, .ow {
+  .c1 {
+    color: #666;
+  }
+
+  .k, .kn, .ow {
     color: $color_instaloader_main
   }
 
