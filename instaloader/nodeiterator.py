@@ -111,7 +111,9 @@ class NodeIterator(Iterator[T]):
         if 'blake2b' not in hashlib.algorithms_available:
             magic_hash = hashlib.new('sha224')
         else:
-            magic_hash = hashlib.blake2b(digest_size=6)
+            # Use blake2b when possible, i.e. on Python >= 3.6.
+            # pylint:disable=no-member
+            magic_hash = hashlib.blake2b(digest_size=6)  # type:ignore
         magic_hash.update(json.dumps(
             [self._query_hash, self._query_variables, self._query_referer, self._context.username]
         ).encode())
