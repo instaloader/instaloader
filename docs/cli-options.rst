@@ -237,10 +237,14 @@ How to Download
 
    This feature is turned off entirely with :option:`--no-resume`.
 
+   .. versionadded:: 4.5
+
 .. option:: --no-resume
 
    Do not resume a previously-aborted download iteration, and do not save such
    information when interrupted.
+
+   .. versionadded:: 4.5
 
 .. option:: --user-agent USER_AGENT
 

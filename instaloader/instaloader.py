@@ -367,7 +367,9 @@ class Instaloader:
                                            identifier: str,
                                            name_suffix: str,
                                            extension: str):
-        """Returns a filename within the target path."""
+        """Returns a filename within the target path.
+
+        .. versionadded:: 4.5"""
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
              format_string_contains_key(self.dirname_pattern, 'target'))):
             profile_str = owner_profile.username.lower() if owner_profile is not None else target
