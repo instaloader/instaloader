@@ -242,3 +242,16 @@ Exceptions
    :no-show-inheritance:
 
    .. versionadded:: 4.5
+
+``NodeIterator``
+""""""""""""""""
+
+.. autoclass:: NodeIterator
+   :no-show-inheritance:
+
+   .. versionadded:: 4.5
+
+.. autoclass:: FrozenNodeIterator
+   :no-show-inheritance:
+
+   .. versionadded:: 4.5

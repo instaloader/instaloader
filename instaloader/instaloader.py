@@ -20,8 +20,9 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
+from .nodeiterator import FrozenNodeIterator, NodeIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         save_structure_to_file)
+                         load_structure_from_file, save_structure_to_file)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -154,6 +155,7 @@ class Instaloader:
     :param max_connection_attempts: :option:`--max-connection-attempts`
     :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
     :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
+    :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
 
     .. attribute:: context
 
@@ -177,7 +179,8 @@ class Instaloader:
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
                  request_timeout: Optional[float] = None,
-                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None):
+                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
+                 resume_prefix: Optional[str] = "iterator"):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -196,6 +199,7 @@ class Instaloader:
             else post_metadata_txt_pattern
         self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
             else storyitem_metadata_txt_pattern
+        self.resume_prefix = resume_prefix
 
     @contextmanager
     def anonymous_copy(self):
@@ -216,7 +220,8 @@ class Instaloader:
             post_metadata_txt_pattern=self.post_metadata_txt_pattern,
             storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
             max_connection_attempts=self.context.max_connection_attempts,
-            request_timeout=self.context.request_timeout)
+            request_timeout=self.context.request_timeout,
+            resume_prefix=self.resume_prefix)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -356,6 +361,22 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         self.context.log('geo', end=' ', flush=True)
 
+    def format_filename_within_target_path(self,
+                                           target: Union[str, Path],
+                                           owner_profile: Optional[Profile],
+                                           identifier: str,
+                                           name_suffix: str,
+                                           extension: str):
+        """Returns a filename within the target path."""
+        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target'))):
+            profile_str = owner_profile.username.lower() if owner_profile is not None else target
+            return os.path.join(self.dirname_pattern.format(profile=profile_str, target=target),
+                                '{0}_{1}.{2}'.format(identifier, name_suffix, extension))
+        else:
+            return os.path.join(self.dirname_pattern.format(),
+                                '{0}_{1}_{2}.{3}'.format(target, identifier, name_suffix, extension))
+
     @_retry_on_connection_error
     def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile],
                            _attempt: int = 1) -> None:
@@ -376,16 +397,7 @@ class Instaloader:
         else:
             pic_bytes = http_response.content
             pic_identifier = md5(pic_bytes).hexdigest()[:16]
-        pic_extension = 'jpg'
-        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-             format_string_contains_key(self.dirname_pattern, 'target'))):
-            profile_str = owner_profile.username.lower() if owner_profile is not None else target
-            filename = os.path.join(self.dirname_pattern.format(profile=profile_str,
-                                                                target=target),
-                                    '{0}_{1}.{2}'.format(pic_identifier, name_suffix, pic_extension))
-        else:
-            filename = os.path.join(self.dirname_pattern.format(),
-                                    '{0}_{1}_{2}.{3}'.format(target, pic_identifier, name_suffix, pic_extension))
+        filename = self.format_filename_within_target_path(target, owner_profile, pic_identifier, name_suffix, 'jpg')
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
@@ -705,59 +717,95 @@ class Instaloader:
                             fast_update: bool = False,
                             post_filter: Optional[Callable[[Post], bool]] = None,
                             max_count: Optional[int] = None,
-                            total_count: Optional[int] = None) -> None:
+                            total_count: Optional[int] = None,
+                            owner_profile: Optional[Profile] = None) -> None:
         """
         Download the Posts returned by given Post Iterator.
 
         ..versionadded:: 4.4
 
+        ..versionchanged:: 4.5
+           Transparently resume an aborted operation if `posts` is a :class:`NodeIterator`.
+
         :param posts: Post Iterator to loop through.
-        :param target: Target name
-        :param fast_update: :option:`--fast-update`
-        :param post_filter: :option:`--post-filter`
-        :param max_count: Maximum count of Posts to download (:option:`--count`)
-        :param total_count: Total number of posts returned by given iterator
+        :param target: Target name.
+        :param fast_update: :option:`--fast-update`.
+        :param post_filter: :option:`--post-filter`.
+        :param max_count: Maximum count of Posts to download (:option:`--count`).
+        :param total_count: Total number of posts returned by given iterator.
+        :param owner_profile: Associated profile, if any.
         """
-        for number, post in enumerate(posts):
-            if max_count is not None and number >= max_count:
-                break
-            if total_count is not None:
-                self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + 1, total_count,
-                                                               w=len(str(total_count))),
-                                 end="", flush=True)
-            else:
-                if max_count is not None:
-                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + 1, max_count,
-                                                                   w=len(str(max_count))),
+        resume_file_path = None
+        resume_offset = 0
+        is_resuming = False
+        if self.resume_prefix is not None and isinstance(posts, NodeIterator):
+            resume_file_path = self.format_filename_within_target_path(target, owner_profile,
+                                                                       self.resume_prefix, posts.magic, 'json.xz')
+            try:
+                fni = load_structure_from_file(self.context, resume_file_path)
+                if not isinstance(fni, FrozenNodeIterator):
+                    raise InvalidArgumentException("Invalid type.")
+                posts.thaw(fni)
+                resume_offset = posts.total_index
+                is_resuming = True
+                self.context.log("Resuming download from {}.".format(resume_file_path))
+            except InvalidArgumentException as exc:
+                self.context.error("Warning: Resuming download from {} failed: {}".format(resume_file_path, exc))
+            except FileNotFoundError:
+                pass
+        displayed_count = (max_count if total_count is None or max_count is not None and max_count < total_count
+                           else total_count)
+        try:  # KeyboardInterrupt block
+            for number, post in enumerate(posts):
+                if max_count is not None and number + resume_offset >= max_count:
+                    break
+                if displayed_count is not None:
+                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + resume_offset + 1, displayed_count,
+                                                                   w=len(str(displayed_count))),
                                      end="", flush=True)
                 else:
-                    self.context.log("[{:3d}] ".format(number + 1), end="", flush=True)
-            if post_filter is not None:
-                try:
-                    if not post_filter(post):
-                        self.context.log("{} skipped".format(post))
-                        continue
-                except (InstaloaderException, KeyError, TypeError) as err:
-                    self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
-                    continue
-            with self.context.error_catcher("Download {} of {}".format(post, target)):
-                # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
-                # additional metadata. This is most likely the case if a HTTP redirect takes place while
-                # resolving the shortcode URL.
-                # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
-                # obained after a redirect has probably already been downloaded as a previous Post of the
-                # same Profile.
-                # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
-                post_changed = False
-                while True:
+                    self.context.log("[{:3d}] ".format(number + resume_offset + 1), end="", flush=True)
+                if post_filter is not None:
                     try:
-                        downloaded = self.download_post(post, target=target)
-                        break
-                    except PostChangedException:
-                        post_changed = True
+                        if not post_filter(post):
+                            self.context.log("{} skipped".format(post))
+                            continue
+                    except (InstaloaderException, KeyError, TypeError) as err:
+                        self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
                         continue
-                if fast_update and not downloaded and not post_changed:
-                    break
+                with self.context.error_catcher("Download {} of {}".format(post, target)):
+                    # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
+                    # additional metadata. This is most likely the case if a HTTP redirect takes place while
+                    # resolving the shortcode URL.
+                    # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
+                    # obained after a redirect has probably already been downloaded as a previous Post of the
+                    # same Profile.
+                    # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
+                    post_changed = False
+                    while True:
+                        try:
+                            downloaded = self.download_post(post, target=target)
+                            break
+                        except PostChangedException:
+                            post_changed = True
+                            continue
+                    if fast_update and not downloaded and not post_changed:
+                        # disengage fast_update for first post when resuming
+                        if not is_resuming or number > 0:
+                            break
+        except KeyboardInterrupt:
+            if self.resume_prefix is not None:
+                if resume_file_path is not None:
+                    assert isinstance(posts, NodeIterator)
+                    save_structure_to_file(posts.freeze(), resume_file_path)
+                    self.context.log("\nSaved resume information for {} to {}.".format(target, resume_file_path))
+                else:
+                    self.context.log("\nInterrupting download of {} without storing resume information.".format(target))
+            raise
+        if is_resuming:
+            assert resume_file_path is not None
+            os.unlink(resume_file_path)
+            self.context.log("Target complete, deleted resume information file {}.".format(resume_file_path))
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
@@ -817,8 +865,10 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
-        self.posts_download_loop(Profile.from_username(self.context, self.context.username).get_saved_posts(), ":saved",
-                                 fast_update, post_filter, max_count=max_count)
+        node_iterator = Profile.from_username(self.context, self.context.username).get_saved_posts()
+        self.posts_download_loop(node_iterator, ":saved",
+                                 fast_update, post_filter,
+                                 max_count=max_count, total_count=node_iterator.count)
 
     @_requires_login
     def get_location_posts(self, location: str) -> Iterator[Post]:
@@ -873,18 +923,20 @@ class Instaloader:
                                  max_count=max_count)
 
     @_requires_login
-    def get_explore_posts(self) -> Iterator[Post]:
+    def get_explore_posts(self) -> NodeIterator[Post]:
         """Get Posts which are worthy of exploring suggested by Instagram.
 
         :return: Iterator over Posts of the user's suggested posts.
+        :rtype: NodeIterator[Post]
         :raises LoginRequiredException: If called without being logged in.
         """
-        data = self.context.get_json('explore/', {})
-        yield from (Post(self.context, node)
-                    for node in self.context.graphql_node_list("df0dcc250c2b18d9fd27c5581ef33c7c",
-                                                               {}, 'https://www.instagram.com/explore/',
-                                                               lambda d: d['data']['user']['edge_web_discover_media'],
-                                                               data.get('rhx_gis')))
+        return NodeIterator(
+            self.context,
+            'df0dcc250c2b18d9fd27c5581ef33c7c',
+            lambda d: d['data']['user']['edge_web_discover_media'],
+            lambda n: Post(self.context, n),
+            query_referer='https://www.instagram.com/explore/',
+        )
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:
         """Get Posts associated with a #hashtag.
@@ -955,7 +1007,7 @@ class Instaloader:
         .. versionadded:: 4.3"""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
         self.posts_download_loop(profile.get_igtv_posts(), profile.username, fast_update, post_filter,
-                                 total_count=profile.igtvcount)
+                                 total_count=profile.igtvcount, owner_profile=profile)
 
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -1110,7 +1162,7 @@ class Instaloader:
                 if posts:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
                     self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
-                                             total_count=profile.mediacount)
+                                             total_count=profile.mediacount, owner_profile=profile)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
@@ -1190,7 +1242,7 @@ class Instaloader:
         # Iterate over pictures and download them
         self.context.log("Retrieving posts from profile {}.".format(profile_name))
         self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
-                                 total_count=profile.mediacount)
+                                 total_count=profile.mediacount, owner_profile=profile)
 
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.

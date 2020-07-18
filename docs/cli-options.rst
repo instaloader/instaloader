@@ -223,6 +223,25 @@ How to Download
    ``#hashtag`` or the profile name. Defaults to ``{date_utc}_UTC``.
    See :ref:`filename-specification` for a list of supported tokens.
 
+.. option:: --resume-prefix prefix
+
+   For many targets, Instaloader is capable of resuming a previously-aborted
+   download loop.  To do so, it creates a JSON file within the target directory
+   when interrupted.  This option controls the prefix for filenames that are
+   used to save the information to resume an interrupted download.  The default
+   prefix is ``iterator``.
+
+   Resuming an interrupted download is supported for most, but not all targets.
+   JSON files with resume information are always compressed, regardless of
+   :option:`--no-compress-json`.
+
+   This feature is turned off entirely with :option:`--no-resume`.
+
+.. option:: --no-resume
+
+   Do not resume a previously-aborted download iteration, and do not save such
+   information when interrupted.
+
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being

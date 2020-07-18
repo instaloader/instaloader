@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
-
+from .nodeiterator import FrozenNodeIterator, NodeIterator
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
@@ -402,11 +402,14 @@ class Post:
                 # If the answer's metadata already contains all comments, don't do GraphQL requests to obtain them
                 yield from (_postcommentanswer(comment['node']) for comment in answer_edges)
                 return
-            yield from (_postcommentanswer(answer_node) for answer_node in
-                        self._context.graphql_node_list("51fdd02b67508306ad4484ff574a0b62",
-                                                        {'comment_id': node['id']},
-                                                        'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                        lambda d: d['data']['comment']['edge_threaded_comments']))
+            yield from NodeIterator(
+                self._context,
+                '51fdd02b67508306ad4484ff574a0b62',
+                lambda d: d['data']['comment']['edge_threaded_comments'],
+                _postcommentanswer,
+                {'comment_id': node['id']},
+                'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+            )
 
         def _postcomment(node):
             return PostComment(*_postcommentanswer(node),
@@ -422,12 +425,14 @@ class Post:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
             yield from (_postcomment(comment['node']) for comment in comment_edges)
             return
-        yield from (_postcomment(node) for node in
-                    self._context.graphql_node_list(
-                        "97b41c52301f77ce508f55e66d17620e",
-                        {'shortcode': self.shortcode},
-                        'https://www.instagram.com/p/' + self.shortcode + '/',
-                        lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment']))
+        yield from NodeIterator(
+            self._context,
+            '97b41c52301f77ce508f55e66d17620e',
+            lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
+            _postcomment,
+            {'shortcode': self.shortcode},
+            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+        )
 
     def get_likes(self) -> Iterator['Profile']:
         """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
@@ -439,10 +444,14 @@ class Post:
             # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
             yield from (Profile(self._context, like['node']) for like in likes_edges)
             return
-        yield from (Profile(self._context, node) for node in
-                    self._context.graphql_node_list("1cb6ec562846122743b61e492c85999f", {'shortcode': self.shortcode},
-                                                    'https://www.instagram.com/p/' + self.shortcode + '/',
-                                                    lambda d: d['data']['shortcode_media']['edge_liked_by']))
+        yield from NodeIterator(
+            self._context,
+            '1cb6ec562846122743b61e492c85999f',
+            lambda d: d['data']['shortcode_media']['edge_liked_by'],
+            lambda n: Profile(self._context, n),
+            {'shortcode': self.shortcode},
+            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+        )
 
     @property
     def is_sponsored(self) -> bool:
@@ -770,80 +779,110 @@ class Profile:
 	   Use :attr:`profile_pic_url`."""
         return self.profile_pic_url
 
-    def get_posts(self) -> Iterator[Post]:
-        """Retrieve all posts from a profile."""
-        self._obtain_metadata()
-        yield from (Post(self._context, node, self) for node in
-                    self._context.graphql_node_list("472f257a40c653c64c666ce877d59d2b",
-                                                    {'id': self.userid},
-                                                    'https://www.instagram.com/{0}/'.format(self.username),
-                                                    lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-                                                    first_data=self._metadata('edge_owner_to_timeline_media')))
+    def get_posts(self) -> NodeIterator[Post]:
+        """Retrieve all posts from a profile.
 
-    def get_saved_posts(self) -> Iterator[Post]:
-        """Get Posts that are marked as saved by the user."""
+        :rtype:NodeIterator[Post]"""
+        self._obtain_metadata()
+        return NodeIterator(
+            self._context,
+            '472f257a40c653c64c666ce877d59d2b',
+            lambda d: d['data']['user']['edge_owner_to_timeline_media'],
+            lambda n: Post(self._context, n, self),
+            {'id': self.userid},
+            'https://www.instagram.com/{0}/'.format(self.username),
+            self._metadata('edge_owner_to_timeline_media'),
+        )
+
+    def get_saved_posts(self) -> NodeIterator[Post]:
+        """Get Posts that are marked as saved by the user.
+
+        :rtype:NodeIterator[Post]"""
 
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
         self._obtain_metadata()
-        yield from (Post(self._context, node) for node in
-                    self._context.graphql_node_list("f883d95537fbcd400f466f63d42bd8a1",
-                                                    {'id': self.userid},
-                                                    'https://www.instagram.com/{0}/'.format(self.username),
-                                                    lambda d: d['data']['user']['edge_saved_media'],
-                                                    first_data=self._metadata('edge_saved_media')))
+        return NodeIterator(
+            self._context,
+            'f883d95537fbcd400f466f63d42bd8a1',
+            lambda d: d['data']['user']['edge_saved_media'],
+            lambda n: Post(self._context, n),
+            {'id': self.userid},
+            'https://www.instagram.com/{0}/'.format(self.username),
+            self._metadata('edge_saved_media'),
+        )
 
-    def get_tagged_posts(self) -> Iterator[Post]:
+    def get_tagged_posts(self) -> NodeIterator[Post]:
         """Retrieve all posts where a profile is tagged.
+
+        :rtype: NodeIterator[Post]
 
         .. versionadded:: 4.0.7"""
         self._obtain_metadata()
-        yield from (Post(self._context, node, self if int(node['owner']['id']) == self.userid else None) for node in
-                    self._context.graphql_node_list("e31a871f7301132ceaab56507a66bbb7",
-                                                    {'id': self.userid},
-                                                    'https://www.instagram.com/{0}/'.format(self.username),
-                                                    lambda d: d['data']['user']['edge_user_to_photos_of_you']))
+        return NodeIterator(
+            self._context,
+            'e31a871f7301132ceaab56507a66bbb7',
+            lambda d: d['data']['user']['edge_user_to_photos_of_you'],
+            lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
+            {'id': self.userid},
+            'https://www.instagram.com/{0}/'.format(self.username),
+        )
 
-    def get_igtv_posts(self) -> Iterator[Post]:
+    def get_igtv_posts(self) -> NodeIterator[Post]:
         """Retrieve all IGTV posts.
+
+        :rtype: NodeIterator[Post]
 
         .. versionadded:: 4.3"""
         self._obtain_metadata()
-        yield from (Post(self._context, node, self) for node in
-                    self._context.graphql_node_list('bc78b344a68ed16dd5d7f264681c4c76',
-                                                    {'id': self.userid},
-                                                    'https://www.instagram.com/{0}/channel/'.format(self.username),
-                                                    lambda d: d['data']['user']['edge_felix_video_timeline'],
-                                                    first_data=self._metadata('edge_felix_video_timeline')))
+        return NodeIterator(
+            self._context,
+            'bc78b344a68ed16dd5d7f264681c4c76',
+            lambda d: d['data']['user']['edge_felix_video_timeline'],
+            lambda n: Post(self._context, n, self),
+            {'id': self.userid},
+            'https://www.instagram.com/{0}/channel/'.format(self.username),
+            self._metadata('edge_felix_video_timeline'),
+        )
 
-    def get_followers(self) -> Iterator['Profile']:
+    def get_followers(self) -> NodeIterator['Profile']:
         """
         Retrieve list of followers of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
+
+        :rtype:NodeIterator[Profile]
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followers.")
         self._obtain_metadata()
-        yield from (Profile(self._context, node) for node in
-                    self._context.graphql_node_list("37479f2b8209594dde7facb0d904896a",
-                                                    {'id': str(self.userid)},
-                                                    'https://www.instagram.com/' + self.username + '/',
-                                                    lambda d: d['data']['user']['edge_followed_by']))
+        return NodeIterator(
+            self._context,
+            '37479f2b8209594dde7facb0d904896a',
+            lambda d: d['data']['user']['edge_followed_by'],
+            lambda n: Profile(self._context, n),
+            {'id': str(self.userid)},
+            'https://www.instagram.com/{0}/'.format(self.username),
+        )
 
-    def get_followees(self) -> Iterator['Profile']:
+    def get_followees(self) -> NodeIterator['Profile']:
         """
         Retrieve list of followees (followings) of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
+
+        :rtype:NodeIterator[Profile]
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followees.")
         self._obtain_metadata()
-        yield from (Profile(self._context, node) for node in
-                    self._context.graphql_node_list("58712303d941c6855d4e888c5f0cd22f",
-                                                    {'id': str(self.userid)},
-                                                    'https://www.instagram.com/' + self.username + '/',
-                                                    lambda d: d['data']['user']['edge_follow']))
+        return NodeIterator(
+            self._context,
+            '58712303d941c6855d4e888c5f0cd22f',
+            lambda d: d['data']['user']['edge_follow'],
+            lambda n: Profile(self._context, n),
+            {'id': str(self.userid)},
+            'https://www.instagram.com/{0}/'.format(self.username),
+        )
 
     def get_similar_accounts(self) -> Iterator['Profile']:
         """
@@ -1398,7 +1437,7 @@ class TopSearchResults:
         return self._searchstring
 
 
-JsonExportable = Union[Post, Profile, StoryItem, Hashtag]
+JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]
 
 
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
@@ -1447,6 +1486,8 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
             return StoryItem(context, json_structure['node'])
         elif node_type == "Hashtag":
             return Hashtag(context, json_structure['node'])
+        elif node_type == "FrozenNodeIterator":
+            return FrozenNodeIterator(**json_structure['node'])
         else:
             raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
     elif 'shortcode' in json_structure:

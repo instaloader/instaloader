@@ -351,6 +351,12 @@ def main():
                             '--dirname-pattern. {profile} is replaced by the profile name,'
                             '{target} is replaced by the target you specified, i.e. either :feed'
                             '#hashtag or the profile name. Defaults to \'{date_utc}_UTC\'')
+    g_how.add_argument('--resume-prefix', metavar='PREFIX',
+                       help='Prefix for filenames that are used to save the information to resume an interrupted '
+                            'download.')
+    g_how.add_argument('--no-resume', action='store_true',
+                       help='Do not resume a previously-aborted download iteration, and do not store save information '
+                            'when interrupted.')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
@@ -394,6 +400,10 @@ def main():
                 raise SystemExit("--no-captions and --post-metadata-txt or --storyitem-metadata-txt given; "
                                  "That contradicts.")
 
+        if args.no_resume and args.resume_prefix:
+            raise SystemExit("--no-resume and --resume-prefix given; That contradicts.")
+        resume_prefix = (args.resume_prefix if args.resume_prefix else 'iterator') if not args.no_resume else None
+
         if args.no_pictures and args.fast_update:
             raise SystemExit('--no-pictures and --fast-update cannot be used together.')
 
@@ -412,7 +422,8 @@ def main():
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              max_connection_attempts=args.max_connection_attempts,
-                             request_timeout=args.request_timeout)
+                             request_timeout=args.request_timeout,
+                             resume_prefix=resume_prefix)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
