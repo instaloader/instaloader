@@ -73,7 +73,7 @@ class NodeIterator(Iterator[T]):
                 NodeIterator._graphql_page_length = new_page_length
                 self._context.error("HTTP Error 400 (Bad Request) on GraphQL Query. Retrying with shorter page length.",
                                     repeat_at_end=False)
-                return self._query()
+                return self._query(after)
             else:
                 raise
 
