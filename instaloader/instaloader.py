@@ -799,6 +799,7 @@ class Instaloader:
             if self.resume_prefix is not None:
                 if resume_file_path is not None:
                     assert isinstance(posts, NodeIterator)
+                    os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
                     save_structure_to_file(posts.freeze(), resume_file_path)
                     self.context.log("\nSaved resume information for {} to {}.".format(target, resume_file_path))
                 else:
