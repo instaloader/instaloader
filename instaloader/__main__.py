@@ -355,7 +355,7 @@ def main():
                        help='Prefix for filenames that are used to save the information to resume an interrupted '
                             'download.')
     g_how.add_argument('--no-resume', action='store_true',
-                       help='Do not resume a previously-aborted download iteration, and do not store save information '
+                       help='Do not resume a previously-aborted download iteration, and do not save such information '
                             'when interrupted.')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))

@@ -49,7 +49,9 @@
   directory accordingly,
 
 - allows **fine-grained customization** of filters and where to store
-  downloaded media.
+  downloaded media,
+
+- automatically **resumes previously-interrupted** download iterations.
 
 ::
 
