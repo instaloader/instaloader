@@ -1,6 +1,5 @@
 import getpass
 import json
-import lzma
 import os
 import platform
 import re
@@ -21,7 +20,7 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
-from .nodeiterator import FrozenNodeIterator, NodeIterator
+from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          load_structure_from_file, save_structure_to_file)
 
@@ -738,36 +737,28 @@ class Instaloader:
         :param total_count: Total number of posts returned by given iterator.
         :param owner_profile: Associated profile, if any.
         """
-        resume_file_path = None
-        resume_offset = 0
-        is_resuming = False
-        if self.resume_prefix is not None and isinstance(posts, NodeIterator):
-            resume_file_path = self.format_filename_within_target_path(target, owner_profile,
-                                                                       self.resume_prefix, posts.magic, 'json.xz')
-            try:
-                fni = load_structure_from_file(self.context, resume_file_path)
-                if not isinstance(fni, FrozenNodeIterator):
-                    raise InvalidArgumentException("Invalid type.")
-                posts.thaw(fni)
-                resume_offset = posts.total_index
-                is_resuming = True
-                self.context.log("Resuming download from {}.".format(resume_file_path))
-            except (InvalidArgumentException, lzma.LZMAError, json.decoder.JSONDecodeError) as exc:
-                self.context.error("Warning: Resuming download from {} failed: {}".format(resume_file_path, exc))
-            except FileNotFoundError:
-                pass
         displayed_count = (max_count if total_count is None or max_count is not None and max_count < total_count
                            else total_count)
-        try:  # KeyboardInterrupt block
+        with resumable_iteration(
+                context=self.context,
+                iterator=posts,
+                load=load_structure_from_file,
+                save=save_structure_to_file,
+                format_path=lambda magic: self.format_filename_within_target_path(
+                    target, owner_profile, self.resume_prefix or '', magic, 'json.xz'
+                ),
+                enabled=self.resume_prefix is not None
+        ) as resume_info:
+            is_resuming, start_index = resume_info
             for number, post in enumerate(posts):
-                if max_count is not None and number + resume_offset >= max_count:
+                if max_count is not None and number + start_index >= max_count:
                     break
                 if displayed_count is not None:
-                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + resume_offset + 1, displayed_count,
+                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + start_index + 1, displayed_count,
                                                                    w=len(str(displayed_count))),
                                      end="", flush=True)
                 else:
-                    self.context.log("[{:3d}] ".format(number + resume_offset + 1), end="", flush=True)
+                    self.context.log("[{:3d}] ".format(number + start_index + 1), end="", flush=True)
                 if post_filter is not None:
                     try:
                         if not post_filter(post):
@@ -796,20 +787,6 @@ class Instaloader:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break
-        except KeyboardInterrupt:
-            if self.resume_prefix is not None:
-                if resume_file_path is not None:
-                    assert isinstance(posts, NodeIterator)
-                    os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
-                    save_structure_to_file(posts.freeze(), resume_file_path)
-                    self.context.log("\nSaved resume information for {} to {}.".format(target, resume_file_path))
-                else:
-                    self.context.log("\nInterrupting download of {} without storing resume information.".format(target))
-            raise
-        if is_resuming:
-            assert resume_file_path is not None
-            os.unlink(resume_file_path)
-            self.context.log("Target complete, deleted resume information file {}.".format(resume_file_path))
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:

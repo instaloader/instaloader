@@ -1,7 +1,10 @@
 import base64
 import hashlib
 import json
-from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, TypeVar
+import os
+from contextlib import contextmanager
+from lzma import LZMAError
+from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
 from .exceptions import InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
@@ -51,6 +54,8 @@ class NodeIterator(Iterator[T]):
     question. This is to ensure that an iteration cannot be resumed in a wrong, unmatching loop. As a quick way to
     distinguish iterators that are saved e.g. in files, there is the :attr:`NodeIterator.magic` string: Two
     NodeIterators are matching if they have the same magic.
+
+    See also :func:`resumable_iteration` for a high-level context manager that handles a resumable iteration.
     """
 
     _graphql_page_length = 50
@@ -160,3 +165,69 @@ class NodeIterator(Iterator[T]):
             raise InvalidArgumentException("Mismatching resume information.")
         self._total_index = frozen.total_index
         self._data = frozen.remaining_data
+
+
+@contextmanager
+def resumable_iteration(context: InstaloaderContext,
+                        iterator: Iterator,
+                        load: Callable[[InstaloaderContext, str], Any],
+                        save: Callable[[FrozenNodeIterator, str], None],
+                        format_path: Callable[[str], str],
+                        enabled: bool = True) -> Iterator[Tuple[bool, int]]:
+    """
+    High-level context manager to handle a resumable iteration that can be interrupted with a KeyboardInterrupt.
+
+    It can be used as follows to automatically load a previously-saved state into the iterator, save the iterator's
+    state when interrupted, and delete the resume file upon completion::
+
+       post_iterator = profile.get_posts()
+       with resumable_iteration(
+               context=L.context,
+               iterator=post_iterator,
+               load=lambda _, path: FrozenNodeIterator(**json.load(open(path))),
+               save=lambda fni, path: json.dump(fni._asdict(), open(path, 'w')),
+               format_path=lambda magic: "resume_info_{}.json".format(magic)
+       ) as resume_info:
+           is_resuming, start_index = resume_info
+           for post in post_iterator:
+               do_something_with(post)
+
+    It yields a tuple (is_resuming, start_index).
+
+    When the passed iterator is not a :class:`NodeIterator`, it behaves as if ``resumable_iteration`` was not used.
+
+    :param context: The :class:`InstaloaderContext`.
+    :param iterator: The fresh :class:`NodeIterator`.
+    :param load: Loads a FrozenNodeIterator from given path. A typecheck is done before the returned object is used.
+    :param save: Saves the given FrozenNodeIterator to the given path.
+    :param format_path: Returns the path to the resume file for the given magic.
+    :param enabled: Set to False to disable all functionality and simply execute the inner body.
+    """
+    if not enabled or not isinstance(iterator, NodeIterator):
+        yield False, 0
+        return
+    is_resuming = False
+    start_index = 0
+    resume_file_path = format_path(iterator.magic)
+    resume_file_exists = os.path.isfile(resume_file_path)
+    if resume_file_exists:
+        try:
+            fni = load(context, resume_file_path)
+            if not isinstance(fni, FrozenNodeIterator):
+                raise InvalidArgumentException("Invalid type.")
+            iterator.thaw(fni)
+            is_resuming = True
+            start_index = iterator.total_index
+            context.log("Resuming from {}.".format(resume_file_path))
+        except (InvalidArgumentException, LZMAError, json.decoder.JSONDecodeError) as exc:
+            context.error("Warning: Resuming from {} failed: {}".format(resume_file_path, exc))
+    try:
+        yield is_resuming, start_index
+    except KeyboardInterrupt:
+        os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
+        save(iterator.freeze(), resume_file_path)
+        context.log("\nSaved resume information to {}.".format(resume_file_path))
+        raise
+    if resume_file_exists:
+        os.unlink(resume_file_path)
+        context.log("Iteration complete, deleted resume information file {}.".format(resume_file_path))
