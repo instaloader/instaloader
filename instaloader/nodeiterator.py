@@ -1,22 +1,33 @@
 import base64
 import hashlib
 import json
-from collections import namedtuple
-from typing import Any, Callable, Dict, Iterator, Optional, TypeVar
+from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, TypeVar
 
 from .exceptions import InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
 
-FrozenNodeIterator = namedtuple('FrozenNodeIterator',
-                                ['query_hash', 'query_variables', 'query_referer', 'context_username',
-                                 'total_index', 'remaining_data'])
+FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
+                                [('query_hash', str), ('query_variables', Dict), ('query_referer', Optional[str]),
+                                 ('context_username', Optional[str]), ('total_index', int),
+                                 ('remaining_data', Optional[Dict])])
+FrozenNodeIterator.__doc__ = \
+    """A serializable representation of a :class:`NodeIterator` instance, saving its iteration state."""
+FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
+FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
+FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
+FrozenNodeIterator.context_username.__doc__ = """The username who created the iterator, or ``None``."""
+FrozenNodeIterator.total_index.__doc__ = """Number of items that have already been returned."""
+FrozenNodeIterator.remaining_data.__doc__ = \
+    """The already-retrieved, yet-unprocessed ``edges`` and the ``page_info`` at time of freezing."""
+
 
 T = TypeVar('T')
 
 
 class NodeIterator(Iterator[T]):
     """
-    Iterate the nodes within edges in a GraphQL pagination.
+    Iterate the nodes within edges in a GraphQL pagination. Instances of this class are returned by many (but not all)
+    of Instaloader's :class:`Post`-returning functions (such as :meth:`Profile.get_posts` etc.).
 
     What makes this iterator special is its ability to freeze/store its current state, e.g. to interrupt an iteration,
     and later thaw/resume from where it left off.
@@ -35,6 +46,11 @@ class NodeIterator(Iterator[T]):
        post_iterator = profile.get_posts()
        post_iterator.thaw(load("resume_information.json"))
 
+    A :class:`FrozenNodeIterator` can only be thawn with a matching NodeIterator, i.e. a NodeIterator instance that has
+    been constructed with the same parameters as the instance that is represented by the :class:`FrozenNodeIterator` in
+    question. This is to ensure that an iteration cannot be resumed in a wrong, unmatching loop. As a quick way to
+    distinguish iterators that are saved e.g. in files, there is the :attr:`NodeIterator.magic` string: Two
+    NodeIterators are matching if they have the same magic.
     """
 
     _graphql_page_length = 50
@@ -57,7 +73,7 @@ class NodeIterator(Iterator[T]):
         self._page_index = 0
         self._total_index = 0
 
-    def _query(self, after: Optional[str] = None):
+    def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
         if after is not None:
             pagination_variables['after'] = after
@@ -133,7 +149,7 @@ class NodeIterator(Iterator[T]):
             remaining_data=remaining_data,
         )
 
-    def thaw(self, frozen: FrozenNodeIterator):
+    def thaw(self, frozen: FrozenNodeIterator) -> None:
         """Use this iterator for resuming from earlier iteration."""
         if self._total_index or self._page_index:
             raise InvalidArgumentException("thaw() called on already-used iterator.")

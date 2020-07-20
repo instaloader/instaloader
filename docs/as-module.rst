@@ -226,6 +226,17 @@ Exceptions
 
 .. autoexception:: TooManyRequestsException
 
+``NodeIterator`` (Interruptable Iterator)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 4.5
+
+.. autoclass:: NodeIterator
+   :no-show-inheritance:
+
+.. autoclass:: FrozenNodeIterator
+   :no-show-inheritance:
+
 ``InstaloaderContext`` (Low-level functions)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -239,19 +250,6 @@ Exceptions
 """"""""""""""""""
 
 .. autoclass:: RateController
-   :no-show-inheritance:
-
-   .. versionadded:: 4.5
-
-``NodeIterator``
-""""""""""""""""
-
-.. autoclass:: NodeIterator
-   :no-show-inheritance:
-
-   .. versionadded:: 4.5
-
-.. autoclass:: FrozenNodeIterator
    :no-show-inheritance:
 
    .. versionadded:: 4.5
