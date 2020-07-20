@@ -1,5 +1,6 @@
 import getpass
 import json
+import lzma
 import os
 import platform
 import re
@@ -751,7 +752,7 @@ class Instaloader:
                 resume_offset = posts.total_index
                 is_resuming = True
                 self.context.log("Resuming download from {}.".format(resume_file_path))
-            except InvalidArgumentException as exc:
+            except (InvalidArgumentException, lzma.LZMAError, json.decoder.JSONDecodeError) as exc:
                 self.context.error("Warning: Resuming download from {} failed: {}".format(resume_file_path, exc))
             except FileNotFoundError:
                 pass

@@ -4,8 +4,8 @@ import json
 from collections import namedtuple
 from typing import Any, Callable, Dict, Iterator, Optional, TypeVar
 
-from .exceptions import InvalidArgumentException
-from .instaloadercontext import InstaloaderContext, QueryReturnedBadRequestException
+from .exceptions import InvalidArgumentException, QueryReturnedBadRequestException
+from .instaloadercontext import InstaloaderContext
 
 FrozenNodeIterator = namedtuple('FrozenNodeIterator',
                                 ['query_hash', 'query_variables', 'query_referer', 'context_username',
