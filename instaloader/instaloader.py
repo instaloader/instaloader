@@ -156,6 +156,7 @@ class Instaloader:
     :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
     :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
     :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
+    :param check_resume_doe: Whether to check the date of expiry of resume files and reject them if expired.
 
     .. attribute:: context
 
@@ -180,7 +181,8 @@ class Instaloader:
                  max_connection_attempts: int = 3,
                  request_timeout: Optional[float] = None,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
-                 resume_prefix: Optional[str] = "iterator"):
+                 resume_prefix: Optional[str] = "iterator",
+                 check_resume_doe: bool = True):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -200,6 +202,7 @@ class Instaloader:
         self.storyitem_metadata_txt_pattern = '' if storyitem_metadata_txt_pattern is None \
             else storyitem_metadata_txt_pattern
         self.resume_prefix = resume_prefix
+        self.check_resume_doe = check_resume_doe
 
     @contextmanager
     def anonymous_copy(self):
@@ -221,7 +224,8 @@ class Instaloader:
             storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
             max_connection_attempts=self.context.max_connection_attempts,
             request_timeout=self.context.request_timeout,
-            resume_prefix=self.resume_prefix)
+            resume_prefix=self.resume_prefix,
+            check_resume_doe=self.check_resume_doe)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -747,6 +751,7 @@ class Instaloader:
                 format_path=lambda magic: self.format_filename_within_target_path(
                     target, owner_profile, self.resume_prefix or '', magic, 'json.xz'
                 ),
+                check_doe=self.check_resume_doe,
                 enabled=self.resume_prefix is not None
         ) as resume_info:
             is_resuming, start_index = resume_info

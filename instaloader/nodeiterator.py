@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
@@ -12,6 +13,7 @@ from .instaloadercontext import InstaloaderContext
 FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
                                 [('query_hash', str), ('query_variables', Dict), ('query_referer', Optional[str]),
                                  ('context_username', Optional[str]), ('total_index', int),
+                                 ('best_before_date', Optional[float]),
                                  ('remaining_data', Optional[Dict])])
 FrozenNodeIterator.__doc__ = \
     """A serializable representation of a :class:`NodeIterator` instance, saving its iteration state."""
@@ -20,6 +22,7 @@ FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` 
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
 FrozenNodeIterator.context_username.__doc__ = """The username who created the iterator, or ``None``."""
 FrozenNodeIterator.total_index.__doc__ = """Number of items that have already been returned."""
+FrozenNodeIterator.best_before_date.__doc__ = """Date when parts of the stored nodes might have expired."""
 FrozenNodeIterator.remaining_data.__doc__ = \
     """The already-retrieved, yet-unprocessed ``edges`` and the ``page_info`` at time of freezing."""
 
@@ -59,6 +62,7 @@ class NodeIterator(Iterator[T]):
     """
 
     _graphql_page_length = 50
+    expiration_time = timedelta(days=29, hours=23)
 
     def __init__(self,
                  context: InstaloaderContext,
@@ -77,17 +81,21 @@ class NodeIterator(Iterator[T]):
         self._data = first_data
         self._page_index = 0
         self._total_index = 0
+        self._best_before_date = (None if first_data is None else
+                                  datetime.now() + NodeIterator.expiration_time)
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
         if after is not None:
             pagination_variables['after'] = after
         try:
-            return self._edge_extractor(
+            data = self._edge_extractor(
                 self._context.graphql_query(
                     self._query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
                 )
             )
+            self._best_before_date = datetime.now() + NodeIterator.expiration_time
+            return data
         except QueryReturnedBadRequestException:
             new_page_length = int(NodeIterator._graphql_page_length / 2)
             if new_page_length >= 12:
@@ -151,6 +159,7 @@ class NodeIterator(Iterator[T]):
             query_referer=self._query_referer,
             context_username=self._context.username,
             total_index=max(self.total_index - 1, 0),
+            best_before_date=self._best_before_date.timestamp() if self._best_before_date else None,
             remaining_data=remaining_data,
         )
 
@@ -164,6 +173,7 @@ class NodeIterator(Iterator[T]):
                 self._context.username != frozen.context_username):
             raise InvalidArgumentException("Mismatching resume information.")
         self._total_index = frozen.total_index
+        self._best_before_date = datetime.fromtimestamp(frozen.best_before_date) if frozen.best_before_date else None
         self._data = frozen.remaining_data
 
 
@@ -173,6 +183,7 @@ def resumable_iteration(context: InstaloaderContext,
                         load: Callable[[InstaloaderContext, str], Any],
                         save: Callable[[FrozenNodeIterator, str], None],
                         format_path: Callable[[str], str],
+                        check_doe: bool = True,
                         enabled: bool = True) -> Iterator[Tuple[bool, int]]:
     """
     High-level context manager to handle a resumable iteration that can be interrupted with a KeyboardInterrupt.
@@ -201,6 +212,7 @@ def resumable_iteration(context: InstaloaderContext,
     :param load: Loads a FrozenNodeIterator from given path. A typecheck is done before the returned object is used.
     :param save: Saves the given FrozenNodeIterator to the given path.
     :param format_path: Returns the path to the resume file for the given magic.
+    :param check_doe: Whether to check the date of expiry and reject an expired FrozenNodeIterator.
     :param enabled: Set to False to disable all functionality and simply execute the inner body.
     """
     if not enabled or not isinstance(iterator, NodeIterator):
@@ -215,12 +227,14 @@ def resumable_iteration(context: InstaloaderContext,
             fni = load(context, resume_file_path)
             if not isinstance(fni, FrozenNodeIterator):
                 raise InvalidArgumentException("Invalid type.")
+            if check_doe and fni.best_before_date and datetime.fromtimestamp(fni.best_before_date) < datetime.now():
+                raise InvalidArgumentException("File too old.")
             iterator.thaw(fni)
             is_resuming = True
             start_index = iterator.total_index
             context.log("Resuming from {}.".format(resume_file_path))
         except (InvalidArgumentException, LZMAError, json.decoder.JSONDecodeError) as exc:
-            context.error("Warning: Resuming from {} failed: {}".format(resume_file_path, exc))
+            context.error("Warning: Not resuming from {}: {}".format(resume_file_path, exc))
     try:
         yield is_resuming, start_index
     except KeyboardInterrupt:

@@ -357,6 +357,7 @@ def main():
     g_how.add_argument('--no-resume', action='store_true',
                        help='Do not resume a previously-aborted download iteration, and do not save such information '
                             'when interrupted.')
+    g_how.add_argument('--use-aged-resume-files', action='store_true', help=SUPPRESS)
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
@@ -423,7 +424,8 @@ def main():
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
                              max_connection_attempts=args.max_connection_attempts,
                              request_timeout=args.request_timeout,
-                             resume_prefix=resume_prefix)
+                             resume_prefix=resume_prefix,
+                             check_resume_doe=not args.use_aged_resume_files)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
