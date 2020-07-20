@@ -50,6 +50,8 @@ autodoc_member_order = 'bysource'
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'requests': ('https://requests.kennethreitz.org/en/master/', None)}
 
+nitpick_ignore = [('py:class', 'typing.Tuple')]
+
 current_release = subprocess.check_output(["git", "describe", "--abbrev=0"]).decode("ascii")[1:-1]
 date_format = "%e %b %Y" if platform.system() != "Windows" else "%d %b %Y"
 current_release_date = subprocess.check_output(
