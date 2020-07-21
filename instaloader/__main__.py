@@ -425,7 +425,7 @@ def main():
                              max_connection_attempts=args.max_connection_attempts,
                              request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
-                             check_resume_doe=not args.use_aged_resume_files)
+                             check_resume_bbd=not args.use_aged_resume_files)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
