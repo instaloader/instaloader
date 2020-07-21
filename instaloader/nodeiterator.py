@@ -114,13 +114,23 @@ class NodeIterator(Iterator[T]):
             self._data = self._query()
         if self._page_index < len(self._data['edges']):
             node = self._data['edges'][self._page_index]['node']
-            self._page_index += 1
-            self._total_index += 1
+            page_index, total_index = self._page_index, self._total_index
+            try:
+                self._page_index += 1
+                self._total_index += 1
+            except KeyboardInterrupt:
+                self._page_index, self._total_index = page_index, total_index
+                raise
             return self._node_wrapper(node)
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
-            self._page_index = 0
-            self._data = query_response
+            page_index, data = self._page_index, self._data
+            try:
+                self._page_index = 0
+                self._data = query_response
+            except KeyboardInterrupt:
+                self._page_index, self._data = page_index, data
+                raise
             return self.__next__()
         raise StopIteration()
 
