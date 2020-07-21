@@ -226,6 +226,19 @@ Exceptions
 
 .. autoexception:: TooManyRequestsException
 
+Resumable Iterations
+^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 4.5
+
+.. autoclass:: NodeIterator
+   :no-show-inheritance:
+
+.. autoclass:: FrozenNodeIterator
+   :no-show-inheritance:
+
+.. autofunction:: resumable_iteration
+
 ``InstaloaderContext`` (Low-level functions)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

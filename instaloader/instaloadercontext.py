@@ -428,7 +428,12 @@ class InstaloaderContext:
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]],
                           rhx_gis: Optional[str] = None,
                           first_data: Optional[Dict[str, Any]] = None) -> Iterator[Dict[str, Any]]:
-        """Retrieve a list of GraphQL nodes."""
+        """
+        Retrieve a list of GraphQL nodes.
+
+        ..deprecated:: 4.5
+           Use :class:`NodeIterator` instead, which provides more functionality.
+        """
 
         def _query():
             query_variables['first'] = self._graphql_page_length

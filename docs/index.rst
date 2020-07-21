@@ -40,6 +40,8 @@ See :ref:`install` for more options on how to install Instaloader.
 - allows **fine-grained customization** of filters and where to store
   downloaded media,
 
+- automatically **resumes previously-interrupted** download iterations,
+
 - is free `open source <https://github.com/instaloader/instaloader>`__
   software written in Python.
 
