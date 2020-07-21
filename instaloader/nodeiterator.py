@@ -218,11 +218,12 @@ def resumable_iteration(context: InstaloaderContext,
 
     It yields a tuple (is_resuming, start_index).
 
-    When the passed iterator is not a :class:`NodeIterator`, it behaves as if ``resumable_iteration`` was not used.
+    When the passed iterator is not a :class:`NodeIterator`, it behaves as if ``resumable_iteration`` was not used,
+    just executing the inner body.
 
     :param context: The :class:`InstaloaderContext`.
     :param iterator: The fresh :class:`NodeIterator`.
-    :param load: Loads a FrozenNodeIterator from given path. A typecheck is done before the returned object is used.
+    :param load: Loads a FrozenNodeIterator from given path. The object is ignored if it has a different type.
     :param save: Saves the given FrozenNodeIterator to the given path.
     :param format_path: Returns the path to the resume file for the given magic.
     :param check_bbd: Whether to check the best before date and reject an expired FrozenNodeIterator.
