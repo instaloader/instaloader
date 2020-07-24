@@ -743,13 +743,16 @@ class Instaloader:
         """
         displayed_count = (max_count if total_count is None or max_count is not None and max_count < total_count
                            else total_count)
+        sanitized_target = target
+        if isinstance(target, str):
+            sanitized_target = _PostPathFormatter.sanitize_path(target)
         with resumable_iteration(
                 context=self.context,
                 iterator=posts,
                 load=load_structure_from_file,
                 save=save_structure_to_file,
                 format_path=lambda magic: self.format_filename_within_target_path(
-                    target, owner_profile, self.resume_prefix or '', magic, 'json.xz'
+                    sanitized_target, owner_profile, self.resume_prefix or '', magic, 'json.xz'
                 ),
                 check_bbd=self.check_resume_bbd,
                 enabled=self.resume_prefix is not None
