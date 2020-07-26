@@ -431,7 +431,7 @@ class InstaloaderContext:
         """
         Retrieve a list of GraphQL nodes.
 
-        ..deprecated:: 4.5
+        .. deprecated:: 4.5
            Use :class:`NodeIterator` instead, which provides more functionality.
         """
 

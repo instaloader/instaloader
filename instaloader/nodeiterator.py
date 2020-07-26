@@ -59,13 +59,13 @@ class NodeIterator(Iterator[T]):
     been constructed with the same parameters as the instance that is represented by the :class:`FrozenNodeIterator` in
     question. This is to ensure that an iteration cannot be resumed in a wrong, unmatching loop. As a quick way to
     distinguish iterators that are saved e.g. in files, there is the :attr:`NodeIterator.magic` string: Two
-    NodeIterators are matching if they have the same magic.
+    NodeIterators are matching if and only if they have the same magic.
 
     See also :func:`resumable_iteration` for a high-level context manager that handles a resumable iteration.
     """
 
     _graphql_page_length = 50
-    shelf_life = timedelta(days=29)
+    _shelf_life = timedelta(days=29)
 
     def __init__(self,
                  context: InstaloaderContext,
@@ -85,7 +85,7 @@ class NodeIterator(Iterator[T]):
         self._page_index = 0
         self._total_index = 0
         self._best_before = (None if first_data is None else
-                             datetime.now() + NodeIterator.shelf_life)
+                             datetime.now() + NodeIterator._shelf_life)
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -97,7 +97,7 @@ class NodeIterator(Iterator[T]):
                     self._query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
                 )
             )
-            self._best_before = datetime.now() + NodeIterator.shelf_life
+            self._best_before = datetime.now() + NodeIterator._shelf_life
             return data
         except QueryReturnedBadRequestException:
             new_page_length = int(NodeIterator._graphql_page_length / 2)
@@ -112,7 +112,7 @@ class NodeIterator(Iterator[T]):
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> T:
         if self._data is None:
             self._data = self._query()
         if self._page_index < len(self._data['edges']):
@@ -177,7 +177,15 @@ class NodeIterator(Iterator[T]):
         )
 
     def thaw(self, frozen: FrozenNodeIterator) -> None:
-        """Use this iterator for resuming from earlier iteration."""
+        """
+        Use this iterator for resuming from earlier iteration.
+
+        :raises InvalidArgumentException:
+           If
+
+           - the iterator on which this method is called has already been used, or
+           - the given :class:`FrozenNodeIterator` does not match, i.e. belongs to a different iteration.
+        """
         if self._total_index or self._page_index:
             raise InvalidArgumentException("thaw() called on already-used iterator.")
         if (self._query_hash != frozen.query_hash or
