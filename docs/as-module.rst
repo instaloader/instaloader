@@ -12,9 +12,6 @@ Python Module :mod:`instaloader`
 
 .. highlight:: python
 
-.. contents::
-  :backlinks: none
-
 Instaloader exposes its internally used methods and structures as a Python
 module, making it a **powerful and intuitive Python API for Instagram**,
 allowing to further customize obtaining media and metadata.
@@ -94,164 +91,17 @@ metadata of a Profile. :class:`Profile` instances can be created with:
 - :attr:`PostComment.owner` attribute for comment in :meth:`Post.get_comments`
    Profile of a Post comment.
 
-A reference of the many methods provided by the :mod:`instaloader` module is
-provided in the remainder of this document.
-
 For a list of real code examples using the Instaloader module for advanced
 tasks, see :ref:`codesnippets`.
 
-``Instaloader`` (Main Class)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The reference of the many classes provided by the :mod:`instaloader` module is
+divided into the following subsections.
 
-.. autoclass:: Instaloader
-   :no-show-inheritance:
+.. toctree::
+   :maxdepth: 2
 
-Instagram Structures
-^^^^^^^^^^^^^^^^^^^^
-
-Posts
-"""""
-
-.. autoclass:: Post
-   :no-show-inheritance:
-
-Additionally, the following trivial structures are defined:
-
-.. autoclass:: PostSidecarNode
-   :no-show-inheritance:
-
-.. autoclass:: PostComment
-   :no-show-inheritance:
-
-.. autoclass:: PostCommentAnswer
-   :no-show-inheritance:
-
-.. autoclass:: PostLocation
-   :no-show-inheritance:
-
-User Stories
-""""""""""""
-
-.. autoclass:: Story
-   :no-show-inheritance:
-
-.. autoclass:: StoryItem
-   :no-show-inheritance:
-
-Highlights
-""""""""""
-
-.. autoclass:: Highlight
-   :no-show-inheritance:
-   :inherited-members:
-
-   Bases: :class:`Story`
-
-   .. versionadded:: 4.1
-
-Profiles
-""""""""
-
-.. autoclass:: Profile
-   :no-show-inheritance:
-
-Hashtags
-""""""""
-
-.. autoclass:: Hashtag
-   :no-show-inheritance:
-
-   .. versionadded:: 4.4
-
-TopSearchResults
-""""""""""""""""
-
-.. autoclass:: TopSearchResults
-   :no-show-inheritance:
-
-   .. versionadded:: 4.3
-
-Loading and Saving
-""""""""""""""""""
-
-:class:`Post`, :class:`StoryItem`, :class:`Profile` and :class:`Hashtag` can be saved and loaded
-to/from JSON files.
-
-.. autofunction:: load_structure_from_file
-
-.. autofunction:: save_structure_to_file
-
-Exceptions
-^^^^^^^^^^
-
-.. currentmodule:: instaloader.exceptions
-
-.. autoexception:: InstaloaderException
-   :no-show-inheritance:
-
-.. autoexception:: ConnectionException
-
-.. currentmodule:: instaloader
-
-.. autoexception:: QueryReturnedBadRequestException
-
-.. autoexception:: QueryReturnedForbiddenException
-
-.. autoexception:: ProfileNotExistsException
-
-.. autoexception:: ProfileHasNoPicsException
-
-.. autoexception:: PrivateProfileNotFollowedException
-
-.. autoexception:: LoginRequiredException
-
-.. autoexception:: TwoFactorAuthRequiredException
-
-   .. versionadded:: 4.2
-
-.. autoexception:: InvalidArgumentException
-
-.. autoexception:: BadResponseException
-
-.. autoexception:: BadCredentialsException
-
-.. autoexception:: PostChangedException
-
-.. autoexception:: QueryReturnedNotFoundException
-
-   .. versionchanged:: 4.3
-      QueryReturnedNotFoundException now inherits ConnectionException
-      to retry on 404 errors.
-
-
-.. autoexception:: TooManyRequestsException
-
-Resumable Iterations
-^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 4.5
-
-.. autoclass:: NodeIterator
-   :no-show-inheritance:
-
-.. autoclass:: FrozenNodeIterator
-   :no-show-inheritance:
-
-.. autofunction:: resumable_iteration
-
-``InstaloaderContext`` (Low-level functions)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``InstaloaderContext``
-""""""""""""""""""""""
-
-.. autoclass:: InstaloaderContext
-   :no-show-inheritance:
-
-``RateController``
-""""""""""""""""""
-
-.. autoclass:: RateController
-   :no-show-inheritance:
-
-   .. versionadded:: 4.5
+   module/instaloader
+   module/structures
+   module/nodeiterator
+   module/instaloadercontext
+   module/exceptions
