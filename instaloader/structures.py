@@ -782,7 +782,7 @@ class Profile:
     def get_posts(self) -> NodeIterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype:NodeIterator[Post]"""
+        :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
         return NodeIterator(
             self._context,
@@ -797,7 +797,7 @@ class Profile:
     def get_saved_posts(self) -> NodeIterator[Post]:
         """Get Posts that are marked as saved by the user.
 
-        :rtype:NodeIterator[Post]"""
+        :rtype: NodeIterator[Post]"""
 
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
@@ -851,7 +851,7 @@ class Profile:
         Retrieve list of followers of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
 
-        :rtype:NodeIterator[Profile]
+        :rtype: NodeIterator[Profile]
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followers.")
@@ -870,7 +870,7 @@ class Profile:
         Retrieve list of followees (followings) of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
 
-        :rtype:NodeIterator[Profile]
+        :rtype: NodeIterator[Profile]
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to get a profile's followees.")
