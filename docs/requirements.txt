@@ -1,2 +1,2 @@
 requests
-sphinx!=1.7.7
+sphinx~=2.3

@@ -24,7 +24,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     """Duplicates a requests.Session."""
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
-    new.headers = session.headers.copy() # type: ignore
+    new.headers = session.headers.copy()
     if request_timeout is not None:
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427

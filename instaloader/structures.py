@@ -26,7 +26,7 @@ PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers')) # type: ignore
 for field in PostCommentAnswer._fields:
-    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__
+    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__  # pylint: disable=no-member
 PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment." # type: ignore
 
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])

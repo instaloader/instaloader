@@ -13,7 +13,7 @@ from functools import wraps
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, Iterator, List, Optional, Set, Union
+from typing import Any, Callable, ContextManager, IO, Iterator, List, Optional, Set, Union, cast
 
 import requests
 import urllib3  # type: ignore
@@ -351,7 +351,8 @@ class Instaloader:
         except UnicodeEncodeError:
             self.context.log('txt', end=' ', flush=True)
         with open(filename, 'wb') as text_file:
-            shutil.copyfileobj(BytesIO(bcaption), text_file)
+            with BytesIO(bcaption) as bio:
+                shutil.copyfileobj(cast(IO, bio), text_file)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
     def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
@@ -361,7 +362,8 @@ class Instaloader:
                            "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location.lat,
                                                                                         location.lng))
         with open(filename, 'wb') as text_file:
-            shutil.copyfileobj(BytesIO(location_string.encode()), text_file)
+            with BytesIO(location_string.encode()) as bio:
+                shutil.copyfileobj(cast(IO, bio), text_file)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         self.context.log('geo', end=' ', flush=True)
 
@@ -1106,11 +1108,11 @@ class Instaloader:
         def _error_raiser(_str):
             yield
 
-        # error_handler type is Callable[[Optional[str]], ContextManager[None]] (not supported with Python 3.5)
-        error_handler = _error_raiser if raise_errors else self.context.error_catcher
+        error_handler = cast(Callable[[Optional[str]], ContextManager[None]],
+                             _error_raiser if raise_errors else self.context.error_catcher)
 
         for profile in profiles:
-            with error_handler(profile.username):  # type: ignore
+            with error_handler(profile.username):
                 profile_name = profile.username
 
                 # Download profile picture

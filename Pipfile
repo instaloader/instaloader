@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 pylint = "*"
 mypy = "*"
-sphinx = "*"
+sphinx = "~=2.3"
 pyinstaller = "*"
 pefile = "*"
 pywin32-ctypes = "*"
