@@ -94,7 +94,7 @@ Discussed in :issue:`113`.
 Top X Posts of User
 -------------------
 
-With Instaloader, it is easy to download the few most-liked pictres of a user.
+With Instaloader, it is easy to download the few most-liked pictures of a user.
 
 .. literalinclude:: codesnippets/194_top_x_of_user.py
 

@@ -28,7 +28,7 @@ happen in normal conditions, consider adjusting the
 :option:`--max-connection-attempts` option.
 
 There have been observations that services, that in their nature offer
-promiscious IP addresses, such as cloud, VPN and public proxy services, might be
+promiscuous IP addresses, such as cloud, VPN and public proxy services, might be
 subject to significantly stricter limits for anonymous access. However,
 logged-in accesses (see :option:`--login`) do not seem to be affected.
 
@@ -58,7 +58,7 @@ Nevertheless, in :issue:`92` and :issue:`615` users reported problems with
 logging in. We recommend to always keep the sessionfile which Instaloader
 creates when using :option:`--login`. If a sessionfile is present,
 :option:`--login` does not make make use of the failure-prone login procedure.
-Also, sessionfiles usually do not expire and can be copied between different
+Also, session files usually do not expire and can be copied between different
 computers without any problems.
 
 If you do not have a sessionfile present, you may use the following script
@@ -78,7 +78,7 @@ To use this script,
 
 #. Then, ``instaloader -l USERNAME`` should work fine.
 
-This script also supports specifying a cookiefile path, which may be useful if
+This script also supports specifying a cookie file path, which may be useful if
 you use multiple Firefox profiles or if your operating system has the directory
 structure differently set up. Also, you can specify an alternative sessionfile
 path.

@@ -36,7 +36,7 @@ stores all posts along with the pictures's captions there.
    Re-Download the given object
 
 - ``+args.txt``
-   Read targets (and options) from given textfile. See :option:`+args.txt`.
+   Read targets (and options) from given text file. See :option:`+args.txt`.
 
 What to Download of each Post
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -94,13 +94,6 @@ What to Download of each Post
 What to Download of each Profile
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. option:: --profile-pic-only, -P
-
-   .. deprecated:: 4.1
-      Use :option:`--no-posts`.
-
-   Only download profile picture.
-
 .. option:: --no-posts
 
    Do not download regular posts.
@@ -134,20 +127,6 @@ What to Download of each Profile
    Also download IGTV videos.
 
    .. versionadded:: 4.3
-
-.. option:: --stories-only
-
-   .. deprecated:: 4.1
-      Use :option:`--stories` :option:`--no-posts`.
-
-   Rather than downloading regular posts of each specified profile, only
-   download stories.  Requires :option:`--login`. Does not imply
-   :option:`--no-profile-pic`.
-
-   .. note::
-
-      If possible, use ``:stories`` target rather than :option:`--stories-only`
-      with all your followees. ``:stories`` uses fewer API requests.
 
 Which Posts to Download
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -257,19 +236,6 @@ How to Download
    to ``3``. If a connection fails, it can be manually skipped by hitting
    :kbd:`Control-c`. Set this to ``0`` to retry infinitely.
 
-.. option:: --commit-mode
-
-   Tries to ensure downloaded images avoid corruption in case of unexpected
-   interruption. If the last picture is corrupted, Instaloader will fix the
-   picture the next time it is run.
-
-   .. versionadded:: 4.2
-
-   .. warning::
-      We discourage from using the "commit mode" due to its bugs when being used
-      with other command line options (e.g. :issue:`257` with
-      :option:`--fast-update` and :issue:`483` with :option:`--tagged`).
-
 .. option:: --request-timeout N
 
    Seconds to wait before timing out a connection request.
@@ -289,7 +255,7 @@ Miscellaneous Options
 
    Read arguments from file `args.txt`, a shortcut to provide arguments from
    file rather than command-line. This provides a convenient way to hide login
-   info from CLI, and can also be used to simplify managment of long arguments.
+   info from CLI, and can also be used to simplify management of long arguments.
 
    .. note::
 

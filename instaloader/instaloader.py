@@ -730,9 +730,9 @@ class Instaloader:
         """
         Download the Posts returned by given Post Iterator.
 
-        ..versionadded:: 4.4
+        .. versionadded:: 4.4
 
-        ..versionchanged:: 4.5
+        .. versionchanged:: 4.5
            Transparently resume an aborted operation if `posts` is a :class:`NodeIterator`.
 
         :param posts: Post Iterator to loop through.

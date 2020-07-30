@@ -10,7 +10,7 @@ Resumable Iterations
    :backlinks: none
 
 For many download targets, Instaloader is able to resume a
-previously-interrupted iteration. It provides an interruptable
+previously-interrupted iteration. It provides an interruptible
 Iterator :class:`NodeIterator` and a context manager
 :func:`resumable_iteration`, which we both present here.
 
