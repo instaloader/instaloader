@@ -14,7 +14,7 @@ A clear and concise description of what you want to happen.
 **Describe alternatives you've considered**
 A clear and concise description of any alternative solutions or features you've considered.
 
-**If the feature request is accepted, would you be willing to submit a PR?**
+**If the feature request is accepted, would you be willing to submit a pull request?**
 Yes / No
 <!-- Help can be provided if you need assistance submitting a PR -->
 

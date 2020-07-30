@@ -17,7 +17,7 @@ import subprocess
 def __main():
     with contextlib.suppress(AttributeError, psutil.Error):
         if psutil.Process().parent().parent().name() == "explorer.exe":
-            subprocess.Popen("powershell -NoExit -Command \\\"& {0}\\\"".format(sys.argv[0]))
+            subprocess.Popen("powershell -NoExit -Command \\\"& '{0}'\\\"".format(sys.argv[0]))
             return
     main()
 
