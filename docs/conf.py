@@ -374,6 +374,6 @@ texinfo_documents = [
 
 def setup(app):
     typing.TYPE_CHECKING = True
-    app.add_stylesheet("instaloader.css")
+    app.add_stylesheet("instaloaderdoc.css")
     app.connect('autodoc-process-signature', sphinx_autodoc_typehints.process_signature)
     app.connect('autodoc-process-docstring', sphinx_autodoc_typehints.process_docstring)

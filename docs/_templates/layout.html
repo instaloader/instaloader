@@ -1,9 +1,6 @@
 {% extends "!layout.html" %}
-
 {% set html5_doctype = True %}
-
-{% set script_files = script_files + ['_static/bootstrap-4.1.3.bundle.min.js', '_static/instaloader.js'] %}
-
+{% set script_files = script_files + ['_static/instaloaderdoc.js'] %}
 {% block htmltitle %}
   {% if pagename == "index" %}
     <title>{{ title|striptags|e }}</title>
@@ -11,7 +8,6 @@
     <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
   {% endif %}
 {% endblock %}
-
 {% block extrahead %}
   {{ super() }}
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -22,94 +18,66 @@
     <link rel="canonical" href="https://instaloader.github.io/{{ pagename }}.html"/>
   {% endif %}
 {% endblock %}
-
 {% block header %}
-  <nav class="navbar navbar-expand-sm navbar-light bg-light fixed-top border-bottom">
+  <nav class="navbar navbar-light navbar-expand bg-light border-bottom">
     <a class="navbar-brand" href="{{ pathto(master_doc) }}">
       <img src="{{ pathto('_static/' + logo, 1) }}" width="30" height="30" class="d-inline-block align-top" alt="logo">
-      Instaloader
+      <span class="ml-3">Instaloader</span>
     </a>
     <ul class="navbar-nav mr-auto">
-      <li class="nav-item ml-0 ml-sm-2 ml-md-0">
-        <a target="_blank" class="nav-link"
+      <li class="nav-item ml-0 ml-sm-2">
+        <a target="_blank" class="nav-link" rel="noopener"
            href="https://github.com/instaloader/instaloader/releases/tag/v{{ current_release }}"
-           title="Released on {{ current_release_date }}" data-toggle="tooltip">v<b>{{ current_release }}</b></a>
+           title="Released on {{ current_release_date }}" data-toggle="tooltip">
+          v<b>{{ current_release }}</b>
+        </a>
       </li>
     </ul>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarLinks"
-            aria-controls="navbarLinks" aria-expanded="false" aria-label="Toggle navigation">
+    <ul class="navbar-nav ml-auto d-none d-sm-flex">
+      <li class="nav-item">
+        <a target="_blank" class="nav-link" rel="noopener" href="https://github.com/instaloader/instaloader/issues">
+          Issues
+        </a>
+      </li>
+      <li class="nav-item">
+        <a target="_blank" class="nav-link" rel="noopener" href="https://github.com/instaloader/instaloader/releases">
+          Releases
+        </a>
+      </li>
+      <li class="nav-item">
+        <a target="_blank" class="nav-link" rel="noopener" href="https://github.com/instaloader/instaloader">
+          GitHub
+        </a>
+      </li>
+    </ul>
+    <button class="d-inline-block d-md-none btn btn-outline-primary btn-sm" type="button"
+            data-toggle="collapse" data-target="#instaloaderdocSidebar" aria-controls="instaloaderdocSidebar"
+            aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navbarLinks">
-      <ul class="navbar-nav ml-auto">
-        <li class="nav-item">
-          <a target="_blank" class="nav-link" href="https://github.com/instaloader/instaloader/issues">Issues</a>
-        </li>
-        <li class="nav-item">
-          <a target="_blank" class="nav-link" href="https://github.com/instaloader/instaloader/releases">Releases</a>
-        </li>
-        <li class="nav-item">
-          <a target="_blank" class="nav-link" href="https://github.com/instaloader/instaloader">GitHub</a>
-        </li>
-      </ul>
-      <form class="form-inline" action="search.html" method="get">
-        <div class="input-group my-2 my-sm-0 ml-2">
-          <input class="form-control" type="search" placeholder="Search" aria-label="Search" name="q">
-          <div class="input-group-append">
-            <button class="btn btn-success btn-small" type="submit">Go</button>
-          </div>
-        </div>
-      </form>
-    </div>
-    {% if pagename != "index" %}
-      <button type="button" class="btn btn-success d-md-none btn-small ml-2" data-toggle="modal"
-              data-target="#navbarToc">
-        TOC
-      </button>
-    {% endif %}
   </nav>
-  {% if pagename != "index" %}
-    <div class="modal fade" id="navbarToc" tabindex="-1" role="dialog"
-         aria-hidden="true" aria-labelledby="navbarTocTitle">
-      <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="navbarTocTitle">Contents</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            {{ toctree(maxdepth=-1) }}
-          </div>
-        </div>
-      </div>
-    </div>
-  {% endif %}
 {% endblock %}
-
 {% block relbar1 %}{% endblock %}
 {% block relbar2 %}{% endblock %}
 {% block footer %}{% endblock %}
 {% block content %}
-  <div class="container-fluid row">
-    <div class="col-12 {% if pagename != "index" %}col-md-9 col-xl-10{% endif %} doc-content">
-      {% block body %}{% endblock %}
+  <div class="container-fluid">
+    <div class="row">
+      <aside class="instaloaderdoc-sidebar collapse d-md-block col-md-3 col-xl-2 bg-light"
+             id="instaloaderdocSidebar">
+        <nav>
+          <form action="{{ pathto('search') }}" method="get" role="search" class="border-bottom mr-2 pb-2 mb-2 px-1">
+            <label class="sr-only" for="searchQueryInput">Search</label>
+            <input type="search" name="q" id="searchQueryInput" class="form-control my-2"
+                   placeholder="Search..." aria-label="Search">
+          </form>
+          <h4>Contents</h4>
+          {{ toctree(maxdepth=-1) }}
+        </nav>
+      </aside>
+      <main class="col-12 col-md-9 col-xl-10 pt-2">
+        {% block body %}{% endblock %}
+      </main>
     </div>
-    {% if pagename != "index" %}
-      <div class="d-none col-md-3 col-xl-2 bg-light doc-sidebar d-md-flex flex-column border-left">
-
-        <h3>{{ _('Table of Contents') }}</h3>
-        {{ toctree(maxdepth=-1) }}
-
-        <div class="d-flex justify-content-between small mt-auto mb-2">
-          <a class="reference internal{% if pagename == "genindex" %} current{% endif %}" href="genindex.html">Index</a>
-          {% if pagename != "genindex" and pagename != "search" %}
-            <a class="reference external"
-               href="https://github.com/instaloader/instaloader/edit/master/docs/{{ pagename }}.rst">Edit this page</a>
-          {% endif %}
-        </div>
-      </div>
-    {% endif %}
   </div>
 {% endblock %}
