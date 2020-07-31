@@ -77,7 +77,7 @@ Instaloader supports the following targets:
       instructs Instaloader to also **download the user's stories**,
 
    - :option:`--highlights`
-      to **download highlights of each profile that is downloaded**,
+      to **download the highlights of that profile**,
 
    - :option:`--tagged`
       to **download posts where the user is tagged**, and
@@ -86,7 +86,7 @@ Instaloader supports the following targets:
       to **download IGTV videos**.
 
 - ``"#hashtag"``
-   Posts with a certain **hashtag** (the quotes are usually necessary),
+   Posts with a certain **hashtag** (the quotes are usually necessary).
 
 - ``%location id``
    Posts tagged with a given location; the location ID is the numerical ID
@@ -98,13 +98,13 @@ Instaloader supports the following targets:
 
 - ``:stories``
    The currently-visible **stories** of your followees (requires
-   :option:`--login`),
+   :option:`--login`).
 
 - ``:feed``
-   Your **feed** (requires :option:`--login`),
+   Your **feed** (requires :option:`--login`).
 
 - ``:saved``
-   Posts which are marked as **saved** (requires :option:`--login`),
+   Posts which are marked as **saved** (requires :option:`--login`).
 
 - ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
@@ -196,7 +196,7 @@ Filter Posts
 .. py:currentmodule:: instaloader
 
 The options :option:`--post-filter` and :option:`--storyitem-filter`
-allows to specify criteria that posts or story items have to
+allow to specify criteria that posts or story items have to
 meet to be downloaded. If not given, all posts are downloaded.
 
 The filter string must be a
@@ -208,7 +208,7 @@ Id est, the following attributes can be used with both
 :option:`--post-filter` and :option:`--storyitem-filter`:
 
 - :attr:`~Post.owner_username` (str), :attr:`~Post.owner_id` (int)
-   Owner profile username / userid.
+   Owner profile username / user ID.
 
 - :attr:`~Post.date_utc` (datetime), :attr:`~Post.date_local` (datetime)
    Creation timestamp. Since :class:`~datetime.datetime` objects can be created
@@ -217,7 +217,7 @@ Id est, the following attributes can be used with both
       instaloader --post-filter="date_utc <= datetime(2018, 5, 31)" target
 
 - :attr:`~Post.is_video` (bool)
-   Post/StoryItem is a video. For example, you may skip videos::
+   Whether Post/StoryItem is a video. For example, you may skip videos::
 
       instaloader --post-filter="not is_video" target
 
@@ -234,8 +234,8 @@ As :option:`--post-filter`, the following attributes can be used additionally:
       instaloader --login=your_username --post-filter=viewer_has_liked :feed
 
 - :attr:`~Post.likes` (int), :attr:`~Post.comments` (int)
-   Likes count / Comments count. You might only want to download posts that
-   either you liked or were liked by many others**::
+   Likes count / comments count. You might only want to download posts that
+   were either liked by yourself or by many others::
 
       instaloader --login=your_username --post-filter="likes>100 or viewer_has_liked" profile
 
@@ -265,7 +265,7 @@ along with each post where the Post's caption is saved.
 You can customize what metadata to save for each Post or StoryItem with
 :option:`--post-metadata-txt` and :option:`--storyitem-metadata-txt`. The
 default is ``--post-metadata-txt={caption}`` and no storyitem metadata txt.
-These strings are formatted similar as in the :ref:`filename-specification` and
+These strings are formatted similar as the path patterns described in :ref:`filename-specification` and
 the result is saved in text files, unless it is empty.
 
 Specifying these options multiple times results in output having multiple lines,
@@ -299,10 +299,10 @@ Instaloader logged-in, create a session file::
 
    instaloader --login=your_username
 
-Then use the same parameter in your cronjob to load the session and download
+Then use the same username in your cronjob to load the session and download
 the given targets::
 
-   instaloader --login=your_username --quiet <target> [...]
+   instaloader --login=your_username --quiet target [...]
 
 Instaloader saves the session file to
 ``~/.config/instaloader/session-YOUR-USERNAME``. See
@@ -317,5 +317,6 @@ Instaloader exposes its internally used methods and structures, making it a
 powerful and intuitive Python API for Instagram, allowing to further customize
 obtaining media and metadata.
 
-Also see :ref:`codesnippets`, where we collect example scripts that use
-Instaloader to achieve more complex tasks.
+Also see :ref:`codesnippets`, where we collect a few example scripts that use
+Instaloader for simple tasks that cannot be done with the command line
+interface.

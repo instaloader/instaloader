@@ -59,7 +59,7 @@ What to Download of each Post
 
 .. option:: --geotags, -G
 
-   **Download geotags** when available. Geotags are stored as a text file with
+   Download geotags when available. Geotags are stored as a text file with
    the location's name and a Google Maps link. This requires an additional
    request to the Instagram server for each picture. Requires :option:`--login`.
 
@@ -106,12 +106,12 @@ What to Download of each Profile
 
 .. option:: --stories, -s
 
-   Also **download stories** of each profile that is downloaded. Requires
+   Also download stories of each profile that is downloaded. Requires
    :option:`--login`.
 
 .. option:: --highlights
 
-   Also **download highlights** of each profile that is downloaded. Requires
+   Also download highlights of each profile that is downloaded. Requires
    :option:`--login`.
 
    .. versionadded:: 4.1
@@ -161,7 +161,7 @@ Which Posts to Download
 Login (Download Private Profiles)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Instaloader can **login to Instagram**. This allows downloading private
+Instaloader can login to Instagram. This allows downloading private
 profiles. To login, pass the :option:`--login` option. Your session cookie (not your
 password!) will be saved to a local file to be reused next time you want
 Instaloader to login.
@@ -261,12 +261,12 @@ Miscellaneous Options
 
       Text file should separate arguments with line breaks.
 
-      args.txt example::
+   args.txt example::
 
-         --login=MYUSERNAME
-         --password=MYPASSWORD
-         --fast-update
-         profile1
-         profile2
+      --login=MYUSERNAME
+      --password=MYPASSWORD
+      --fast-update
+      profile1
+      profile2
 
    .. versionadded:: 4.1

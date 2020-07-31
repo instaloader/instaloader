@@ -9,7 +9,7 @@ SINCE = datetime(2020, 5, 10)  # further from today, inclusive
 UNTIL = datetime(2020, 5, 11)  # closer to today, not inclusive
 
 k = 0  # initiate k
-k_list = []  # uncomment this to tune k
+#k_list = []  # uncomment this to tune k
 
 for post in posts:
     postdate = post.date
@@ -24,7 +24,8 @@ for post in posts:
             continue
     else:
         L.download_post(post, "#urbanphotography")
-        k = 0  # set k to 0
         # if you want to tune k, uncomment below to get your k max
         #k_list.append(k)
+        k = 0  # set k to 0
+
 #max(k_list)

@@ -5,27 +5,27 @@ Install Instaloader
 
 .. highlight:: none
 
-**To install Instaloader**,
+To **install Instaloader**,
 
 #. Ensure that you have `Python <https://www.python.org/>`__, at least
-   version 3.5 and `pip <https://pypi.python.org/pypi/pip>`__
-   installed
+   version 3.5, and `pip <https://pypi.python.org/pypi/pip>`__
+   installed.
 
 #. Then, install Instaloader using::
 
       pip3 install instaloader
 
-**To upgrade Instaloader**, do::
+To **upgrade Instaloader** to its current version, do::
 
    pip3 install --upgrade instaloader
 
 
-**Alternative methods for installing Instaloader:**
+**Alternative methods** for installing Instaloader:
 
 - If you do not want to use pip, even though it is highly recommended,
   and prefer to **install Instaloader manually**,
   `Download the Source <https://github.com/instaloader/instaloader/releases/latest>`__,
-  extract the Zip or Tarball and execute ``instaloader.py`` from there.
+  extract the Zip or Tarball and run ``setup.py`` from there.
 
 - On **Arch Linux**, you may install Instaloader using the
   `Instaloader AUR package <https://aur.archlinux.org/packages/instaloader/>`__.
@@ -33,6 +33,6 @@ Install Instaloader
 - On **Windows 10**, you may download the standalone executable from the
   `current release page <https://github.com/instaloader/instaloader/releases/latest>`__.
 
-- To test the most current pre-release or development version of Instaloader::
+- To test the most current **pre-release** version of Instaloader::
 
      pip3 install --pre instaloader

@@ -13,7 +13,7 @@ Python Module :mod:`instaloader`
 .. highlight:: python
 
 Instaloader exposes its internally used methods and structures as a Python
-module, making it a **powerful and intuitive Python API for Instagram**,
+module, making it a powerful and intuitive Python API for Instagram,
 allowing to further customize obtaining media and metadata.
 
 Start with getting an instance of :class:`Instaloader`::
@@ -82,20 +82,20 @@ metadata of a Profile. :class:`Profile` instances can be created with:
 - :meth:`Profile.get_followers`
    Profiles that follow given user.
 
-- :attr:`Post.owner_profile`, :attr:`Story.owner_profile` and :attr:`StoryItem.owner_profile`
+- :attr:`Post.owner_profile`, :attr:`Story.owner_profile`, :attr:`StoryItem.owner_profile`
    Owner profile of particular object.
 
 - :meth:`Post.get_likes`
    Profiles that liked a given :class:`Post`
 
-- :attr:`PostComment.owner` attribute for comment in :meth:`Post.get_comments`
+- :attr:`PostComment.owner`
    Profile of a Post comment.
 
-For a list of real code examples using the Instaloader module for advanced
-tasks, see :ref:`codesnippets`.
+For a list of a few code examples that use the Instaloader module, see
+:ref:`codesnippets`.
 
-The reference of the many classes provided by the :mod:`instaloader` module is
-divided into the following subsections.
+The reference of the classes and functions provided by the :mod:`instaloader` module is
+divided into the following subsections:
 
 .. toctree::
    :maxdepth: 2

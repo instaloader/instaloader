@@ -42,7 +42,7 @@ The code example with :func:`~itertools.dropwhile` and
 :func:`~itertools.takewhile` makes the assumption that the post iterator returns
 posts in exact chronological order.  As discussed in :issue:`666`, the following
 approach fits for an **almost chronological order**, where up to *k* older posts
-are inserted into an otherwise chronological order, such as an Hashtag feed.
+are inserted into an otherwise chronological order, such as a Hashtag feed.
 
 .. literalinclude:: codesnippets/666_historical_hashtag_data.py
 
@@ -50,7 +50,7 @@ Likes of a Profile / Ghost Followers
 ------------------------------------
 
 To obtain a list of your inactive followers, i.e. followers that did not like
-any of your pictures, into a file you can use this approach.
+any of your pictures, you can use this approach.
 
 .. literalinclude:: codesnippets/120_ghost_followers.py
 
@@ -78,11 +78,11 @@ Discussed in :issue:`56`.
 Only one Post per User
 ----------------------
 
-To download only the one most recent post from each user, this snippet creates a
-:class:`set` that contains the users of which a post has already been
-downloaded. While iterating the posts, it checks whether the post's owner
-already is in the set. If not, the post is downloaded from Instagram and the
-user is added to that set.
+To download only the single most recent post per user within a hashtag feed,
+this snippet uses a :class:`set` that contains the users of whom a post has
+already been downloaded. For each post, it checks whether the post's creator is
+already contained in that set. If not, the post is downloaded from Instagram and
+the user is added to that set.
 
 .. literalinclude:: codesnippets/113_only_one_per_user.py
 
@@ -99,31 +99,6 @@ With Instaloader, it is easy to download the few most-liked pictures of a user.
 .. literalinclude:: codesnippets/194_top_x_of_user.py
 
 Discussed in :issue:`194`.
-
-Upgrade Images by Local Copies
-------------------------------
-
-The following script finds local versions of images fetched by Instaloader, in
-order to upgrade the downloaded images by locally-found versions with better
-quality. It uses image hashing to identify similar images.
-
-`updgrade-instaloader-images.py <https://gist.github.com/pavelkryukov/15f93d19a99428a284a8bcec27e0187b>`__ (external link to GitHub Gist)
-
-Discussed in :issue:`46`.
-
-Add Captions to Images
-----------------------
-
-Instaloader does not modify the downloaded JPEG file. However, one could combine
-it with an imaging library such as Pillow or PIL to render the caption on
-Instagram pictures.  The following shows an approach.
-
-.. literalinclude:: codesnippets/110_pil_captions.py
-
-See also :attr:`Post.caption`, :attr:`Post.url`, :meth:`Post.from_shortcode`,
-:func:`load_structure_from_file`.
-
-Discussed in :issue:`110`.
 
 Metadata JSON Files
 -------------------
