@@ -63,9 +63,9 @@
 {% block content %}
   <div class="container-fluid">
     <div class="row">
-      <aside class="instaloaderdoc-sidebar collapse d-md-block col-md-3 col-xl-2 bg-light"
-             id="instaloaderdocSidebar">
-        <nav>
+      <div class="instaloaderdoc-sidebar collapse d-md-block col-md-3 col-xl-2 bg-light"
+           id="instaloaderdocSidebar">
+        <nav role="navigation" aria-label="Table of Contents">
           <form action="{{ pathto('search') }}" method="get" role="search" class="border-bottom mr-2 pb-2 mb-2 px-1">
             <label class="sr-only" for="searchQueryInput">Search</label>
             <input type="search" name="q" id="searchQueryInput" class="form-control my-2"
@@ -74,8 +74,8 @@
           <h4>Contents</h4>
           {{ toctree(maxdepth=-1) }}
         </nav>
-      </aside>
-      <main class="col-12 col-md-9 col-xl-10 pt-2">
+      </div>
+      <main class="col-12 col-md-9 col-xl-10 pt-2" role="main">
         {% block body %}{% endblock %}
       </main>
     </div>
