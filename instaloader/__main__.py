@@ -268,6 +268,8 @@ def main():
                         help="Do not download regular posts.")
     g_prof.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
+    g_prof.add_argument('--slide', action='store',
+                        help='Set what image/interval of a sidecar you want to download')
     g_post.add_argument('--no-pictures', action='store_true',
                         help='Do not download post pictures. Cannot be used together with --fast-update. '
                              'Implies --no-video-thumbnails, does not imply --no-videos.')
@@ -425,7 +427,8 @@ def main():
                              max_connection_attempts=args.max_connection_attempts,
                              request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
-                             check_resume_bbd=not args.use_aged_resume_files)
+                             check_resume_bbd=not args.use_aged_resume_files,
+                             slide=args.slide)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
