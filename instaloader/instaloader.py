@@ -231,7 +231,6 @@ class Instaloader:
             else:
                 raise InvalidArgumentException("Invalid data for --slide parameter.")
 
-
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
@@ -253,7 +252,8 @@ class Instaloader:
             max_connection_attempts=self.context.max_connection_attempts,
             request_timeout=self.context.request_timeout,
             resume_prefix=self.resume_prefix,
-            check_resume_bbd=self.check_resume_bbd)
+            check_resume_bbd=self.check_resume_bbd,
+            slide=self.slide)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -542,19 +542,19 @@ class Instaloader:
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
         if post.typename == 'GraphSidecar':
-            if self.download_pictures or self.download_videos:
-                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(self.slide_start,
-                                                                                  self.slide_end), start=1):
-                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
-                    # Additionally download video if available and desired
-                    if sidecar_node.is_video and self.download_videos is True:
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
-                    edge_number += 1
-            elif post.typename == 'GraphImage':
+            for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(self.slide_start,
+                                                                              self.slide_end), start=1):
+                if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                    # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+                if sidecar_node.is_video and self.download_videos:
+                    # Download sidecar video if desired
+                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+        elif post.typename == 'GraphImage':
+            # Download picture
+            if self.download_pictures:
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
         elif post.typename == 'GraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
