@@ -219,8 +219,7 @@ def resumable_iteration(context: InstaloaderContext,
                load=lambda _, path: FrozenNodeIterator(**json.load(open(path))),
                save=lambda fni, path: json.dump(fni._asdict(), open(path, 'w')),
                format_path=lambda magic: "resume_info_{}.json".format(magic)
-       ) as resume_info:
-           is_resuming, start_index = resume_info
+       ) as (is_resuming, start_index):
            for post in post_iterator:
                do_something_with(post)
 

@@ -758,17 +758,16 @@ class Instaloader:
                 ),
                 check_bbd=self.check_resume_bbd,
                 enabled=self.resume_prefix is not None
-        ) as resume_info:
-            is_resuming, start_index = resume_info
-            for number, post in enumerate(posts):
-                if max_count is not None and number + start_index >= max_count:
+        ) as (is_resuming, start_index):
+            for number, post in enumerate(posts, start=start_index + 1):
+                if max_count is not None and number > max_count:
                     break
                 if displayed_count is not None:
-                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number + start_index + 1, displayed_count,
+                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,
                                                                    w=len(str(displayed_count))),
                                      end="", flush=True)
                 else:
-                    self.context.log("[{:3d}] ".format(number + start_index + 1), end="", flush=True)
+                    self.context.log("[{:3d}] ".format(number), end="", flush=True)
                 if post_filter is not None:
                     try:
                         if not post_filter(post):
