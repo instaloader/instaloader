@@ -82,6 +82,10 @@ What to Download of each Post
    Template to write in txt file for each StoryItem. See
    :ref:`metadata-text-files`.
 
+.. option:: --slide
+
+   Download only selected images of a sidecar.
+
 .. option:: --no-metadata-json
 
    Do not create a JSON file containing the metadata of each post.
