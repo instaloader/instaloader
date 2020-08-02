@@ -539,15 +539,14 @@ class Instaloader:
                     if self.slide_start + self.slide_end != 0:
                         if edge_number < self.slide_start or edge_number > self.slide_end:
                             continue
-                    
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                            mtime=post.date_local, filename_suffix=str(edge_number))
+                                            mtime=post.date_local, filename_suffix=str(edge_number))
                     # Additionally download video if available and desired
                     if sidecar_node.is_video and self.download_videos is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                            mtime=post.date_local, filename_suffix=str(edge_number))
+                                            mtime=post.date_local, filename_suffix=str(edge_number))
                     
                     self.context.log("Downloading  instagram.com/p/{}/ with index {}".format(post.shortcode, edge_number))
                     edge_number += 1
