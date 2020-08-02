@@ -213,13 +213,13 @@ class Instaloader:
             splitted = self.slide.split('-')
             if len(splitted) == 1:
                 self.slide_start = self.slide_end = int(splitted[0])
-                if self.slide_start < 0: 
+                if self.slide_start < 0:
                     raise InvalidArgumentException("Invalid data for --slide parameter")
             else:
                 if int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
                     self.slide_start = int(splitted[0])
                     self.slide_end = int(splitted[1])
-                else: 
+                else:
                     raise InvalidArgumentException("Invalid data for --slide parameter")
 
 
@@ -547,8 +547,7 @@ class Instaloader:
                     if sidecar_node.is_video and self.download_videos is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=str(edge_number))
-                    
-                    self.context.log("Downloading  instagram.com/p/{}/ with index {}".format(post.shortcode, edge_number))
+                    self.context.log("Downloading instagram.com/p/{} with index {}".format(post.shortcode, edge_number))
                     edge_number += 1
             elif post.typename == 'GraphImage':
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
