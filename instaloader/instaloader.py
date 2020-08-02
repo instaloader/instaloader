@@ -184,7 +184,7 @@ class Instaloader:
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
-                 slide: str = ""):
+                 slide: Optional[str] = ""):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -207,21 +207,21 @@ class Instaloader:
         self.check_resume_bbd = check_resume_bbd
 
         self.slide = slide or ""
-        self.start = 0
-        self.end = 0
+        self.slide_start = 0
+        self.slide_end = 0
         if self.slide != "":
-            splitted = self.slide.split(':')
-            try:
-                if(len(splitted)==1):
-                    self.start=self.end=int(splitted[0])
-                    if(self.start<0): raise ValueError
-                else:
-                    if(int(splitted[0])<int(splitted[1]) and int(splitted[0])>0):
-                        self.start = int(splitted[0])
-                        self.end = int(splitted[1])
-                    else: raise ValueError
-            except ValueError:
-                raise InvalidArgumentException("Invalid data for --slide parameter")
+            splitted = self.slide.split('-')
+            if len(splitted) == 1:
+                self.slide_start = self.slide_end = int(splitted[0])
+                if self.slide_start < 0: 
+                    raise InvalidArgumentException("Invalid data for --slide parameter")
+            else:
+                if int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
+                    self.slide_start = int(splitted[0])
+                    self.slide_end = int(splitted[1])
+                else: 
+                    raise InvalidArgumentException("Invalid data for --slide parameter")
+
 
     @contextmanager
     def anonymous_copy(self):
@@ -536,23 +536,20 @@ class Instaloader:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
                 for sidecar_node in post.get_sidecar_nodes():
-                    to_download = True
-                    if(self.start+self.end!=0):
-                        if(edge_number<self.start or edge_number>self.end): to_download=False
+                    if self.slide_start + self.slide_end != 0:
+                        if edge_number < self.slide_start or edge_number > self.slide_end:
+                            continue
                     
-                    if(to_download):
-                        # Download picture or video thumbnail
-                        if not sidecar_node.is_video or self.download_video_thumbnails is True:
-                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                    # Download picture or video thumbnail
+                    if not sidecar_node.is_video or self.download_video_thumbnails is True:
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
                                                             mtime=post.date_local, filename_suffix=str(edge_number))
-                        # Additionally download video if available and desired
-                        if sidecar_node.is_video and self.download_videos is True:
-                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                    # Additionally download video if available and desired
+                    if sidecar_node.is_video and self.download_videos is True:
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                             mtime=post.date_local, filename_suffix=str(edge_number))
-                        self.context.log("Downloading  instagram.com/p/{}/ with index {}".format(post.shortcode,edge_number))
-                    else:
-                        self.context.log("Omitting  instagram.com/p/{}/ with index {} from download".format(post.shortcode,edge_number))
-
+                    
+                    self.context.log("Downloading  instagram.com/p/{}/ with index {}".format(post.shortcode, edge_number))
                     edge_number += 1
             elif post.typename == 'GraphImage':
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
