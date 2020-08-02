@@ -1334,7 +1334,7 @@ class Hashtag:
             yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
 
     def get_all_posts(self) -> Iterator[Post]:
-        """Yields all posts, i.e. all most recent posts and the top posts, in chronological order."""
+        """Yields all posts, i.e. all most recent posts and the top posts, in almost-chronological order."""
         sorted_top_posts = iter(sorted(self.get_top_posts(), key=lambda p: p.date_utc, reverse=True))
         other_posts = self.get_posts()
         next_top = next(sorted_top_posts, None)
