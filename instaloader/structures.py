@@ -325,11 +325,11 @@ class Post:
         return self._node['is_video']
 
     @property
-    def title(self) -> str:
+    def title(self) -> Optional[str]:
         """Title of post, for example from an IGTV video where this can exist."""
         if "title" in self._node:
             return self._node["title"]
-        return []
+        return None
 
     @property
     def video_url(self) -> Optional[str]:
