@@ -84,7 +84,11 @@ What to Download of each Post
 
 .. option:: --slide
 
-   Download only selected images of a sidecar.
+   Download only selected images of a sidecar. You can select single images using their
+   index in the sidecar starting with the leftmost or you can specify a range of images
+   with the following syntax: start_index-end_index. Example:
+   ``--slide 1`` will select only the first image and ``--slide 1:3`` will select only
+   the first three images.
 
 .. option:: --no-metadata-json
 

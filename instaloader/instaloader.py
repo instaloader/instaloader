@@ -184,7 +184,7 @@ class Instaloader:
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
-                 slide: Optional[str] = ""):
+                 slide: Optional[str] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -211,20 +211,16 @@ class Instaloader:
         self.slide_end = 0
         if self.slide != "":
             splitted = self.slide.split('-')
-            try:
-                if len(splitted) == 1:
-                    self.slide_start = self.slide_end = int(splitted[0])
-                    if self.slide_start < 0:
-                        raise InvalidArgumentException("Invalid data for --slide parameter")
-                else:
-                    if int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
-                        self.slide_start = int(splitted[0])
-                        self.slide_end = int(splitted[1])
-                    else:
-                        raise InvalidArgumentException("Invalid data for --slide parameter")
-            except:
-                raise InvalidArgumentException("Invalid data for --slide parameter")
 
+            if len(splitted) == 1:
+                self.slide_start = self.slide_end = int(splitted[0])
+                if self.slide_start <= 0:
+                    raise InvalidArgumentException("--slide parameter cannot be negative")
+            elif len(splitted) == 2 and int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
+                self.slide_start = int(splitted[0])
+                self.slide_end = int(splitted[1])
+            else:
+                raise InvalidArgumentException("Invalid data for --slide parameter: ".format(slide))
 
     @contextmanager
     def anonymous_copy(self):
@@ -540,7 +536,7 @@ class Instaloader:
                 edge_number = 1
                 for sidecar_node in post.get_sidecar_nodes():
                     if self.slide_start + self.slide_end != 0:
-                        if edge_number < self.slide_start or edge_number > self.slide_end:
+                        if not self.slide_start <= edge_number <= self.slide_end:
                             continue
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
@@ -550,7 +546,6 @@ class Instaloader:
                     if sidecar_node.is_video and self.download_videos is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=str(edge_number))
-                    self.context.log("Downloading instagram.com/p/{} with index {}".format(post.shortcode, edge_number))
                     edge_number += 1
             elif post.typename == 'GraphImage':
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
