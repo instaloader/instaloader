@@ -329,7 +329,7 @@ class Post:
         """Title of post, for example from an IGTV video where this can exist."""
         if "title" in self._node:
             return self._node["title"]
-        return None
+        return []
 
     @property
     def video_url(self) -> Optional[str]:
