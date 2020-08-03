@@ -211,16 +211,19 @@ class Instaloader:
         self.slide_end = 0
         if self.slide != "":
             splitted = self.slide.split('-')
-            if len(splitted) == 1:
-                self.slide_start = self.slide_end = int(splitted[0])
-                if self.slide_start < 0:
-                    raise InvalidArgumentException("Invalid data for --slide parameter")
-            else:
-                if int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
-                    self.slide_start = int(splitted[0])
-                    self.slide_end = int(splitted[1])
+            try:
+                if len(splitted) == 1:
+                    self.slide_start = self.slide_end = int(splitted[0])
+                    if self.slide_start < 0:
+                        raise InvalidArgumentException("Invalid data for --slide parameter")
                 else:
-                    raise InvalidArgumentException("Invalid data for --slide parameter")
+                    if int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
+                        self.slide_start = int(splitted[0])
+                        self.slide_end = int(splitted[1])
+                    else:
+                        raise InvalidArgumentException("Invalid data for --slide parameter")
+            except:
+                raise InvalidArgumentException("Invalid data for --slide parameter")
 
 
     @contextmanager
