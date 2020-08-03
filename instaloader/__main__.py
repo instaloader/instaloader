@@ -269,7 +269,7 @@ def main():
     g_prof.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
     g_prof.add_argument('--slide', action='store',
-                        help='Set what image/interval of a sidecar you want to download')
+                        help='Set what image/interval of a sidecar you want to download.')
     g_post.add_argument('--no-pictures', action='store_true',
                         help='Do not download post pictures. Cannot be used together with --fast-update. '
                              'Implies --no-video-thumbnails, does not imply --no-videos.')
