@@ -220,7 +220,7 @@ class Instaloader:
                 self.slide_start = int(splitted[0])
                 self.slide_end = int(splitted[1])
             else:
-                raise InvalidArgumentException("Invalid data for --slide parameter: ".format(slide))
+                raise InvalidArgumentException("Invalid data for --slide parameter: ")
 
     @contextmanager
     def anonymous_copy(self):
