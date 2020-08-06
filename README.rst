@@ -27,8 +27,9 @@
    :alt: Arch User Repository Package
    :target: https://aur.archlinux.org/packages/instaloader/
 
-.. |downloads| image:: https://img.shields.io/pypi/dm/instaloader.svg
+.. |downloads| image:: https://pepy.tech/badge/instaloader/month
    :alt: PyPI Download Count
+   :target: https://pepy.tech/project/instaloader/month
 
 .. badges-end
 
