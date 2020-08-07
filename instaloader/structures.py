@@ -11,7 +11,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
 
-PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url','is_last'])
+PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url', 'is_last'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
 PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
