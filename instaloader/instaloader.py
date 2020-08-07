@@ -547,7 +547,6 @@ class Instaloader:
                         # Download only last sidecar node
                         if not sidecar_node.is_last:
                             continue
-                        self.context.log("DOWNLOADING LAST OF SIDECAR")
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
