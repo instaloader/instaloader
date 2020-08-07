@@ -11,11 +11,12 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
 
-PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
+PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url','is_last'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
 PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
 PostSidecarNode.video_url.__doc__ = "URL of video or None."
+PostSidecarNode.is_last.__doc__ = "Whether this node is the last of the sidecar."
 
 PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner', 'likes_count'])
 PostCommentAnswer.id.__doc__ = "ID number of comment."
@@ -261,6 +262,9 @@ class Post:
                 node = edge['node']
                 is_video = node['is_video']
                 display_url = node['display_url']
+                is_last = False
+                if idx == len(edges) - 1:
+                    is_last = True
                 if not is_video and self._context.is_logged_in:
                     try:
                         carousel_media = self._iphone_struct['carousel_media']
@@ -269,7 +273,8 @@ class Post:
                     except (InstaloaderException, KeyError, IndexError) as err:
                         self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
                 yield PostSidecarNode(is_video=is_video, display_url=display_url,
-                                      video_url=node['video_url'] if is_video else None)
+                                      video_url=node['video_url'] if is_video else None,
+                                      is_last=is_last)
 
     @property
     def caption(self) -> Optional[str]:

@@ -211,16 +211,21 @@ class Instaloader:
         self.slide_end = 0
         if self.slide != "":
             splitted = self.slide.split('-')
-
             if len(splitted) == 1:
                 self.slide_start = self.slide_end = int(splitted[0])
                 if self.slide_start <= 0:
-                    raise InvalidArgumentException("--slide parameter cannot be negative")
-            elif len(splitted) == 2 and int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
-                self.slide_start = int(splitted[0])
-                self.slide_end = int(splitted[1])
+                    raise InvalidArgumentException("--slide parameter cannot be negative.")
+            elif len(splitted) == 2:
+                if splitted[0] == '':
+                    #download last image of a sidecar
+                    self.slide_end = -1
+                elif int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
+                    self.slide_start = int(splitted[0])
+                    self.slide_end = int(splitted[1])
+                else:
+                    raise InvalidArgumentException("Invalid data for --slide parameter.")
             else:
-                raise InvalidArgumentException("Invalid data for --slide parameter: ")
+                raise InvalidArgumentException("Invalid data for --slide parameter.")
 
     @contextmanager
     def anonymous_copy(self):
@@ -535,9 +540,14 @@ class Instaloader:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
                 for sidecar_node in post.get_sidecar_nodes():
-                    if self.slide_start + self.slide_end != 0:
+                    if self.slide_start + self.slide_end > 0:
                         if not self.slide_start <= edge_number <= self.slide_end:
                             continue
+                    if self.slide_start + self.slide_end < 0:
+                        # Download only last sidecar node
+                        if not sidecar_node.is_last:
+                            continue
+                        self.context.log("DOWNLOADING LAST OF SIDECAR")
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
