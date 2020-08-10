@@ -212,21 +212,27 @@ class Instaloader:
         if self.slide != "":
             splitted = self.slide.split('-')
             if len(splitted) == 1:
-                self.slide_start = self.slide_end = int(splitted[0])
-                if self.slide_start <= 0:
-                    raise InvalidArgumentException("--slide parameter cannot be negative.")
-            elif len(splitted) == 2:
-                if splitted[0] == '':
-                    #download last image of a sidecar
+                if splitted[0] == 'last':
+                    #download only last image of a sidecar
                     self.slide_end = -1
-                elif int(splitted[0]) < int(splitted[1]) and int(splitted[0]) > 0:
+                else:
+                    if int(splitted[0]) > 0:
+                        self.slide_start = self.slide_end = int(splitted[0])
+                    else:
+                        raise InvalidArgumentException("--slide parameter must be greather than 0.")
+            elif len(splitted) == 2:
+                if splitted[1] == 'last':
+                    self.slide_start = int(splitted[0])
+                    self.slide_end = -1
+                elif 0 < int(splitted[0]) < int(splitted[1]):
                     self.slide_start = int(splitted[0])
                     self.slide_end = int(splitted[1])
                 else:
                     raise InvalidArgumentException("Invalid data for --slide parameter.")
             else:
                 raise InvalidArgumentException("Invalid data for --slide parameter.")
-
+        else:
+            self.slide_start = 1
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
@@ -539,14 +545,7 @@ class Instaloader:
         if self.download_pictures:
             if post.typename == 'GraphSidecar':
                 edge_number = 1
-                for sidecar_node in post.get_sidecar_nodes():
-                    if self.slide_start + self.slide_end > 0:
-                        if not self.slide_start <= edge_number <= self.slide_end:
-                            continue
-                    if self.slide_start + self.slide_end < 0:
-                        # Download only last sidecar node
-                        if not sidecar_node.is_last:
-                            continue
+                for sidecar_node in post.get_sidecar_nodes(self.slide_start, self.slide_end):
                     # Download picture or video thumbnail
                     if not sidecar_node.is_video or self.download_video_thumbnails is True:
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
