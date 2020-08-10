@@ -274,7 +274,7 @@ class Post:
                         except (InstaloaderException, KeyError, IndexError) as err:
                             self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
-                                        video_url=node['video_url'] if is_video else None)
+                                          video_url=node['video_url'] if is_video else None)
 
     @property
     def caption(self) -> Optional[str]:
