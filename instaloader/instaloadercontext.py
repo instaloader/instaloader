@@ -487,7 +487,7 @@ class InstaloaderContext:
                 shutil.copyfileobj(resp.raw, file)
             else:
                 file.write(resp)
-        os.rename(filename + '.temp', filename)
+        os.replace(filename + '.temp', filename)
 
     def get_raw(self, url: str, _attempt=1) -> requests.Response:
         """Downloads a file anonymously.
