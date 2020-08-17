@@ -513,26 +513,27 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
-        if self.download_pictures:
-            if post.typename == 'GraphSidecar':
-                edge_number = 1
-                for sidecar_node in post.get_sidecar_nodes():
-                    # Download picture or video thumbnail
-                    if not sidecar_node.is_video or self.download_video_thumbnails is True:
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
-                    # Additionally download video if available and desired
-                    if sidecar_node.is_video and self.download_videos is True:
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
-                    edge_number += 1
-            elif post.typename == 'GraphImage':
+        if post.typename == 'GraphSidecar':
+            for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
+                if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                    # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+                if sidecar_node.is_video and self.download_videos:
+                    # Download sidecar video if desired
+                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+        elif post.typename == 'GraphImage':
+            # Download picture
+            if self.download_pictures:
                 downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
-            elif post.typename == 'GraphVideo':
-                if self.download_video_thumbnails is True:
+        elif post.typename == 'GraphVideo':
+            # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
+            if self.download_pictures and self.download_video_thumbnails:
+                with self.context.error_catcher("Video thumbnail of {}".format(post)):
                     downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
-            else:
-                self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
+        else:
+            self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
@@ -540,7 +541,7 @@ class Instaloader:
             self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
 
         # Download video if desired
-        if post.is_video and self.download_videos is True:
+        if post.is_video and self.download_videos:
             downloaded &= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
 
         # Download geotags if desired
@@ -548,11 +549,11 @@ class Instaloader:
             self.save_location(filename, post.location, post.date_local)
 
         # Update comments if desired
-        if self.download_comments is True:
+        if self.download_comments:
             self.update_comments(filename=filename, post=post)
 
         # Save metadata as JSON if desired.
-        if self.save_metadata is not False:
+        if self.save_metadata:
             self.save_metadata_json(filename, post)
 
         self.context.log()
