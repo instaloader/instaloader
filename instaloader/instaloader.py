@@ -13,7 +13,7 @@ from functools import wraps
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, ContextManager, IO, Iterator, List, Optional, Set, Union, cast
+from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 
 import requests
 import urllib3  # type: ignore
@@ -1108,11 +1108,11 @@ class Instaloader:
         def _error_raiser(_str):
             yield
 
-        error_handler = cast(Callable[[Optional[str]], ContextManager[None]],
-                             _error_raiser if raise_errors else self.context.error_catcher)
+        # error_handler type is Callable[[Optional[str]], ContextManager[None]] (not supported with Python 3.5.0..3.5.3)
+        error_handler = _error_raiser if raise_errors else self.context.error_catcher
 
         for profile in profiles:
-            with error_handler(profile.username):
+            with error_handler(profile.username):  # type: ignore # (ignore type for Python 3.5 support)
                 profile_name = profile.username
 
                 # Download profile picture
