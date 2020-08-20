@@ -559,14 +559,18 @@ class RateController:
         # pylint:disable=no-self-use
         time.sleep(secs)
 
-    def _dump_query_timestamps(self, current_time: float):
+    def _dump_query_timestamps(self, current_time: float, failed_query_type: str):
         windows = [10, 11, 15, 20, 30, 60]
-        print("GraphQL requests:", file=sys.stderr)
-        for query_hash, times in self._graphql_query_timestamps.items():
-            print("  {}".format(query_hash), file=sys.stderr)
-            for window in windows:
-                reqs_in_sliding_window = sum(t > current_time - window * 60 for t in times)
-                print("    last {} minutes: {} requests".format(window, reqs_in_sliding_window), file=sys.stderr)
+        self._context.error("Requests within last {} minutes grouped by type:"
+                            .format('/'.join(str(w) for w in windows)),
+                            repeat_at_end=False)
+        for query_type, times in self._graphql_query_timestamps.items():
+            reqs_in_sliding_window = [sum(t > current_time - w * 60 for t in times) for w in windows]
+            self._context.error(" {} {:>32}: {}".format(
+                "*" if query_type == failed_query_type else " ",
+                query_type,
+                " ".join("{:4}".format(reqs) for reqs in reqs_in_sliding_window)
+            ), repeat_at_end=False)
 
     def count_per_sliding_window(self, query_type: str) -> int:
         """Return how many GraphQL requests can be done within the sliding window."""
@@ -610,16 +614,17 @@ class RateController:
     def handle_429(self, query_type: str) -> None:
         """This method is called to handle a 429 Too Many Requests response. It calls :meth:`RateController.sleep` to
          wait until we can repeat the same request."""
-        text_for_429 = ("HTTP error code 429 was returned because too many queries occurred in the last time. "
-                        "Please do not use Instagram in your browser or run multiple instances of Instaloader "
-                        "in parallel.")
-        print(textwrap.fill(text_for_429), file=sys.stderr)
         current_time = time.monotonic()
         waittime = self.query_waittime(query_type, current_time, True)
         assert waittime >= 0
-        if waittime > 15:
-            self._context.log("The request will be retried in {} seconds, at {:%H:%M}."
-                              .format(round(waittime), datetime.now() + timedelta(seconds=waittime)))
-        self._dump_query_timestamps(current_time)
+        self._dump_query_timestamps(current_time, query_type)
+        text_for_429 = ("Instagram responded with HTTP error \"429 - Too Many Requests\". Please do not run multiple "
+                        "instances of Instaloader in parallel or within short sequence. Also, do not use any Instagram "
+                        "App while Instaloader is running.")
+        self._context.error(textwrap.fill(text_for_429), repeat_at_end=False)
+        if waittime > 1.5:
+            self._context.error("The request will be retried in {} seconds, at {:%H:%M}."
+                                .format(round(waittime), datetime.now() + timedelta(seconds=waittime)),
+                                repeat_at_end=False)
         if waittime > 0:
             self.sleep(waittime)
