@@ -931,6 +931,8 @@ class StoryItem:
         node = self._node
         if self._owner_profile:
             node['owner'] = self._owner_profile._asdict()
+        if self._iphone_struct_:
+            node['iphone_struct'] = self._iphone_struct_
         return node
 
     @property
