@@ -471,7 +471,7 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
-            tempsession.headers['User-Agent'] = 'Instagram 123.1.0.26.115 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
+            tempsession.headers['User-Agent'] = 'Instagram 146.0.0.27.125 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
                                                 'scale=2.00; 1656x3584; 190542906)'
             for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:
                 tempsession.headers.pop(header, None)
