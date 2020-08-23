@@ -514,15 +514,16 @@ class Instaloader:
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
         if post.typename == 'GraphSidecar':
-            for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
-                if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                    # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
-                if sidecar_node.is_video and self.download_videos:
-                    # Download sidecar video if desired
-                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+            if self.download_pictures or self.download_videos:
+                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
+                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                    if sidecar_node.is_video and self.download_videos:
+                        # Download sidecar video if desired
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
