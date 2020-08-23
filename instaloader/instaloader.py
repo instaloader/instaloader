@@ -856,7 +856,7 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
-        node_iterator = Profile.from_username(self.context, self.context.username).get_saved_posts()
+        node_iterator = Profile.own_profile(self.context).get_saved_posts()
         self.posts_download_loop(node_iterator, ":saved",
                                  fast_update, post_filter,
                                  max_count=max_count, total_count=node_iterator.count)

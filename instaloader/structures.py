@@ -579,6 +579,17 @@ class Profile:
         context.profile_id_cache[profile_id] = profile
         return profile
 
+    @classmethod
+    def own_profile(cls, context: InstaloaderContext):
+        """Return own profile if logged-in.
+
+        :param context: :attr:`Instaloader.context`
+
+        .. versionadded:: 4.5.2"""
+        if not context.is_logged_in:
+            raise LoginRequiredException("--login required to access own profile.")
+        return cls(context, context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
+
     def _asdict(self):
         json_node = self._node.copy()
         # remove posts to avoid "Circular reference detected" exception
@@ -802,7 +813,6 @@ class Profile:
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
-        self._obtain_metadata()
         return NodeIterator(
             self._context,
             'f883d95537fbcd400f466f63d42bd8a1',
@@ -810,7 +820,6 @@ class Profile:
             lambda n: Post(self._context, n),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
-            self._metadata('edge_saved_media'),
         )
 
     def get_tagged_posts(self) -> NodeIterator[Post]:
