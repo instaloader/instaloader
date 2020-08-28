@@ -549,7 +549,7 @@ class Profile:
         """
         # pylint:disable=protected-access
         profile = cls(context, {'username': username.lower()})
-        profile._obtain_metadata()  # to raise ProfileNotExistException now in case username is invalid
+        profile._obtain_metadata()  # to raise ProfileNotExistsException now in case username is invalid
         return profile
 
     @classmethod
