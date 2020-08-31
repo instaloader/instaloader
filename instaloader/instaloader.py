@@ -208,22 +208,21 @@ class Instaloader:
 
         self.slide = slide or ""
         self.slide_start = 0
-        self.slide_end = 0
+        self.slide_end = -1
         if self.slide != "":
             splitted = self.slide.split('-')
             if len(splitted) == 1:
                 if splitted[0] == 'last':
-                    #download only last image of a sidecar
-                    self.slide_end = -1
+                    # download only last image of a sidecar
+                    self.slide_start = -1
                 else:
                     if int(splitted[0]) > 0:
                         self.slide_start = self.slide_end = int(splitted[0])
                     else:
-                        raise InvalidArgumentException("--slide parameter must be greather than 0.")
+                        raise InvalidArgumentException("--slide parameter must be greater than 0.")
             elif len(splitted) == 2:
                 if splitted[1] == 'last':
                     self.slide_start = int(splitted[0])
-                    self.slide_end = -1
                 elif 0 < int(splitted[0]) < int(splitted[1]):
                     self.slide_start = int(splitted[0])
                     self.slide_end = int(splitted[1])
@@ -231,8 +230,8 @@ class Instaloader:
                     raise InvalidArgumentException("Invalid data for --slide parameter.")
             else:
                 raise InvalidArgumentException("Invalid data for --slide parameter.")
-        else:
-            self.slide_start = 1
+
+
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
