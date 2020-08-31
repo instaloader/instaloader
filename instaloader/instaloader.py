@@ -541,12 +541,12 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
-        if self.download_pictures:
-            if post.typename == 'GraphSidecar':
-                edge_number = 1
-                for sidecar_node in post.get_sidecar_nodes(self.slide_start, self.slide_end):
-                    # Download picture or video thumbnail
-                    if not sidecar_node.is_video or self.download_video_thumbnails is True:
+        if post.typename == 'GraphSidecar':
+            if self.download_pictures or self.download_videos:
+                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(self.slide_start,
+                                                                                  self.slide_end), start=1):
+                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
                                                         mtime=post.date_local, filename_suffix=str(edge_number))
                     # Additionally download video if available and desired
