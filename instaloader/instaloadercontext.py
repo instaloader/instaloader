@@ -577,7 +577,7 @@ class RateController:
         # Not static, to allow for the count_per_sliding_window to depend on context-inherent properties, such as
         # whether we are logged in.
         # pylint:disable=no-self-use
-        return 100 if query_type in ['iphone', 'other'] else 200
+        return 75 if query_type in ['iphone', 'other'] else 200
 
     def _reqs_in_sliding_window(self, query_type: Optional[str], current_time: float, window: float) -> List[float]:
         if query_type is not None:
