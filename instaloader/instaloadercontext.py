@@ -351,10 +351,10 @@ class InstaloaderContext:
                     raise ConnectionException("\"window._sharedData\" does not contain required keys.")
                 # If GraphQL data is missing in `window._sharedData`, search for it in `__additionalDataLoaded`.
                 if 'graphql' not in post_or_profile_page[0]:
-                    match = re.search(r'window\.__additionalDataLoaded\([^{]+.*"graphql":({.*}).*}\);<\/script>',
+                    match = re.search(r'window\.__additionalDataLoaded\(.*?({.*"graphql":.*})\);</script>',
                                       resp.text)
                     if match is not None:
-                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))
+                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))['graphql']
                 return resp_json
             else:
                 resp_json = resp.json()
