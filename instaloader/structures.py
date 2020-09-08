@@ -258,11 +258,11 @@ class Post:
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
             if end < 0:
-                end = len(edges)
+                end = len(edges)-1
             if start < 0:
-                start = len(edges)
+                start = len(edges)-1
             for idx, edge in enumerate(edges):
-                if start-1 <= idx <= end-1:
+                if start <= idx <= end:
                     node = edge['node']
                     is_video = node['is_video']
                     display_url = node['display_url']
