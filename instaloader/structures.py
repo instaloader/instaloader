@@ -207,7 +207,13 @@ class Post:
     @property
     def owner_id(self) -> int:
         """The ID of the Post's owner."""
-        return self.owner_profile.userid
+        # The ID may already be available, e.g. if the post instance was created
+        # from an `hashtag.get_posts()` iterator, so no need to make another
+        # http request.
+        if 'owner' in self._node and 'id' in self._node['owner']:
+            return self._node['owner']['id']
+        else:
+            return self.owner_profile.userid
 
     @property
     def date_local(self) -> datetime:
