@@ -147,10 +147,6 @@ class Post:
             )
             self._full_metadata_dict = pic_json['data']['shortcode_media']
             if self._full_metadata_dict is None:
-                # issue #449
-                self._context.error("Fetching Post metadata failed (issue #449). "
-                                    "The following data has been returned:\n"
-                                    + json.dumps(pic_json['entry_data'], indent=2))
                 raise BadResponseException("Fetching Post metadata failed.")
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
