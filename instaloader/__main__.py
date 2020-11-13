@@ -366,8 +366,8 @@ def main():
                             'connection fails, it can be manually skipped by hitting CTRL+C. Set this to 0 to retry '
                             'infinitely.')
     g_how.add_argument('--commit-mode', action='store_true', help=SUPPRESS)
-    g_how.add_argument('--request-timeout', metavar='N', type=float,
-                       help='seconds to wait before timing out a connection request')
+    g_how.add_argument('--request-timeout', metavar='N', type=float, default=300.0,
+                       help='Seconds to wait before timing out a connection request. Defaults to 300.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
