@@ -437,7 +437,14 @@ class Post:
         )
 
     def get_likes(self) -> Iterator['Profile']:
-        """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
+        """
+        Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded.
+
+        .. versionchanged:: 4.5.4
+           Require being logged in (as required by Instagram).
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access likes of a post.")
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
