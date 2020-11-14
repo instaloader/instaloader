@@ -1359,9 +1359,13 @@ class Hashtag:
         next_other = next(other_posts, None)
         while next_top is not None or next_other is not None:
             if next_other is None:
+                assert next_top is not None
+                yield next_top
                 yield from sorted_top_posts
                 break
             if next_top is None:
+                assert next_other is not None
+                yield next_other
                 yield from other_posts
                 break
             if next_top == next_other:
