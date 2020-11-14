@@ -179,7 +179,7 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
-                 request_timeout: Optional[float] = None,
+                 request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True):

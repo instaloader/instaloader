@@ -238,9 +238,12 @@ How to Download
 
 .. option:: --request-timeout N
 
-   Seconds to wait before timing out a connection request.
+   Seconds to wait before timing out a connection request. Defaults to 300.
 
    .. versionadded:: 4.3
+
+   .. versionchanged:: 4.6
+      Enabled this option by default with a timeout of 300 seconds.
 
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
