@@ -63,15 +63,15 @@ creates when using :option:`--login`. If a session file is present,
 Also, session files usually do not expire.
 
 If you do not have a session file present, you may use the following script
-(:example:`615_import_firefox_session.py`) to workaround login problems by
+(:example:`615_import_firefox_session_sqlite.py`) or (:example:`615_import_firefox_session_txt.py`) to workaround login problems by
 importing the session cookies from Firefox and bypassing Instaloader's login and
 so still use Instaloader's logged-in functionality.
 
-.. literalinclude:: codesnippets/615_import_firefox_session.py
+.. literalinclude:: codesnippets/615_import_firefox_session_sqlite.py
 
 To use this script,
 
-#. Download the script: :example:`615_import_firefox_session.py`,
+#. Download the script: :example:`615_import_firefox_session_sqlite.py`,
 
 #. Login to Instagram in Firefox,
 
@@ -83,3 +83,6 @@ This script also supports specifying a cookie file path, which may be useful if
 you use multiple Firefox profiles or if your operating system has the directory
 structure differently set up. Also, you can specify an alternative session file
 path.
+
+If this script doesn't work for you (for example because Firefox locks the sqlite file),
+you can alternatively try to export the cookies to a `cookies.txt` file and consume that using :example:`615_import_firefox_session_sqlite.py`.

@@ -1,8 +1,14 @@
+#!/usr/local/bin/python3
+
 from argparse import ArgumentParser
 from glob import glob
 from os.path import expanduser
 from platform import system
 from sqlite3 import OperationalError, connect
+
+# This script attempts to load Firefox cookies.sqlite file,
+# login to instagram and write the instaloader session file.
+# Try this method if you have trouble logging in using instaloader.
 
 try:
     from instaloader import ConnectionException, Instaloader
