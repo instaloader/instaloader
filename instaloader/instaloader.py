@@ -584,7 +584,7 @@ class Instaloader:
                 yield userids[i:i + userids_per_query]
 
         for userid_chunk in _userid_chunks():
-            stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
+            stories = self.context.graphql_query("303a4ae99711322310f25250d988f3b7",
                                                  {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
             yield from (Story(self.context, media) for media in stories['reels_media'])
 
