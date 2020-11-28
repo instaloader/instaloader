@@ -579,7 +579,7 @@ class Instaloader:
 
         def _userid_chunks():
             assert userids is not None
-            userids_per_query = 100
+            userids_per_query = 50
             for i in range(0, len(userids), userids_per_query):
                 yield userids[i:i + userids_per_query]
 
