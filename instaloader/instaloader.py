@@ -514,15 +514,16 @@ class Instaloader:
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
         if post.typename == 'GraphSidecar':
-            for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
-                if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                    # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
-                if sidecar_node.is_video and self.download_videos:
-                    # Download sidecar video if desired
-                    downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                    mtime=post.date_local, filename_suffix=str(edge_number))
+            if self.download_pictures or self.download_videos:
+                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
+                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                    if sidecar_node.is_video and self.download_videos:
+                        # Download sidecar video if desired
+                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
@@ -578,12 +579,12 @@ class Instaloader:
 
         def _userid_chunks():
             assert userids is not None
-            userids_per_query = 100
+            userids_per_query = 50
             for i in range(0, len(userids), userids_per_query):
                 yield userids[i:i + userids_per_query]
 
         for userid_chunk in _userid_chunks():
-            stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
+            stories = self.context.graphql_query("303a4ae99711322310f25250d988f3b7",
                                                  {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
             yield from (Story(self.context, media) for media in stories['reels_media'])
 
@@ -856,7 +857,7 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
-        node_iterator = Profile.from_username(self.context, self.context.username).get_saved_posts()
+        node_iterator = Profile.own_profile(self.context).get_saved_posts()
         self.posts_download_loop(node_iterator, ":saved",
                                  fast_update, post_filter,
                                  max_count=max_count, total_count=node_iterator.count)

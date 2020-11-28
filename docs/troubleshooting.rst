@@ -9,10 +9,7 @@ Troubleshooting
 ---------------------
 
 Instaloader has a logic to keep track of its requests to Instagram and to obey
-their rate limits. Since they are nowhere documented, we try them out
-experimentally. We have a daily cron job running to confirm that Instaloader
-still stays within the rate limits. Nevertheless, the rate control logic assumes
-that
+their rate limits. The rate controller assumes that
 
 - at one time, Instaloader is the only application that consumes requests, i.e.
   neither the Instagram browser interface, nor a mobile app, nor another
@@ -21,7 +18,13 @@ that
 - no requests had been consumed when Instaloader starts.
 
 The latter one implies that restarting or reinstantiating Instaloader often
-within short time is prone to cause a 429. If a request is denied with a 429,
+within short time is prone to cause a 429.
+
+Since the behavior of the rate controller might change between different
+versions of Instaloader, make sure to use the current version of Instaloader,
+especially when encountering many 429 errors.
+
+If a request is denied with a 429,
 Instaloader retries the request as soon as the temporary ban is assumed to be
 expired. In case the retry continuously fails for some reason, which should not
 happen under normal conditions, consider adjusting the
@@ -32,13 +35,18 @@ promiscuous IP addresses, such as cloud, VPN and public proxy services, might be
 subject to significantly stricter limits for anonymous access. However,
 logged-in accesses (see :option:`--login`) do not seem to be affected.
 
+Instaloader allows to adjust the rate controlling behavior by overriding
+:class:`instaloader.RateController`.
+
 Too many queries in the last time
 ---------------------------------
 
 **"Too many queries in the last time"** is not an error. It is a notice that the
 rate limit has almost been reached, according to Instaloader's own rate
-accounting mechanism. We regularly adjust this mechanism to match Instagram's
-current rate limiting.
+accounting mechanism.
+
+Instaloader allows to adjust the rate controlling behavior by overriding
+:class:`instaloader.RateController`.
 
 Private but not followed
 ------------------------
@@ -57,9 +65,8 @@ pointing the user to an URL to be opened in a browser.
 Nevertheless, in :issue:`92` and :issue:`615` users reported problems with
 logging in. We recommend to always keep the session file which Instaloader
 creates when using :option:`--login`. If a session file is present,
-:option:`--login` does not make make use of the failure-prone login procedure.
-Also, session files usually do not expire and can be copied between different
-computers without any problems.
+:option:`--login` does not make use of the failure-prone login procedure.
+Also, session files usually do not expire.
 
 If you do not have a session file present, you may use the following script
 (:example:`615_import_firefox_session.py`) to workaround login problems by

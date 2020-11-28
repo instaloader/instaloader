@@ -347,10 +347,10 @@ class InstaloaderContext:
                     raise ConnectionException("\"window._sharedData\" does not contain required keys.")
                 # If GraphQL data is missing in `window._sharedData`, search for it in `__additionalDataLoaded`.
                 if 'graphql' not in post_or_profile_page[0]:
-                    match = re.search(r'window\.__additionalDataLoaded\([^{]+{"graphql":({.*})}\);</script>',
+                    match = re.search(r'window\.__additionalDataLoaded\(.*?({.*"graphql":.*})\);</script>',
                                       resp.text)
                     if match is not None:
-                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))
+                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))['graphql']
                 return resp_json
             else:
                 resp_json = resp.json()
@@ -545,8 +545,8 @@ class RateController:
 
     def __init__(self, context: InstaloaderContext):
         self._context = context
-        self._graphql_query_timestamps = dict()  # type: Dict[str, List[float]]
-        self._graphql_earliest_next_request_time = 0.0
+        self._query_timestamps = dict()  # type: Dict[str, List[float]]
+        self._earliest_next_request_time = 0.0
 
     def sleep(self, secs: float):
         """Wait given number of seconds."""
@@ -556,11 +556,11 @@ class RateController:
         time.sleep(secs)
 
     def _dump_query_timestamps(self, current_time: float, failed_query_type: str):
-        windows = [10, 11, 15, 20, 30, 60]
+        windows = [10, 11, 20, 22, 30, 60]
         self._context.error("Requests within last {} minutes grouped by type:"
                             .format('/'.join(str(w) for w in windows)),
                             repeat_at_end=False)
-        for query_type, times in self._graphql_query_timestamps.items():
+        for query_type, times in self._query_timestamps.items():
             reqs_in_sliding_window = [sum(t > current_time - w * 60 for t in times) for w in windows]
             self._context.error(" {} {:>32}: {}".format(
                 "*" if query_type == failed_query_type else " ",
@@ -569,28 +569,61 @@ class RateController:
             ), repeat_at_end=False)
 
     def count_per_sliding_window(self, query_type: str) -> int:
-        """Return how many GraphQL requests can be done within the sliding window."""
+        """Return how many requests can be done within the sliding window."""
         # Not static, to allow for the count_per_sliding_window to depend on context-inherent properties, such as
         # whether we are logged in.
-        # pylint:disable=no-self-use,unused-argument
-        return 200
+        # pylint:disable=no-self-use
+        return 75 if query_type in ['iphone', 'other'] else 200
+
+    def _reqs_in_sliding_window(self, query_type: Optional[str], current_time: float, window: float) -> List[float]:
+        if query_type is not None:
+            # timestamps of type query_type
+            relevant_timestamps = self._query_timestamps[query_type]
+        else:
+            # all GraphQL queries, i.e. not 'iphone' or 'other'
+            graphql_query_timestamps = filter(lambda tp: tp[0] not in ['iphone', 'other'],
+                                              self._query_timestamps.items())
+            relevant_timestamps = [t for times in (tp[1] for tp in graphql_query_timestamps) for t in times]
+        return list(filter(lambda t: t > current_time - window, relevant_timestamps))
 
     def query_waittime(self, query_type: str, current_time: float, untracked_queries: bool = False) -> float:
-        """Calculate time needed to wait before GraphQL query can be executed."""
-        sliding_window = 660
-        if query_type not in self._graphql_query_timestamps:
-            self._graphql_query_timestamps[query_type] = []
-        self._graphql_query_timestamps[query_type] = list(filter(lambda t: t > current_time - 60 * 60,
-                                                                 self._graphql_query_timestamps[query_type]))
-        reqs_in_sliding_window = list(filter(lambda t: t > current_time - sliding_window,
-                                             self._graphql_query_timestamps[query_type]))
-        count_per_sliding_window = self.count_per_sliding_window(query_type)
-        if len(reqs_in_sliding_window) < count_per_sliding_window and not untracked_queries:
-            return max(0.0, self._graphql_earliest_next_request_time - current_time)
-        next_request_time = min(reqs_in_sliding_window) + sliding_window + 6
-        if untracked_queries:
-            self._graphql_earliest_next_request_time = next_request_time
-        return max(next_request_time, self._graphql_earliest_next_request_time) - current_time
+        """Calculate time needed to wait before query can be executed."""
+        per_type_sliding_window = 660
+        if query_type not in self._query_timestamps:
+            self._query_timestamps[query_type] = []
+        self._query_timestamps[query_type] = list(filter(lambda t: t > current_time - 60 * 60,
+                                                         self._query_timestamps[query_type]))
+
+        def per_type_next_request_time():
+            reqs_in_sliding_window = self._reqs_in_sliding_window(query_type, current_time, per_type_sliding_window)
+            if len(reqs_in_sliding_window) < self.count_per_sliding_window(query_type):
+                return 0.0
+            else:
+                return min(reqs_in_sliding_window) + per_type_sliding_window + 6
+
+        def gql_accumulated_next_request_time():
+            if query_type in ['iphone', 'other']:
+                return 0.0
+            gql_accumulated_sliding_window = 600
+            gql_accumulated_max_count = 275
+            reqs_in_sliding_window = self._reqs_in_sliding_window(None, current_time, gql_accumulated_sliding_window)
+            if len(reqs_in_sliding_window) < gql_accumulated_max_count:
+                return 0.0
+            else:
+                return min(reqs_in_sliding_window) + gql_accumulated_sliding_window
+
+        def untracked_next_request_time():
+            if untracked_queries:
+                reqs_in_sliding_window = self._reqs_in_sliding_window(query_type, current_time, per_type_sliding_window)
+                self._earliest_next_request_time = min(reqs_in_sliding_window) + per_type_sliding_window + 6
+            return self._earliest_next_request_time
+
+        return max(0.0,
+                   max(
+                       per_type_next_request_time(),
+                       gql_accumulated_next_request_time(),
+                       untracked_next_request_time(),
+                   ) - current_time)
 
     def wait_before_query(self, query_type: str) -> None:
         """This method is called before a query to Instagram. It calls :meth:`RateController.sleep` to wait
@@ -602,10 +635,10 @@ class RateController:
                               .format(round(waittime), datetime.now() + timedelta(seconds=waittime)))
         if waittime > 0:
             self.sleep(waittime)
-        if query_type not in self._graphql_query_timestamps:
-            self._graphql_query_timestamps[query_type] = [time.monotonic()]
+        if query_type not in self._query_timestamps:
+            self._query_timestamps[query_type] = [time.monotonic()]
         else:
-            self._graphql_query_timestamps[query_type].append(time.monotonic())
+            self._query_timestamps[query_type].append(time.monotonic())
 
     def handle_429(self, query_type: str) -> None:
         """This method is called to handle a 429 Too Many Requests response. It calls :meth:`RateController.sleep` to

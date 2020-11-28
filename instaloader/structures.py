@@ -147,10 +147,6 @@ class Post:
             )
             self._full_metadata_dict = pic_json['data']['shortcode_media']
             if self._full_metadata_dict is None:
-                # issue #449
-                self._context.error("Fetching Post metadata failed (issue #449). "
-                                    "The following data has been returned:\n"
-                                    + json.dumps(pic_json['entry_data'], indent=2))
                 raise BadResponseException("Fetching Post metadata failed.")
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
@@ -207,7 +203,13 @@ class Post:
     @property
     def owner_id(self) -> int:
         """The ID of the Post's owner."""
-        return self.owner_profile.userid
+        # The ID may already be available, e.g. if the post instance was created
+        # from an `hashtag.get_posts()` iterator, so no need to make another
+        # http request.
+        if 'owner' in self._node and 'id' in self._node['owner']:
+            return self._node['owner']['id']
+        else:
+            return self.owner_profile.userid
 
     @property
     def date_local(self) -> datetime:
@@ -441,7 +443,14 @@ class Post:
         )
 
     def get_likes(self) -> Iterator['Profile']:
-        """Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded."""
+        """
+        Iterate over all likes of the post. A :class:`Profile` instance of each likee is yielded.
+
+        .. versionchanged:: 4.5.4
+           Require being logged in (as required by Instagram).
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access likes of a post.")
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
@@ -555,7 +564,7 @@ class Profile:
         """
         # pylint:disable=protected-access
         profile = cls(context, {'username': username.lower()})
-        profile._obtain_metadata()  # to raise ProfileNotExistException now in case username is invalid
+        profile._obtain_metadata()  # to raise ProfileNotExistsException now in case username is invalid
         return profile
 
     @classmethod
@@ -584,6 +593,17 @@ class Profile:
                                             str(profile_id) + ").")
         context.profile_id_cache[profile_id] = profile
         return profile
+
+    @classmethod
+    def own_profile(cls, context: InstaloaderContext):
+        """Return own profile if logged-in.
+
+        :param context: :attr:`Instaloader.context`
+
+        .. versionadded:: 4.5.2"""
+        if not context.is_logged_in:
+            raise LoginRequiredException("--login required to access own profile.")
+        return cls(context, context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
 
     def _asdict(self):
         json_node = self._node.copy()
@@ -808,7 +828,6 @@ class Profile:
         if self.username != self._context.username:
             raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
 
-        self._obtain_metadata()
         return NodeIterator(
             self._context,
             'f883d95537fbcd400f466f63d42bd8a1',
@@ -816,7 +835,6 @@ class Profile:
             lambda n: Post(self._context, n),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
-            self._metadata('edge_saved_media'),
         )
 
     def get_tagged_posts(self) -> NodeIterator[Post]:
@@ -1369,9 +1387,13 @@ class Hashtag:
         next_other = next(other_posts, None)
         while next_top is not None or next_other is not None:
             if next_other is None:
+                assert next_top is not None
+                yield next_top
                 yield from sorted_top_posts
                 break
             if next_top is None:
+                assert next_other is not None
+                yield next_other
                 yield from other_posts
                 break
             if next_top == next_other:
