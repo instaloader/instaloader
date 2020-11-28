@@ -35,12 +35,18 @@ promiscuous IP addresses, such as cloud, VPN and public proxy services, might be
 subject to significantly stricter limits for anonymous access. However,
 logged-in accesses (see :option:`--login`) do not seem to be affected.
 
+Instaloader allows to adjust the rate controlling behavior by overriding
+:class:`instaloader.RateController`.
+
 Too many queries in the last time
 ---------------------------------
 
 **"Too many queries in the last time"** is not an error. It is a notice that the
 rate limit has almost been reached, according to Instaloader's own rate
 accounting mechanism.
+
+Instaloader allows to adjust the rate controlling behavior by overriding
+:class:`instaloader.RateController`.
 
 Private but not followed
 ------------------------
