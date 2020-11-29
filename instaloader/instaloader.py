@@ -102,7 +102,7 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if key == 'filename' and (isinstance(self._item, Post) or isinstance(self._item, PostSidecarNode)):
+        if key == 'filename' and isinstance(self._item, (Post, PostSidecarNode)):
             return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
@@ -495,7 +495,8 @@ class Instaloader:
         .. versionadded:: 4.2"""
         self.context.two_factor_login(two_factor_code)
 
-    def __prepare_filename(self, filename_template: str, url: str) -> str:
+    @staticmethod
+    def __prepare_filename(filename_template: str, url: str) -> str:
         """Replace filename token inside filename_template with url's filename and assure the directories exist.
 
         .. versionadded:: 4.6"""
@@ -504,7 +505,7 @@ class Instaloader:
         return filename
 
     def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode], target: Optional[Union[str, Path]] = None):
-        """Format filename of a :class:`Post`, :class:`StoryItem` or :class:`PostSidecarNode` according to ``filename-pattern`` parameter.
+        """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item).format(self.filename_pattern, target=target)
