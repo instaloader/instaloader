@@ -14,6 +14,7 @@ from hashlib import md5
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
+from urllib.parse import urlparse
 
 import requests
 import urllib3  # type: ignore
@@ -22,7 +23,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
 from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -101,6 +102,8 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
+        if key == 'filename' and (isinstance(self._item, Post) or isinstance(self._item, PostSidecarNode)):
+            return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
         return super().get_value(key, args, kwargs)
@@ -492,8 +495,16 @@ class Instaloader:
         .. versionadded:: 4.2"""
         self.context.two_factor_login(two_factor_code)
 
-    def format_filename(self, item: Union[Post, StoryItem], target: Optional[Union[str, Path]] = None):
-        """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
+    def __prepare_filename(self, filename_template: str, url: str) -> str:
+        """Replace filename token inside filename_template with url's filename and assure the directories exist.
+
+        .. versionadded:: 4.6"""
+        filename = filename_template.replace("{filename}", os.path.splitext(os.path.basename(urlparse(url).path))[0])
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        return filename
+
+    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode], target: Optional[Union[str, Path]] = None):
+        """Format filename of a :class:`Post`, :class:`StoryItem` or :class:`PostSidecarNode` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item).format(self.filename_pattern, target=target)
@@ -508,8 +519,8 @@ class Instaloader:
         """
 
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
-        filename = os.path.join(dirname, self.format_filename(post, target=target))
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        filename_template = os.path.join(dirname, self.format_filename(post, target=target))
+        filename = self.__prepare_filename(filename_template, post.url)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
@@ -517,13 +528,21 @@ class Instaloader:
             if self.download_pictures or self.download_videos:
                 for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                        suffix = str(edge_number)
+                        if '{filename}' in self.filename_pattern:
+                            suffix = None
+                        filename = self.__prepare_filename(filename_template, sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                                                        mtime=post.date_local, filename_suffix=suffix)
                     if sidecar_node.is_video and self.download_videos:
+                        suffix = str(edge_number)
+                        if '{filename}' in self.filename_pattern:
+                            suffix = None
+                        filename = self.__prepare_filename(filename_template, sidecar_node.video_url)
                         # Download sidecar video if desired
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=str(edge_number))
+                                                        mtime=post.date_local, filename_suffix=suffix)
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
