@@ -217,15 +217,15 @@ class Instaloader:
                     self.slide_start = -1
                 else:
                     if int(splitted[0]) > 0:
-                        self.slide_start = self.slide_end = int(splitted[0])
+                        self.slide_start = self.slide_end = int(splitted[0])-1
                     else:
                         raise InvalidArgumentException("--slide parameter must be greater than 0.")
             elif len(splitted) == 2:
                 if splitted[1] == 'last':
-                    self.slide_start = int(splitted[0])
+                    self.slide_start = int(splitted[0])-1
                 elif 0 < int(splitted[0]) < int(splitted[1]):
-                    self.slide_start = int(splitted[0])
-                    self.slide_end = int(splitted[1])
+                    self.slide_start = int(splitted[0])-1
+                    self.slide_end = int(splitted[1])-1
                 else:
                     raise InvalidArgumentException("Invalid data for --slide parameter.")
             else:
