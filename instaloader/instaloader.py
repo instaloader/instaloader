@@ -531,7 +531,7 @@ class Instaloader:
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
-                            suffix = None
+                            suffix = ''
                         filename = self.__prepare_filename(filename_template, sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
@@ -539,7 +539,7 @@ class Instaloader:
                     if sidecar_node.is_video and self.download_videos:
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
-                            suffix = None
+                            suffix = ''
                         filename = self.__prepare_filename(filename_template, sidecar_node.video_url)
                         # Download sidecar video if desired
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
