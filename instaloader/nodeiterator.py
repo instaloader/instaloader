@@ -265,7 +265,7 @@ class NodeIterator(Iterator[T]):
                 for post in posts.to(time=timedelta(days=3)):
                     print(post.date)
         """
-        return self.between(start = datetime.today() - ago)
+        return self.between(start=datetime.today()-ago)
 
 @contextmanager
 def resumable_iteration(context: InstaloaderContext,
