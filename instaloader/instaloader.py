@@ -102,7 +102,7 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if key == 'filename' and isinstance(self._item, (Post, PostSidecarNode)):
+        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode)):
             return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
@@ -658,13 +658,14 @@ class Instaloader:
 
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
-        filename = os.path.join(dirname, self.format_filename(item, target=target))
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        filename_template = os.path.join(dirname, self.format_filename(item, target=target))
+        filename = self.__prepare_filename(filename_template, item.url)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
             url = item.url
             downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
         if item.is_video and self.download_videos is True:
+            filename = self.__prepare_filename(filename_template, item.video_url)
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
