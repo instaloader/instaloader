@@ -13,7 +13,7 @@ Steps to reproduce the behavior:
 (e.g. Instaloader command line)
 
 **Expected behavior**
-A clear and concise description of what you expected to happen (if not obvious).
+A clear and concise description of what you expected to happen (even if it seems obvious).
 
 **Error messages and tracebacks**
 If applicable, add error messages and tracebacks to help explain your problem.

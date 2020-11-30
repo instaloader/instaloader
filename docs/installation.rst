@@ -33,6 +33,9 @@ To **upgrade Instaloader** to its current version, do::
 - On **Windows 10**, you may download the standalone executable from the
   `current release page <https://github.com/instaloader/instaloader/releases/latest>`__.
 
+- On **Android**, you can use Instaloader with `Termux <https://play.google.com/store/apps/details?id=com.termux>`__
+  after typing ``pkg install python`` and ``pip3 install instaloader``.
+
 - To test the most current **pre-release** version of Instaloader::
 
      pip3 install --pre instaloader

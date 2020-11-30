@@ -81,11 +81,13 @@ class NodeIterator(Iterator[T]):
         self._node_wrapper = node_wrapper
         self._query_variables = query_variables if query_variables is not None else {}
         self._query_referer = query_referer
-        self._data = first_data
         self._page_index = 0
         self._total_index = 0
-        self._best_before = (None if first_data is None else
-                             datetime.now() + NodeIterator._shelf_life)
+        if first_data is not None:
+            self._data = first_data
+            self._best_before = datetime.now() + NodeIterator._shelf_life
+        else:
+            self._data = self._query()
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -113,8 +115,6 @@ class NodeIterator(Iterator[T]):
         return self
 
     def __next__(self) -> T:
-        if self._data is None:
-            self._data = self._query()
         if self._page_index < len(self._data['edges']):
             node = self._data['edges'][self._page_index]['node']
             page_index, total_index = self._page_index, self._total_index
@@ -193,8 +193,12 @@ class NodeIterator(Iterator[T]):
                 self._query_referer != frozen.query_referer or
                 self._context.username != frozen.context_username):
             raise InvalidArgumentException("Mismatching resume information.")
+        if not frozen.best_before:
+            raise InvalidArgumentException("\"best before\" date missing.")
+        if frozen.remaining_data is None:
+            raise InvalidArgumentException("\"remaining_data\" missing.")
         self._total_index = frozen.total_index
-        self._best_before = datetime.fromtimestamp(frozen.best_before) if frozen.best_before else None
+        self._best_before = datetime.fromtimestamp(frozen.best_before)
         self._data = frozen.remaining_data
 
 

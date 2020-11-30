@@ -32,7 +32,7 @@ reporting a problem, please keep the following in mind:
 
 - Include all **error messages and tracebacks** in the report.
 
-- If not obvious, describe **which behavior you expected**
+- Even if it seems obvious, describe **which behavior you expected**
   instead of what actually happened.
 
 - If we have closed an issue apparently inadvertently or inappropriately, please

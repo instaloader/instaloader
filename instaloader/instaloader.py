@@ -180,7 +180,7 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
-                 request_timeout: Optional[float] = None,
+                 request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
@@ -607,12 +607,12 @@ class Instaloader:
 
         def _userid_chunks():
             assert userids is not None
-            userids_per_query = 100
+            userids_per_query = 50
             for i in range(0, len(userids), userids_per_query):
                 yield userids[i:i + userids_per_query]
 
         for userid_chunk in _userid_chunks():
-            stories = self.context.graphql_query("bf41e22b1c4ba4c9f31b844ebb7d9056",
+            stories = self.context.graphql_query("303a4ae99711322310f25250d988f3b7",
                                                  {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
             yield from (Story(self.context, media) for media in stories['reels_media'])
 
@@ -885,7 +885,7 @@ class Instaloader:
         """
         self.context.log("Retrieving saved posts...")
         assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
-        node_iterator = Profile.from_username(self.context, self.context.username).get_saved_posts()
+        node_iterator = Profile.own_profile(self.context).get_saved_posts()
         self.posts_download_loop(node_iterator, ":saved",
                                  fast_update, post_filter,
                                  max_count=max_count, total_count=node_iterator.count)

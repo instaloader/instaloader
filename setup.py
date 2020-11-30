@@ -38,6 +38,7 @@ setup(
     name='instaloader',
     version=get_version(),
     packages=['instaloader'],
+    package_data={'instaloader': ['py.typed']},
     url='https://instaloader.github.io/',
     license='MIT',
     author='Alexander Graf, André Koch-Kramer',
@@ -48,7 +49,7 @@ setup(
     install_requires=requirements,
     python_requires='>=3.5',
     entry_points={'console_scripts': ['instaloader=instaloader.__main__:main']},
-    zip_safe=True,
+    zip_safe=False,
     keywords=keywords,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
