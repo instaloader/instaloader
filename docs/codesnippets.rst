@@ -28,21 +28,19 @@ Download Posts in a Specific Period
 -----------------------------------
 
 To only download Instagram pictures (and metadata) that are within a specific
-period, you can simply use :func:`~itertools.dropwhile` and
-:func:`~itertools.takewhile` from :mod:`itertools` on a generator that returns
-Posts in **exact chronological order**, such as :meth:`Profile.get_posts`.
+period, you can simply use :func:`NodeIterator.between` and :func:`NodeIterator.since`.
+Only works with posts in **exact chronological order**, such as :func:`Profile.get_posts`.
 
 .. literalinclude:: codesnippets/121_since_until.py
 
+Or, similarly, to retrieve posts a `timedelta` amount of time since now.
+
+.. literalinclude:: codesnippets/121_since_until_to.py
+
 See also :class:`Post`, :meth:`Instaloader.download_post`.
 
-Discussed in :issue:`121`.
-
-The code example with :func:`~itertools.dropwhile` and
-:func:`~itertools.takewhile` makes the assumption that the post iterator returns
-posts in exact chronological order.  As discussed in :issue:`666`, the following
-approach fits for an **almost chronological order**, where up to *k* older posts
-are inserted into an otherwise chronological order, such as a Hashtag feed.
+As discussed in :issue:`666`, the following approach fits for an **almost chronological order**, 
+where up to *k* older posts are inserted into an otherwise chronological order, such as a Hashtag feed.
 
 .. literalinclude:: codesnippets/666_historical_hashtag_data.py
 

@@ -22,6 +22,9 @@ Iterator :class:`NodeIterator` and a context manager
 .. autoclass:: NodeIterator
    :no-show-inheritance:
 
+   .. automethod:: between
+   .. automethod:: since
+
 .. autoclass:: FrozenNodeIterator
    :no-show-inheritance:
 
