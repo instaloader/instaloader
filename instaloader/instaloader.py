@@ -665,7 +665,7 @@ class Instaloader:
             url = item.url
             downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
         if item.is_video and self.download_videos is True:
-            filename = self.__prepare_filename(filename_template, item.video_url)
+            filename = self.__prepare_filename(filename_template, str(item.video_url))
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
