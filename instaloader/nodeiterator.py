@@ -5,9 +5,9 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from lzma import LZMAError
-from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar, Union
 
-from .exceptions import InvalidArgumentException, QueryReturnedBadRequestException
+from .exceptions import IncorrectType, InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
 
 FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
@@ -74,7 +74,8 @@ class NodeIterator(Iterator[T]):
                  node_wrapper: Callable[[Dict], T],
                  query_variables: Optional[Dict[str, Any]] = None,
                  query_referer: Optional[str] = None,
-                 first_data: Optional[Dict[str, Any]] = None):
+                 first_data: Optional[Dict[str, Any]] = None,
+                 chronological: Optional[bool] = None):
         self._context = context
         self._query_hash = query_hash
         self._edge_extractor = edge_extractor
@@ -88,6 +89,7 @@ class NodeIterator(Iterator[T]):
             self._best_before = datetime.now() + NodeIterator._shelf_life
         else:
             self._data = self._query()
+        self._chronological = chronological
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -201,7 +203,65 @@ class NodeIterator(Iterator[T]):
         self._best_before = datetime.fromtimestamp(frozen.best_before)
         self._data = frozen.remaining_data
 
+    def between(self, start: datetime, end: Optional[Union[datetime, timedelta]] = datetime.max, inclusive: bool = True):
+        """
+        Use this generator to retrieve Node content between start and end range. Only works for `NodeIterator[Post]` type.
 
+        :param start: Start `datetime` object.
+        :param end: End `datetime` or `timedelta` object.
+        :param inclusive: Set true by default. Changes behavior from [start, end) to [start, end].
+        :note: If end range is left empty it will default to `datetime.max`. Likewise, if end range is a `timedelta` object, it will default to `start + end`.
+        :example: 
+            .. code-block:: python
+            
+                from datetime import datetime, timedelta
+                import instaloader
+
+                L = instaloader.Instaloader()
+                profile = instaloader.Profile.from_username(L.context, "instagram")
+                posts = profile.get_posts()
+
+                for post in posts.between(start=datetime(2020, 11, 27)):
+                    print(post.date)
+        """
+
+        if not self._chronological or not self._chronological:
+            raise IncorrectType(".between() can only be used for NodeIterator[Post] types that are chronological.")
+
+        if isinstance(end, timedelta):
+            end = start + end
+
+        if inclusive:
+            end = end.replace(hour=23, minute=59, second=59)
+
+        for post in self:
+            if post.date > start and post.date > end:
+                pass
+            elif post.date >= start and post.date <= end:
+                yield post
+            elif post.date <= start:
+                break
+
+    def since(self, ago: timedelta):
+        """
+        Use this generator to retrieve Node content from as far back as the given timedelta `time`.
+        
+        :param ago: How far back to retrieve posts. Only works for `NodeIterator[Post]` type.
+        :example:
+            .. code-block:: python
+
+                from datetime import datetime, timedelta
+                import instaloader
+
+                L = instaloader.Instaloader()
+                profile = instaloader.Profile.from_username(L.context, "instagram")
+                posts = profile.get_posts()
+
+                for post in posts.to(time=timedelta(days=3)):
+                    print(post.date)
+        """
+        return self.between(start=datetime.today()-ago)
+    
 @contextmanager
 def resumable_iteration(context: InstaloaderContext,
                         iterator: Iterator,

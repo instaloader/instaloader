@@ -58,6 +58,10 @@ class PostChangedException(InstaloaderException):
     pass
 
 
+class IncorrectType(InstaloaderException):
+    pass
+
+
 class QueryReturnedNotFoundException(ConnectionException):
     pass
 

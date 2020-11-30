@@ -928,6 +928,7 @@ class Instaloader:
             lambda d: d['data']['user']['edge_web_discover_media'],
             lambda n: Post(self.context, n),
             query_referer='https://www.instagram.com/explore/',
+            chronological=False
         )
 
     def get_hashtag_posts(self, hashtag: str) -> Iterator[Post]:

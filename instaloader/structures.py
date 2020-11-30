@@ -812,6 +812,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
             self._metadata('edge_owner_to_timeline_media'),
+            True
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -829,6 +830,7 @@ class Profile:
             lambda n: Post(self._context, n),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
+            chronological=False
         )
 
     def get_tagged_posts(self) -> NodeIterator[Post]:
@@ -845,6 +847,7 @@ class Profile:
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
+            chronological=True
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -862,6 +865,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/channel/'.format(self.username),
             self._metadata('edge_felix_video_timeline'),
+            chronological=True
         )
 
     def get_followers(self) -> NodeIterator['Profile']:
