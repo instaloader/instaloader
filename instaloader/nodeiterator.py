@@ -249,7 +249,7 @@ class NodeIterator(Iterator[T]):
 
     def since(self, ago: timedelta):
         """
-        Use this generator to retrieve Node content from as far back as the given timedelta `time`.
+        Use this generator to retrieve Node content from as far back as the given timedelta `ago`.
 
         :param ago: How far back to retrieve posts. Only works for `NodeIterator[Post]` type.
         :example:
