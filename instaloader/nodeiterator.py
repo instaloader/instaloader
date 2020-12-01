@@ -237,7 +237,7 @@ class NodeIterator(Iterator[T]):
             end = start + end
 
         if inclusive:
-            end = end.replace(hour=23, minute=59, second=59)
+            end = end.replace(hour=23, minute=59, second=59) # type:ignore
 
         for post in self:
             if post.date > start and post.date > end:
