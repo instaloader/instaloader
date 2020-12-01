@@ -262,7 +262,7 @@ class NodeIterator(Iterator[T]):
                 profile = instaloader.Profile.from_username(L.context, "instagram")
                 posts = profile.get_posts()
 
-                for post in posts.to(time=timedelta(days=3)):
+                for post in posts.since(ago=timedelta(days=3)):
                     print(post.date)
         """
         return self.between(start=datetime.today()-ago)
