@@ -1086,14 +1086,14 @@ class Story:
 
     @property
     def last_seen_local(self) -> Optional[datetime]:
-        """Timestamp when the story has last been watched or None (local time zone)."""
+        """Timestamp of the most recent StoryItem that has been watched or None (local time zone)."""
         if self._node['seen']:
             return datetime.fromtimestamp(self._node['seen'])
         return None
 
     @property
     def last_seen_utc(self) -> Optional[datetime]:
-        """Timestamp when the story has last been watched or None (UTC)."""
+        """Timestamp of the most recent StoryItem that has been watched or None (UTC)."""
         if self._node['seen']:
             return datetime.utcfromtimestamp(self._node['seen'])
         return None
