@@ -7,6 +7,12 @@ labels: question
 
 Your question here...
 
-<!-- Please see our documentation: https://instaloader.github.io/ -->
+<!--
+People will be better able and more motivated to provide help if your question
 
-<!-- Basic questions regarding Instaloader's usage might be more appropriate to ask on Stack Overflow -->
+ - has a concise and meaningful title,
+ - is not covered by the documentation: https://instaloader.github.io/,
+ - is actually related to Instaloader (this is not a Python help forum),
+ - has not already been answered here or on other sites such as Stack Overflow: https://stackoverflow.com/questions/tagged/instaloader,
+ - is written in a polite and welcoming tone.
+-->

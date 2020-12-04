@@ -11,6 +11,15 @@ Instaloader's development is organized on
 `GitHub <https://github.com/instaloader/instaloader>`__, where Issues and Pull
 Requests are discussed.
 
+Answering Questions
+-------------------
+
+The easiest way to help out is to answer questions. If you are interested in
+answering questions regarding Instaloader, good places to start are
+
+- `Questions tagged 'instaloader' on Stack Overflow <https://stackoverflow.com/questions/tagged/instaloader>`__,
+- `Instaloader Issues labeled 'question' <https://github.com/instaloader/instaloader/issues?q=is%3Aissue+is%3Aopen+label%3Aquestion>`__.
+
 Reporting Bugs
 --------------
 
@@ -41,22 +50,39 @@ reporting a problem, please keep the following in mind:
 Writing Code or Improving the Documentation
 -------------------------------------------
 
-Changes of the Instaloader source can be proposed as a
-`Pull Request <https://github.com/instaloader/instaloader/pulls>`__. There are only
-few things to consider:
+Improvements of the Instaloader source or its documentation can be proposed as a
+`Pull Request <https://github.com/instaloader/instaloader/pulls>`__.
 
-- Base your Pull Request on the ``master`` branch if it fixes a bug,
-  or the ``upcoming/v4.X`` branch (if it exists at the moment of submitting the PR)
-  otherwise.
+- Please base your Pull Request on
 
-- We use `Pylint <https://www.pylint.org/>`__ for error and syntax checking of
-  the source and `MyPy <https://github.com/python/mypy>`__ for type checking.
-  Beware that sometimes it might be better to disable a warning rather than
-  adapting the code to a tool's desires.
+  - ``master``, which will be released with the next minor release, if it is
 
-- The documentation source is located in the ``docs`` folder. The file
-  ``cli-options.rst`` is merely an RST-formatted copy of ``instaloader --help``
-  output, of which the source is in ``instaloader/__main__.py``.
+    - a bug fix that does not require extensive testing,
+    - an improvement to the documentation,
+
+  - ``upcoming/v4.X``, if it is
+
+    - a new feature,
+    - a bug fix that does require thorough testing before being released to a
+      final version.
+
+- All Pull Requests are analyzed by `Pylint <https://www.pylint.org/>`__ for
+  error and syntax checking of the source and
+  `Mypy <https://github.com/python/mypy>`__ for type checking. You can run them
+  locally with::
+
+     pylint instaloader
+     mypy -m instaloader
+
+- Improvements to the documentation are very welcome. The documentation is
+  created with `Sphinx <https://www.sphinx-doc.org/en/2.0/>`__, version 2,
+  and can be build locally using::
+
+     make -C docs html
+
+- Feel free to create an issue to make sure someone from the Instaloader team
+  agrees that the change might be an improvement, and is happy with your basic
+  proposal, before working on a pull request.
 
 Proposing Features
 ------------------
