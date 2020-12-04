@@ -222,14 +222,13 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             # Instaloader did at least save a session file
             instaloader.context.log("No targets were specified, thus nothing has been downloaded.")
         else:
-            # Instloader did not do anything
+            # Instaloader did not do anything
             instaloader.context.log("usage:" + usage_string())
 
 
 def main():
     parser = ArgumentParser(description=__doc__, add_help=False, usage=usage_string(),
-                            epilog="Report issues at https://github.com/instaloader/instaloader/issues. "
-                                   "The complete documentation can be found at "
+                            epilog="The complete documentation can be found at "
                                    "https://instaloader.github.io/.",
                             fromfile_prefix_chars='+')
 
