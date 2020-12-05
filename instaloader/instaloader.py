@@ -618,6 +618,7 @@ class Instaloader:
             totalcount = user_story.itemcount
             count = 1
             for item in user_story.get_items():
+                if count == 1: item.mark_as_seen()
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
                     continue
