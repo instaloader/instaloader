@@ -963,6 +963,18 @@ class StoryItem:
     def __hash__(self) -> int:
         return hash(self.mediaid)
 
+    def mark_as_seen(self, seen_at: Optional[datetime] = None) -> None:
+        if seen_at is None:
+            seen_at = self.date_local # [sic] website uses taken-at as seen-at
+        seen = {
+            'reelMediaId': self.mediaid,
+            'reelMediaOwnerId': self.owner_id,
+            'reelId': self.owner_id,
+            'reelMediaTakenAt': int(self.date_local.timestamp()),
+            'viewSeenAt': int(seen_at.timestamp()),
+        }
+        self._context._session.post('https://www.instagram.com/stories/reel/seen', data=seen)
+
     @property
     def owner_profile(self) -> Profile:
         """:class:`Profile` instance of the story item's owner."""
