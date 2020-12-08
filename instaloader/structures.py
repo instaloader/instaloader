@@ -973,7 +973,7 @@ class StoryItem:
             'reelMediaTakenAt': int(self.date_local.timestamp()),
             'viewSeenAt': int(seen_at.timestamp()),
         }
-        self._context._session.post('https://www.instagram.com/stories/reel/seen', data=seen)
+        self._context._session.post('https://www.instagram.com/stories/reel/seen', data=seen) # pylint: disable=W0212
 
     @property
     def owner_profile(self) -> Profile:
