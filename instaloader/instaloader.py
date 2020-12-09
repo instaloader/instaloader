@@ -556,7 +556,7 @@ class Instaloader:
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
                 for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(self.slide_start,
-                                                                              self.slide_end), start=1):
+                                                                                  self.slide_end), start=1):
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
