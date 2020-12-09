@@ -263,7 +263,8 @@ def resumable_iteration(context: InstaloaderContext,
     try:
         yield is_resuming, start_index
     except KeyboardInterrupt:
-        os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
+        if os.path.dirname(resume_file_path):
+            os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
         save(iterator.freeze(), resume_file_path)
         context.log("\nSaved resume information to {}.".format(resume_file_path))
         raise
