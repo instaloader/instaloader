@@ -24,4 +24,9 @@ If applicable, add error messages and tracebacks to help explain your problem.
 **Additional context**
 Add any other context about the problem here.
 
-<!-- please also see https://instaloader.github.io/contributing.html for how to report a bug -->
+<!--
+Also see https://instaloader.github.io/contributing.html for how to report a bug.
+
+Please understand that a bug issue that lacks the required information cannot be
+processed.
+-->

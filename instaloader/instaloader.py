@@ -1181,10 +1181,13 @@ class Instaloader:
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
-                if profile.is_private and (tagged or igtv or highlights or posts):
-                    if not self.context.is_logged_in:
+                if tagged or igtv or highlights or posts:
+                    if (not self.context.is_logged_in and
+                            profile.is_private):
                         raise LoginRequiredException("--login=USERNAME required.")
-                    if not profile.followed_by_viewer and self.context.username != profile.username:
+                    if (self.context.username != profile.username and
+                            profile.is_private and
+                            not profile.followed_by_viewer):
                         raise PrivateProfileNotFollowedException("Private but not followed.")
 
                 # Download tagged, if requested

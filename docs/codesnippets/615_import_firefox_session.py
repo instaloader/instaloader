@@ -23,7 +23,7 @@ def get_cookiefile():
 
 def import_session(cookiefile, sessionfile):
     print("Using cookies from {}.".format(cookiefile))
-    conn = connect(cookiefile)
+    conn = connect(f"file:{cookiefile}?immutable=1", uri=True)
     try:
         cookie_data = conn.execute(
             "SELECT name, value FROM moz_cookies WHERE baseDomain='instagram.com'"
