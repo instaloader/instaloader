@@ -82,6 +82,16 @@ What to Download of each Post
    Template to write in txt file for each StoryItem. See
    :ref:`metadata-text-files`.
 
+.. option:: --slide
+
+   Download only selected images of a sidecar. You can select single images using their
+   index in the sidecar starting with the leftmost or you can specify a range of images
+   with the following syntax: ``start_index-end_index``. Example:
+   ``--slide 1`` will select only the first image, ``--slide last`` only the last one and ``--slide 1-3`` will select only
+   the first three images.
+
+   .. versionadded:: 4.6
+
 .. option:: --no-metadata-json
 
    Do not create a JSON file containing the metadata of each post.

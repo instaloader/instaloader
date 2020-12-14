@@ -252,26 +252,49 @@ class Post:
         """Type of post, GraphImage, GraphVideo or GraphSidecar"""
         return self._field('__typename')
 
-    def get_sidecar_nodes(self) -> Iterator[PostSidecarNode]:
-        """Sidecar nodes of a Post with typename==GraphSidecar."""
+    @property
+    def mediacount(self) -> int:
+        """
+        The number of media in a sidecar Post, or 1 if the Post it not a sidecar.
+
+        .. versionadded:: 4.6
+        """
+        if self.typename == 'GraphSidecar':
+            edges = self._field('edge_sidecar_to_children', 'edges')
+            return len(edges)
+        return 1
+
+    def get_sidecar_nodes(self, start=0, end=-1) -> Iterator[PostSidecarNode]:
+        """
+        Sidecar nodes of a Post with typename==GraphSidecar.
+
+        .. versionchanged:: 4.6
+           Added parameters *start* and *end* to specify a slice of sidecar media.
+        """
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
             if any(edge['node']['is_video'] for edge in edges):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
+            if end < 0:
+                end = len(edges)-1
+            if start < 0:
+                start = len(edges)-1
             for idx, edge in enumerate(edges):
-                node = edge['node']
-                is_video = node['is_video']
-                display_url = node['display_url']
-                if not is_video and self._context.is_logged_in:
-                    try:
-                        carousel_media = self._iphone_struct['carousel_media']
-                        orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
-                        display_url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
-                    except (InstaloaderException, KeyError, IndexError) as err:
-                        self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
-                yield PostSidecarNode(is_video=is_video, display_url=display_url,
-                                      video_url=node['video_url'] if is_video else None)
+                if start <= idx <= end:
+                    node = edge['node']
+                    is_video = node['is_video']
+                    display_url = node['display_url']
+                    if not is_video and self._context.is_logged_in:
+                        try:
+                            carousel_media = self._iphone_struct['carousel_media']
+                            orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
+                            display_url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                        except (InstaloaderException, KeyError, IndexError) as err:
+                            self._context.error('{} Unable to fetch high quality image version of {}.'.format(
+                                err, self))
+                    yield PostSidecarNode(is_video=is_video, display_url=display_url,
+                                          video_url=node['video_url'] if is_video else None)
 
     @property
     def caption(self) -> Optional[str]:

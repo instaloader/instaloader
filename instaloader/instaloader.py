@@ -160,6 +160,7 @@ class Instaloader:
     :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
     :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
     :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
+    :param slide: :option:`--slide`
 
     .. attribute:: context
 
@@ -185,7 +186,8 @@ class Instaloader:
                  request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
-                 check_resume_bbd: bool = True):
+                 check_resume_bbd: bool = True,
+                 slide: Optional[str] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -206,6 +208,31 @@ class Instaloader:
             else storyitem_metadata_txt_pattern
         self.resume_prefix = resume_prefix
         self.check_resume_bbd = check_resume_bbd
+
+        self.slide = slide or ""
+        self.slide_start = 0
+        self.slide_end = -1
+        if self.slide != "":
+            splitted = self.slide.split('-')
+            if len(splitted) == 1:
+                if splitted[0] == 'last':
+                    # download only last image of a sidecar
+                    self.slide_start = -1
+                else:
+                    if int(splitted[0]) > 0:
+                        self.slide_start = self.slide_end = int(splitted[0])-1
+                    else:
+                        raise InvalidArgumentException("--slide parameter must be greater than 0.")
+            elif len(splitted) == 2:
+                if splitted[1] == 'last':
+                    self.slide_start = int(splitted[0])-1
+                elif 0 < int(splitted[0]) < int(splitted[1]):
+                    self.slide_start = int(splitted[0])-1
+                    self.slide_end = int(splitted[1])-1
+                else:
+                    raise InvalidArgumentException("Invalid data for --slide parameter.")
+            else:
+                raise InvalidArgumentException("Invalid data for --slide parameter.")
 
     @contextmanager
     def anonymous_copy(self):
@@ -228,7 +255,8 @@ class Instaloader:
             max_connection_attempts=self.context.max_connection_attempts,
             request_timeout=self.context.request_timeout,
             resume_prefix=self.resume_prefix,
-            check_resume_bbd=self.check_resume_bbd)
+            check_resume_bbd=self.check_resume_bbd,
+            slide=self.slide)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -527,7 +555,10 @@ class Instaloader:
         downloaded = True
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
-                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
+                for edge_number, sidecar_node in enumerate(
+                        post.get_sidecar_nodes(self.slide_start, self.slide_end),
+                        start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
+                ):
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
