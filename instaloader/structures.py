@@ -252,8 +252,25 @@ class Post:
         """Type of post, GraphImage, GraphVideo or GraphSidecar"""
         return self._field('__typename')
 
+    @property
+    def mediacount(self) -> int:
+        """
+        The number of media in a sidecar Post, or 1 if the Post it not a sidecar.
+
+        .. versionadded:: 4.6
+        """
+        if self.typename == 'GraphSidecar':
+            edges = self._field('edge_sidecar_to_children', 'edges')
+            return len(edges)
+        return 1
+
     def get_sidecar_nodes(self, start=0, end=-1) -> Iterator[PostSidecarNode]:
-        """Sidecar nodes of a Post with typename==GraphSidecar."""
+        """
+        Sidecar nodes of a Post with typename==GraphSidecar.
+
+        .. versionchanged:: 4.6
+           Added parameters *start* and *end* to specify a slice of sidecar media.
+        """
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
             if any(edge['node']['is_video'] for edge in edges):

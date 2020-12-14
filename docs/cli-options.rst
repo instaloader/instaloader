@@ -90,6 +90,8 @@ What to Download of each Post
    ``--slide 1`` will select only the first image, ``--slide last`` only the last one and ``--slide 1-3`` will select only
    the first three images.
 
+   .. versionadded:: 4.6
+
 .. option:: --no-metadata-json
 
    Do not create a JSON file containing the metadata of each post.
