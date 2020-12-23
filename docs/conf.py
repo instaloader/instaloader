@@ -65,7 +65,7 @@ extlinks = {
         'Issue #'
     ),
     'example': (
-        'https://raw.githubusercontent.com/instaloader/instaloader/v' + current_release + '/docs/codesnippets/%s',
+        'https://raw.githubusercontent.com/instaloader/instaloader/master/docs/codesnippets/%s',
         'Example '
     ),
 }
