@@ -182,10 +182,11 @@ class Instaloader:
                  request_timeout: Optional[float] = None,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
-                 check_resume_bbd: bool = True):
+                 check_resume_bbd: bool = True,
+                 rapidapi_key: Optional[str] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
-                                          request_timeout, rate_controller)
+                                          request_timeout, rate_controller, rapidapi_key)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"

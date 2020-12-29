@@ -54,7 +54,7 @@ class InstaloaderContext:
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: Optional[float] = None,
-                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None):
+                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None, rapidapi_key: Optional[str] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -66,6 +66,7 @@ class InstaloaderContext:
         self._graphql_page_length = 50
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
+        self.rapidapi_key = rapidapi_key
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
@@ -319,7 +320,22 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+
+            if (self.rapidapi_key):
+                url = "https://instagram40.p.rapidapi.com/proxy"
+                proxy_params = { 'url': 'https://{0}/{1}'.format(host, path) + '?' + urllib.parse.urlencode(params)}
+                headers = {
+                    'x-rapidapi-key': self.rapidapi_key,
+                    'x-rapidapi-host': "instagram40.p.rapidapi.com"
+                }
+
+                resp = sess.get(url, params=proxy_params, headers=headers, allow_redirects=False)
+                if resp.status_code == 403:
+                    raise ConnectionException(resp.text)
+
+            else:
+                resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))

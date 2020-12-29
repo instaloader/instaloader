@@ -373,6 +373,7 @@ def main():
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
                              'cron job.')
+    g_misc.add_argument('--rapidapi-key', metavar='SECRET_KEY', help='RapidAPI key for https://rapidapi.com/restyler/api/instagram40 proxy balancer.')                         
     g_misc.add_argument('-h', '--help', action='help', help='Show this help message and exit.')
     g_misc.add_argument('--version', action='version', help='Show version number and exit.',
                         version=__version__)
@@ -424,7 +425,8 @@ def main():
                              max_connection_attempts=args.max_connection_attempts,
                              request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
-                             check_resume_bbd=not args.use_aged_resume_files)
+                             check_resume_bbd=not args.use_aged_resume_files,
+                             rapidapi_key=args.rapidapi_key)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
