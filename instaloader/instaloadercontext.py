@@ -54,7 +54,8 @@ class InstaloaderContext:
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: Optional[float] = None,
-                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None, rapidapi_key: Optional[str] = None):
+                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None, 
+                 rapidapi_key: Optional[str] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -321,9 +322,9 @@ class InstaloaderContext:
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
 
-            if (self.rapidapi_key):
+            if self.rapidapi_key:
                 url = "https://instagram40.p.rapidapi.com/proxy"
-                proxy_params = { 'url': 'https://{0}/{1}'.format(host, path) + '?' + urllib.parse.urlencode(params)}
+                proxy_params = {'url': 'https://{0}/{1}'.format(host, path) + '?' + urllib.parse.urlencode(params)}
                 headers = {
                     'x-rapidapi-key': self.rapidapi_key,
                     'x-rapidapi-host': "instagram40.p.rapidapi.com"
