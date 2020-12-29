@@ -54,7 +54,7 @@ class InstaloaderContext:
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: Optional[float] = None,
-                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None, 
+                 rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  rapidapi_key: Optional[str] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
