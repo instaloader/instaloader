@@ -373,7 +373,7 @@ def main():
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
                              'cron job.')
-    g_misc.add_argument('--rapidapi-key', metavar='SECRET_KEY', 
+    g_misc.add_argument('--rapidapi-key', metavar='SECRET_KEY',
                         help='RapidAPI key for https://rapidapi.com/restyler/api/instagram40 '
                              'proxy balancer. Should be used without --login and for public accounts downloading only.')
     g_misc.add_argument('-h', '--help', action='help', help='Show this help message and exit.')
