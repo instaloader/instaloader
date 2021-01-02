@@ -1,7 +1,8 @@
 
 
 <!--
-Please describe:
+Thanks for your willingness to contribute to Instaloader! Please briefly
+describe
 
 - A motivation for this change, e.g.
   - Fixes # .

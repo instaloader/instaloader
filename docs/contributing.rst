@@ -11,11 +11,19 @@ Instaloader's development is organized on
 `GitHub <https://github.com/instaloader/instaloader>`__, where Issues and Pull
 Requests are discussed.
 
+Contributing to an open source project is an unmatchable opportunity to improve
+and manifest programming skills. For issues that are good starting points to get
+involved in Instaloader development, as they do not require deep insight into
+Instaloader's code base, have a look at our
+`Issues labelled 'good first issue' <https://github.com/instaloader/instaloader/contribute>`__.
+
+This document covers several ways of how you can contribute back to Instaloader.
+
 Answering Questions
 -------------------
 
 The easiest way to help out is to answer questions. If you are interested in
-answering questions regarding Instaloader, good places to start are
+answering questions regarding Instaloader, good places to begin are
 
 - `Questions tagged 'instaloader' on Stack Overflow <https://stackoverflow.com/questions/tagged/instaloader>`__,
 - `Instaloader Issues labeled 'question' <https://github.com/instaloader/instaloader/issues?q=is%3Aissue+is%3Aopen+label%3Aquestion>`__.
@@ -81,8 +89,8 @@ Improvements of the Instaloader source or its documentation can be proposed as a
      make -C docs html
 
 - Feel free to create an issue to make sure someone from the Instaloader team
-  agrees that the change might be an improvement, and is happy with your basic
-  proposal, before working on a pull request.
+  agrees that the change might be an improvement, or if you want to discuss
+  your basic proposal, before working on a pull request.
 
 Proposing Features
 ------------------
