@@ -524,11 +524,15 @@ class Instaloader:
         self.context.two_factor_login(two_factor_code)
 
     @staticmethod
-    def __prepare_filename(filename_template: str, url: str) -> str:
+    def __prepare_filename(filename_template: str, url: Callable[[], str]) -> str:
         """Replace filename token inside filename_template with url's filename and assure the directories exist.
 
         .. versionadded:: 4.6"""
-        filename = filename_template.replace("{filename}", os.path.splitext(os.path.basename(urlparse(url).path))[0])
+        if "{filename}" in filename_template:
+            filename = filename_template.replace("{filename}",
+                                                 os.path.splitext(os.path.basename(urlparse(url()).path))[0])
+        else:
+            filename = filename_template
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         return filename
 
@@ -549,7 +553,7 @@ class Instaloader:
 
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(post, target=target))
-        filename = self.__prepare_filename(filename_template, post.url)
+        filename = self.__prepare_filename(filename_template, lambda: post.url)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
@@ -563,7 +567,8 @@ class Instaloader:
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
                             suffix = ''
-                        filename = self.__prepare_filename(filename_template, sidecar_node.display_url)
+                        # pylint:disable=cell-var-from-loop
+                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
@@ -571,7 +576,8 @@ class Instaloader:
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
                             suffix = ''
-                        filename = self.__prepare_filename(filename_template, sidecar_node.video_url)
+                        # pylint:disable=cell-var-from-loop
+                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
                         # Download sidecar video if desired
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
@@ -690,13 +696,13 @@ class Instaloader:
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
-        filename = self.__prepare_filename(filename_template, item.url)
+        filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
             url = item.url
             downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
         if item.is_video and self.download_videos is True:
-            filename = self.__prepare_filename(filename_template, str(item.video_url))
+            filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
