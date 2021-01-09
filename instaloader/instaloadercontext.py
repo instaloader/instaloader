@@ -25,10 +25,9 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()
-    if request_timeout is not None:
-        # Override default timeout behavior.
-        # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-        new.request = partial(new.request, timeout=request_timeout) # type: ignore
+    # Override default timeout behavior.
+    # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+    new.request = partial(new.request, timeout=request_timeout) # type: ignore
     return new
 
 
@@ -53,7 +52,7 @@ class InstaloaderContext:
     """
 
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
-                 max_connection_attempts: int = 3, request_timeout: Optional[float] = None,
+                 max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
@@ -161,10 +160,9 @@ class InstaloaderContext:
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header(empty_session_only=True))
-        if self.request_timeout is not None:
-            # Override default timeout behavior.
-            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
+        # Override default timeout behavior.
+        # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+        session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         return session
 
     def save_session_to_file(self, sessionfile):
@@ -177,10 +175,9 @@ class InstaloaderContext:
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
-        if self.request_timeout is not None:
-            # Override default timeout behavior.
-            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
+        # Override default timeout behavior.
+        # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+        session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         self._session = session
         self.username = username
 
@@ -206,10 +203,9 @@ class InstaloaderContext:
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header())
-        if self.request_timeout is not None:
-            # Override default timeout behavior.
-            # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-            session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
+        # Override default timeout behavior.
+        # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
+        session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         session.get('https://www.instagram.com/web/__mid/')
         csrf_token = session.cookies.get_dict()['csrftoken']
         session.headers.update({'X-CSRFToken': csrf_token})
@@ -473,7 +469,7 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
-            tempsession.headers['User-Agent'] = 'Instagram 123.1.0.26.115 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
+            tempsession.headers['User-Agent'] = 'Instagram 146.0.0.27.125 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
                                                 'scale=2.00; 1656x3584; 190542906)'
             for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:
                 tempsession.headers.pop(header, None)

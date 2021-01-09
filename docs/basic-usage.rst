@@ -171,6 +171,9 @@ dirname pattern. The following tokens are defined for usage with
 - ``{mediaid}``
    Integer representation of shortcode.
 
+- ``{filename}``
+   Instagram's internal filename.
+
 - ``{date_utc}`` (same as ``{date}``)
    Creation time in UTC timezone.
    `strftime()-style formatting options <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior>`__

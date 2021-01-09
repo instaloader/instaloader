@@ -267,6 +267,8 @@ def main():
                         help="Do not download regular posts.")
     g_prof.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
+    g_post.add_argument('--slide', action='store',
+                        help='Set what image/interval of a sidecar you want to download.')
     g_post.add_argument('--no-pictures', action='store_true',
                         help='Do not download post pictures. Cannot be used together with --fast-update. '
                              'Implies --no-video-thumbnails, does not imply --no-videos.')
@@ -365,8 +367,8 @@ def main():
                             'connection fails, it can be manually skipped by hitting CTRL+C. Set this to 0 to retry '
                             'infinitely.')
     g_how.add_argument('--commit-mode', action='store_true', help=SUPPRESS)
-    g_how.add_argument('--request-timeout', metavar='N', type=float,
-                       help='seconds to wait before timing out a connection request')
+    g_how.add_argument('--request-timeout', metavar='N', type=float, default=300.0,
+                       help='Seconds to wait before timing out a connection request. Defaults to 300.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -424,7 +426,8 @@ def main():
                              max_connection_attempts=args.max_connection_attempts,
                              request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
-                             check_resume_bbd=not args.use_aged_resume_files)
+                             check_resume_bbd=not args.use_aged_resume_files,
+                             slide=args.slide)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
