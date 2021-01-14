@@ -121,7 +121,9 @@ class Post:
     @property
     def title(self) -> Optional[str]:
         """Title of post"""
-        return self._full_metadata_dict.get("title", None)
+        if "title" in self._full_metadata_dict:
+            return self._full_metadata_dict["title"]
+        return None
 
     @property
     def shortcode(self) -> str:
