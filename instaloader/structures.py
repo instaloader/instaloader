@@ -119,6 +119,11 @@ class Post:
         return node
 
     @property
+    def title(self) -> Optional[str]:
+        """Title of post"""
+        return self._full_metadata_dict.get("title", None)
+
+    @property
     def shortcode(self) -> str:
         """Media shortcode. URL of the post is instagram.com/p/<shortcode>/."""
         return self._node['shortcode'] if 'shortcode' in self._node else self._node['code']
