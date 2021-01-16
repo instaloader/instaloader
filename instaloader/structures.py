@@ -131,9 +131,10 @@ class Post:
     @property
     def title(self) -> Optional[str]:
         """Title of post"""
-        if "title" in self._full_metadata_dict:
-            return self._full_metadata_dict["title"]
-        return None
+        try:
+            return self._field('title')
+        except KeyError:
+            return None
 
     def __repr__(self):
         return '<Post {}>'.format(self.shortcode)
