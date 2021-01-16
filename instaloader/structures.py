@@ -128,6 +128,13 @@ class Post:
         """The mediaid is a decimal representation of the media shortcode."""
         return int(self._node['id'])
 
+    @property
+    def title(self) -> Optional[str]:
+        """Title of post"""
+        if "title" in self._full_metadata_dict:
+            return self._full_metadata_dict["title"]
+        return None
+
     def __repr__(self):
         return '<Post {}>'.format(self.shortcode)
 
