@@ -141,11 +141,16 @@ class Post:
 
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
-            pic_json = self._context.graphql_query(
-                '2b0673e0dc4580674a88d426fe00ea90',
-                {'shortcode': self.shortcode}
-            )
-            self._full_metadata_dict = pic_json['data']['shortcode_media']
+            if self._context.is_logged_in:
+                pic_json = self._context.graphql_query(
+                    '2b0673e0dc4580674a88d426fe00ea90',
+                    {'shortcode': self.shortcode}
+                )
+                self._full_metadata_dict = pic_json['data']['shortcode_media']
+            else:
+                # if not logged in, above graphql query is responded with a redirect to login page
+                pic_json = self._context.get_json("p/{0}/".format(self.shortcode), params={})
+                self._full_metadata_dict = pic_json['entry_data']['PostPage'][0]['graphql']['shortcode_media']
             if self._full_metadata_dict is None:
                 raise BadResponseException("Fetching Post metadata failed.")
             if self.shortcode != self._full_metadata_dict['shortcode']:
@@ -449,8 +454,16 @@ class Post:
             # Avoid doing additional requests if there are no comments
             return
 
-        comment_edges = self._field('edge_media_to_comment', 'edges')
-        answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
+        try:
+            # this seems to be the structure for logged-in accesses
+            comment_edges = self._field('edge_media_to_comment', 'edges')
+            answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0)
+                                 for edge in comment_edges])
+        except KeyError:
+            # ... and this for anonymous accesses
+            comment_edges = self._field('edge_media_to_parent_comment', 'edges')
+            answers_count = sum([edge['node']['edge_threaded_comments']['count']
+                                 for edge in comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
