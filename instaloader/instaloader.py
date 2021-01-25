@@ -819,12 +819,9 @@ class Instaloader:
                 check_bbd=self.check_resume_bbd,
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
-            
             #Initialise a variable Skippy to 0
             skippy=0
-            
             #Break only if the actual fetched items, viz. number-skippy, is greater than max_count 
-            
             for number, post in enumerate(posts, start=start_index + 1):
                 if max_count is not None and number - skippy > max_count:
                     break
@@ -838,7 +835,8 @@ class Instaloader:
                     try:
                         if not post_filter(post):
                             self.context.log("{} skipped".format(post))
-                            skippy+=1    #If skipped, increase the count of skippy
+                            #If skipped, increase the count of skippy
+                            skippy+=1
                             continue
                     except (InstaloaderException, KeyError, TypeError) as err:
                         self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
