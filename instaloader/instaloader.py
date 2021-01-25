@@ -14,7 +14,6 @@ from hashlib import md5
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
-from urllib.parse import urlparse
 
 import requests
 import urllib3  # type: ignore
@@ -23,7 +22,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
 from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, PostSidecarNode)
+                         load_structure_from_file, save_structure_to_file)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -102,8 +101,6 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode)):
-            return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
         return super().get_value(key, args, kwargs)
@@ -160,7 +157,6 @@ class Instaloader:
     :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
     :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
     :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
-    :param slide: :option:`--slide`
 
     .. attribute:: context
 
@@ -183,11 +179,10 @@ class Instaloader:
                  post_metadata_txt_pattern: str = None,
                  storyitem_metadata_txt_pattern: str = None,
                  max_connection_attempts: int = 3,
-                 request_timeout: float = 300.0,
+                 request_timeout: Optional[float] = None,
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
-                 check_resume_bbd: bool = True,
-                 slide: Optional[str] = None):
+                 check_resume_bbd: bool = True):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller)
@@ -208,31 +203,6 @@ class Instaloader:
             else storyitem_metadata_txt_pattern
         self.resume_prefix = resume_prefix
         self.check_resume_bbd = check_resume_bbd
-
-        self.slide = slide or ""
-        self.slide_start = 0
-        self.slide_end = -1
-        if self.slide != "":
-            splitted = self.slide.split('-')
-            if len(splitted) == 1:
-                if splitted[0] == 'last':
-                    # download only last image of a sidecar
-                    self.slide_start = -1
-                else:
-                    if int(splitted[0]) > 0:
-                        self.slide_start = self.slide_end = int(splitted[0])-1
-                    else:
-                        raise InvalidArgumentException("--slide parameter must be greater than 0.")
-            elif len(splitted) == 2:
-                if splitted[1] == 'last':
-                    self.slide_start = int(splitted[0])-1
-                elif 0 < int(splitted[0]) < int(splitted[1]):
-                    self.slide_start = int(splitted[0])-1
-                    self.slide_end = int(splitted[1])-1
-                else:
-                    raise InvalidArgumentException("Invalid data for --slide parameter.")
-            else:
-                raise InvalidArgumentException("Invalid data for --slide parameter.")
 
     @contextmanager
     def anonymous_copy(self):
@@ -255,8 +225,7 @@ class Instaloader:
             max_connection_attempts=self.context.max_connection_attempts,
             request_timeout=self.context.request_timeout,
             resume_prefix=self.resume_prefix,
-            check_resume_bbd=self.check_resume_bbd,
-            slide=self.slide)
+            check_resume_bbd=self.check_resume_bbd)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -307,7 +276,8 @@ class Instaloader:
                     'created_at': int(comment.created_at_utc.replace(tzinfo=timezone.utc).timestamp()),
                     'text': comment.text,
                     'owner': comment.owner._asdict(),
-                    'likes_count': comment.likes_count}
+                    'likes_count': comment.likes_count,
+                    'post_like_count':post.likes}
 
         def _postcomment_asdict(comment):
             return {**_postcommentanswer_asdict(comment),
@@ -523,20 +493,7 @@ class Instaloader:
         .. versionadded:: 4.2"""
         self.context.two_factor_login(two_factor_code)
 
-    @staticmethod
-    def __prepare_filename(filename_template: str, url: Callable[[], str]) -> str:
-        """Replace filename token inside filename_template with url's filename and assure the directories exist.
-
-        .. versionadded:: 4.6"""
-        if "{filename}" in filename_template:
-            filename = filename_template.replace("{filename}",
-                                                 os.path.splitext(os.path.basename(urlparse(url()).path))[0])
-        else:
-            filename = filename_template
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        return filename
-
-    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode], target: Optional[Union[str, Path]] = None):
+    def format_filename(self, item: Union[Post, StoryItem], target: Optional[Union[str, Path]] = None):
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
@@ -552,35 +509,22 @@ class Instaloader:
         """
 
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
-        filename_template = os.path.join(dirname, self.format_filename(post, target=target))
-        filename = self.__prepare_filename(filename_template, lambda: post.url)
+        filename = os.path.join(dirname, self.format_filename(post, target=target))
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
-                for edge_number, sidecar_node in enumerate(
-                        post.get_sidecar_nodes(self.slide_start, self.slide_end),
-                        start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
-                ):
+                for edge_number, sidecar_node in enumerate(post.get_sidecar_nodes(), start=1):
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                        suffix = str(edge_number)
-                        if '{filename}' in self.filename_pattern:
-                            suffix = ''
-                        # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
                     if sidecar_node.is_video and self.download_videos:
-                        suffix = str(edge_number)
-                        if '{filename}' in self.filename_pattern:
-                            suffix = ''
-                        # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
                         # Download sidecar video if desired
                         downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
+                                                        mtime=post.date_local, filename_suffix=str(edge_number))
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
@@ -695,14 +639,13 @@ class Instaloader:
 
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
-        filename_template = os.path.join(dirname, self.format_filename(item, target=target))
-        filename = self.__prepare_filename(filename_template, lambda: item.url)
+        filename = os.path.join(dirname, self.format_filename(item, target=target))
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
             url = item.url
             downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
         if item.is_video and self.download_videos is True:
-            filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
             downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
@@ -819,11 +762,18 @@ class Instaloader:
                 check_bbd=self.check_resume_bbd,
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
+            
+            #Initialise a variable Skippy to 0
+            skippy=0
             for number, post in enumerate(posts, start=start_index + 1):
-                if max_count is not None and number > max_count:
+                
+                #Break only if the actual fetched items, viz. number-skippy, is greater than max_count 
+                
+                if max_count is not None and number - skippy > max_count:
+                    #print("Printing: ",number)
                     break
                 if displayed_count is not None:
-                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,
+                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number-skippy, displayed_count,
                                                                    w=len(str(displayed_count))),
                                      end="", flush=True)
                 else:
@@ -831,10 +781,13 @@ class Instaloader:
                 if post_filter is not None:
                     try:
                         if not post_filter(post):
-                            self.context.log("{} skipped".format(post))
+                            self.context.log("{} skipped".format(post)
+                            skippy+=1    #If skipped, increase the count of skippy
+                            #print("Increased skippy to: ",skippy)
                             continue
                     except (InstaloaderException, KeyError, TypeError) as err:
                         self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
+                        
                         continue
                 with self.context.error_catcher("Download {} of {}".format(post, target)):
                     # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
@@ -1187,13 +1140,10 @@ class Instaloader:
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
-                if tagged or igtv or highlights or posts:
-                    if (not self.context.is_logged_in and
-                            profile.is_private):
+                if profile.is_private and (tagged or igtv or highlights or posts):
+                    if not self.context.is_logged_in:
                         raise LoginRequiredException("--login=USERNAME required.")
-                    if (self.context.username != profile.username and
-                            profile.is_private and
-                            not profile.followed_by_viewer):
+                    if not profile.followed_by_viewer and self.context.username != profile.username:
                         raise PrivateProfileNotFollowedException("Private but not followed.")
 
                 # Download tagged, if requested
