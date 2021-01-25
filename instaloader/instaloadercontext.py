@@ -33,7 +33,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
 
 def default_user_agent() -> str:
     return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-           '(KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
+           '(KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36'
 
 
 class InstaloaderContext:
@@ -288,7 +288,7 @@ class InstaloaderContext:
     def do_sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
         if self.sleep:
-            time.sleep(min(random.expovariate(0.7), 5.0))
+            time.sleep(min(random.expovariate(0.6), 15.0))
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:
