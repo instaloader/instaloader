@@ -473,7 +473,7 @@ class Instaloader:
     def set_proxies(self, proxies: MutableMapping[str, str]) -> None:
         self.proxies = proxies
 
-    def get_proxies(self) -> Optional[MutableMapping[str, str]]:
+    def get_proxies(self) -> MutableMapping[str, str]:
         return self.proxies
 
     @_requires_login
