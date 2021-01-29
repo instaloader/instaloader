@@ -473,7 +473,7 @@ class Instaloader:
     def set_proxies(self, proxies: MutableMapping[str, str]) -> None:
         """Set a HTTP(S)/Socks5 proxy in case of Instagram has limited/blocked your IP address.
 
-        :param proxies: a dict of proxies in following format:
+        :param proxies: A :class:`MutableMapping` dict of proxies in following format:
          {'http': 'socks://proxy.host:port', 'https': 'https://proxy.host:port'}
          you can use following protocols for each field: http, https, socks5.
         """
