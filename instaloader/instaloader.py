@@ -13,7 +13,7 @@ from functools import wraps
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
+from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast, MutableMapping
 from urllib.parse import urlparse
 
 import requests
@@ -187,10 +187,14 @@ class Instaloader:
                  rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
-                 slide: Optional[str] = None):
+                 slide: Optional[str] = None,
+                 proxies=None):
 
+        if proxies is None:
+            proxies = {'http': None, 'https': None}
+        self.proxies = proxies
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
-                                          request_timeout, rate_controller)
+                                          request_timeout, rate_controller, proxies)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -256,7 +260,8 @@ class Instaloader:
             request_timeout=self.context.request_timeout,
             resume_prefix=self.resume_prefix,
             check_resume_bbd=self.check_resume_bbd,
-            slide=self.slide)
+            slide=self.slide,
+            proxies=self.proxies)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -464,6 +469,12 @@ class Instaloader:
 
         .. versionadded:: 4.4"""
         self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
+
+    def set_proxies(self, proxies: MutableMapping[str, str]) -> None:
+        self.proxies = proxies
+
+    def get_proxies(self) -> Optional[MutableMapping[str, str]]:
+        return self.proxies
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
