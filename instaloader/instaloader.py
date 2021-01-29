@@ -471,9 +471,16 @@ class Instaloader:
         self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
     def set_proxies(self, proxies: MutableMapping[str, str]) -> None:
+        """Set a HTTP(S)/Socks5 proxy in case of Instagram has limited/blocked your IP address
+
+        :param proxies: a dict of proxies in following format {'http': 'socks://proxy.host:port', 'https': 'https://proxy.host:port'} you can use following protocols for each field: http, https, socks5
+        .. versionadded:: 4.7"""
         self.proxies = proxies
 
-    def get_proxies(self) -> MutableMapping[str, str]:
+    def get_proxies(self) -> dict:
+        """Get current using HTTP(S)/Socks5 proxy
+
+        .. versionadded:: 4.7"""
         return self.proxies
 
     @_requires_login
