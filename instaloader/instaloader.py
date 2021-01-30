@@ -551,6 +551,27 @@ class Instaloader:
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
+        def _already_downloaded(path: str) -> bool:
+            if not os.path.isfile(path):
+                return False
+            else:
+                self.context.log(path + ' exists', end=' ', flush=True)
+                return True
+
+        def _all_already_downloaded(path_base, is_videos_enumerated) -> bool:
+            if '{filename}' in self.filename_pattern:
+                # full URL needed to evaluate actual filename, cannot determine at
+                # this point if all sidecar nodes were already downloaded.
+                return False
+            for idx, is_video in is_videos_enumerated:
+                if self.download_pictures and (not is_video or self.download_video_thumbnails):
+                    if not _already_downloaded("{0}_{1}.jpg".format(path_base, idx)):
+                        return False
+                if is_video and self.download_videos:
+                    if not _already_downloaded("{0}_{1}.mp4".format(path_base, idx)):
+                        return False
+            return True
+
         dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(post, target=target))
         filename = self.__prepare_filename(filename_template, lambda: post.url)
@@ -559,37 +580,45 @@ class Instaloader:
         downloaded = True
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
-                for edge_number, sidecar_node in enumerate(
-                        post.get_sidecar_nodes(self.slide_start, self.slide_end),
-                        start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
+                if not _all_already_downloaded(
+                        filename_template, enumerate(
+                            (post.get_is_videos()[i]
+                             for i in range(self.slide_start % post.mediacount, self.slide_end % post.mediacount + 1)),
+                            start=self.slide_start % post.mediacount + 1
+                        )
                 ):
-                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                        suffix = str(edge_number)
+                    for edge_number, sidecar_node in enumerate(
+                            post.get_sidecar_nodes(self.slide_start, self.slide_end),
+                            start=self.slide_start % post.mediacount + 1
+                    ):
+                        suffix = str(edge_number)  # type: Optional[str]
                         if '{filename}' in self.filename_pattern:
-                            suffix = ''
-                        # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
-                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
-                    if sidecar_node.is_video and self.download_videos:
-                        suffix = str(edge_number)
-                        if '{filename}' in self.filename_pattern:
-                            suffix = ''
-                        # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
-                        # Download sidecar video if desired
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
+                            suffix = None
+                        if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                            # pylint:disable=cell-var-from-loop
+                            filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
+                            # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                                                            mtime=post.date_local, filename_suffix=suffix)
+                        if sidecar_node.is_video and self.download_videos:
+                            # pylint:disable=cell-var-from-loop
+                            filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
+                            # Download sidecar video if desired
+                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                                                            mtime=post.date_local, filename_suffix=suffix)
+                else:
+                    downloaded = False
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
-                downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+                downloaded = (not _already_downloaded(filename + ".jpg") and
+                              self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
         elif post.typename == 'GraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 with self.context.error_catcher("Video thumbnail of {}".format(post)):
-                    downloaded = self.download_pic(filename=filename, url=post.url, mtime=post.date_local)
+                    downloaded = (not _already_downloaded(filename + ".jpg") and
+                                  self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
@@ -600,7 +629,8 @@ class Instaloader:
 
         # Download video if desired
         if post.is_video and self.download_videos:
-            downloaded &= self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local)
+            downloaded &= (not _already_downloaded(filename + ".mp4") and
+                           self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local))
 
         # Download geotags if desired
         if self.download_geotags and post.location:
@@ -693,17 +723,25 @@ class Instaloader:
         :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
+        def _already_downloaded(path: str) -> bool:
+            if not os.path.isfile(path):
+                return False
+            else:
+                self.context.log(path + ' exists', end=' ', flush=True)
+                return True
+
         date_local = item.date_local
         dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
-            url = item.url
-            downloaded = self.download_pic(filename=filename, url=url, mtime=date_local)
+            downloaded = (not _already_downloaded(filename + ".jpg") and
+                          self.download_pic(filename=filename, url=item.url, mtime=date_local))
         if item.is_video and self.download_videos is True:
             filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
-            downloaded |= self.download_pic(filename=filename, url=item.video_url, mtime=date_local)
+            downloaded |= (not _already_downloaded(filename + ".mp4") and
+                           self.download_pic(filename=filename, url=item.video_url, mtime=date_local))
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
         if metadata_string:
