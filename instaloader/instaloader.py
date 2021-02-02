@@ -13,7 +13,7 @@ from functools import wraps
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast, MutableMapping
+from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 import requests
