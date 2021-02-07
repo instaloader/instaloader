@@ -153,8 +153,7 @@ class Post:
         if not self._full_metadata_dict:
             pic_json = self._context.graphql_query(
                 'a9441f24ac73000fa17fe6e6da11d59d',
-                {'shortcode': self.shortcode},
-                "https://www.instagram.com/p/(0)/".format(self.shortcode)
+                {'shortcode': self.shortcode}
             )
             self._full_metadata_dict = pic_json['data']['shortcode_media']
             self._node['is_loaded_graphsidecar'] = '1'
