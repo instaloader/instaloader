@@ -577,7 +577,7 @@ class Instaloader:
                 if post.has_sidecar_video:
                     postloaded = self.load_metadata_json(filename)
                     if postloaded is Post:
-                        post = postloaded
+                        post = cast(Post, postloaded)
                 for edge_number, sidecar_node in enumerate(
                         post.get_sidecar_nodes(self.slide_start, self.slide_end),
                         start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
