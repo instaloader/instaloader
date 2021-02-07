@@ -289,7 +289,7 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
-    def load_metadata_json(self, filename: str) -> JsonExportable:
+    def load_metadata_json(self, filename: str) -> Optional[JsonExportable]:
         """Load metadata JSON file of a structure."""
         fn = filename + '.json.xz'
         if Path(fn).is_file():
@@ -576,7 +576,7 @@ class Instaloader:
             if self.download_pictures or self.download_videos:
                 if post.has_sidecar_video:
                     postloaded = self.load_metadata_json(filename)
-                    if postloaded is not None:
+                    if postloaded is Post:
                         post = postloaded
                 for edge_number, sidecar_node in enumerate(
                         post.get_sidecar_nodes(self.slide_start, self.slide_end),
