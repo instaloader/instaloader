@@ -289,6 +289,21 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
+    def load_metadata_json(self, filename: str) -> JsonExportable:
+        """Load metadata JSON file of a structure."""
+        fn = filename + '.json.xz'
+        if Path(fn).is_file():
+            structure = load_structure_from_file(self.context, fn)
+            if isinstance(structure, (Post, StoryItem)):
+                return structure
+        else:
+            fn = filename + '.json'
+            if Path(fn).is_file():
+                structure = load_structure_from_file(self.context, fn)
+                if isinstance(structure, (Post, StoryItem)):
+                    return structure
+        return None
+
     def save_metadata_json(self, filename: str, structure: JsonExportable) -> None:
         """Saves metadata JSON file of a structure."""
         if self.compress_json:
@@ -559,6 +574,10 @@ class Instaloader:
         downloaded = True
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
+                if post.has_sidecar_video:
+                    postloaded = self.load_metadata_json(filename)
+                    if postloaded is not None:
+                        post = postloaded
                 for edge_number, sidecar_node in enumerate(
                         post.get_sidecar_nodes(self.slide_start, self.slide_end),
                         start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
@@ -568,18 +587,18 @@ class Instaloader:
                         if '{filename}' in self.filename_pattern:
                             suffix = ''
                         # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
+                        filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                        downloaded &= self.download_pic(filename=filename2, url=sidecar_node.display_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
                     if sidecar_node.is_video and self.download_videos:
                         suffix = str(edge_number)
                         if '{filename}' in self.filename_pattern:
                             suffix = ''
                         # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
+                        filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
                         # Download sidecar video if desired
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                        downloaded &= self.download_pic(filename=filename2, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
         elif post.typename == 'GraphImage':
             # Download picture

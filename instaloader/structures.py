@@ -69,6 +69,8 @@ class Post:
         self._node = node
         self._owner_profile = owner_profile
         self._full_metadata_dict = None  # type: Optional[Dict[str, Any]]
+        if self._node is not None and 'is_loaded_graphsidecar' in self._node:
+            self._full_metadata_dict = self._node
         self._location = None            # type: Optional[PostLocation]
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
@@ -150,10 +152,12 @@ class Post:
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
             pic_json = self._context.graphql_query(
-                '2b0673e0dc4580674a88d426fe00ea90',
-                {'shortcode': self.shortcode}
+                'a9441f24ac73000fa17fe6e6da11d59d',
+                {'shortcode': self.shortcode},
+                "https://www.instagram.com/p/(0)/".format(self.shortcode)
             )
             self._full_metadata_dict = pic_json['data']['shortcode_media']
+            self._node['is_loaded_graphsidecar'] = '1'
             if self._full_metadata_dict is None:
                 raise BadResponseException("Fetching Post metadata failed.")
             if self.shortcode != self._full_metadata_dict['shortcode']:
@@ -271,6 +275,19 @@ class Post:
             edges = self._field('edge_sidecar_to_children', 'edges')
             return len(edges)
         return 1
+
+    @property
+    def has_sidecar_video(self) -> bool:
+        """
+        If it is a GraphSidecar with at least one video.
+
+        .. versionadded:: 4.7
+        """
+        if self.typename == 'GraphSidecar':
+            edges = self._field('edge_sidecar_to_children', 'edges')
+            if any(edge['node']['is_video'] for edge in edges):
+                return True
+        return False
 
     def get_sidecar_nodes(self, start=0, end=-1) -> Iterator[PostSidecarNode]:
         """
@@ -843,7 +860,7 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             self._context,
-            '472f257a40c653c64c666ce877d59d2b',
+            '003056d32c2554def87228bc3fd9668a',
             lambda d: d['data']['user']['edge_owner_to_timeline_media'],
             lambda n: Post(self._context, n, self),
             {'id': self.userid},
