@@ -272,17 +272,6 @@ class Post:
             return len(edges)
         return 1
 
-    def get_is_videos(self) -> List[bool]:
-        """
-        Return a list containing the ``is_video`` property for each media in the post.
-
-        .. versionadded:: 4.7
-        """
-        if self.typename == 'GraphSidecar':
-            edges = self._field('edge_sidecar_to_children', 'edges')
-            return [edge['node']['is_video'] for edge in edges]
-        return [self.is_video]
-
     def get_sidecar_nodes(self, start=0, end=-1) -> Iterator[PostSidecarNode]:
         """
         Sidecar nodes of a Post with typename==GraphSidecar.
@@ -292,13 +281,13 @@ class Post:
         """
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
+            if any(edge['node']['is_video'] for edge in edges):
+                # video_url is only present in full metadata, issue #558.
+                edges = self._full_metadata['edge_sidecar_to_children']['edges']
             if end < 0:
                 end = len(edges)-1
             if start < 0:
                 start = len(edges)-1
-            if any(self.get_is_videos()[start:(end+1)]):
-                # video_url is only present in full metadata, issue #558.
-                edges = self._full_metadata['edge_sidecar_to_children']['edges']
             for idx, edge in enumerate(edges):
                 if start <= idx <= end:
                     node = edge['node']
