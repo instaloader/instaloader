@@ -161,6 +161,7 @@ class Instaloader:
     :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
     :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
     :param slide: :option:`--slide`
+    :param proxy: A proxy with protocol: e.g. socks5://proxy.host:port or https://proxy.host:port
 
     .. attribute:: context
 
@@ -188,13 +189,11 @@ class Instaloader:
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
                  slide: Optional[str] = None,
-                 proxies=None):
+                 proxy: Optional[str] = None):
 
-        if proxies is None:
-            proxies = {'http': None, 'https': None}
-        self.proxies = proxies
+        self.proxies = {'https': proxy}
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
-                                          request_timeout, rate_controller, proxies)
+                                          request_timeout, rate_controller, proxy)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -261,7 +260,7 @@ class Instaloader:
             resume_prefix=self.resume_prefix,
             check_resume_bbd=self.check_resume_bbd,
             slide=self.slide,
-            proxies=self.proxies)
+            proxy=self.proxies['https'])
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -470,18 +469,21 @@ class Instaloader:
         .. versionadded:: 4.4"""
         self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
-    # def set_proxies(self, proxies: MutableMapping[str, str]) -> None:
-    #     """Set a HTTP(S)/Socks5 proxy in case of Instagram has limited/blocked your IP address.
-    #
-    #     :param proxies: A :class:`MutableMapping` dict of proxies in following format:
-    #      {'http': 'socks://proxy.host:port', 'https': 'https://proxy.host:port'}
-    #      you can use following protocols for each field: http, https, socks5.
-    #     """
-    #     self.proxies = proxies
-    #
-    # def get_proxies(self) -> dict:
-    #     """Get current using HTTP(S)/Socks5 proxy."""
-    #     return self.proxies
+    def set_proxies(self, proxy: str) -> None:
+        """Set a HTTP(S)/Socks5 proxy in case of Instagram has limited/blocked your IP address.
+
+        :param proxy: A proxy with protocol:
+         e.g. 'socks5://proxy.host:port' or 'https://proxy.host:port'
+         you can use following protocols: http, https, socks5.
+        """
+        self.proxies = {'https': proxy}
+        self.context = InstaloaderContext(self.context.sleep, self.context.quiet, self.context.user_agent,
+                                          self.context.max_connection_attempts, self.context.request_timeout,
+                                          self.context._rate_controller.__class__, proxy)
+
+    def get_proxies(self) -> Optional[str]:
+        """Get current using HTTP(S)/Socks5 proxy."""
+        return self.proxies['https']
 
     @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:

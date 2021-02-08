@@ -55,13 +55,11 @@ class InstaloaderContext:
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
-                 proxies=None):
+                 proxy: Optional[str] = None):
 
-        if proxies is None:
-            proxies = {'http': None, 'https': None}
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
-        self.proxies = proxies
+        self.proxies = {'https': proxy}
         self._session = self.get_anonymous_session()
         self.username = None
         self.sleep = sleep
