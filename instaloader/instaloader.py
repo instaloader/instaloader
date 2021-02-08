@@ -469,7 +469,7 @@ class Instaloader:
         .. versionadded:: 4.4"""
         self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
-    def set_proxies(self, proxy: str) -> None:
+    def set_proxy(self, proxy: str) -> None:
         """Set a HTTP(S)/Socks5 proxy in case of Instagram has limited/blocked your IP address.
 
         :param proxy: A proxy with protocol:
@@ -481,7 +481,7 @@ class Instaloader:
                                           self.context.max_connection_attempts, self.context.request_timeout,
                                           self.context.rate_controller.__class__, proxy)
 
-    def get_proxies(self) -> Optional[str]:
+    def get_proxy(self) -> Optional[str]:
         """Get current using HTTP(S)/Socks5 proxy."""
         return self.proxies['https']
 
