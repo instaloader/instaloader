@@ -534,6 +534,10 @@ class InstaloaderContext:
             self._root_rhx_gis = self.get_json('', {}).get('rhx_gis', '')
         return self._root_rhx_gis or None
 
+    @property
+    def rate_controller(self):
+        return self._rate_controller
+
 
 class RateController:
     """

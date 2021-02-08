@@ -479,7 +479,7 @@ class Instaloader:
         self.proxies = {'https': proxy}
         self.context = InstaloaderContext(self.context.sleep, self.context.quiet, self.context.user_agent,
                                           self.context.max_connection_attempts, self.context.request_timeout,
-                                          self.context._rate_controller.__class__, proxy)
+                                          self.context.rate_controller.__class__, proxy)
 
     def get_proxies(self) -> Optional[str]:
         """Get current using HTTP(S)/Socks5 proxy."""
