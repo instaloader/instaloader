@@ -606,25 +606,25 @@ class Instaloader:
                             start=self.slide_start % post.mediacount + 1
                         )
                 ):
-                for edge_number, sidecar_node in enumerate(
-                        post.get_sidecar_nodes(self.slide_start, self.slide_end),
+                    for edge_number, sidecar_node in enumerate(
+                            post.get_sidecar_nodes(self.slide_start, self.slide_end),
                             start=self.slide_start % post.mediacount + 1
-                ):
+                    ):
                         suffix = str(edge_number)  # type: Optional[str]
                         if '{filename}' in self.filename_pattern:
                             suffix = None
-                    if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                        # pylint:disable=cell-var-from-loop
-                        filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
-                        # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                        downloaded &= self.download_pic(filename=filename2, url=sidecar_node.display_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
-                    if sidecar_node.is_video and self.download_videos:
-                        # pylint:disable=cell-var-from-loop
-                        filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
-                        # Download sidecar video if desired
-                        downloaded &= self.download_pic(filename=filename2, url=sidecar_node.video_url,
-                                                        mtime=post.date_local, filename_suffix=suffix)
+                        if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
+                            # pylint:disable=cell-var-from-loop
+                            filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
+                            # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
+                            downloaded &= self.download_pic(filename=filename2, url=sidecar_node.display_url,
+                                                            mtime=post.date_local, filename_suffix=suffix)
+                        if sidecar_node.is_video and self.download_videos:
+                            # pylint:disable=cell-var-from-loop
+                            filename2 = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
+                            # Download sidecar video if desired
+                            downloaded &= self.download_pic(filename=filename2, url=sidecar_node.video_url,
+                                                            mtime=post.date_local, filename_suffix=suffix)
                 else:
                     downloaded = False
         elif post.typename == 'GraphImage':
