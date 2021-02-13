@@ -47,3 +47,5 @@ Exceptions
 
 
 .. autoexception:: TooManyRequestsException
+
+.. autoexception:: AbortDownloadException

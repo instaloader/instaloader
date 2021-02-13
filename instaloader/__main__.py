@@ -5,12 +5,12 @@ import datetime
 import os
 import re
 import sys
-from argparse import ArgumentParser, SUPPRESS
+from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from typing import List, Optional
 
-from . import (Instaloader, InstaloaderException, InvalidArgumentException, Post, Profile, ProfileNotExistsException,
-               StoryItem, __version__, load_structure_from_file, TwoFactorAuthRequiredException,
-               BadCredentialsException)
+from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
+               InvalidArgumentException, Post, Profile, ProfileNotExistsException, StoryItem,
+               TwoFactorAuthRequiredException, __version__, load_structure_from_file)
 from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
 
@@ -25,6 +25,14 @@ def usage_string():
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
+
+
+def http_status_code_list(code_list_str: str) -> List[int]:
+    codes = [int(s) for s in code_list_str.split(',')]
+    for code in codes:
+        if not 100 <= code <= 599:
+            raise ArgumentTypeError("Invalid HTTP status code: {}".format(code))
+    return codes
 
 
 def filterstr_to_filterfunc(filter_str: str, item_type: type):
@@ -213,6 +221,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                    fast_update=fast_update, post_filter=post_filter)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
+    except AbortDownloadException as exc:
+        print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
@@ -369,6 +379,9 @@ def main():
     g_how.add_argument('--commit-mode', action='store_true', help=SUPPRESS)
     g_how.add_argument('--request-timeout', metavar='N', type=float, default=300.0,
                        help='Seconds to wait before timing out a connection request. Defaults to 300.')
+    g_how.add_argument('--abort-on', type=http_status_code_list, metavar="STATUS_CODES",
+                       help='Comma-separated list of HTTP status codes that cause Instaloader to abort, bypassing all '
+                            'retry logic.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -427,7 +440,8 @@ def main():
                              request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
                              check_resume_bbd=not args.use_aged_resume_files,
-                             slide=args.slide)
+                             slide=args.slide,
+                             fatal_status_codes=args.abort_on)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

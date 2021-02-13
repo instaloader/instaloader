@@ -64,3 +64,15 @@ class QueryReturnedNotFoundException(ConnectionException):
 
 class TooManyRequestsException(ConnectionException):
     pass
+
+
+class AbortDownloadException(Exception):
+    """
+    Exception that is not catched in the error catchers inside the download loop and so aborts the
+    download loop.
+
+    This exception is not a subclass of ``InstaloaderException``.
+
+    .. versionadded:: 4.7
+    """
+    pass

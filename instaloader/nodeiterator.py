@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
-from .exceptions import InvalidArgumentException, QueryReturnedBadRequestException
+from .exceptions import AbortDownloadException, InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
 
 FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
@@ -211,7 +211,8 @@ def resumable_iteration(context: InstaloaderContext,
                         check_bbd: bool = True,
                         enabled: bool = True) -> Iterator[Tuple[bool, int]]:
     """
-    High-level context manager to handle a resumable iteration that can be interrupted with a KeyboardInterrupt.
+    High-level context manager to handle a resumable iteration that can be interrupted
+    with a :class:`KeyboardInterrupt` or an :class:`AbortDownloadException`.
 
     It can be used as follows to automatically load a previously-saved state into the iterator, save the iterator's
     state when interrupted, and delete the resume file upon completion::
@@ -239,6 +240,9 @@ def resumable_iteration(context: InstaloaderContext,
     :param format_path: Returns the path to the resume file for the given magic.
     :param check_bbd: Whether to check the best before date and reject an expired FrozenNodeIterator.
     :param enabled: Set to False to disable all functionality and simply execute the inner body.
+
+    .. versionchanged:: 4.7
+       Also interrupt on :class:`AbortDownloadException`.
     """
     if not enabled or not isinstance(iterator, NodeIterator):
         yield False, 0
@@ -262,7 +266,7 @@ def resumable_iteration(context: InstaloaderContext,
             context.error("Warning: Not resuming from {}: {}".format(resume_file_path, exc))
     try:
         yield is_resuming, start_index
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, AbortDownloadException):
         if os.path.dirname(resume_file_path):
             os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
         save(iterator.freeze(), resume_file_path)

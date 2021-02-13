@@ -255,6 +255,17 @@ How to Download
    .. versionchanged:: 4.6
       Enabled this option by default with a timeout of 300 seconds.
 
+.. option:: --abort-on STATUS_CODE_LIST
+
+   Comma-separated list of HTTP status codes that cause Instaloader to abort,
+   bypassing all retry logic.
+
+   For example, with ``--abort-on=302,400,429``, Instaloader will stop if a
+   request is responded with a 302 redirect, a Bad Request error, or a Too Many
+   Requests error.
+
+   .. versionadded:: 4.7
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
