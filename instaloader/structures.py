@@ -273,7 +273,7 @@ class Post:
         """
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
-            if any(edge['node']['is_video'] for edge in edges):
+            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
             if end < 0:
