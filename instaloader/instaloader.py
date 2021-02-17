@@ -565,7 +565,7 @@ class Instaloader:
                 ):
                     suffix = str(edge_number)
                     if '{filename}' in self.filename_pattern:
-                        suffix = ''
+                        suffix = None
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
                         # pylint:disable=cell-var-from-loop
                         sidecar_filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
