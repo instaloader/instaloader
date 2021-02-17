@@ -563,7 +563,7 @@ class Instaloader:
                         post.get_sidecar_nodes(self.slide_start, self.slide_end),
                         start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
                 ):
-                    suffix = str(edge_number)
+                    suffix: Optional[str] = str(edge_number)
                     if '{filename}' in self.filename_pattern:
                         suffix = None
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
