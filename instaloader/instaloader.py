@@ -563,23 +563,20 @@ class Instaloader:
                         post.get_sidecar_nodes(self.slide_start, self.slide_end),
                         start=post.mediacount if self.slide_start < 0 else self.slide_start + 1
                 ):
+                    suffix = str(edge_number)  # type: Optional[str]
+                    if '{filename}' in self.filename_pattern:
+                        suffix = None
                     if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
-                        suffix = str(edge_number)
-                        if '{filename}' in self.filename_pattern:
-                            suffix = ''
                         # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
+                        sidecar_filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
                         # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                        downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.display_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
                     if sidecar_node.is_video and self.download_videos:
-                        suffix = str(edge_number)
-                        if '{filename}' in self.filename_pattern:
-                            suffix = ''
                         # pylint:disable=cell-var-from-loop
-                        filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
+                        sidecar_filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
                         # Download sidecar video if desired
-                        downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                        downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.video_url,
                                                         mtime=post.date_local, filename_suffix=suffix)
         elif post.typename == 'GraphImage':
             # Download picture
