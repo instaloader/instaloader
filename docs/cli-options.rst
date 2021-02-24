@@ -220,11 +220,19 @@ How to Download
    used to save the information to resume an interrupted download.  The default
    prefix is ``iterator``.
 
-   Resuming an interrupted download is supported for most, but not all targets.
+   Resuming an interrupted download is supported for the following targets:
+    - Profile posts,
+    - Profile IGTV posts (:option:`--igtv`),
+    - Profile tagged posts (:option:`--tagged`),
+    - Saved posts (``:saved``).
+
+   This feature is enabled by default for targets where it is supported;
+   :option:`--resume-prefix` only changes the name of the iterator files.
+
+   To turn this feature off, use :option:`--no-resume`.
+
    JSON files with resume information are always compressed, regardless of
    :option:`--no-compress-json`.
-
-   This feature is turned off entirely with :option:`--no-resume`.
 
    .. versionadded:: 4.5
 
