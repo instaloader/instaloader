@@ -296,7 +296,7 @@ class Post:
                 end = len(edges)-1
             if start < 0:
                 start = len(edges)-1
-            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges):
+            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges[start:(end+1)]):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
             for idx, edge in enumerate(edges):
