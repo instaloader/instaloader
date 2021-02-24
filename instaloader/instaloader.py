@@ -599,15 +599,15 @@ class Instaloader:
                             suffix = None
                         if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
                             # pylint:disable=cell-var-from-loop
-                            filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
+                            sidecar_filename = self.__prepare_filename(filename_template, lambda: sidecar_node.display_url)
                             # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.display_url,
+                            downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.display_url,
                                                             mtime=post.date_local, filename_suffix=suffix)
                         if sidecar_node.is_video and self.download_videos:
                             # pylint:disable=cell-var-from-loop
-                            filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
+                            sidecar_filename = self.__prepare_filename(filename_template, lambda: sidecar_node.video_url)
                             # Download sidecar video if desired
-                            downloaded &= self.download_pic(filename=filename, url=sidecar_node.video_url,
+                            downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.video_url,
                                                             mtime=post.date_local, filename_suffix=suffix)
                 else:
                     downloaded = False

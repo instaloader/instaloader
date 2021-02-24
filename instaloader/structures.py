@@ -296,7 +296,7 @@ class Post:
                 end = len(edges)-1
             if start < 0:
                 start = len(edges)-1
-            if any(self.get_is_videos()[start:(end+1)]):
+            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
             for idx, edge in enumerate(edges):
@@ -854,7 +854,7 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             self._context,
-            '472f257a40c653c64c666ce877d59d2b',
+            '003056d32c2554def87228bc3fd9668a',
             lambda d: d['data']['user']['edge_owner_to_timeline_media'],
             lambda n: Post(self._context, n, self),
             {'id': self.userid},
