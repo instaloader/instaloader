@@ -1137,7 +1137,8 @@ class Instaloader:
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
-                          raise_errors: bool = False):
+                          raise_errors: bool = False,
+                          max_count = 100000):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -1212,7 +1213,7 @@ class Instaloader:
                 if posts:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
                     self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
-                                             total_count=profile.mediacount, owner_profile=profile)
+                                             total_count=profile.mediacount, owner_profile=profile, max_count=max_count)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
