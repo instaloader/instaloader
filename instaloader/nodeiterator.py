@@ -5,7 +5,7 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from lzma import LZMAError
-from typing import Any, Callable, Dict, Iterator, NamedTuple, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
 from .exceptions import AbortDownloadException, InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
@@ -204,7 +204,7 @@ class NodeIterator(Iterator[T]):
 
 @contextmanager
 def resumable_iteration(context: InstaloaderContext,
-                        iterator: Iterator,
+                        iterator: Iterable,
                         load: Callable[[InstaloaderContext, str], Any],
                         save: Callable[[FrozenNodeIterator, str], None],
                         format_path: Callable[[str], str],

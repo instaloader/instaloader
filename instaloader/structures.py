@@ -4,7 +4,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
 from . import __version__
 from .exceptions import *
@@ -426,12 +426,15 @@ class Post:
         except KeyError:
             return self._field('edge_media_to_comment', 'count')
 
-    def get_comments(self) -> Iterator[PostComment]:
+    def get_comments(self) -> Iterable[PostComment]:
         r"""Iterate over all comments of the post.
 
         Each comment is represented by a PostComment namedtuple with fields text (string), created_at (datetime),
         id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
         if available.
+
+        .. versionchanged:: 4.7
+           Change return type to ``Iterable``.
         """
         def _postcommentanswer(node):
             return PostCommentAnswer(id=int(node['id']),
@@ -466,16 +469,15 @@ class Post:
                                answers=_postcommentanswers(node))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
-            return
+            return []
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
         answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
-            yield from (_postcomment(comment['node']) for comment in comment_edges)
-            return
-        yield from NodeIterator(
+            return [_postcomment(comment['node']) for comment in comment_edges]
+        return NodeIterator(
             self._context,
             '97b41c52301f77ce508f55e66d17620e',
             lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],

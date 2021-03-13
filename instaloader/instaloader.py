@@ -335,18 +335,47 @@ class Instaloader:
                             combined_answers.extend(y['answers'])
                         unique_comments_list[-1]['answers'] = get_unique_comments(combined_answers)
             return unique_comments_list
+
+        def get_new_comments(new_comments, start):
+            for idx, comment in enumerate(new_comments, start=start+1):
+                if idx % 250 == 0:
+                    self.context.log('{}'.format(idx), end='…', flush=True)
+                yield comment
+
+        def save_comments(extended_comments):
+            unique_comments = get_unique_comments(extended_comments, combine_answers=True)
+            answer_ids = set(int(answer['id']) for comment in unique_comments for answer in comment.get('answers', []))
+            with open(filename, 'w') as file:
+                file.write(json.dumps(list(filter(lambda t: int(t['id']) not in answer_ids, unique_comments)),
+                                      indent=4))
+
+        base_filename = filename
         filename += '_comments.json'
         try:
             with open(filename) as fp:
                 comments = json.load(fp)
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             comments = list()
-        comments.extend(_postcomment_asdict(comment) for comment in post.get_comments())
+
+        comments_iterator = post.get_comments()
+        try:
+            with resumable_iteration(
+                    context=self.context,
+                    iterator=comments_iterator,
+                    load=load_structure_from_file,
+                    save=save_structure_to_file,
+                    format_path=lambda magic: "{}_{}_{}.json.xz".format(base_filename, self.resume_prefix, magic),
+                    check_bbd=self.check_resume_bbd,
+                    enabled=self.resume_prefix is not None
+            ) as (_is_resuming, start_index):
+                comments.extend(_postcomment_asdict(comment)
+                                for comment in get_new_comments(comments_iterator, start_index))
+        except (KeyboardInterrupt, AbortDownloadException):
+            if comments:
+                save_comments(comments)
+            raise
         if comments:
-            comments = get_unique_comments(comments, combine_answers=True)
-            answer_ids = set(int(answer['id']) for comment in comments for answer in comment.get('answers', []))
-            with open(filename, 'w') as file:
-                file.write(json.dumps(list(filter(lambda t: int(t['id']) not in answer_ids, comments)), indent=4))
+            save_comments(comments)
             self.context.log('comments', end=' ', flush=True)
 
     def save_caption(self, filename: str, mtime: datetime, caption: str) -> None:
