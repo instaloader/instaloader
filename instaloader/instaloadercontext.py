@@ -33,7 +33,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
 
 def default_user_agent() -> str:
     return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-           '(KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36'
+           '(KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36'
 
 
 class InstaloaderContext:
