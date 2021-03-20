@@ -150,11 +150,7 @@ class NodeIterator(Iterator[T]):
     @property
     def magic(self) -> str:
         """Magic string for easily identifying a matching iterator file for resuming (hash of some parameters)."""
-        if 'blake2b' not in hashlib.algorithms_available:
-            magic_hash = hashlib.new('sha224')
-        else:
-            # Use blake2b when possible, i.e. on Python >= 3.6.
-            magic_hash = hashlib.blake2b(digest_size=6)  # type:ignore  # pylint: disable=no-member
+        magic_hash = hashlib.blake2b(digest_size=6)
         magic_hash.update(json.dumps(
             [self._query_hash, self._query_variables, self._query_referer, self._context.username]
         ).encode())

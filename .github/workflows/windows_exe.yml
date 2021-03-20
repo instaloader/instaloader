@@ -12,7 +12,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.8
+          python-version: 3.9
           architecture: x64
       - name: Get the tagged version
         id: get_version

@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8, 3.9]
     steps:
       - name: Checkout Instaloader Repository
         uses: actions/checkout@v2
@@ -20,11 +20,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
-          python -m pip install pipenv==2020.6.2
+          python -m pip install pipenv==2020.11.15
           pipenv sync --dev
       - name: PyLint
         run: pipenv run pylint instaloader
       - name: MyPy
         run: pipenv run mypy -m instaloader
       - name: Build Documentation
+        if: matrix.python-version == '3.8'
         run: pipenv run make -C docs html SPHINXOPTS="-W -n"
