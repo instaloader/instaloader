@@ -459,7 +459,7 @@ def main():
               storyitem_filter_str=args.storyitem_filter)
         loader.close()
     except InstaloaderException as err:
-        raise SystemExit("Fatal error: %s" % err)
+        raise SystemExit("Fatal error: %s" % err) from err
 
 
 if __name__ == "__main__":

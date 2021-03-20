@@ -222,8 +222,10 @@ class InstaloaderContext:
                              data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
         try:
             resp_json = login.json()
-        except json.decoder.JSONDecodeError:
-            raise ConnectionException("Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason))
+        except json.decoder.JSONDecodeError as err:
+            raise ConnectionException(
+                "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
+            ) from err
         if resp_json.get('two_factor_required'):
             two_factor_session = copy_session(session, self.request_timeout)
             two_factor_session.headers.update({'X-CSRFToken': csrf_token})
