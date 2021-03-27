@@ -249,7 +249,7 @@ class Post:
         if self.typename == "GraphImage" and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
-                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
@@ -308,7 +308,7 @@ class Post:
                         try:
                             carousel_media = self._iphone_struct['carousel_media']
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
-                            display_url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                            display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                         except (InstaloaderException, KeyError, IndexError) as err:
                             self._context.error('{} Unable to fetch high quality image version of {}.'.format(
                                 err, self))
@@ -1082,7 +1082,7 @@ class StoryItem:
         if self.typename == "GraphStoryImage" and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
-                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
+                url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
