@@ -6,7 +6,7 @@ pkgbase = instaloader
 	arch = any
 	license = MIT
 	makedepends = python-setuptools
-	depends = python>=3.5
+	depends = python>=3.6
 	depends = python-requests>=2.4
 	options = !emptydirs
 	source = instaloader-{{version}}.tar.gz::https://codeload.github.com/instaloader/instaloader/tar.gz/v{{version}}
