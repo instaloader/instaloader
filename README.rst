@@ -72,7 +72,7 @@ To **download all pictures and videos of a profile**, as well as the
 
 ::
 
-    instaloader profile [profile ...]
+    instaloader [profile ...]
 
 where ``profile`` is the name of a profile you want to download. Instead
 of only one profile, you may also specify a list of profiles.
