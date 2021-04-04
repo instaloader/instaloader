@@ -168,6 +168,8 @@ class Post:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
@@ -691,6 +693,8 @@ class Profile:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone profile info endpoint.")
         if not self._iphone_struct_:
@@ -1021,6 +1025,8 @@ class StoryItem:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:

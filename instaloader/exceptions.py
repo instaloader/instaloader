@@ -65,6 +65,8 @@ class QueryReturnedNotFoundException(ConnectionException):
 class TooManyRequestsException(ConnectionException):
     pass
 
+class IPhoneSupportDisabledException(InstaloaderException):
+    pass
 
 class AbortDownloadException(Exception):
     """
