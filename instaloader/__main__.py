@@ -382,6 +382,8 @@ def main():
     g_how.add_argument('--abort-on', type=http_status_code_list, metavar="STATUS_CODES",
                        help='Comma-separated list of HTTP status codes that cause Instaloader to abort, bypassing all '
                             'retry logic.')
+    g_how.add_argument('--no-iphone', action='store_true',
+                        help='Do not attempt to download iPhone version of images and videos.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
