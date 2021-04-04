@@ -54,7 +54,8 @@ class InstaloaderContext:
     def __init__(self, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
-                 fatal_status_codes: Optional[List[int]] = None):
+                 fatal_status_codes: Optional[List[int]] = None,
+                 iphone_support: bool = True):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -66,6 +67,7 @@ class InstaloaderContext:
         self._graphql_page_length = 50
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
+        self.iphone_support = iphone_support
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]

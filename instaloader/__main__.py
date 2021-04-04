@@ -443,7 +443,8 @@ def main():
                              resume_prefix=resume_prefix,
                              check_resume_bbd=not args.use_aged_resume_files,
                              slide=args.slide,
-                             fatal_status_codes=args.abort_on)
+                             fatal_status_codes=args.abort_on,
+                             iphone_support=not args.no_iphone)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

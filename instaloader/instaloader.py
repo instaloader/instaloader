@@ -162,6 +162,7 @@ class Instaloader:
     :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
     :param slide: :option:`--slide`
     :param fatal_status_codes: :option:`--abort-on`
+    :param iphone_support: not :option:`--no-iphone`
 
     .. attribute:: context
 
@@ -189,10 +190,12 @@ class Instaloader:
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
                  slide: Optional[str] = None,
-                 fatal_status_codes: Optional[List[int]] = None):
+                 fatal_status_codes: Optional[List[int]] = None,
+                 iphone_support: bool = True):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
-                                          request_timeout, rate_controller, fatal_status_codes)
+                                          request_timeout, rate_controller, fatal_status_codes,
+                                          iphone_support)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -259,7 +262,8 @@ class Instaloader:
             resume_prefix=self.resume_prefix,
             check_resume_bbd=self.check_resume_bbd,
             slide=self.slide,
-            fatal_status_codes=self.context.fatal_status_codes)
+            fatal_status_codes=self.context.fatal_status_codes,
+            iphone_support=self.context.iphone_support)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
