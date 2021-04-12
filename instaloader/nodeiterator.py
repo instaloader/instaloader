@@ -18,8 +18,6 @@ FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
                                  ('total_index', int),
                                  ('best_before', Optional[float]),
                                  ('remaining_data', Optional[Dict])])
-FrozenNodeIterator.__doc__ = \
-    """A serializable representation of a :class:`NodeIterator` instance, saving its iteration state."""
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -54,6 +52,9 @@ class NodeIterator(Iterator[T]):
 
        post_iterator = profile.get_posts()
        post_iterator.thaw(load("resume_information.json"))
+
+    (an appropriate method to load and save the :class:`FrozenNodeIterator` is e.g.
+    :func:`load_structure_from_file` and :func:`save_structure_to_file`.)
 
     A :class:`FrozenNodeIterator` can only be thawn with a matching NodeIterator, i.e. a NodeIterator instance that has
     been constructed with the same parameters as the instance that is represented by the :class:`FrozenNodeIterator` in

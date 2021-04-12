@@ -1535,8 +1535,8 @@ JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]
 
 
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
-    """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` to a '.json' or '.json.xz' file
-    such that it can later be loaded by :func:`load_structure_from_file`.
+    """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` to a
+    '.json' or '.json.xz' file such that it can later be loaded by :func:`load_structure_from_file`.
 
     If the specified filename ends in '.xz', the file will be LZMA compressed. Otherwise, a pretty-printed JSON file
     will be created.
@@ -1556,8 +1556,8 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
-    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` from a '.json' or '.json.xz' file
-    that has been saved by :func:`save_structure_to_file`.
+    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
+    a '.json' or '.json.xz' file that has been saved by :func:`save_structure_to_file`.
 
     :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
     :param filename: Filename, ends in '.json' or '.json.xz'
