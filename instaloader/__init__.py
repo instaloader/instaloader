@@ -17,4 +17,5 @@ from .instaloader import Instaloader
 from .instaloadercontext import InstaloaderContext, RateController
 from .nodeiterator import NodeIterator, FrozenNodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, Post, PostSidecarNode, PostComment, PostCommentAnswer, PostLocation,
-                         Profile, Story, StoryItem, TopSearchResults, load_structure_from_file, save_structure_to_file)
+                         Profile, Story, StoryItem, TopSearchResults, load_structure_from_file, save_structure_to_file,
+                         load_structure, get_json_structure)
