@@ -17,17 +17,19 @@ PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
 PostSidecarNode.video_url.__doc__ = "URL of video or None."
 
-PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner', 'likes_count'])
+PostCommentAnswer = namedtuple('PostCommentAnswer',
+                               ['id', 'created_at_utc', 'text', 'owner', 'likes_count'])
 PostCommentAnswer.id.__doc__ = "ID number of comment."
 PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
 PostCommentAnswer.text.__doc__ = "Comment text."
 PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
 PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
-PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers')) # type: ignore
+PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers'))  # type: ignore
 for field in PostCommentAnswer._fields:
-    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__  # pylint: disable=no-member
-PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment." # type: ignore
+    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer,
+                                                  field).__doc__  # pylint: disable=no-member
+PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."  # type: ignore
 
 PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
 PostLocation.id.__doc__ = "ID number of location."
@@ -69,7 +71,7 @@ class Post:
         self._node = node
         self._owner_profile = owner_profile
         self._full_metadata_dict = None  # type: Optional[Dict[str, Any]]
-        self._location = None            # type: Optional[PostLocation]
+        self._location = None  # type: Optional[PostLocation]
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
@@ -91,15 +93,19 @@ class Post:
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
         if len(code) > 11:
-            raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
+            raise InvalidArgumentException(
+                "Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
         code = 'A' * (12 - len(code)) + code
         return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
 
     @staticmethod
     def mediaid_to_shortcode(mediaid: int) -> str:
         if mediaid.bit_length() > 64:
-            raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
-        return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
+            raise InvalidArgumentException(
+                "Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
+        return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A',
+                                                                             ' ').lstrip().replace(
+            ' ', 'A')
 
     @staticmethod
     def supported_graphql_types() -> List[str]:
@@ -171,7 +177,8 @@ class Post:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid),
+                                                 params={})
             self._iphone_struct_ = data['items'][0]
         return self._iphone_struct_
 
@@ -252,8 +259,10 @@ class Post:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
-        return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
+                self._context.error(
+                    '{} Unable to fetch high quality image version of {}.'.format(err, self))
+        return self._node["display_url"] if "display_url" in self._node else self._node[
+            "display_src"]
 
     @property
     def typename(self) -> str:
@@ -293,10 +302,11 @@ class Post:
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
             if end < 0:
-                end = len(edges)-1
+                end = len(edges) - 1
             if start < 0:
-                start = len(edges)-1
-            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges[start:(end+1)]):
+                start = len(edges) - 1
+            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in
+                   edges[start:(end + 1)]):
                 # video_url is only present in full metadata, issue #558.
                 edges = self._full_metadata['edge_sidecar_to_children']['edges']
             for idx, edge in enumerate(edges):
@@ -307,11 +317,13 @@ class Post:
                     if not is_video and self._context.is_logged_in:
                         try:
                             carousel_media = self._iphone_struct['carousel_media']
-                            orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
+                            orig_url = carousel_media[idx]['image_versions2']['candidates'][0][
+                                'url']
                             display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                         except (InstaloaderException, KeyError, IndexError) as err:
-                            self._context.error('{} Unable to fetch high quality image version of {}.'.format(
-                                err, self))
+                            self._context.error(
+                                '{} Unable to fetch high quality image version of {}.'.format(
+                                    err, self))
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
@@ -349,17 +361,21 @@ class Post:
         """Printable caption, useful as a format specifier for --filename-pattern.
 
         .. versionadded:: 4.2.6"""
+
         def _elliptify(caption):
-            pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
+            pcaption = ' '.join(
+                [s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
             return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
+
         return _elliptify(self.caption) if self.caption else ''
 
     @property
     def tagged_users(self) -> List[str]:
         """List of all lowercased users that are tagged in the Post."""
         try:
-            return [edge['node']['user']['username'].lower() for edge in self._field('edge_media_to_tagged_user',
-                                                                                     'edges')]
+            return [edge['node']['user']['username'].lower() for edge in
+                    self._field('edge_media_to_tagged_user',
+                                'edges')]
         except KeyError:
             return []
 
@@ -377,7 +393,8 @@ class Post:
                     url = self._iphone_struct['video_versions'][0]['url']
                     return url
                 except (InstaloaderException, KeyError, IndexError) as err:
-                    self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
+                    self._context.error(
+                        '{} Unable to fetch high quality video version of {}.'.format(err, self))
             return self._field('video_url')
         return None
 
@@ -436,6 +453,7 @@ class Post:
         .. versionchanged:: 4.7
            Change return type to ``Iterable``.
         """
+
         def _postcommentanswer(node):
             return PostCommentAnswer(id=int(node['id']),
                                      created_at_utc=datetime.utcfromtimestamp(node['created_at']),
@@ -467,12 +485,15 @@ class Post:
         def _postcomment(node):
             return PostComment(*_postcommentanswer(node),
                                answers=_postcommentanswers(node))
+
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return []
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
-        answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
+        answers_count = sum(
+            [edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in
+             comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
@@ -585,6 +606,7 @@ class Profile:
 
     Also, this class implements == and is hashable.
     """
+
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert 'username' in node
         self._context = context
@@ -633,8 +655,9 @@ class Profile:
         if data:
             profile = cls(context, data['reel']['owner'])
         else:
-            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                            str(profile_id) + ").")
+            raise ProfileNotExistsException(
+                "No profile found, the user may have blocked you (ID: " +
+                str(profile_id) + ").")
         context.profile_id_cache[profile_id] = profile
         return profile
 
@@ -647,7 +670,8 @@ class Profile:
         .. versionadded:: 4.5.2"""
         if not context.is_logged_in:
             raise LoginRequiredException("--login required to access own profile.")
-        return cls(context, context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
+        return cls(context,
+                   context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
 
     def _asdict(self):
         json_node = self._node.copy()
@@ -670,11 +694,13 @@ class Profile:
             top_search_results = TopSearchResults(self._context, self.username)
             similar_profiles = [profile.username for profile in top_search_results.get_profiles()]
             if similar_profiles:
-                raise ProfileNotExistsException('Profile {} does not exist.\nThe most similar profile{}: {}.'
-                                                .format(self.username,
-                                                        's are' if len(similar_profiles) > 1 else ' is',
-                                                        ', '.join(similar_profiles[0:5]))) from err
-            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
+                raise ProfileNotExistsException(
+                    'Profile {} does not exist.\nThe most similar profile{}: {}.'
+                        .format(self.username,
+                                's are' if len(similar_profiles) > 1 else ' is',
+                                ', '.join(similar_profiles[0:5]))) from err
+            raise ProfileNotExistsException(
+                'Profile {} does not exist.'.format(self.username)) from err
 
     def _metadata(self, *keys) -> Any:
         try:
@@ -694,7 +720,8 @@ class Profile:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone profile info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/users/{}/info/'.format(self.userid), params={})
+            data = self._context.get_iphone_json(path='api/v1/users/{}/info/'.format(self.userid),
+                                                 params={})
             self._iphone_struct_ = data['user']
         return self._iphone_struct_
 
@@ -794,11 +821,14 @@ class Profile:
             # query not rate limited if invoked anonymously:
             with self._context.anonymous_copy() as anonymous_context:
                 data = anonymous_context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
-                                                       {'user_id': self.userid, 'include_chaining': False,
-                                                        'include_reel': False, 'include_suggested_users': False,
+                                                       {'user_id': self.userid,
+                                                        'include_chaining': False,
+                                                        'include_reel': False,
+                                                        'include_suggested_users': False,
                                                         'include_logged_out_extras': True,
                                                         'include_highlight_reels': False},
-                                                       'https://www.instagram.com/{}/'.format(self.username))
+                                                       'https://www.instagram.com/{}/'.format(
+                                                           self.username))
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story
@@ -870,7 +900,8 @@ class Profile:
         :rtype: NodeIterator[Post]"""
 
         if self.username != self._context.username:
-            raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
+            raise LoginRequiredException(
+                "--login={} required to get that profile's saved posts.".format(self.username))
 
         return NodeIterator(
             self._context,
@@ -892,7 +923,8 @@ class Profile:
             self._context,
             'e31a871f7301132ceaab56507a66bbb7',
             lambda d: d['data']['user']['edge_user_to_photos_of_you'],
-            lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
+            lambda n: Post(self._context, n,
+                           self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
         )
@@ -964,9 +996,11 @@ class Profile:
         self._obtain_metadata()
         yield from (Profile(self._context, edge["node"]) for edge in
                     self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
-                                                {"user_id": str(self.userid), "include_chaining": True},
+                                                {"user_id": str(self.userid),
+                                                 "include_chaining": True},
                                                 "https://www.instagram.com/{0}/"
-                                                .format(self.username))["data"]["user"]["edge_chaining"]["edges"])
+                                                .format(self.username))["data"]["user"][
+                        "edge_chaining"]["edges"])
 
 
 class StoryItem:
@@ -980,7 +1014,8 @@ class StoryItem:
     :param owner_profile: :class:`Profile` instance representing the story owner.
     """
 
-    def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner_profile: Optional[Profile] = None):
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any],
+                 owner_profile: Optional[Profile] = None):
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
@@ -1024,7 +1059,8 @@ class StoryItem:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid),
+                                                 params={})
             self._iphone_struct_ = data['items'][0]
         return self._iphone_struct_
 
@@ -1085,7 +1121,8 @@ class StoryItem:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(
+                    '{} Unable to fetch high quality image version of {}.'.format(err, self))
         return self._node['display_resources'][-1]['src']
 
     @property
@@ -1130,11 +1167,12 @@ class Story:
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         self._context = context
         self._node = node
-        self._unique_id = None      # type: Optional[str]
+        self._unique_id = None  # type: Optional[str]
         self._owner_profile = None  # type: Optional[Profile]
 
     def __repr__(self):
-        return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
+        return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username,
+                                                                       self.latest_media_utc)
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Story):
@@ -1204,7 +1242,8 @@ class Story:
 
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+        yield from (StoryItem(self._context, item, self.owner_profile) for item in
+                    reversed(self._node['items']))
 
 
 class Highlight(Story):
@@ -1230,7 +1269,8 @@ class Highlight(Story):
     :param owner: :class:`Profile` instance representing the owner profile of the highlight.
     """
 
-    def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any],
+                 owner: Optional[Profile] = None):
         super().__init__(context, node)
         self._owner_profile = owner
         self._items = None  # type: Optional[List[Dict[str, Any]]]
@@ -1268,9 +1308,11 @@ class Highlight(Story):
     def _fetch_items(self):
         if not self._items:
             self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
-                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
+                                                      {"reel_ids": [], "tag_names": [],
+                                                       "location_ids": [],
                                                        "highlight_reel_ids": [str(self.unique_id)],
-                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
+                                                       "precomposed_overlay": False})['data'][
+                'reels_media'][0]['items']
 
     @property
     def itemcount(self) -> int:
@@ -1302,6 +1344,7 @@ class Hashtag:
 
     Also, this class implements == and is hashable.
     """
+
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert "name" in node
         self._context = context
@@ -1425,7 +1468,8 @@ class Hashtag:
 
     def get_all_posts(self) -> Iterator[Post]:
         """Yields all posts, i.e. all most recent posts and the top posts, in almost-chronological order."""
-        sorted_top_posts = iter(sorted(self.get_top_posts(), key=lambda p: p.date_utc, reverse=True))
+        sorted_top_posts = iter(
+            sorted(self.get_top_posts(), key=lambda p: p.date_utc, reverse=True))
         other_posts = self.get_posts()
         next_top = next(sorted_top_posts, None)
         next_other = next(other_posts, None)
@@ -1534,6 +1578,18 @@ class TopSearchResults:
 JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]
 
 
+def get_json_structure(structure: JsonExportable) -> dict:
+    """Returns Instaloader JSON structure for a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag`
+     or :class:`FrozenNodeIterator` so that it can be loaded by :func:`load_structure`.
+
+    :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
+    """
+    return {
+        'node': structure._asdict(),
+        'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}
+    }
+
+
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` to a
     '.json' or '.json.xz' file such that it can later be loaded by :func:`load_structure_from_file`.
@@ -1544,8 +1600,7 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
     :param filename: Filename, ends in '.json' or '.json.xz'
     """
-    json_structure = {'node': structure._asdict(),
-                      'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}}
+    json_structure = get_json_structure(structure)
     compress = filename.endswith('.xz')
     if compress:
         with lzma.open(filename, 'wt', check=lzma.CHECK_NONE) as fp:
@@ -1553,6 +1608,32 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     else:
         with open(filename, 'wt') as fp:
             json.dump(json_structure, fp=fp, indent=4, sort_keys=True)
+
+
+def load_structure(context: InstaloaderContext, json_structure: dict) -> JsonExportable:
+    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
+    a json structure.
+
+    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
+    :param json_structure: Instaloader JSON structure
+    """
+    if 'node' in json_structure and 'instaloader' in json_structure and \
+            'node_type' in json_structure['instaloader']:
+        node_type = json_structure['instaloader']['node_type']
+        if node_type == "Post":
+            return Post(context, json_structure['node'])
+        elif node_type == "Profile":
+            return Profile(context, json_structure['node'])
+        elif node_type == "StoryItem":
+            return StoryItem(context, json_structure['node'])
+        elif node_type == "Hashtag":
+            return Hashtag(context, json_structure['node'])
+        elif node_type == "FrozenNodeIterator":
+            return FrozenNodeIterator(**json_structure['node'])
+    elif 'shortcode' in json_structure:
+        # Post JSON created with Instaloader v3
+        return Post.from_shortcode(context, json_structure['shortcode'])
+    raise InvalidArgumentException("Passed json structure is not an Instaloader JSON")
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
@@ -1569,23 +1650,4 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
         fp = open(filename, 'rt')
     json_structure = json.load(fp)
     fp.close()
-    if 'node' in json_structure and 'instaloader' in json_structure and \
-            'node_type' in json_structure['instaloader']:
-        node_type = json_structure['instaloader']['node_type']
-        if node_type == "Post":
-            return Post(context, json_structure['node'])
-        elif node_type == "Profile":
-            return Profile(context, json_structure['node'])
-        elif node_type == "StoryItem":
-            return StoryItem(context, json_structure['node'])
-        elif node_type == "Hashtag":
-            return Hashtag(context, json_structure['node'])
-        elif node_type == "FrozenNodeIterator":
-            return FrozenNodeIterator(**json_structure['node'])
-        else:
-            raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
-    elif 'shortcode' in json_structure:
-        # Post JSON created with Instaloader v3
-        return Post.from_shortcode(context, json_structure['shortcode'])
-    else:
-        raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
+    return load_structure(context, json_structure)
