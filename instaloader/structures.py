@@ -1539,6 +1539,8 @@ def get_json_structure(structure: JsonExportable) -> dict:
      or :class:`FrozenNodeIterator` so that it can be loaded by :func:`load_structure`.
 
     :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
+
+    .. versionadded:: 4.8
     """
     return {
         'node': structure._asdict(),
@@ -1572,6 +1574,8 @@ def load_structure(context: InstaloaderContext, json_structure: dict) -> JsonExp
 
     :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
     :param json_structure: Instaloader JSON structure
+
+    .. versionadded:: 4.8
     """
     if 'node' in json_structure and 'instaloader' in json_structure and \
             'node_type' in json_structure['instaloader']:
