@@ -870,7 +870,7 @@ class Instaloader:
 
         return sources
 
-    def fetch_story_item_src_url(self, item: StoryItem) -> List[Tuple[str, str]]:
+    def fetch_story_item_src_url(self, item: StoryItem) -> List[Tuple[str, Optional[str]]]:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
