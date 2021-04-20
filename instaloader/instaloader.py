@@ -584,7 +584,7 @@ class Instaloader:
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
         return metadata_string
 
-    def fetch_post_src_urls(self, post: Post) -> List((str, str)):
+    def fetch_post_src_urls(self, post: Post) -> List[(str, str)]:
         """
         Get post source file urls on the instagram servers.
 
@@ -613,7 +613,7 @@ class Instaloader:
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 url=post.url
-                sources.append(('image', url))
+                sources.append(('thumbnail', url))
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
@@ -624,7 +624,6 @@ class Instaloader:
 
         self.context.log()
         return sources
-
 
     def download_post(self, post: Post, target: Union[str, Path]) -> bool:
         """
@@ -838,6 +837,44 @@ class Instaloader:
         self.context.log()
         return downloaded
 
+    @_requires_login
+    def fetch_stories_src_urls(self,
+                        userids: Optional[List[Union[int, Profile]]] = None,
+                        storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> List[(str, str)]:
+        """
+        Download available stories from user followees or all stories of users whose ID are given.
+        Does not mark stories as seen.
+        To use this, one needs to be logged in
+
+        :param userids: List of user IDs or Profiles to be processed in terms of downloading their stories
+        :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
+        :raises LoginRequiredException: If called without being logged in.
+        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail)
+        the second item is its source url
+        """
+        sources = []
+        if not userids:
+            self.context.log("Retrieving all visible stories...")
+        else:
+            userids = [p if isinstance(p, int) else p.userid for p in userids]
+
+        for user_story in self.get_stories(userids):
+            name = user_story.owner_username
+            self.context.log("Retrieving stories from profile {}.".format(name))
+            totalcount = user_story.itemcount
+            count = 1
+            for item in user_story.get_items():
+                if storyitem_filter is not None and not storyitem_filter(item):
+                    self.context.log("<{} skipped>".format(item), flush=True)
+                    continue
+                self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                count += 1
+                with self.context.error_catcher('Download story from user {}'.format(name)):
+                    sources += self.fetch_story_item_src_url(item)
+
+                    if fast_update and not downloaded:
+                        break
+        return sources
     @_requires_login
     def get_highlights(self, user: Union[int, Profile]) -> Iterator[Highlight]:
         """Get all highlights from a user.
