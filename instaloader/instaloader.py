@@ -839,15 +839,14 @@ class Instaloader:
                         userids: Optional[List[Union[int, Profile]]] = None,
                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> List[Tuple[str, str]]:
         """
-        Download available stories from user followees or all stories of users whose ID are given.
+        Get source urls of available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
         To use this, one needs to be logged in
 
         :param userids: List of user IDs or Profiles to be processed in terms of downloading their stories
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         :raises LoginRequiredException: If called without being logged in.
-        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail)
-        the second item is its source url
+        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail) the second item is its source url
         """
         sources = []
         if not userids:
@@ -875,8 +874,7 @@ class Instaloader:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
-        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail)
-        the second item is its source url
+        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail) the second item is its source url
         """
         sources = []
         if not item.is_video:
