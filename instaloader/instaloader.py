@@ -13,7 +13,7 @@ from functools import wraps
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
+from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast, Tuple
 from urllib.parse import urlparse
 
 import requests
@@ -584,7 +584,7 @@ class Instaloader:
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
         return metadata_string
 
-    def fetch_post_src_urls(self, post: Post) -> List[(str, str)]:
+    def fetch_post_src_urls(self, post: Post) -> List[Tuple[str, str]]:
         """
         Get post source file urls on the instagram servers.
 
@@ -840,7 +840,7 @@ class Instaloader:
     @_requires_login
     def fetch_stories_src_urls(self,
                         userids: Optional[List[Union[int, Profile]]] = None,
-                        storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> List[(str, str)]:
+                        storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> List[Tuple[str, str]]:
         """
         Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
@@ -872,11 +872,9 @@ class Instaloader:
                 with self.context.error_catcher('Download story from user {}'.format(name)):
                     sources += self.fetch_story_item_src_url(item)
 
-                    if fast_update and not downloaded:
-                        break
         return sources
 
-    def fetch_story_item_src_url(self, item: StoryItem) -> List[(str, str)]:
+    def fetch_story_item_src_url(self, item: StoryItem) -> List[Tuple[str, str]]:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
