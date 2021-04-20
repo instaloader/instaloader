@@ -574,6 +574,49 @@ class Instaloader:
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item).format(self.filename_pattern, target=target)
 
+
+    def fetch_post_src_urls(self, post: Post) -> List((str, str)):
+        """
+        Get post source file urls on the instagram servers.
+
+        :param post: Post to fetch its source url.
+        :return: List of file type and its source urls.
+        """
+        sources = []
+        if post.typename == 'GraphSidecar':
+            for edge_number, sidecar_node in enumerate(
+                    post.get_sidecar_nodes(self.slide_start, self.slide_end),
+                    start=self.slide_start % post.mediacount + 1
+            ):
+                if (not sidecar_node.is_video or self.download_video_thumbnails):
+                    # pylint:disable=cell-var-from-loop
+                    url=sidecar_node.display_url
+                    sources.append(('image', url))
+                if sidecar_node.is_video and self.download_videos:
+                    # pylint:disable=cell-var-from-loop
+                    url=sidecar_node.video_url
+                    sources.append(('video', url))
+
+        elif post.typename == 'GraphImage':
+            url=post.url
+            sources.append(('image', url))
+        elif post.typename == 'GraphVideo':
+            # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
+            if self.download_pictures and self.download_video_thumbnails:
+                url=post.url
+                sources.append(('image', url))
+        else:
+            self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
+
+        # Download video if desired
+        if post.is_video and self.download_videos:
+            url=post.video_url
+            sources.append(('video', url))
+
+        self.context.log()
+        return sources
+
+
     def download_post(self, post: Post, target: Union[str, Path]) -> bool:
         """
         Download everything associated with one instagram post node, i.e. picture, caption and video.
