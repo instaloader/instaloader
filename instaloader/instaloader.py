@@ -846,7 +846,7 @@ class Instaloader:
         :param userids: List of user IDs or Profiles to be processed in terms of downloading their stories
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         :raises LoginRequiredException: If called without being logged in.
-        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail) the second item is its source url
+        :return: first item is type of the story: (image/video/thumbnail) the second item is its source url
         """
         sources = []
         if not userids:
@@ -874,7 +874,7 @@ class Instaloader:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
-        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail) the second item is its source url
+        :return: first item is type of the story: (image/video/thumbnail) the second item is its source url
         """
         sources = []
         if not item.is_video:
