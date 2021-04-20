@@ -875,6 +875,25 @@ class Instaloader:
                     if fast_update and not downloaded:
                         break
         return sources
+
+    def fetch_story_item_src_url(self, item: StoryItem) -> List[(str, str)]:
+        """Download one user story.
+
+        :param item: Story item, as in story['items'] for story in :meth:`get_stories`
+        :return: a list of tuple of format (str, str), first item is type of the story: (image/video/thumbnail)
+        the second item is its source url
+        """
+        sources = []
+        if not item.is_video:
+            sources.append(("image", item.url))
+        else:
+            if self.download_video_thumbnails:
+                sources.append(("thumbnail", item.url))
+            if item.is_video and self.download_videos is True:
+                sources.append(("video", item.video_url))
+        self.context.log()
+        return sources
+
     @_requires_login
     def get_highlights(self, user: Union[int, Profile]) -> Iterator[Highlight]:
         """Get all highlights from a user.
