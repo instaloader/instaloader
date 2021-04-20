@@ -1206,7 +1206,7 @@ class Story:
         """Retrieve all items from a story."""
         yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
 
-    def get_story_item_from_shortcode(self, shortcode: str) -> StoryItem:
+    def get_story_item_from_shortcode(self, shortcode: str) -> Optional[StoryItem]:
         """Gets a story shortcode url and returns the story item associated with that shortcode.
 
         :param shortcode: shortcode of the story item
