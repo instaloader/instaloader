@@ -574,6 +574,15 @@ class Instaloader:
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item).format(self.filename_pattern, target=target)
 
+    def fetch_post_caption(self, post: Post) -> str:
+        """
+        Get post's caption
+
+        :param post: Post to fetch its caption.
+        :return: Caption of the post in string format.
+        """
+        metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
+        return metadata_string
 
     def fetch_post_src_urls(self, post: Post) -> List((str, str)):
         """
