@@ -870,7 +870,7 @@ class Instaloader:
 
         return sources
 
-    def fetch_story_item_src_url(self, item: StoryItem) -> List[Tuple[str, Optional[str]]]:
+    def fetch_story_item_src_url(self, item: StoryItem) -> List[Tuple[str, str]]:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
@@ -882,8 +882,7 @@ class Instaloader:
         else:
             if self.download_video_thumbnails:
                 sources.append(("thumbnail", item.url))
-            if item.is_video and self.download_videos is True:
-                sources.append(("video", item.video_url))
+            sources.append(("video", item.video_url))
         self.context.log()
         return sources
 
