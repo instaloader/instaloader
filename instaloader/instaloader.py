@@ -882,7 +882,7 @@ class Instaloader:
         else:
             if self.download_video_thumbnails:
                 sources.append(("thumbnail", item.url))
-            sources.append(("video", item.video_url))
+            sources.append(("video", item.video_url if item.video_url else ""))
         self.context.log()
         return sources
 
