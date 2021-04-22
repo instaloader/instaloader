@@ -277,6 +277,8 @@ How to Download
 
    Do not attempt to download iPhone version of images and videos.
 
+   .. versionadded:: 4.8
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 
