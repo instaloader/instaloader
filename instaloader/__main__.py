@@ -206,7 +206,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
-        if profiles and (download_profile_pic or download_posts) and not instaloader.context.is_logged_in:
+        if instaloader.context.iphone_support and profiles and (download_profile_pic or download_posts) and \
+           not instaloader.context.is_logged_in:
             instaloader.context.log("Hint: Use --login to download higher-quality versions of pictures.")
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
@@ -382,6 +383,8 @@ def main():
     g_how.add_argument('--abort-on', type=http_status_code_list, metavar="STATUS_CODES",
                        help='Comma-separated list of HTTP status codes that cause Instaloader to abort, bypassing all '
                             'retry logic.')
+    g_how.add_argument('--no-iphone', action='store_true',
+                        help='Do not attempt to download iPhone version of images and videos.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -441,7 +444,8 @@ def main():
                              resume_prefix=resume_prefix,
                              check_resume_bbd=not args.use_aged_resume_files,
                              slide=args.slide,
-                             fatal_status_codes=args.abort_on)
+                             fatal_status_codes=args.abort_on,
+                             iphone_support=not args.no_iphone)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

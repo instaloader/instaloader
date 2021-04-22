@@ -168,6 +168,8 @@ class Post:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
@@ -246,7 +248,7 @@ class Post:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the post"""
-        if self.typename == "GraphImage" and self._context.is_logged_in:
+        if self.typename == "GraphImage" and self._context.iphone_support and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
@@ -304,7 +306,7 @@ class Post:
                     node = edge['node']
                     is_video = node['is_video']
                     display_url = node['display_url']
-                    if not is_video and self._context.is_logged_in:
+                    if not is_video and self._context.iphone_support and self._context.is_logged_in:
                         try:
                             carousel_media = self._iphone_struct['carousel_media']
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
@@ -372,7 +374,7 @@ class Post:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
-            if self._context.is_logged_in:
+            if self._context.iphone_support and self._context.is_logged_in:
                 try:
                     url = self._iphone_struct['video_versions'][0]['url']
                     return url
@@ -691,6 +693,8 @@ class Profile:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone profile info endpoint.")
         if not self._iphone_struct_:
@@ -834,7 +838,7 @@ class Profile:
 
         .. versionchanged:: 4.2.1
            Require being logged in for HD version (as required by Instagram)."""
-        if self._context.is_logged_in:
+        if self._context.iphone_support and self._context.is_logged_in:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
             except (InstaloaderException, KeyError) as err:
@@ -1021,6 +1025,8 @@ class StoryItem:
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
@@ -1079,7 +1085,7 @@ class StoryItem:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the StoryItem"""
-        if self.typename == "GraphStoryImage" and self._context.is_logged_in:
+        if self.typename == "GraphStoryImage" and self._context.iphone_support and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')

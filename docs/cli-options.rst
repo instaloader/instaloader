@@ -100,7 +100,6 @@ What to Download of each Post
 
    Do not xz compress JSON files, rather create pretty formatted JSONs.
 
-
 What to Download of each Profile
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -273,6 +272,12 @@ How to Download
    Requests error.
 
    .. versionadded:: 4.7
+
+.. option:: --no-iphone
+
+   Do not attempt to download iPhone version of images and videos.
+
+   .. versionadded:: 4.8
 
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
