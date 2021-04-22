@@ -77,6 +77,10 @@ Loading and Saving
 :class:`Post`, :class:`StoryItem`, :class:`Profile`, :class:`Hashtag` and
 :class:`FrozenNodeIterator` can be saved and loaded to/from JSON files.
 
+.. autofunction:: load_structure
+
 .. autofunction:: load_structure_from_file
+
+.. autofunction:: get_json_structure
 
 .. autofunction:: save_structure_to_file

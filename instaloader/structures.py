@@ -1540,6 +1540,20 @@ class TopSearchResults:
 JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]
 
 
+def get_json_structure(structure: JsonExportable) -> dict:
+    """Returns Instaloader JSON structure for a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag`
+     or :class:`FrozenNodeIterator` so that it can be loaded by :func:`load_structure`.
+
+    :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
+
+    .. versionadded:: 4.8
+    """
+    return {
+        'node': structure._asdict(),
+        'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}
+    }
+
+
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` to a
     '.json' or '.json.xz' file such that it can later be loaded by :func:`load_structure_from_file`.
@@ -1550,8 +1564,7 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     :param structure: :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag`
     :param filename: Filename, ends in '.json' or '.json.xz'
     """
-    json_structure = {'node': structure._asdict(),
-                      'instaloader': {'version': __version__, 'node_type': structure.__class__.__name__}}
+    json_structure = get_json_structure(structure)
     compress = filename.endswith('.xz')
     if compress:
         with lzma.open(filename, 'wt', check=lzma.CHECK_NONE) as fp:
@@ -1559,6 +1572,34 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     else:
         with open(filename, 'wt') as fp:
             json.dump(json_structure, fp=fp, indent=4, sort_keys=True)
+
+
+def load_structure(context: InstaloaderContext, json_structure: dict) -> JsonExportable:
+    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
+    a json structure.
+
+    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
+    :param json_structure: Instaloader JSON structure
+
+    .. versionadded:: 4.8
+    """
+    if 'node' in json_structure and 'instaloader' in json_structure and \
+            'node_type' in json_structure['instaloader']:
+        node_type = json_structure['instaloader']['node_type']
+        if node_type == "Post":
+            return Post(context, json_structure['node'])
+        elif node_type == "Profile":
+            return Profile(context, json_structure['node'])
+        elif node_type == "StoryItem":
+            return StoryItem(context, json_structure['node'])
+        elif node_type == "Hashtag":
+            return Hashtag(context, json_structure['node'])
+        elif node_type == "FrozenNodeIterator":
+            return FrozenNodeIterator(**json_structure['node'])
+    elif 'shortcode' in json_structure:
+        # Post JSON created with Instaloader v3
+        return Post.from_shortcode(context, json_structure['shortcode'])
+    raise InvalidArgumentException("Passed json structure is not an Instaloader JSON")
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
@@ -1575,23 +1616,4 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
         fp = open(filename, 'rt')
     json_structure = json.load(fp)
     fp.close()
-    if 'node' in json_structure and 'instaloader' in json_structure and \
-            'node_type' in json_structure['instaloader']:
-        node_type = json_structure['instaloader']['node_type']
-        if node_type == "Post":
-            return Post(context, json_structure['node'])
-        elif node_type == "Profile":
-            return Profile(context, json_structure['node'])
-        elif node_type == "StoryItem":
-            return StoryItem(context, json_structure['node'])
-        elif node_type == "Hashtag":
-            return Hashtag(context, json_structure['node'])
-        elif node_type == "FrozenNodeIterator":
-            return FrozenNodeIterator(**json_structure['node'])
-        else:
-            raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
-    elif 'shortcode' in json_structure:
-        # Post JSON created with Instaloader v3
-        return Post.from_shortcode(context, json_structure['shortcode'])
-    else:
-        raise InvalidArgumentException("{}: Not an Instaloader JSON.".format(filename))
+    return load_structure(context, json_structure)
