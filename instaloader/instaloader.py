@@ -765,7 +765,8 @@ class Instaloader:
                 return True
 
         date_local = item.date_local
-        dirname = Path(_PostPathFormatter(item).format(self.dirname_pattern, target=target)) / _PostPathFormatter.sanitize_path(':stories')
+        dirname = (Path(_PostPathFormatter(item).format(self.dirname_pattern, target=target)) /
+                  _PostPathFormatter.sanitize_path(':stories'))
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
