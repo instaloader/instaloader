@@ -13,6 +13,7 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
 from .instaloader import get_default_session_filename
 from .instaloadercontext import default_user_agent
+from .lateststamps import LatestStamps
 
 
 def usage_string():
@@ -76,6 +77,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           download_tagged: bool = False,
           download_igtv: bool = False,
           fast_update: bool = False,
+          latest_stamps_file: Optional[str] = None,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
@@ -88,6 +90,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     if storyitem_filter_str is not None:
         storyitem_filter = filterstr_to_filterfunc(storyitem_filter_str, StoryItem)
         instaloader.context.log('Only download storyitems with property "{}".'.format(storyitem_filter_str))
+    latest_stamps = None
+    if latest_stamps_file is not None:
+        latest_stamps = LatestStamps(latest_stamps_file)
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
@@ -212,14 +217,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
                                       download_highlights, download_stories,
-                                      fast_update, post_filter, storyitem_filter)
+                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
             with instaloader.anonymous_copy() as anonymous_loader:
                 anonymous_loader.download_profiles(anonymous_retry_profiles,
                                                    download_profile_pic, download_posts, download_tagged, download_igtv,
-                                                   fast_update=fast_update, post_filter=post_filter)
+                                                   fast_update=fast_update, post_filter=post_filter,
+                                                   latest_stamps=latest_stamps)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     except AbortDownloadException as exc:
@@ -324,6 +330,10 @@ def main():
     g_cond.add_argument('-F', '--fast-update', action='store_true',
                         help='For each target, stop when encountering the first already-downloaded picture. This '
                              'flag is recommended when you use Instaloader to update your personal Instagram archive.')
+    g_cond.add_argument('--latest-stamps', metavar='STAMPSFILE',
+                        help='Path to a file to store the timestamps of latest media scraped for each profile. '
+                             'This allows updating your personal Instagram archive even if you delete the destination '
+                             'directories.')
 
     g_cond.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
@@ -464,6 +474,7 @@ def main():
               download_tagged=args.tagged,
               download_igtv=args.igtv,
               fast_update=args.fast_update,
+              latest_stamps_file=args.latest_stamps,
               max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
               storyitem_filter_str=args.storyitem_filter)

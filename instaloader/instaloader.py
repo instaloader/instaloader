@@ -11,6 +11,7 @@ from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
+from itertools import takewhile
 from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
@@ -20,6 +21,7 @@ import urllib3  # type: ignore
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
+from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
@@ -1235,7 +1237,8 @@ class Instaloader:
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
-                          raise_errors: bool = False):
+                          raise_errors: bool = False,
+                          latest_stamps: Optional[LatestStamps] = None):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -1251,11 +1254,15 @@ class Instaloader:
         :param raise_errors:
            Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
+        :param latest_stamps: :option:`--latest-stamps`.
 
         .. versionadded:: 4.1
 
         .. versionchanged:: 4.3
            Add `igtv` parameter.
+
+        .. versionchanged:: 4.8
+           Add `latest_stamps` parameter.
         """
 
         @contextmanager
@@ -1311,8 +1318,16 @@ class Instaloader:
                 # Iterate over pictures and download them
                 if posts:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
-                    self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
+                    posts_to_download: Iterator[Post] = profile.get_posts()
+                    if latest_stamps is not None:
+                        # pylint:disable=cell-var-from-loop
+                        last_scraped = latest_stamps.get_last_post_timestamp(profile_name)
+                        posts_to_download = takewhile(lambda p: p.date_local > last_scraped, posts_to_download)
+                        scraped_timestamp = datetime.now()
+                    self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile)
+                    if latest_stamps is not None:
+                        latest_stamps.set_last_post_timestamp(profile_name, scraped_timestamp)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
