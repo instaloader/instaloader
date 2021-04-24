@@ -1,8 +1,10 @@
 import configparser
 from datetime import datetime
+from typing import Optional
 
 
 class LatestStamps:
+    ID_SECTION = 'profile-ids'
     POST_SECTION = 'post-timestamps'
     STORY_SECTION = 'story-timestamps'
     PROFILE_PIC_SECTION = 'profile-pics'
@@ -19,6 +21,25 @@ class LatestStamps:
     def ensure_section(self, section: str):
         if not self.data.has_section(section):
             self.data.add_section(section)
+
+    def get_profile_id(self, profile_name: str) -> Optional[int]:
+        try:
+            return self.data.getint(self.ID_SECTION, profile_name)
+        except (configparser.Error, ValueError):
+            return None
+
+    def save_profile_id(self, profile_name: str, profile_id: int):
+        self.ensure_section(self.ID_SECTION)
+        self.data.set(self.ID_SECTION, profile_name, str(profile_id))
+        self.save()
+
+    def rename_profile(self, old_profile: str, new_profile: str):
+        for section in [self.ID_SECTION, self.POST_SECTION, self.STORY_SECTION, self.PROFILE_PIC_SECTION]:
+            if self.data.has_option(section, old_profile):
+                value = self.data.get(section, old_profile)
+                self.data.set(section, new_profile, value)
+                self.data.remove_option(section, old_profile)
+        self.save()
 
     def get_timestamp(self, section: str, key: str) -> datetime:
         try:

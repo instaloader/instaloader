@@ -177,7 +177,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                      post_filter=post_filter)
                 elif re.match(r"^[A-Za-z0-9._]+$", target):
                     try:
-                        profile = instaloader.check_profile_id(target)
+                        profile = instaloader.check_profile_id(target, latest_stamps)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
                             if download_profile_pic or ((download_posts or download_tagged or download_igtv)
                                                         and not profile.is_private):
@@ -196,7 +196,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
                             with instaloader.anonymous_copy() as anonymous_loader:
                                 with instaloader.context.error_catcher():
-                                    anonymous_retry_profiles.add(anonymous_loader.check_profile_id(target))
+                                    anonymous_retry_profiles.add(anonymous_loader.check_profile_id(target,
+                                                                                                   latest_stamps))
                                     instaloader.context.error("Warning: {} will be downloaded anonymously (\"{}\")."
                                                               .format(target, err))
                         else:

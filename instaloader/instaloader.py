@@ -1210,7 +1210,7 @@ class Instaloader:
             text_file.write(str(profile.userid) + "\n")
             self.context.log("Stored ID {0} for profile {1}.".format(profile.userid, profile.username))
 
-    def check_profile_id(self, profile_name: str) -> Profile:
+    def check_profile_id(self, profile_name: str, latest_stamps: Optional[LatestStamps] = None) -> Profile:
         """
         Consult locally stored ID of profile with given name, check whether ID matches and whether name
         has changed and return current name of the profile, and store ID of profile.
@@ -1224,7 +1224,10 @@ class Instaloader:
             profile = Profile.from_username(self.context, profile_name)
         except ProfileNotExistsException as err:
             profile_name_not_exists_err = err
-        profile_id = self.load_profile_id(profile_name)
+        if latest_stamps is None:
+            profile_id = self.load_profile_id(profile_name)
+        else:
+            profile_id = latest_stamps.get_profile_id(profile_name)
         if profile_id is not None:
             if (profile is None) or \
                     (profile_id != profile.userid):
@@ -1237,20 +1240,26 @@ class Instaloader:
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
                 self.context.log("Profile {0} has changed its name to {1}.".format(profile_name, newname))
-                if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-                     format_string_contains_key(self.dirname_pattern, 'target'))):
-                    os.rename(self.dirname_pattern.format(profile=profile_name.lower(),
-                                                          target=profile_name.lower()),
-                              self.dirname_pattern.format(profile=newname.lower(),
-                                                          target=newname.lower()))
+                if latest_stamps is None:
+                    if ((format_string_contains_key(self.dirname_pattern, 'profile') or
+                         format_string_contains_key(self.dirname_pattern, 'target'))):
+                        os.rename(self.dirname_pattern.format(profile=profile_name.lower(),
+                                                              target=profile_name.lower()),
+                                  self.dirname_pattern.format(profile=newname.lower(),
+                                                              target=newname.lower()))
+                    else:
+                        os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower()),
+                                  '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
                 else:
-                    os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower()),
-                              '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
+                    latest_stamps.rename_profile(profile_name, newname)
                 return profile_from_id
             # profile exists and profile id matches saved id
             return profile
         if profile is not None:
-            self.save_profile_id(profile)
+            if latest_stamps is None:
+                self.save_profile_id(profile)
+            else:
+                latest_stamps.save_profile_id(profile.username, profile.userid)
             return profile
         if profile_name_not_exists_err:
             raise profile_name_not_exists_err
