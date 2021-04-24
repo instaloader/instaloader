@@ -744,7 +744,8 @@ class Instaloader:
                          userids: Optional[List[Union[int, Profile]]] = None,
                          fast_update: bool = False,
                          filename_target: Optional[str] = ':stories',
-                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
+                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None,
+                         latest_stamps: Optional[LatestStamps] = None) -> None:
         """
         Download available stories from user followees or all stories of users whose ID are given.
         Does not mark stories as seen.
@@ -755,7 +756,11 @@ class Instaloader:
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
                or None if profile name should be used instead
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
+        :param latest_stamps: Database with the last times each user was scraped
         :raises LoginRequiredException: If called without being logged in.
+
+        .. versionchanged:: 4.8
+           Add `latest_stamps` parameter.
         """
 
         if not userids:
@@ -774,7 +779,13 @@ class Instaloader:
             self.context.log(msg)
             totalcount = user_story.itemcount
             count = 1
-            for item in user_story.get_items():
+            stories_to_download = user_story.get_items()
+            if latest_stamps is not None:
+                # pylint:disable=cell-var-from-loop
+                last_scraped = latest_stamps.get_last_story_timestamp(name)
+                stories_to_download = takewhile(lambda s: s.date_local > last_scraped, stories_to_download)
+                scraped_timestamp = datetime.now()
+            for item in stories_to_download:
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
                     continue
@@ -784,6 +795,8 @@ class Instaloader:
                     downloaded = self.download_storyitem(item, filename_target if filename_target else name)
                     if fast_update and not downloaded:
                         break
+            if latest_stamps is not None:
+                latest_stamps.set_last_story_timestamp(name, scraped_timestamp)
 
     def download_storyitem(self, item: StoryItem, target: Union[str, Path]) -> bool:
         """Download one user story.
@@ -1344,7 +1357,7 @@ class Instaloader:
             with self.context.error_catcher("Download stories"):
                 self.context.log("Downloading stories")
                 self.download_stories(userids=list(profiles), fast_update=fast_update, filename_target=None,
-                                      storyitem_filter=storyitem_filter)
+                                      storyitem_filter=storyitem_filter, latest_stamps=latest_stamps)
 
     def download_profile(self, profile_name: Union[str, Profile],
                          profile_pic: bool = True, profile_pic_only: bool = False,
