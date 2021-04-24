@@ -1190,6 +1190,14 @@ class Instaloader:
             return os.path.join(self.dirname_pattern.format(),
                                 '{0}_id'.format(profile_name.lower()))
 
+    def load_profile_id(self, profile_name: str) -> Optional[int]:
+        id_filename = self._get_id_filename(profile_name)
+        try:
+            with open(id_filename, 'rb') as id_file:
+                return int(id_file.read())
+        except (FileNotFoundError, ValueError):
+            return None
+
     def save_profile_id(self, profile: Profile):
         """
         Store ID of profile locally.
@@ -1216,10 +1224,8 @@ class Instaloader:
             profile = Profile.from_username(self.context, profile_name)
         except ProfileNotExistsException as err:
             profile_name_not_exists_err = err
-        id_filename = self._get_id_filename(profile_name)
-        try:
-            with open(id_filename, 'rb') as id_file:
-                profile_id = int(id_file.read())
+        profile_id = self.load_profile_id(profile_name)
+        if profile_id is not None:
             if (profile is None) or \
                     (profile_id != profile.userid):
                 if profile is not None:
@@ -1243,8 +1249,6 @@ class Instaloader:
                 return profile_from_id
             # profile exists and profile id matches saved id
             return profile
-        except (FileNotFoundError, ValueError):
-            pass
         if profile is not None:
             self.save_profile_id(profile)
             return profile
