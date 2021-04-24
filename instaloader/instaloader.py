@@ -499,6 +499,17 @@ class Instaloader:
             os.utime(filename, (datetime.now().timestamp(), date_object.timestamp()))
         self.context.log('')  # log output of _get_and_write_raw() does not produce \n
 
+    def download_profilepic_if_new(self, profile: Profile, latest_stamps: Optional[LatestStamps]) -> None:
+        if latest_stamps is None:
+            self.download_profilepic(profile)
+            return
+        profile_pic_basename = profile.profile_pic_url.split('/')[-1].split('?')[0]
+        saved_basename = latest_stamps.get_profile_pic(profile.username)
+        if saved_basename == profile_pic_basename:
+            return
+        self.download_profilepic(profile)
+        latest_stamps.set_profile_pic(profile.username, profile_pic_basename)
+
     def download_profilepic(self, profile: Profile) -> None:
         """Downloads and saves profile pic."""
         self.download_title_pic(profile.profile_pic_url, profile.username.lower(), 'profile_pic', profile)
@@ -1281,7 +1292,7 @@ class Instaloader:
                 # Download profile picture
                 if profile_pic:
                     with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
-                        self.download_profilepic(profile)
+                        self.download_profilepic_if_new(profile, latest_stamps)
 
                 # Save metadata as JSON if desired.
                 if self.save_metadata:
