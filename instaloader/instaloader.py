@@ -736,10 +736,16 @@ class Instaloader:
             self.context.log("Retrieving all visible stories...")
         else:
             userids = [p if isinstance(p, int) else p.userid for p in userids]
+            profile_count = len(userids)
 
-        for user_story in self.get_stories(userids):
+        for i, user_story in enumerate(self.get_stories(userids), start=1):
             name = user_story.owner_username
-            self.context.log("Retrieving stories from profile {}.".format(name))
+            if profile_count is not None:
+                msg = "[{0:{w}d}/{1:{w}d}] Retrieving stories from profile {2}.".format(i, profile_count, name,
+                                                                                        w=len(str(profile_count)))
+            else:
+                msg = "[{:3d}] Retrieving stories from profile {}.".format(i, name)
+            self.context.log(msg)
             totalcount = user_story.itemcount
             count = 1
             for item in user_story.get_items():
@@ -1246,7 +1252,9 @@ class Instaloader:
         # error_handler type is Callable[[Optional[str]], ContextManager[None]] (not supported with Python 3.5.0..3.5.3)
         error_handler = _error_raiser if raise_errors else self.context.error_catcher
 
-        for profile in profiles:
+        for i, profile in enumerate(profiles, start=1):
+            self.context.log("[{0:{w}d}/{1:{w}d}] Downloading profile {2}".format(i, len(profiles), profile.username,
+                                                                                  w=len(str(len(profiles)))))
             with error_handler(profile.username):  # type: ignore # (ignore type for Python 3.5 support)
                 profile_name = profile.username
 
