@@ -745,7 +745,8 @@ class Instaloader:
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
-                    downloaded = self.download_storyitem(item, filename_target if filename_target else name)
+                    target: Path = Path(filename_target.format(name))
+                    downloaded = self.download_storyitem(item, target if target else name)
                     if fast_update and not downloaded:
                         break
 
@@ -765,8 +766,7 @@ class Instaloader:
                 return True
 
         date_local = item.date_local
-        dirname = (Path(_PostPathFormatter(item).format(self.dirname_pattern, target=target)) /
-                  _PostPathFormatter.sanitize_path(':stories'))
+        dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
@@ -1293,7 +1293,8 @@ class Instaloader:
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
                 self.context.log("Downloading stories")
-                self.download_stories(userids=list(profiles), fast_update=fast_update, filename_target=None,
+                self.download_stories(userids=list(profiles), fast_update=fast_update,
+                                      filename_target="{}/:stories",
                                       storyitem_filter=storyitem_filter)
 
     def download_profile(self, profile_name: Union[str, Profile],
