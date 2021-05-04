@@ -1548,15 +1548,15 @@ class _TitlePic:
         self._date_utc = date_utc
 
     @property
-    def profile(self) -> str:
+    def profile(self) -> Union[str, Path]:
         return self._profile.username.lower() if self._profile is not None else self._target
 
     @property
-    def owner_username(self) -> str:
+    def owner_username(self) -> Union[str, Path]:
         return self.profile
 
     @property
-    def owner_id(self) -> str:
+    def owner_id(self) -> Union[str, Path]:
         return str(self._profile.userid) if self._profile is not None else self._target
 
     @property

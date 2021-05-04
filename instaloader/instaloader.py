@@ -10,7 +10,6 @@ import tempfile
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
-from hashlib import md5
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
