@@ -4,6 +4,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
 from . import __version__
@@ -1535,6 +1536,60 @@ class TopSearchResults:
         The string that was searched for on Instagram to produce this :class:`TopSearchResults` instance.
         """
         return self._searchstring
+
+
+class _TitlePic:
+    def __init__(self, profile: Optional[Profile], target: Union[str, Path], typename: str,
+                 filename: str, date_utc: Optional[datetime]):
+        self._profile = profile
+        self._target = target
+        self._typename = typename
+        self._filename = filename
+        self._date_utc = date_utc
+
+    @property
+    def profile(self) -> str:
+        return self._profile.username.lower() if self._profile is not None else self._target
+
+    @property
+    def owner_username(self) -> str:
+        return self.profile
+
+    @property
+    def owner_id(self) -> str:
+        return str(self._profile.userid) if self._profile is not None else self._target
+
+    @property
+    def target(self) -> Union[str, Path]:
+        return self._target
+
+    @property
+    def typename(self) -> str:
+        return self._typename
+
+    @property
+    def filename(self) -> str:
+        return self._filename
+
+    @property
+    def date_utc(self) -> Optional[datetime]:
+        return self._date_utc
+
+    @property
+    def date(self) -> Optional[datetime]:
+        return self.date
+
+    @property
+    def date_local(self) -> Optional[datetime]:
+        return self._date_utc.astimezone() if self._date_utc is not None else None
+
+    @property
+    def shortcode(self) -> str:
+        return self._typename
+
+    @property
+    def mediaid(self) -> str:
+        return self._typename
 
 
 JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]

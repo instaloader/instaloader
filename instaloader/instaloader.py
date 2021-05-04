@@ -23,7 +23,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
 from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, PostSidecarNode)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode, _TitlePic)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -102,7 +102,7 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode)):
+        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode, _TitlePic)):
             return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
@@ -460,19 +460,18 @@ class Instaloader:
 
         .. versionadded:: 4.3"""
 
-        def _epoch_to_string(epoch: datetime) -> str:
-            return epoch.strftime('%Y-%m-%d_%H-%M-%S_UTC')
-
         http_response = self.context.get_raw(url)
         date_object = None  # type: Optional[datetime]
         if 'Last-Modified' in http_response.headers:
             date_object = datetime.strptime(http_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
             pic_bytes = None
-            pic_identifier = _epoch_to_string(date_object)
         else:
             pic_bytes = http_response.content
-            pic_identifier = md5(pic_bytes).hexdigest()[:16]
-        filename = self.format_filename_within_target_path(target, owner_profile, pic_identifier, name_suffix, 'jpg')
+        ig_filename = url.split('/')[-1].split('?')[0]
+        pic_data = _TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
+        dirname = _PostPathFormatter(pic_data).format(self.dirname_pattern, target=target)
+        filename_template = os.path.join(dirname, self.format_filename(pic_data, target=target))
+        filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
@@ -572,7 +571,8 @@ class Instaloader:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         return filename
 
-    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode], target: Optional[Union[str, Path]] = None):
+    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode, _TitlePic],
+                        target: Optional[Union[str, Path]] = None):
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
