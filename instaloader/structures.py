@@ -1538,7 +1538,7 @@ class TopSearchResults:
         return self._searchstring
 
 
-class _TitlePic:
+class TitlePic:
     def __init__(self, profile: Optional[Profile], target: Union[str, Path], typename: str,
                  filename: str, date_utc: Optional[datetime]):
         self._profile = profile
@@ -1582,14 +1582,6 @@ class _TitlePic:
     @property
     def date_local(self) -> Optional[datetime]:
         return self._date_utc.astimezone() if self._date_utc is not None else None
-
-    @property
-    def shortcode(self) -> str:
-        return self._typename
-
-    @property
-    def mediaid(self) -> str:
-        return self._typename
 
 
 JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]

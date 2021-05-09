@@ -22,7 +22,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
 from .nodeiterator import NodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, PostSidecarNode, _TitlePic)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
 
 
 def get_default_session_filename(username: str) -> str:
@@ -101,7 +101,7 @@ class _ArbitraryItemFormatter(string.Formatter):
 
     def get_value(self, key, args, kwargs):
         """Override to substitute {ATTRIBUTE} by attributes of our _item."""
-        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode, _TitlePic)):
+        if key == 'filename' and isinstance(self._item, (Post, StoryItem, PostSidecarNode, TitlePic)):
             return "{filename}"
         if hasattr(self._item, key):
             return getattr(self._item, key)
@@ -143,6 +143,9 @@ class Instaloader:
     :param user_agent: :option:`--user-agent`
     :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
     :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
+    :param title_pattern:
+       :option:`--title-pattern`, default is ``{date_utc}_UTC_{typename}`` if ``dirname_pattern`` contains
+       ``{target}`` or ``{profile}``, ``{target}_{date_utc}_UTC_{typename}`` otherwise.
     :param download_pictures: not :option:`--no-pictures`
     :param download_videos: not :option:`--no-videos`
     :param download_video_thumbnails: not :option:`--no-video-thumbnails`
@@ -174,6 +177,7 @@ class Instaloader:
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
+                 title_pattern: Optional[str] = None,
                  download_pictures=True,
                  download_videos: bool = True,
                  download_video_thumbnails: bool = True,
@@ -199,6 +203,14 @@ class Instaloader:
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
         self.filename_pattern = filename_pattern or "{date_utc}_UTC"
+        if title_pattern is not None:
+            self.title_pattern = title_pattern
+        else:
+            if (format_string_contains_key(self.dirname_pattern, 'profile') or
+                format_string_contains_key(self.dirname_pattern, 'target')):
+                self.title_pattern = '{date_utc}_UTC_{typename}'
+            else:
+                self.title_pattern = '{target}_{date_utc}_UTC_{typename}'
         self.download_pictures = download_pictures
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
@@ -463,20 +475,22 @@ class Instaloader:
         date_object = None  # type: Optional[datetime]
         if 'Last-Modified' in http_response.headers:
             date_object = datetime.strptime(http_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
+            date_object = date_object.replace(tzinfo=timezone.utc)
             pic_bytes = None
         else:
             pic_bytes = http_response.content
         ig_filename = url.split('/')[-1].split('?')[0]
-        pic_data = _TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
+        pic_data = TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
         dirname = _PostPathFormatter(pic_data).format(self.dirname_pattern, target=target)
-        filename_template = os.path.join(dirname, self.format_filename(pic_data, target=target))
+        filename_template = os.path.join(dirname,
+                                         _PostPathFormatter(pic_data).format(self.title_pattern, target=target))
         filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
                                           os.path.getsize(filename) >= int(content_length))):
             self.context.log(filename + ' already exists')
-            return None
+            return
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         self.context.write_raw(pic_bytes if pic_bytes else http_response, filename)
         if date_object:
@@ -570,7 +584,7 @@ class Instaloader:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         return filename
 
-    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode, _TitlePic],
+    def format_filename(self, item: Union[Post, StoryItem, PostSidecarNode, TitlePic],
                         target: Optional[Union[str, Path]] = None):
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
