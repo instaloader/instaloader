@@ -172,8 +172,8 @@ The following tokens are defined for usage with
    highlight covers, equivalent to ``{target}``.
 
 - ``{owner_id}``
-   Unique integer ID of owner profile. For hashtag profile pics and highlight covers,
-   equivalent to ``{target}``.
+   Unique integer ID of owner profile. For hashtag profile pics, equivalent to
+   ``{target}``.
 
 - ``{shortcode}``
    Shortcode (identifier string). Not available for :option:`--title-pattern`.
@@ -191,6 +191,10 @@ The following tokens are defined for usage with
    Instaloader is::
 
       {date_utc:%Y-%m-%d_%H-%M-%S}
+
+- ``{typename}``
+   Type of media being saved, such as GraphImage, GraphStoryVideo, profile_pic,
+   etc.
 
 For example, encode the poster's profile name in the filenames with::
 

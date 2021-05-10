@@ -359,13 +359,15 @@ def main():
                             '{target} is replaced by the target you specified, i.e. either :feed, #hashtag or the '
                             'profile name. Defaults to \'{target}\'.')
     g_how.add_argument('--filename-pattern',
-                       help='Prefix of filenames for posts and stores, relative to the directory given with '
+                       help='Prefix of filenames for posts and stories, relative to the directory given with '
                             '--dirname-pattern. {profile} is replaced by the profile name,'
                             '{target} is replaced by the target you specified, i.e. either :feed'
                             '#hashtag or the profile name. Defaults to \'{date_utc}_UTC\'')
     g_how.add_argument('--title-pattern',
                        help='Prefix of filenames for profile pics, hashtag profile pics, and highlight covers. '
-                            'Defaults to \'{date_utc}_UTC_{typename}\'.')
+                            'Defaults to \'{date_utc}_UTC_{typename}\' if --dirname-pattern contains \'{target}\' '
+                            'or \'{dirname}\', or if --dirname-pattern is not specified. Otherwise defaults to '
+                            '\'{target}_{date_utc}_UTC_{typename}\'.')
     g_how.add_argument('--resume-prefix', metavar='PREFIX',
                        help='Prefix for filenames that are used to save the information to resume an interrupted '
                             'download.')
@@ -435,7 +437,6 @@ def main():
 
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
-                             title_pattern=args.title_pattern,
                              download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
@@ -449,7 +450,8 @@ def main():
                              check_resume_bbd=not args.use_aged_resume_files,
                              slide=args.slide,
                              fatal_status_codes=args.abort_on,
-                             iphone_support=not args.no_iphone)
+                             iphone_support=not args.no_iphone,
+                             title_pattern=args.title_pattern)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

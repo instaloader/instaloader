@@ -1577,7 +1577,7 @@ class TitlePic:
 
     @property
     def date(self) -> Optional[datetime]:
-        return self.date
+        return self.date_utc
 
     @property
     def date_local(self) -> Optional[datetime]:

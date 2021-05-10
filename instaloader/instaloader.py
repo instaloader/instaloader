@@ -177,7 +177,6 @@ class Instaloader:
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
-                 title_pattern: Optional[str] = None,
                  download_pictures=True,
                  download_videos: bool = True,
                  download_video_thumbnails: bool = True,
@@ -194,7 +193,8 @@ class Instaloader:
                  check_resume_bbd: bool = True,
                  slide: Optional[str] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True,
+                 title_pattern: Optional[str] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
