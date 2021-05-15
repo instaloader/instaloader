@@ -205,11 +205,22 @@ How to Download
 
 .. option:: --filename-pattern FILENAME_PATTERN
 
-   Prefix of filenames, relative to the directory given with
+   Prefix of filenames for posts and stories, relative to the directory given with
    :option:`--dirname-pattern`. ``{profile}`` is replaced by the profile name,
    ``{target}`` is replaced by the target you specified, i.e.  either ``:feed``,
    ``#hashtag`` or the profile name. Defaults to ``{date_utc}_UTC``.
    See :ref:`filename-specification` for a list of supported tokens.
+
+.. option:: --title-pattern TITLE_PATTERN
+
+   Prefix of filenames for profile pics, hashtag profile pics, and highlight
+   covers, relative to the directory given with :option:`--dirname-pattern`.
+   Defaults to ``{date_utc}_UTC_{typename}`` if :option:`--dirname-pattern`
+   contains ``{target}`` or ``{profile}``, otherwise defaults to
+   ``{target}_{date_utc}_UTC_{typename}``.
+   See :ref:`filename-specification` for a list of supported tokens.
+
+   .. versionadded:: 4.8
 
 .. option:: --resume-prefix prefix
 

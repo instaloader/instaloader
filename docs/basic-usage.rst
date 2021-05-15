@@ -149,27 +149,37 @@ target. The default is ``--dirname-pattern={target}``. In the dirname
 pattern, the token ``{target}`` is replaced by the target name, and
 ``{profile}`` is replaced by the owner of the post which is downloaded.
 
-:option:`--filename-pattern` configures the path of the post's files relative
+:option:`--filename-pattern` configures the path of the post and story's files relative
 to the target directory that is specified with :option:`--dirname-pattern`.
 The default is ``--filename-pattern={date_utc}_UTC``.
 The tokens ``{target}`` and ``{profile}`` are replaced like in the
-dirname pattern. The following tokens are defined for usage with
-:option:`--filename-pattern`:
+dirname pattern.
+
+:option:`--title-pattern` is similar to :option:`--filename-pattern`, but for profile
+pics, hashtag profile pics, and highlight covers. The default is
+``{date_utc}_UTC_{typename}`` if :option:`--dirname-pattern` contains ``{target}`` or
+``{profile}``, or ``{target}_{date_utc}_UTC_{typename}`` if it does not. Some tokens
+are not supported for this option, see below for details.
+
+The following tokens are defined for usage with
+:option:`--filename-pattern` and :option:`--title-pattern`:
 
 - ``{target}``
    Target name (as given in Instaloader command line)
 
 - ``{profile}`` (same as ``{owner_username}``)
-   Owner of the Post / StoryItem.
+   Owner of the Post / StoryItem / ProfilePic. For hashtag profile pics and
+   highlight covers, equivalent to ``{target}``.
 
 - ``{owner_id}``
-   Unique integer ID of owner profile.
+   Unique integer ID of owner profile. For hashtag profile pics, equivalent to
+   ``{target}``.
 
 - ``{shortcode}``
-   Shortcode (identifier string).
+   Shortcode (identifier string). Not available for :option:`--title-pattern`.
 
 - ``{mediaid}``
-   Integer representation of shortcode.
+   Integer representation of shortcode. Not available for :option:`--title-pattern`.
 
 - ``{filename}``
    Instagram's internal filename.
@@ -181,6 +191,10 @@ dirname pattern. The following tokens are defined for usage with
    Instaloader is::
 
       {date_utc:%Y-%m-%d_%H-%M-%S}
+
+- ``{typename}``
+   Type of media being saved, such as GraphImage, GraphStoryVideo, profile_pic,
+   etc.
 
 For example, encode the poster's profile name in the filenames with::
 
