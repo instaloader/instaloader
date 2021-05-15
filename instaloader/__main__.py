@@ -11,7 +11,7 @@ from typing import List, Optional
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
                InvalidArgumentException, Post, Profile, ProfileNotExistsException, StoryItem,
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
-from .instaloader import get_default_session_filename
+from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 
@@ -331,11 +331,10 @@ def main():
     g_cond.add_argument('-F', '--fast-update', action='store_true',
                         help='For each target, stop when encountering the first already-downloaded picture. This '
                              'flag is recommended when you use Instaloader to update your personal Instagram archive.')
-    g_cond.add_argument('--latest-stamps', metavar='STAMPSFILE',
-                        help='Path to a file to store the timestamps of latest media scraped for each profile. '
-                             'This allows updating your personal Instagram archive even if you delete the destination '
-                             'directories.')
-
+    g_cond.add_argument('--latest-stamps', nargs='?', metavar='STAMPSFILE', const=get_default_stamps_filename(),
+                        help='Store the timestamps of latest media scraped for each profile. This allows updating '
+                             'your personal Instagram archive even if you delete the destination directories. '
+                             'If STAMPSFILE is not provided, defaults to ' + get_default_stamps_filename())
     g_cond.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '

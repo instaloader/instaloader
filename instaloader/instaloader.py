@@ -27,18 +27,23 @@ from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
 
 
-def get_default_session_filename(username: str) -> str:
-    """Returns default session filename for given username."""
-    sessionfilename = "session-{}".format(username)
+def _get_config_dir() -> str:
     if platform.system() == "Windows":
-        # on Windows, use %LOCALAPPDATA%\Instaloader\session-USERNAME
+        # on Windows, use %LOCALAPPDATA%\Instaloader
         localappdata = os.getenv("LOCALAPPDATA")
         if localappdata is not None:
-            return os.path.join(localappdata, "Instaloader", sessionfilename)
+            return os.path.join(localappdata, "Instaloader")
         # legacy fallback - store in temp dir if %LOCALAPPDATA% is not set
-        return os.path.join(tempfile.gettempdir(), ".instaloader-" + getpass.getuser(), sessionfilename)
-    # on Unix, use ~/.config/instaloader/session-USERNAME
-    return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader", sessionfilename)
+        return os.path.join(tempfile.gettempdir(), ".instaloader-" + getpass.getuser())
+    # on Unix, use ~/.config/instaloader
+    return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader")
+
+
+def get_default_session_filename(username: str) -> str:
+    """Returns default session filename for given username."""
+    configdir = _get_config_dir()
+    sessionfilename = "session-{}".format(username)
+    return os.path.join(configdir, sessionfilename)
 
 
 def get_legacy_session_filename(username: str) -> str:
@@ -46,6 +51,11 @@ def get_legacy_session_filename(username: str) -> str:
     dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
     filename = dirname + "/" + "session-" + username
     return filename.lower()
+
+
+def get_default_stamps_filename() -> str:
+    configdir = _get_config_dir()
+    return os.path.join(configdir, "latest-stamps.ini")
 
 
 def format_string_contains_key(format_string: str, key: str) -> bool:
