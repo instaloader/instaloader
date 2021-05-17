@@ -793,8 +793,9 @@ class Instaloader:
             if latest_stamps is not None:
                 # pylint:disable=cell-var-from-loop
                 last_scraped = latest_stamps.get_last_story_timestamp(name)
-                stories_to_download = takewhile(lambda s: s.date_local > last_scraped, stories_to_download)
-                scraped_timestamp = datetime.now()
+                stories_to_download = takewhile(lambda s: s.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
+                                                stories_to_download)
+                scraped_timestamp = datetime.now().astimezone()
             for item in stories_to_download:
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
@@ -1369,8 +1370,9 @@ class Instaloader:
                     if latest_stamps is not None:
                         # pylint:disable=cell-var-from-loop
                         last_scraped = latest_stamps.get_last_post_timestamp(profile_name)
-                        posts_to_download = takewhile(lambda p: p.date_local > last_scraped, posts_to_download)
-                        scraped_timestamp = datetime.now()
+                        posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
+                                                      posts_to_download)
+                        scraped_timestamp = datetime.now().astimezone()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile)
                     if latest_stamps is not None:

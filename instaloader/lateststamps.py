@@ -4,10 +4,11 @@ from typing import Optional
 
 
 class LatestStamps:
-    ID_SECTION = 'profile-ids'
-    POST_SECTION = 'post-timestamps'
-    STORY_SECTION = 'story-timestamps'
-    PROFILE_PIC_SECTION = 'profile-pics'
+    PROFILE_ID = 'profile-id'
+    PROFILE_PIC = 'profile-pic'
+    POST_TIMESTAMP = 'post-timestamp'
+    STORY_TIMESTAMP = 'story-timestamp'
+    ISO_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 
     def __init__(self, latest_stamps_file):
         self.file = latest_stamps_file
@@ -24,53 +25,54 @@ class LatestStamps:
 
     def get_profile_id(self, profile_name: str) -> Optional[int]:
         try:
-            return self.data.getint(self.ID_SECTION, profile_name)
+            return self.data.getint(profile_name, self.PROFILE_ID)
         except (configparser.Error, ValueError):
             return None
 
     def save_profile_id(self, profile_name: str, profile_id: int):
-        self.ensure_section(self.ID_SECTION)
-        self.data.set(self.ID_SECTION, profile_name, str(profile_id))
+        self.ensure_section(profile_name)
+        self.data.set(profile_name, self.PROFILE_ID, str(profile_id))
         self.save()
 
     def rename_profile(self, old_profile: str, new_profile: str):
-        for section in [self.ID_SECTION, self.POST_SECTION, self.STORY_SECTION, self.PROFILE_PIC_SECTION]:
-            if self.data.has_option(section, old_profile):
-                value = self.data.get(section, old_profile)
-                self.data.set(section, new_profile, value)
-                self.data.remove_option(section, old_profile)
+        self.ensure_section(new_profile)
+        for option in [self.PROFILE_ID, self.PROFILE_PIC, self.POST_TIMESTAMP, self.STORY_TIMESTAMP]:
+            if self.data.has_option(old_profile, option):
+                value = self.data.get(old_profile, option)
+                self.data.set(new_profile, option, value)
+        self.data.remove_section(old_profile)
         self.save()
 
     def get_timestamp(self, section: str, key: str) -> datetime:
         try:
-            return datetime.fromtimestamp(self.data.getint(section, key))
-        except (configparser.Error, ValueError, OverflowError, OSError):
+            return datetime.strptime(self.data.get(section, key), self.ISO_FORMAT)
+        except (configparser.Error, ValueError):
             return datetime.min
 
     def set_timestamp(self, section: str, key: str, timestamp: datetime):
         self.ensure_section(section)
-        self.data.set(section, key, str(int(timestamp.timestamp())))
+        self.data.set(section, key, timestamp.strftime(self.ISO_FORMAT))
         self.save()
 
     def get_last_post_timestamp(self, profile_name: str) -> datetime:
-        return self.get_timestamp(self.POST_SECTION, profile_name)
+        return self.get_timestamp(profile_name, self.POST_TIMESTAMP)
 
     def set_last_post_timestamp(self, profile_name: str, timestamp: datetime):
-        self.set_timestamp(self.POST_SECTION, profile_name, timestamp)
+        self.set_timestamp(profile_name, self.POST_TIMESTAMP, timestamp)
 
     def get_last_story_timestamp(self, profile_name: str) -> datetime:
-        return self.get_timestamp(self.STORY_SECTION, profile_name)
+        return self.get_timestamp(profile_name, self.STORY_TIMESTAMP)
 
     def set_last_story_timestamp(self, profile_name: str, timestamp: datetime):
-        self.set_timestamp(self.STORY_SECTION, profile_name, timestamp)
+        self.set_timestamp(profile_name, self.STORY_TIMESTAMP, timestamp)
 
     def get_profile_pic(self, profile_name: str) -> str:
         try:
-            return self.data.get(self.PROFILE_PIC_SECTION, profile_name)
+            return self.data.get(profile_name, self.PROFILE_PIC)
         except configparser.Error:
             return ""
 
     def set_profile_pic(self, profile_name: str, profile_pic: str):
-        self.ensure_section(self.PROFILE_PIC_SECTION)
-        self.data.set(self.PROFILE_PIC_SECTION, profile_name, profile_pic)
+        self.ensure_section(profile_name)
+        self.data.set(profile_name, self.PROFILE_PIC, profile_pic)
         self.save()
