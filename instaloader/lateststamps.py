@@ -1,5 +1,5 @@
 import configparser
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -47,7 +47,7 @@ class LatestStamps:
         try:
             return datetime.strptime(self.data.get(section, key), self.ISO_FORMAT)
         except (configparser.Error, ValueError):
-            return datetime.min
+            return datetime.fromtimestamp(0, timezone.utc)
 
     def set_timestamp(self, section: str, key: str, timestamp: datetime):
         self.ensure_section(section)
