@@ -1183,13 +1183,22 @@ class Instaloader:
                                  fast_update, post_filter)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
-                      post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+                      post_filter: Optional[Callable[[Post], bool]] = None,
+                      latest_stamps: Optional[LatestStamps] = None) -> None:
         """Download IGTV videos of a profile.
 
         .. versionadded:: 4.3"""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
-        self.posts_download_loop(profile.get_igtv_posts(), profile.username, fast_update, post_filter,
+        posts_to_download: Iterator[Post] = profile.get_igtv_posts()
+        if latest_stamps is not None:
+            last_scraped = latest_stamps.get_last_igtv_timestamp(profile.username)
+            posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
+                                          posts_to_download)
+            scraped_timestamp = datetime.now().astimezone()
+        self.posts_download_loop(posts_to_download, profile.username, fast_update, post_filter,
                                  total_count=profile.igtvcount, owner_profile=profile)
+        if latest_stamps is not None:
+            latest_stamps.set_last_igtv_timestamp(profile.username, scraped_timestamp)
 
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -1356,7 +1365,8 @@ class Instaloader:
                 # Download IGTV, if requested
                 if igtv:
                     with self.context.error_catcher('Download IGTV of {}'.format(profile_name)):
-                        self.download_igtv(profile, fast_update=fast_update, post_filter=post_filter)
+                        self.download_igtv(profile, fast_update=fast_update, post_filter=post_filter,
+                                           latest_stamps=latest_stamps)
 
                 # Download highlights, if requested
                 if highlights:
