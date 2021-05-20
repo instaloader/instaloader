@@ -7,6 +7,7 @@ class LatestStamps:
     PROFILE_ID = 'profile-id'
     PROFILE_PIC = 'profile-pic'
     POST_TIMESTAMP = 'post-timestamp'
+    TAGGED_TIMESTAMP = 'tagged-timestamp'
     IGTV_TIMESTAMP = 'igtv-timestamp'
     STORY_TIMESTAMP = 'story-timestamp'
     ISO_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
@@ -38,7 +39,7 @@ class LatestStamps:
     def rename_profile(self, old_profile: str, new_profile: str):
         self.ensure_section(new_profile)
         for option in [self.PROFILE_ID, self.PROFILE_PIC, self.POST_TIMESTAMP,
-                       self.IGTV_TIMESTAMP, self.STORY_TIMESTAMP]:
+                       self.TAGGED_TIMESTAMP, self.IGTV_TIMESTAMP, self.STORY_TIMESTAMP]:
             if self.data.has_option(old_profile, option):
                 value = self.data.get(old_profile, option)
                 self.data.set(new_profile, option, value)
@@ -61,6 +62,12 @@ class LatestStamps:
 
     def set_last_post_timestamp(self, profile_name: str, timestamp: datetime):
         self.set_timestamp(profile_name, self.POST_TIMESTAMP, timestamp)
+
+    def get_last_tagged_timestamp(self, profile_name: str) -> datetime:
+        return self.get_timestamp(profile_name, self.TAGGED_TIMESTAMP)
+
+    def set_last_tagged_timestamp(self, profile_name: str, timestamp: datetime):
+        self.set_timestamp(profile_name, self.TAGGED_TIMESTAMP, timestamp)
 
     def get_last_igtv_timestamp(self, profile_name: str) -> datetime:
         return self.get_timestamp(profile_name, self.IGTV_TIMESTAMP)

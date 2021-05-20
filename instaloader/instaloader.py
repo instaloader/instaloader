@@ -1171,16 +1171,25 @@ class Instaloader:
 
     def download_tagged(self, profile: Profile, fast_update: bool = False,
                         target: Optional[str] = None,
-                        post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+                        post_filter: Optional[Callable[[Post], bool]] = None,
+                        latest_stamps: Optional[LatestStamps] = None) -> None:
         """Download all posts where a profile is tagged.
 
         .. versionadded:: 4.1"""
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
-        self.posts_download_loop(profile.get_tagged_posts(),
+        posts_to_download: Iterator[Post] = profile.get_tagged_posts()
+        if latest_stamps is not None:
+            last_scraped = latest_stamps.get_last_tagged_timestamp(profile.username)
+            posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
+                                          posts_to_download)
+            scraped_timestamp = datetime.now().astimezone()
+        self.posts_download_loop(posts_to_download,
                                  target if target
                                  else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
                                        _PostPathFormatter.sanitize_path(':tagged')),
                                  fast_update, post_filter)
+        if latest_stamps is not None:
+            latest_stamps.set_last_tagged_timestamp(profile.username, scraped_timestamp)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
@@ -1360,7 +1369,8 @@ class Instaloader:
                 # Download tagged, if requested
                 if tagged:
                     with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
-                        self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
+                        self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter,
+                                             latest_stamps=latest_stamps)
 
                 # Download IGTV, if requested
                 if igtv:
