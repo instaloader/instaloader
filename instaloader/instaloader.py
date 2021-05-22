@@ -54,6 +54,12 @@ def get_legacy_session_filename(username: str) -> str:
 
 
 def get_default_stamps_filename() -> str:
+    """
+    Returns default filename for latest stamps database.
+
+    .. versionadded:: 4.8
+
+    """
     configdir = _get_config_dir()
     return os.path.join(configdir, "latest-stamps.ini")
 
@@ -510,6 +516,14 @@ class Instaloader:
         self.context.log('')  # log output of _get_and_write_raw() does not produce \n
 
     def download_profilepic_if_new(self, profile: Profile, latest_stamps: Optional[LatestStamps]) -> None:
+        """
+        Downloads and saves profile pic if it has not been downloaded before.
+
+        :param latest_stamps: Database with the last downloaded data. If not present,
+               the profile pic is downloaded unless it already exists
+
+        .. versionadded:: 4.8
+        """
         if latest_stamps is None:
             self.download_profilepic(profile)
             return
@@ -1175,7 +1189,10 @@ class Instaloader:
                         latest_stamps: Optional[LatestStamps] = None) -> None:
         """Download all posts where a profile is tagged.
 
-        .. versionadded:: 4.1"""
+        .. versionadded:: 4.1
+
+        .. versionchanged:: 4.8
+           Add `latest_stamps` parameter."""
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
         posts_to_download: Iterator[Post] = profile.get_tagged_posts()
         if latest_stamps is not None:
@@ -1196,7 +1213,10 @@ class Instaloader:
                       latest_stamps: Optional[LatestStamps] = None) -> None:
         """Download IGTV videos of a profile.
 
-        .. versionadded:: 4.3"""
+        .. versionadded:: 4.3
+
+        .. versionchanged:: 4.8
+           Add `latest_stamps` parameter."""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
         posts_to_download: Iterator[Post] = profile.get_igtv_posts()
         if latest_stamps is not None:
@@ -1220,6 +1240,11 @@ class Instaloader:
                                 '{0}_id'.format(profile_name.lower()))
 
     def load_profile_id(self, profile_name: str) -> Optional[int]:
+        """
+        Load ID of profile from profile directory.
+
+        .. versionadded:: 4.8
+        """
         id_filename = self._get_id_filename(profile_name)
         try:
             with open(id_filename, 'rb') as id_file:
@@ -1229,7 +1254,7 @@ class Instaloader:
 
     def save_profile_id(self, profile: Profile):
         """
-        Store ID of profile locally.
+        Store ID of profile on profile directory.
 
         .. versionadded:: 4.0.6
         """
@@ -1245,7 +1270,12 @@ class Instaloader:
         has changed and return current name of the profile, and store ID of profile.
 
         :param profile_name: Profile name
+        :param latest_stamps: Database of downloaded data. If present, IDs are retrieved from it,
+               otherwise from the target directory
         :return: Instance of current profile
+
+        .. versionchanged:: 4.8
+           Add `latest_stamps` parameter.
         """
         profile = None
         profile_name_not_exists_err = None

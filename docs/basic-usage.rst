@@ -39,6 +39,16 @@ To later **update your local copy** of that profiles, you may run
 If :option:`--fast-update` is given, Instaloader stops when arriving at the
 first already-downloaded picture.
 
+Alternatively, you can use :option:`--latest-stamps` to have Instaloader store
+the time each profile was last downloaded and only download newer media:
+
+::
+
+    instaloader --latest-stamps -- profile [profile ...]
+
+With this option it's possible to move or delete downloaded media and still keep
+the archive updated.
+
 When updating profiles, Instaloader
 automatically **detects profile name changes** and renames the target directory
 accordingly.

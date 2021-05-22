@@ -4,6 +4,13 @@ from typing import Optional
 
 
 class LatestStamps:
+    """LatestStamps class.
+
+    Convenience class for retrieving and storing data from the :option:`--latest-stamps` file.
+
+    :param latest_stamps_file: path to file.
+
+    .. versionadded:: 4.8"""
     PROFILE_ID = 'profile-id'
     PROFILE_PIC = 'profile-pic'
     POST_TIMESTAMP = 'post-timestamp'
