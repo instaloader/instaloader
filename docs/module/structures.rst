@@ -84,3 +84,9 @@ Loading and Saving
 .. autofunction:: get_json_structure
 
 .. autofunction:: save_structure_to_file
+
+LatestStamps
+""""""""""""
+
+.. autoclass:: LatestStamps
+   :no-show-inheritance:
