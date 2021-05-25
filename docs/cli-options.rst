@@ -150,8 +150,8 @@ Which Posts to Download
 
    Works similarly to :option:`--fast-update`, but instead of relying on already
    downloaded media, the time each profile was downloaded is stored, and only
-   media newer poster after the last download is fetched. This allows updating
-   your personal Instagram archive while emptying the target directories.
+   media newer than the last download is fetched. This allows updating your
+   personal Instagram archive while emptying the target directories.
 
    Only works for media associated with a specific profile, and that is returned
    in chronological order: profile posts, profile stories, profile IGTV posts
