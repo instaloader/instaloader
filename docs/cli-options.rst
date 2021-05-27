@@ -146,6 +146,23 @@ Which Posts to Download
    This flag is recommended when you use Instaloader to update your personal
    Instagram archive.
 
+.. option:: --latest-stamps [STAMPSFILE]
+
+   Works similarly to :option:`--fast-update`, but instead of relying on already
+   downloaded media, the time each profile was downloaded is stored, and only
+   media newer than the last download is fetched. This allows updating your
+   personal Instagram archive while emptying the target directories.
+
+   Only works for media associated with a specific profile, and that is returned
+   in chronological order: profile posts, profile stories, profile IGTV posts
+   and profile tagged posts.
+
+   By default, the information is stored in
+   ``~/.config/instaloader/latest-stamps.ini``, but you can specify an
+   alternative location.
+
+   .. versionadded:: 4.8
+
 .. option:: --post-filter filter, --only-if filter
 
    Expression that, if given, must evaluate to True for each post to be
