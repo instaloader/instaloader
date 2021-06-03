@@ -339,9 +339,11 @@ class Post:
         """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
         if not self.caption:
             return []
-        # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
+        # This regular expression is modified from jStassen, adjusted to use Python's \w to
+        # support Unicode and a word/beginning of string delimiter at the beginning to ensure
+        # that no email addresses join the list of mentions.
         # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-        mention_regex = re.compile(r"(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        mention_regex = re.compile(r"(?:^|\W)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
         return re.findall(mention_regex, self.caption.lower())
 
     @property
