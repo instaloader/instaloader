@@ -591,7 +591,7 @@ class Profile:
         assert 'username' in node
         self._context = context
         self._has_public_story = None  # type: Optional[bool]
-        self._has_public_story_anon = None  # type: Optional[bool]        
+        self._has_public_story_anon = None  # type: Optional[bool]
         self._node = node
         self._has_full_metadata = False
         self._iphone_struct_ = None
@@ -796,11 +796,11 @@ class Profile:
             self._obtain_metadata()
             # query rate is limited:
             data = self._context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
-                                                    {'user_id': self.userid, 'include_chaining': False,
-                                                    'include_reel': False, 'include_suggested_users': False,
-                                                    'include_logged_out_extras': True,
-                                                    'include_highlight_reels': False},
-                                                    'https://www.instagram.com/{}/'.format(self.username))
+                                               {'user_id': self.userid, 'include_chaining': False,
+                                                'include_reel': False, 'include_suggested_users': False,
+                                                'include_logged_out_extras': True,
+                                                'include_highlight_reels': False},
+                                               'https://www.instagram.com/{}/'.format(self.username))
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story
