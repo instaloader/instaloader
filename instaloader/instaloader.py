@@ -1298,7 +1298,7 @@ class Instaloader:
                                                                                                   profile_id))
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
-                self.context.log("Profile {0} has changed its name to {1}.".format(profile_name, newname))
+                self.context.error("Profile {0} has changed its name to {1}.".format(profile_name, newname))
                 if latest_stamps is None:
                     if ((format_string_contains_key(self.dirname_pattern, 'profile') or
                          format_string_contains_key(self.dirname_pattern, 'target'))):
