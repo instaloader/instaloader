@@ -283,9 +283,9 @@ class InstaloaderContext:
         resp_json = login.json()
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
-                raise BadCredentialsException("Login error: {}".format(resp_json['message']))
+                raise BadCredentialsException("2FA error: {}".format(resp_json['message']))
             else:
-                raise BadCredentialsException("Login error: \"{}\" status.".format(resp_json['status']))
+                raise BadCredentialsException("2FA error: \"{}\" status.".format(resp_json['status']))
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user

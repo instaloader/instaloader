@@ -1392,5 +1392,6 @@ class Instaloader:
                     code = input("Enter 2FA verification code: ")
                     self.two_factor_login(code)
                     break
-                except BadCredentialsException:
+                except BadCredentialsException as err:
+                    print(err, file=sys.stderr)
                     pass
