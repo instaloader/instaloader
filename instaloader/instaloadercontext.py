@@ -212,8 +212,8 @@ class InstaloaderContext:
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
-        session.get('https://www.instagram.com/web/__mid/')
-        csrf_token = session.cookies.get_dict()['csrftoken']
+        csrf_json = self.get_json('accounts/login/', {}, session=session)
+        csrf_token = csrf_json['config']['csrf_token']
         session.headers.update({'X-CSRFToken': csrf_token})
         # Not using self.get_json() here, because we need to access csrftoken cookie
         self.do_sleep()
@@ -285,9 +285,9 @@ class InstaloaderContext:
         resp_json = login.json()
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
-                raise BadCredentialsException("Login error: {}".format(resp_json['message']))
+                raise BadCredentialsException("2FA error: {}".format(resp_json['message']))
             else:
-                raise BadCredentialsException("Login error: \"{}\" status.".format(resp_json['status']))
+                raise BadCredentialsException("2FA error: \"{}\" status.".format(resp_json['status']))
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user

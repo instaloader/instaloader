@@ -342,9 +342,11 @@ class Post:
         """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
         if not self.caption:
             return []
-        # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
+        # This regular expression is modified from jStassen, adjusted to use Python's \w to
+        # support Unicode and a word/beginning of string delimiter at the beginning to ensure
+        # that no email addresses join the list of mentions.
         # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-        mention_regex = re.compile(r"(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        mention_regex = re.compile(r"(?:^|\W|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
         return re.findall(mention_regex, self.caption.lower())
 
     @property
@@ -796,14 +798,13 @@ class Profile:
     def has_public_story(self) -> bool:
         if not self._has_public_story:
             self._obtain_metadata()
-            # query not rate limited if invoked anonymously:
-            with self._context.anonymous_copy() as anonymous_context:
-                data = anonymous_context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
-                                                       {'user_id': self.userid, 'include_chaining': False,
-                                                        'include_reel': False, 'include_suggested_users': False,
-                                                        'include_logged_out_extras': True,
-                                                        'include_highlight_reels': False},
-                                                       'https://www.instagram.com/{}/'.format(self.username))
+            # query rate might be limited:
+            data = self._context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
+                                               {'user_id': self.userid, 'include_chaining': False,
+                                                'include_reel': False, 'include_suggested_users': False,
+                                                'include_logged_out_extras': True,
+                                                'include_highlight_reels': False},
+                                               'https://www.instagram.com/{}/'.format(self.username))
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story

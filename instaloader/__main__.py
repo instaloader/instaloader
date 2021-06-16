@@ -113,7 +113,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             code = input("Enter 2FA verification code: ")
                             instaloader.two_factor_login(code)
                             break
-                        except BadCredentialsException:
+                        except BadCredentialsException as err:
+                            print(err, file=sys.stderr)
                             pass
             else:
                 instaloader.interactive_login(username)
@@ -346,7 +347,7 @@ def main():
 
     g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
-                             'Applies only to #hashtag and :feed.')
+                             'Applies to #hashtag, %%location_id, :feed, and :saved.')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
