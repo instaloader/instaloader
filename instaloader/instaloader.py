@@ -11,7 +11,6 @@ from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
-from itertools import takewhile
 from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
@@ -803,14 +802,13 @@ class Instaloader:
             self.context.log(msg)
             totalcount = user_story.itemcount
             count = 1
-            stories_to_download = user_story.get_items()
             if latest_stamps is not None:
                 # pylint:disable=cell-var-from-loop
                 last_scraped = latest_stamps.get_last_story_timestamp(name)
-                stories_to_download = takewhile(lambda s: s.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
-                                                stories_to_download)
                 scraped_timestamp = datetime.now().astimezone()
-            for item in stories_to_download:
+            for item in user_story.get_items():
+                if last_scraped is not None and item.date_utc.replace(tzinfo=timezone.utc) <= last_scraped:
+                    break
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
                     continue
@@ -932,7 +930,8 @@ class Instaloader:
                             post_filter: Optional[Callable[[Post], bool]] = None,
                             max_count: Optional[int] = None,
                             total_count: Optional[int] = None,
-                            owner_profile: Optional[Profile] = None) -> None:
+                            owner_profile: Optional[Profile] = None,
+                            takewhile: Optional[Callable[[Post], bool]] = None) -> None:
         """
         Download the Posts returned by given Post Iterator.
 
@@ -941,6 +940,9 @@ class Instaloader:
         .. versionchanged:: 4.5
            Transparently resume an aborted operation if `posts` is a :class:`NodeIterator`.
 
+        .. versionchanged:: 4.8
+           Add `takewhile` parameter.
+
         :param posts: Post Iterator to loop through.
         :param target: Target name.
         :param fast_update: :option:`--fast-update`.
@@ -948,12 +950,15 @@ class Instaloader:
         :param max_count: Maximum count of Posts to download (:option:`--count`).
         :param total_count: Total number of posts returned by given iterator.
         :param owner_profile: Associated profile, if any.
+        :param takewhile: Expression evaluated for each post. Once it returns false, downloading stops.
         """
         displayed_count = (max_count if total_count is None or max_count is not None and max_count < total_count
                            else total_count)
         sanitized_target = target
         if isinstance(target, str):
             sanitized_target = _PostPathFormatter.sanitize_path(target)
+        if takewhile is None:
+            takewhile = lambda _: True
         with resumable_iteration(
                 context=self.context,
                 iterator=posts,
@@ -966,7 +971,7 @@ class Instaloader:
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
             for number, post in enumerate(posts, start=start_index + 1):
-                if max_count is not None and number > max_count:
+                if (max_count is not None and number > max_count) or not takewhile(post):
                     break
                 if displayed_count is not None:
                     self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,
@@ -1194,17 +1199,16 @@ class Instaloader:
         .. versionchanged:: 4.8
            Add `latest_stamps` parameter."""
         self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
-        posts_to_download: Iterator[Post] = profile.get_tagged_posts()
+        posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_tagged_timestamp(profile.username)
-            posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
-                                          posts_to_download)
+            posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
             scraped_timestamp = datetime.now().astimezone()
-        self.posts_download_loop(posts_to_download,
+        self.posts_download_loop(profile.get_tagged_posts(),
                                  target if target
                                  else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
                                        _PostPathFormatter.sanitize_path(':tagged')),
-                                 fast_update, post_filter)
+                                 fast_update, post_filter, takewhile=posts_takewhile)
         if latest_stamps is not None:
             latest_stamps.set_last_tagged_timestamp(profile.username, scraped_timestamp)
 
@@ -1218,14 +1222,13 @@ class Instaloader:
         .. versionchanged:: 4.8
            Add `latest_stamps` parameter."""
         self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
-        posts_to_download: Iterator[Post] = profile.get_igtv_posts()
+        posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_igtv_timestamp(profile.username)
-            posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
-                                          posts_to_download)
+            posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
             scraped_timestamp = datetime.now().astimezone()
-        self.posts_download_loop(posts_to_download, profile.username, fast_update, post_filter,
-                                 total_count=profile.igtvcount, owner_profile=profile)
+        self.posts_download_loop(profile.get_igtv_posts(), profile.username, fast_update, post_filter,
+                                 total_count=profile.igtvcount, owner_profile=profile, takewhile=posts_takewhile)
         if latest_stamps is not None:
             latest_stamps.set_last_igtv_timestamp(profile.username, scraped_timestamp)
 
@@ -1416,15 +1419,15 @@ class Instaloader:
                 # Iterate over pictures and download them
                 if posts:
                     self.context.log("Retrieving posts from profile {}.".format(profile_name))
-                    posts_to_download: Iterator[Post] = profile.get_posts()
+                    posts_takewhile: Optional[Callable[[Post], bool]] = None
                     if latest_stamps is not None:
                         # pylint:disable=cell-var-from-loop
                         last_scraped = latest_stamps.get_last_post_timestamp(profile_name)
-                        posts_to_download = takewhile(lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped,
-                                                      posts_to_download)
+                        posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
                         scraped_timestamp = datetime.now().astimezone()
-                    self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
-                                             total_count=profile.mediacount, owner_profile=profile)
+                    self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
+                                             total_count=profile.mediacount, owner_profile=profile,
+                                             takewhile=posts_takewhile)
                     if latest_stamps is not None:
                         latest_stamps.set_last_post_timestamp(profile_name, scraped_timestamp)
 
