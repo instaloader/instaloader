@@ -104,6 +104,34 @@ already have a valid session cookie file.
 
 `Instaloader Documentation <https://instaloader.github.io/basic-usage.html>`__
 
+Contributing
+------------
+
+As an open source project, Instaloader heavily depends on the contributions from
+its community. See
+`contributing <https://instaloader.github.io/contributing.html>`__
+for how you may help Instaloader to become an even greater tool.
+
+Supporters
+----------
+
+.. current-sponsors-start
+
+See `Alex' GitHub Sponsors <https://github.com/sponsors/aandergr>`__ page for
+how you can sponsor the development of Instaloader!
+
+.. current-sponsors-end
+
+It is a pleasure for us to share our Instaloader to the world, and we are proud
+to have attracted such an active and motivating community, with so many users
+who share their suggestions and ideas with us. Buying a community-sponsored beer
+or coffee from time to time is very likely to further raise our passion for the
+development of Instaloader.
+
+| For Donations, we provide GitHub Sponsors page, a PayPal.Me link and a Bitcoin address.
+|  GitHub Sponsors: `Sponsor @aandergr on GitHub Sponsors <https://github.com/sponsors/aandergr>`__
+|  PayPal: `PayPal.me/aandergr <https://www.paypal.me/aandergr>`__
+|  BTC: 1Nst4LoadeYzrKjJ1DX9CpbLXBYE9RKLwY
 
 Disclaimer
 ----------
@@ -116,21 +144,3 @@ subsidiaries. This is an independent and unofficial project. Use at your own ris
 Instaloader is licensed under an MIT license. Refer to ``LICENSE`` file for more information.
 
 .. disclaimer-end
-
-Contributing
-------------
-
-As an open source project, Instaloader heavily depends on the contributions from
-its community. See
-`contributing <https://instaloader.github.io/contributing.html>`__
-for how you may help Instaloader to become an even greater tool.
-
-It is a pleasure for us to share our Instaloader to the world, and we are proud
-to have attracted such an active and motivating community, with so many users
-who share their suggestions and ideas with us. Buying a community-sponsored beer
-or coffee from time to time is very likely to further raise our passion for the
-development of Instaloader.
-
-| For Donations, we provide a PayPal.Me link and a Bitcoin address.
-|  PayPal: `PayPal.me/aandergr <https://www.paypal.me/aandergr>`__
-|  BTC: 1Nst4LoadeYzrKjJ1DX9CpbLXBYE9RKLwY

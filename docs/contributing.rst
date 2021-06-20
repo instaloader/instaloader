@@ -132,21 +132,9 @@ details. If you feel the need to do so, please create a "feature suggestion".
   be implemented and the underlying problem could be solved. Also **describe
   alternatives** that you have considered.
 
-Donations
----------
+Sponsoring
+----------
 
-.. donations-start
-
-It is a pleasure for us to share our Instaloader to the world, and we are proud
-to have attracted such an active and motivating community, with so many users
-who share their suggestions and ideas with us. Buying a community-sponsored beer
-or coffee from time to time is very likely to further raise our passion for the
-development of Instaloader.
-
-| For donations, we provide a PayPal.Me link and a Bitcoin address.
-|  `PayPal.me/aandergr <https://www.paypal.me/aandergr>`__
-|  BTC: 1Nst4LoadeYzrKjJ1DX9CpbLXBYE9RKLwY
-
-.. donations-end
-
-.. (Discussion in :issue:`130`)
+.. include:: sponsors.rst
+   :start-after: donations-start
+   :end-before: donations-end
