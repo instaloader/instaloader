@@ -807,7 +807,7 @@ class Instaloader:
                 last_scraped = latest_stamps.get_last_story_timestamp(name)
                 scraped_timestamp = datetime.now().astimezone()
             for item in user_story.get_items():
-                if last_scraped is not None and item.date_utc.replace(tzinfo=timezone.utc) <= last_scraped:
+                if latest_stamps is not None and item.date_utc.replace(tzinfo=timezone.utc) <= last_scraped:
                     break
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
