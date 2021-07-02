@@ -4,7 +4,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from . import __version__
 from .exceptions import *
@@ -128,14 +128,6 @@ class Post:
         """The mediaid is a decimal representation of the media shortcode."""
         return int(self._node['id'])
 
-    @property
-    def title(self) -> Optional[str]:
-        """Title of post"""
-        try:
-            return self._field('title')
-        except KeyError:
-            return None
-
     def __repr__(self):
         return '<Post {}>'.format(self.shortcode)
 
@@ -249,7 +241,7 @@ class Post:
         if self.typename == "GraphImage" and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
-                url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
+                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
@@ -272,17 +264,6 @@ class Post:
             return len(edges)
         return 1
 
-    def get_is_videos(self) -> List[bool]:
-        """
-        Return a list containing the ``is_video`` property for each media in the post.
-
-        .. versionadded:: 4.7
-        """
-        if self.typename == 'GraphSidecar':
-            edges = self._field('edge_sidecar_to_children', 'edges')
-            return [edge['node']['is_video'] for edge in edges]
-        return [self.is_video]
-
     def get_sidecar_nodes(self, start=0, end=-1) -> Iterator[PostSidecarNode]:
         """
         Sidecar nodes of a Post with typename==GraphSidecar.
@@ -292,13 +273,13 @@ class Post:
         """
         if self.typename == 'GraphSidecar':
             edges = self._field('edge_sidecar_to_children', 'edges')
+            if any(edge['node']['is_video'] for edge in edges):
+                # video_url is only present in full metadata, issue #558.
+                edges = self._full_metadata['edge_sidecar_to_children']['edges']
             if end < 0:
                 end = len(edges)-1
             if start < 0:
                 start = len(edges)-1
-            if any(edge['node']['is_video'] and 'video_url' not in edge['node'] for edge in edges[start:(end+1)]):
-                # video_url is only present in full metadata, issue #558.
-                edges = self._full_metadata['edge_sidecar_to_children']['edges']
             for idx, edge in enumerate(edges):
                 if start <= idx <= end:
                     node = edge['node']
@@ -308,7 +289,7 @@ class Post:
                         try:
                             carousel_media = self._iphone_struct['carousel_media']
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
-                            display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
+                            display_url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
                         except (InstaloaderException, KeyError, IndexError) as err:
                             self._context.error('{} Unable to fetch high quality image version of {}.'.format(
                                 err, self))
@@ -318,10 +299,14 @@ class Post:
     @property
     def caption(self) -> Optional[str]:
         """Caption."""
-        if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
-            return self._node["edge_media_to_caption"]["edges"][0]["node"]["text"]
-        elif "caption" in self._node:
-            return self._node["caption"]
+        if self._context.is_logged_in:
+            if "caption" in self._node:
+                return self._node["caption"]["text"]
+        else:
+            if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
+                return self._node["edge_media_to_caption"]["edges"][0]["node"]["text"]
+            elif "caption" in self._node:
+                return self._node["caption"]["text"]
         return None
 
     @property
@@ -339,11 +324,9 @@ class Post:
         """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
         if not self.caption:
             return []
-        # This regular expression is modified from jStassen, adjusted to use Python's \w to
-        # support Unicode and a word/beginning of string delimiter at the beginning to ensure
-        # that no email addresses join the list of mentions.
+        # This regular expression is from jStassen, adjusted to use Python's \w to support Unicode
         # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-        mention_regex = re.compile(r"(?:^|\W|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        mention_regex = re.compile(r"(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
         return re.findall(mention_regex, self.caption.lower())
 
     @property
@@ -428,15 +411,12 @@ class Post:
         except KeyError:
             return self._field('edge_media_to_comment', 'count')
 
-    def get_comments(self) -> Iterable[PostComment]:
+    def get_comments(self) -> Iterator[PostComment]:
         r"""Iterate over all comments of the post.
 
         Each comment is represented by a PostComment namedtuple with fields text (string), created_at (datetime),
         id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
         if available.
-
-        .. versionchanged:: 4.7
-           Change return type to ``Iterable``.
         """
         def _postcommentanswer(node):
             return PostCommentAnswer(id=int(node['id']),
@@ -471,15 +451,16 @@ class Post:
                                answers=_postcommentanswers(node))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
-            return []
+            return
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
         answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
-            return [_postcomment(comment['node']) for comment in comment_edges]
-        return NodeIterator(
+            yield from (_postcomment(comment['node']) for comment in comment_edges)
+            return
+        yield from NodeIterator(
             self._context,
             '97b41c52301f77ce508f55e66d17620e',
             lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
@@ -793,13 +774,14 @@ class Profile:
     def has_public_story(self) -> bool:
         if not self._has_public_story:
             self._obtain_metadata()
-            # query rate might be limited:
-            data = self._context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
-                                               {'user_id': self.userid, 'include_chaining': False,
-                                                'include_reel': False, 'include_suggested_users': False,
-                                                'include_logged_out_extras': True,
-                                                'include_highlight_reels': False},
-                                               'https://www.instagram.com/{}/'.format(self.username))
+            # query not rate limited if invoked anonymously:
+            with self._context.anonymous_copy() as anonymous_context:
+                data = anonymous_context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
+                                                       {'user_id': self.userid, 'include_chaining': False,
+                                                        'include_reel': False, 'include_suggested_users': False,
+                                                        'include_logged_out_extras': True,
+                                                        'include_highlight_reels': False},
+                                                       'https://www.instagram.com/{}/'.format(self.username))
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story
@@ -857,7 +839,7 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             self._context,
-            '003056d32c2554def87228bc3fd9668a',
+            '472f257a40c653c64c666ce877d59d2b',
             lambda d: d['data']['user']['edge_owner_to_timeline_media'],
             lambda n: Post(self._context, n, self),
             {'id': self.userid},
@@ -1083,7 +1065,7 @@ class StoryItem:
         if self.typename == "GraphStoryImage" and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
-                url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
+                url = re.sub(r'&se=\d+(&?)', r'\1', orig_url)
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
@@ -1330,8 +1312,11 @@ class Hashtag:
         return self._node["name"].lower()
 
     def _query(self, params):
-        return self._context.get_json("explore/tags/{0}/".format(self.name),
-                                      params)["graphql"]["hashtag"]
+        data = self._context.get_json("explore/tags/{0}/".format(self.name),params)
+        if self._context.is_logged_in:
+            return data['data']
+        else:
+            return data["graphql"]["hashtag"]
 
     def _obtain_metadata(self):
         if not self._has_full_metadata:
@@ -1411,18 +1396,36 @@ class Hashtag:
         The number of posts with a certain hashtag may differ from the number of posts that can actually be accessed, as
         the hashtag count might include private posts
         """
-        return self._metadata("edge_hashtag_to_media", "count")
+        if self._context.is_logged_in:
+            return self._metadata("media_count")
+        else:
+            return self._metadata("edge_hashtag_to_media", "count")
 
     def get_posts(self) -> Iterator[Post]:
         """Yields the posts associated with this hashtag."""
-        self._metadata("edge_hashtag_to_media", "edges")
-        self._metadata("edge_hashtag_to_media", "page_info")
-        conn = self._metadata("edge_hashtag_to_media")
-        yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
-        while conn["page_info"]["has_next_page"]:
-            data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
-            conn = data["edge_hashtag_to_media"]
+        if self._context.is_logged_in:
+            self._metadata("recent", "sections")
+            # self._metadata("edge_hashtag_to_media", "page_info")
+            conn = self._metadata("recent")
+            # yield from (Post(self._context, edge["node"]) for edge in conn["sections"])
+            for section in conn['sections']:
+                for edge in section['layout_content']['medias']:
+                    yield Post(self._context,edge['media'])
+            while conn["more_available"]:
+                data = self._query({'__a': 1, 'max_id': conn["next_max_id"]})
+                conn = data["recent"]
+                for section in conn['sections']:
+                    for edge in section['layout_content']['medias']:
+                        yield Post(self._context,edge['media'])
+        else:
+            self._metadata("edge_hashtag_to_media", "edges")
+            self._metadata("edge_hashtag_to_media", "page_info")
+            conn = self._metadata("edge_hashtag_to_media")
             yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
+            while conn["page_info"]["has_next_page"]:
+                data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
+                conn = data["edge_hashtag_to_media"]
+                yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
 
     def get_all_posts(self) -> Iterator[Post]:
         """Yields all posts, i.e. all most recent posts and the top posts, in almost-chronological order."""
@@ -1536,8 +1539,8 @@ JsonExportable = Union[Post, Profile, StoryItem, Hashtag, FrozenNodeIterator]
 
 
 def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
-    """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` to a
-    '.json' or '.json.xz' file such that it can later be loaded by :func:`load_structure_from_file`.
+    """Saves a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` to a '.json' or '.json.xz' file
+    such that it can later be loaded by :func:`load_structure_from_file`.
 
     If the specified filename ends in '.xz', the file will be LZMA compressed. Otherwise, a pretty-printed JSON file
     will be created.
@@ -1557,8 +1560,8 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
 
 
 def load_structure_from_file(context: InstaloaderContext, filename: str) -> JsonExportable:
-    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
-    a '.json' or '.json.xz' file that has been saved by :func:`save_structure_to_file`.
+    """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem` or :class:`Hashtag` from a '.json' or '.json.xz' file
+    that has been saved by :func:`save_structure_to_file`.
 
     :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
     :param filename: Filename, ends in '.json' or '.json.xz'
