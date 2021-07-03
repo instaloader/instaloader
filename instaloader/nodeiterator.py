@@ -18,7 +18,7 @@ FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
                                  ('total_index', int),
                                  ('best_before', Optional[float]),
                                  ('remaining_data', Optional[Dict]),
-                                 ('first_item_timestamp', Optional[str])])
+                                 ('first_item_timestamp', Optional[float])])
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -128,7 +128,7 @@ class NodeIterator(Iterator[T]):
                 self._page_index, self._total_index = page_index, total_index
                 raise
             item = self._node_wrapper(node)
-            if self._first_item_timestamp is None:
+            if self._first_item_timestamp is None and hasattr(item, 'date_utc'):
                 self._first_item_timestamp = item.date_utc.replace(tzinfo=timezone.utc)
             return item
         if self._data['page_info']['has_next_page']:
