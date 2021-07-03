@@ -129,7 +129,8 @@ class NodeIterator(Iterator[T]):
                 raise
             item = self._node_wrapper(node)
             if self._first_item_timestamp is None and hasattr(item, 'date_utc'):
-                self._first_item_timestamp = item.date_utc.replace(tzinfo=timezone.utc)
+                # Suppress MyPy error, it is checked that T has date_utc in the previous line
+                self._first_item_timestamp = item.date_utc.replace(tzinfo=timezone.utc) # type: ignore
             return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
