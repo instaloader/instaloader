@@ -198,7 +198,7 @@ class Post:
     @property
     def owner_username(self) -> str:
         """The Post's lowercase owner name."""
-        return self.owner_profile.username
+        return self._node['user']['username']
 
     @property
     def owner_id(self) -> int:
