@@ -1213,7 +1213,7 @@ class Instaloader:
         self.posts_download_loop(tagged_posts,
                                  target if target
                                  else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
-                                       _PostPathFormatter.sanitize_path('__tagged')),
+                                       _PostPathFormatter.sanitize_path(':tagged')),
                                  fast_update, post_filter, takewhile=posts_takewhile)
         if latest_stamps is not None and tagged_posts.first_item is not None:
             latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local.astimezone())
