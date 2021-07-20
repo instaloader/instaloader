@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
@@ -18,7 +18,7 @@ FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
                                  ('total_index', int),
                                  ('best_before', Optional[float]),
                                  ('remaining_data', Optional[Dict]),
-                                 ('first_item_timestamp', Optional[float])])
+                                 ('first_node', Optional[Dict])])
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -27,7 +27,7 @@ FrozenNodeIterator.total_index.__doc__ = """Number of items that have already be
 FrozenNodeIterator.best_before.__doc__ = """Date when parts of the stored nodes might have expired."""
 FrozenNodeIterator.remaining_data.__doc__ = \
     """The already-retrieved, yet-unprocessed ``edges`` and the ``page_info`` at time of freezing."""
-FrozenNodeIterator.first_item_timestamp.__doc__ = """Timestamp (UTC) of first item, if an item has been produced."""
+FrozenNodeIterator.first_node.__doc__ = """Node data of the first item, if an item has been produced."""
 
 T = TypeVar('T')
 
@@ -90,7 +90,7 @@ class NodeIterator(Iterator[T]):
             self._best_before = datetime.now() + NodeIterator._shelf_life
         else:
             self._data = self._query()
-        self._first_item_timestamp: Optional[datetime] = None
+        self._first_node: Optional[Dict] = None
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -128,9 +128,8 @@ class NodeIterator(Iterator[T]):
                 self._page_index, self._total_index = page_index, total_index
                 raise
             item = self._node_wrapper(node)
-            if self._first_item_timestamp is None and hasattr(item, 'date_utc'):
-                # Suppress MyPy error, it is checked that T has date_utc in the previous line
-                self._first_item_timestamp = item.date_utc.replace(tzinfo=timezone.utc) # type: ignore
+            if self._first_node is None:
+                self._first_node = node
             return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
@@ -164,9 +163,13 @@ class NodeIterator(Iterator[T]):
         return base64.urlsafe_b64encode(magic_hash.digest()).decode()
 
     @property
-    def first_item_timestamp(self) -> Optional[datetime]:
-        """If this iterator has produced any items, returns the timestamp of that item, in UTC."""
-        return self._first_item_timestamp
+    def first_item(self) -> Optional[T]:
+        """
+        If this iterator has produced any items, returns the first item produced.
+
+        .. versionadded:: 4.8
+        """
+        return self._node_wrapper(self._first_node) if self._first_node is not None else None
 
     def freeze(self) -> FrozenNodeIterator:
         """Freeze the iterator for later resuming."""
@@ -182,8 +185,7 @@ class NodeIterator(Iterator[T]):
             total_index=max(self.total_index - 1, 0),
             best_before=self._best_before.timestamp() if self._best_before else None,
             remaining_data=remaining_data,
-            first_item_timestamp=self._first_item_timestamp.timestamp() if self._first_item_timestamp is not None \
-                else None,
+            first_node=self._first_node,
         )
 
     def thaw(self, frozen: FrozenNodeIterator) -> None:
@@ -210,8 +212,8 @@ class NodeIterator(Iterator[T]):
         self._total_index = frozen.total_index
         self._best_before = datetime.fromtimestamp(frozen.best_before)
         self._data = frozen.remaining_data
-        if frozen.first_item_timestamp is not None:
-            self._first_item_timestamp = datetime.fromtimestamp(frozen.first_item_timestamp, timezone.utc)
+        if frozen.first_node is not None:
+            self._first_node = frozen.first_node
 
 
 @contextmanager

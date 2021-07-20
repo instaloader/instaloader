@@ -1209,8 +1209,8 @@ class Instaloader:
                                  else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
                                        _PostPathFormatter.sanitize_path(':tagged')),
                                  fast_update, post_filter, takewhile=posts_takewhile)
-        if latest_stamps is not None and tagged_posts.first_item_timestamp is not None:
-            latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item_timestamp.astimezone())
+        if latest_stamps is not None and tagged_posts.first_item is not None:
+            latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local.astimezone())
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
@@ -1229,8 +1229,8 @@ class Instaloader:
         igtv_posts = profile.get_igtv_posts()
         self.posts_download_loop(igtv_posts, profile.username, fast_update, post_filter,
                                  total_count=profile.igtvcount, owner_profile=profile, takewhile=posts_takewhile)
-        if latest_stamps is not None and igtv_posts.first_item_timestamp is not None:
-            latest_stamps.set_last_igtv_timestamp(profile.username, igtv_posts.first_item_timestamp.astimezone())
+        if latest_stamps is not None and igtv_posts.first_item is not None:
+            latest_stamps.set_last_igtv_timestamp(profile.username, igtv_posts.first_item.date_local.astimezone())
 
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -1428,9 +1428,9 @@ class Instaloader:
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
                                              takewhile=posts_takewhile)
-                    if latest_stamps is not None and posts_to_download.first_item_timestamp is not None:
+                    if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
-                                                              posts_to_download.first_item_timestamp.astimezone())
+                                                              posts_to_download.first_item.date_local.astimezone())
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
