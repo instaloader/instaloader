@@ -228,7 +228,8 @@ class InstaloaderContext:
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True, proxies=self._proxies)
+                             data={'enc_password': enc_password, 'username': user},
+                             allow_redirects=True, proxies=self._proxies)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError as err:
@@ -331,7 +332,8 @@ class InstaloaderContext:
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
 
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False, proxies=self._proxies)
+            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False,
+                    proxies=self._proxies)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
                 raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}".format(
