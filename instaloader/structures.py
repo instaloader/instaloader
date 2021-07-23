@@ -6,6 +6,8 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
+import requests
+
 from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -373,14 +375,20 @@ class Post:
     @property
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
+        def get_size(url):
+            return requests.head(url).headers.get('Content-Length', 0), url
         if self.is_video:
+            url_candidates = []
+            if 'video_url' in self._node:
+                url_candidates.append(get_size(self._node['video_url']))
             if self._context.is_logged_in:
                 try:
-                    url = self._iphone_struct['video_versions'][0]['url']
-                    return url
+                    self._iphone_struct['video_versions'].sort(key=lambda x: x['height'])
+                    url_candidates.append(get_size(self._iphone_struct['video_versions'][-1]['url']))
                 except (InstaloaderException, KeyError, IndexError) as err:
                     self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
-            return self._field('video_url')
+            url_candidates.sort()
+            return url_candidates[-1][1]
         return None
 
     @property
@@ -1102,8 +1110,19 @@ class StoryItem:
     @property
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
+        def get_size(url):
+            return requests.head(url).headers.get('Content-Length', 0), url
         if self.is_video:
-            return self._node['video_resources'][-1]['src']
+            url_candidates = []
+            url_candidates.append(get_size(self._node['video_resources'][-1]['src']))
+            if self._context.is_logged_in:
+                try:
+                    self._iphone_struct['video_versions'].sort(key=lambda x: x['height'])
+                    url_candidates.append(get_size(self._iphone_struct['video_versions'][-1]['url']))
+                except (InstaloaderException, KeyError, IndexError) as err:
+                    self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
+            url_candidates.sort()
+            return url_candidates[-1][1]
         return None
 
 
