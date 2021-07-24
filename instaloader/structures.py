@@ -383,8 +383,8 @@ class Post:
                 url_candidates.append(get_size(self._node['video_url']))
             if self._context.is_logged_in:
                 try:
-                    self._iphone_struct['video_versions'].sort(key=lambda x: x['height'])
-                    url_candidates.append(get_size(self._iphone_struct['video_versions'][-1]['url']))
+                    for version in self._iphone_struct['video_versions']:
+	                        url_candidates.append(get_size(version['url']))
                 except (InstaloaderException, KeyError, IndexError) as err:
                     self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
             url_candidates.sort()
@@ -1117,8 +1117,8 @@ class StoryItem:
             url_candidates.append(get_size(self._node['video_resources'][-1]['src']))
             if self._context.is_logged_in:
                 try:
-                    self._iphone_struct['video_versions'].sort(key=lambda x: x['height'])
-                    url_candidates.append(get_size(self._iphone_struct['video_versions'][-1]['url']))
+                    for version in self._iphone_struct['video_versions']:
+	                        url_candidates.append(get_size(version['url']))
                 except (InstaloaderException, KeyError, IndexError) as err:
                     self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
             url_candidates.sort()
