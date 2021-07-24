@@ -186,6 +186,13 @@ class Instaloader:
     :param slide: :option:`--slide`
     :param fatal_status_codes: :option:`--abort-on`
     :param iphone_support: not :option:`--no-iphone`
+    :param proxies: A dictionary containing proxy URLs in the format accepted by
+        requests library.
+        If set to None, Instaloader will use the proxy configuration defined by standard
+        environment variables http_proxy, https_proxy, no_proxy and curl_ca_bundle
+        (uppercase variants of these variables are also supported).
+        For the detailed description of the format, see
+        https://docs.python-requests.org/en/master/user/advanced/#proxies
 
     .. attribute:: context
 
