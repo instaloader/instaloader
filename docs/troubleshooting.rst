@@ -62,7 +62,8 @@ Two-Factor-Authentication. It also supports handling the *checkpoint challenge*,
 issued when Instagram suspects authentication activity on your account, by
 pointing the user to an URL to be opened in a browser.
 
-Nevertheless, in :issue:`92` and :issue:`615` users reported problems with
+Nevertheless, in :issue:`92`, :issue:`615`, :issue:`1150` and :issue:`1217`,
+users reported problems with
 logging in. We recommend to always keep the session file which Instaloader
 creates when using :option:`--login`. If a session file is present,
 :option:`--login` does not make use of the failure-prone login procedure.
