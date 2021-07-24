@@ -1643,6 +1643,8 @@ def load_structure(context: InstaloaderContext, json_structure: dict) -> JsonExp
         elif node_type == "Hashtag":
             return Hashtag(context, json_structure['node'])
         elif node_type == "FrozenNodeIterator":
+            if not 'first_node' in json_structure['node']:
+                json_structure['node']['first_node'] = None
             return FrozenNodeIterator(**json_structure['node'])
     elif 'shortcode' in json_structure:
         # Post JSON created with Instaloader v3
