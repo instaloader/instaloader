@@ -78,13 +78,6 @@ Useful Links
 - `Issue Tracker / Bug Tracker <https://github.com/instaloader/instaloader/issues>`__
 - `Version History <https://github.com/instaloader/instaloader/releases>`__
 
-Disclaimer
-----------
-
-.. include:: ../README.rst
-   :start-after: disclaimer-start
-   :end-before: disclaimer-end
-
 Contributing
 ------------
 
@@ -92,9 +85,19 @@ As an open source project, Instaloader heavily depends on the contributions from
 its community. See :ref:`contributing` for how you may help Instaloader to
 become an even greater tool.
 
-.. include:: contributing.rst
+Supporters
+----------
+
+.. include:: sponsors.rst
    :start-after: donations-start
    :end-before: donations-end
+
+Disclaimer
+----------
+
+.. include:: ../README.rst
+   :start-after: disclaimer-start
+   :end-before: disclaimer-end
 
 ..
    * :ref:`genindex`
