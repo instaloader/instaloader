@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
-          python -m pip install pipenv==2020.11.15
+          python -m pip install pipenv==2021.5.29
           pipenv sync --dev
       - name: PyLint
         run: pipenv run pylint instaloader

@@ -1707,6 +1707,7 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
     if compressed:
         fp = lzma.open(filename, 'rt')
     else:
+        # pylint:disable=consider-using-with
         fp = open(filename, 'rt')
     json_structure = json.load(fp)
     fp.close()
