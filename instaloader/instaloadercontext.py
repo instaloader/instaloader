@@ -152,7 +152,6 @@ class InstaloaderContext:
         if empty_session_only:
             del header['Host']
             del header['Origin']
-            del header['Referer']
             del header['X-Instagram-AJAX']
             del header['X-Requested-With']
         return header
