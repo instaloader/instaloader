@@ -17,7 +17,8 @@ FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
                                  ('context_username', Optional[str]),
                                  ('total_index', int),
                                  ('best_before', Optional[float]),
-                                 ('remaining_data', Optional[Dict])])
+                                 ('remaining_data', Optional[Dict]),
+                                 ('first_node', Optional[Dict])])
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -26,7 +27,7 @@ FrozenNodeIterator.total_index.__doc__ = """Number of items that have already be
 FrozenNodeIterator.best_before.__doc__ = """Date when parts of the stored nodes might have expired."""
 FrozenNodeIterator.remaining_data.__doc__ = \
     """The already-retrieved, yet-unprocessed ``edges`` and the ``page_info`` at time of freezing."""
-
+FrozenNodeIterator.first_node.__doc__ = """Node data of the first item, if an item has been produced."""
 
 T = TypeVar('T')
 
@@ -89,6 +90,7 @@ class NodeIterator(Iterator[T]):
             self._best_before = datetime.now() + NodeIterator._shelf_life
         else:
             self._data = self._query()
+        self._first_node: Optional[Dict] = None
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -125,7 +127,10 @@ class NodeIterator(Iterator[T]):
             except KeyboardInterrupt:
                 self._page_index, self._total_index = page_index, total_index
                 raise
-            return self._node_wrapper(node)
+            item = self._node_wrapper(node)
+            if self._first_node is None:
+                self._first_node = node
+            return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
             page_index, data = self._page_index, self._data
@@ -157,6 +162,15 @@ class NodeIterator(Iterator[T]):
         ).encode())
         return base64.urlsafe_b64encode(magic_hash.digest()).decode()
 
+    @property
+    def first_item(self) -> Optional[T]:
+        """
+        If this iterator has produced any items, returns the first item produced.
+
+        .. versionadded:: 4.8
+        """
+        return self._node_wrapper(self._first_node) if self._first_node is not None else None
+
     def freeze(self) -> FrozenNodeIterator:
         """Freeze the iterator for later resuming."""
         remaining_data = None
@@ -171,6 +185,7 @@ class NodeIterator(Iterator[T]):
             total_index=max(self.total_index - 1, 0),
             best_before=self._best_before.timestamp() if self._best_before else None,
             remaining_data=remaining_data,
+            first_node=self._first_node,
         )
 
     def thaw(self, frozen: FrozenNodeIterator) -> None:
@@ -197,6 +212,8 @@ class NodeIterator(Iterator[T]):
         self._total_index = frozen.total_index
         self._best_before = datetime.fromtimestamp(frozen.best_before)
         self._data = frozen.remaining_data
+        if frozen.first_node is not None:
+            self._first_node = frozen.first_node
 
 
 @contextmanager
