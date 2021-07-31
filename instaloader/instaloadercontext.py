@@ -528,7 +528,7 @@ class InstaloaderContext:
         :raises ConnectionException: When download repeatedly failed."""
         self.write_raw(self.get_raw(url), filename)
 
-    def head(self, url: str, allow_redirects: Optional[bool] = None) -> requests.Response:
+    def head(self, url: str, allow_redirects: bool = False) -> requests.Response:
         """HEAD a URL anonymously.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
