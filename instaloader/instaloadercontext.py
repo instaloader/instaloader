@@ -534,7 +534,7 @@ class InstaloaderContext:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When request failed.
-        
+
         .. versionadded:: 4.7.6
         """
         with self.get_anonymous_session() as anonymous_session:
