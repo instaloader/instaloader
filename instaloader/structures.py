@@ -380,10 +380,16 @@ class Post:
             if 'video_url' in self._node:
                 url_candidates.append(get_size(self._node['video_url']))
             if self._context.is_logged_in:
-                try:
-                    for version in self._iphone_struct['video_versions']:
+                success = False
+                err = None
+                for version in self._iphone_struct['video_versions']:
+                    try:
                         url_candidates.append(get_size(version['url']))
-                except (InstaloaderException, KeyError, IndexError) as err:
+                    except (InstaloaderException, KeyError, IndexError) as e:
+                        err = e
+                    else:
+                        success = True
+                if not success:
                     self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
             url_candidates.sort()
             return url_candidates[-1][1]
@@ -1114,10 +1120,16 @@ class StoryItem:
             url_candidates = []
             url_candidates.append(get_size(self._node['video_resources'][-1]['src']))
             if self._context.is_logged_in:
-                try:
-                    for version in self._iphone_struct['video_versions']:
+                success = False
+                err = None
+                for version in self._iphone_struct['video_versions']:
+                    try:
                         url_candidates.append(get_size(version['url']))
-                except (InstaloaderException, KeyError, IndexError) as err:
+                    except (InstaloaderException, KeyError, IndexError) as e:
+                        err = e
+                    else:
+                        success = True
+                if not success:
                     self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
             url_candidates.sort()
             return url_candidates[-1][1]
