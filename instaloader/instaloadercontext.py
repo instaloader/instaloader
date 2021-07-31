@@ -528,6 +528,25 @@ class InstaloaderContext:
         :raises ConnectionException: When download repeatedly failed."""
         self.write_raw(self.get_raw(url), filename)
 
+    def head(self, url: str, allow_redirects: Optional[bool] = None) -> requests.Response:
+        """HEAD a URL anonymously.
+
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises QueryReturnedForbiddenException: When the server responds with a 403.
+        :raises ConnectionException: When request failed."""
+        with self.get_anonymous_session() as anonymous_session:
+            resp = anonymous_session.head(url, allow_redirects=allow_redirects)
+        if resp.status_code == 200:
+            return resp
+        else:
+            if resp.status_code == 403:
+                # suspected invalid URL signature
+                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+            if resp.status_code == 404:
+                # 404 not worth retrying.
+                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
+            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+
     @property
     def root_rhx_gis(self) -> Optional[str]:
         """rhx_gis string returned in the / query."""

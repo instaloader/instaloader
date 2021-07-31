@@ -6,8 +6,6 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
-import requests
-
 from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -376,7 +374,7 @@ class Post:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         def get_size(url):
-            return requests.head(url).headers.get('Content-Length', 0), url
+            return self._context.head(url, allow_redirects=True).headers.get('Content-Length', 0), url
         if self.is_video:
             url_candidates = []
             if 'video_url' in self._node:
@@ -1111,7 +1109,7 @@ class StoryItem:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         def get_size(url):
-            return requests.head(url).headers.get('Content-Length', 0), url
+            return self._context.head(url, allow_redirects=True).headers.get('Content-Length', 0), url
         if self.is_video:
             url_candidates = []
             url_candidates.append(get_size(self._node['video_resources'][-1]['src']))
