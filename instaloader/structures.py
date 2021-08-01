@@ -105,7 +105,7 @@ class Post:
     @staticmethod
     def supported_graphql_types() -> List[str]:
         """The values of __typename fields that the :class:`Post` class can handle."""
-        return ["GraphImage", "GraphVideo", "GraphSidecar"]
+        return ["GraphImage", "GraphVideo", "GraphSidecar", "StoryImage", "StoryVideo"]
 
     def _asdict(self):
         node = self._node
