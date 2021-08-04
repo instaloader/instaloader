@@ -788,6 +788,7 @@ class Instaloader:
 
         if not userids:
             self.context.log("Retrieving all visible stories...")
+            profile_count = None
         else:
             userids = [p if isinstance(p, int) else p.userid for p in userids]
             profile_count = len(userids)
