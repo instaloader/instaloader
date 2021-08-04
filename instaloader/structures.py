@@ -553,8 +553,8 @@ class Post:
             return None
         location_id = int(loc['id'])
         if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
-            loc = self._context.get_json("explore/locations/{0}/".format(location_id),
-                                         params={'__a': 1})['graphql']['location']
+            loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
+                                              params={'__a': 1})['native_location_data']['location_info'])
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
                                       loc['lat'], loc['lng'])
         return self._location
