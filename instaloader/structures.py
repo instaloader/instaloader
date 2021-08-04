@@ -4,7 +4,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from . import __version__
 from .exceptions import *
@@ -374,13 +374,26 @@ class Post:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
+            version_urls = [self._field('video_url')]
             if self._context.is_logged_in:
+                version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+            url_candidates: List[Tuple[int, str]] = []
+            for idx, version_url in enumerate(version_urls):
+                if any(url_candidate[1] == version_url for url_candidate in url_candidates):
+                    # Skip duplicates
+                    continue
                 try:
-                    url = self._iphone_struct['video_versions'][0]['url']
-                    return url
+                    url_candidates.append((
+                        int(self._context.head(version_url, allow_redirects=True).headers.get('Content-Length', 0)),
+                        version_url
+                    ))
                 except (InstaloaderException, KeyError, IndexError) as err:
-                    self._context.error('{} Unable to fetch high quality video version of {}.'.format(err, self))
-            return self._field('video_url')
+                    self._context.error(f"Video URL candidate {idx+1}/{len(version_urls)} for {self}: {err}")
+            if not url_candidates:
+                # All candidates fail: Fallback to default URL and handle errors later at the actual download attempt
+                return version_urls[0]
+            url_candidates.sort()
+            return url_candidates[-1][1]
         return None
 
     @property
@@ -1103,7 +1116,26 @@ class StoryItem:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
-            return self._node['video_resources'][-1]['src']
+            version_urls = [self._node['video_resources'][-1]['src']]
+            if self._context.is_logged_in:
+                version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+            url_candidates: List[Tuple[int, str]] = []
+            for idx, version_url in enumerate(version_urls):
+                if any(url_candidate[1] == version_url for url_candidate in url_candidates):
+                    # Skip duplicates
+                    continue
+                try:
+                    url_candidates.append((
+                        int(self._context.head(version_url, allow_redirects=True).headers.get('Content-Length', 0)),
+                        version_url
+                    ))
+                except (InstaloaderException, KeyError, IndexError) as err:
+                    self._context.error(f"Video URL candidate {idx+1}/{len(version_urls)} for {self}: {err}")
+            if not url_candidates:
+                # All candidates fail: Fallback to default URL and handle errors later at the actual download attempt
+                return version_urls[0]
+            url_candidates.sort()
+            return url_candidates[-1][1]
         return None
 
 
