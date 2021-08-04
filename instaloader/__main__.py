@@ -93,6 +93,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     latest_stamps = None
     if latest_stamps_file is not None:
         latest_stamps = LatestStamps(latest_stamps_file)
+        instaloader.context.log(f"Using latest stamps from {latest_stamps_file}.")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
