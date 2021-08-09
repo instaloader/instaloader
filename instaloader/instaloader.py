@@ -1091,11 +1091,36 @@ class Instaloader:
                 params = {'__a': 1, 'max_id': end_cursor}
             else:
                 params = {'__a': 1}
-            location_data = self.context.get_json('explore/locations/{0}/'.format(location),
-                                                  params)['graphql']['location']['edge_location_to_media']
-            yield from (Post(self.context, edge['node']) for edge in location_data['edges'])
-            has_next_page = location_data['page_info']['has_next_page']
-            end_cursor = location_data['page_info']['end_cursor']
+
+            json_data = self.context.get_json('explore/locations/{0}/'.format(location),
+                                              params)
+            location_data = json_data['native_location_data']['recent'] if 'native_location_data' in json_data else \
+                json_data['entry_data']['LocationsPage'][0]['native_location_data']['recent']
+
+            medias = []
+            sections = location_data['sections']
+            for section in sections:
+                medias_per_layout_content = section['layout_content']['medias']
+                for media_per_layout_content in medias_per_layout_content:
+                    media = media_per_layout_content['media']
+                    medias += [media]
+
+            def graphql_patch(data):
+                data_modified = {'code': data['code']}
+                if "image_versions2" in data:
+                    data_modified['__typename'] = "GraphImage"
+                elif "carousel_media" in data:
+                    data_modified['__typename'] = "GraphSidecar"
+                data_modified['is_video'] = "video_versions" in data
+                data_modified['taken_at_timestamp'] = data['taken_at']
+                data_modified['iphone_struct'] = data
+                return data_modified
+
+            medias_graphql_patched = list(map(graphql_patch, medias))
+
+            yield from (Post(self.context, media) for media in medias_graphql_patched)
+            has_next_page = location_data['more_available']
+            end_cursor = location_data['next_max_id']
 
     @_requires_login
     def download_location(self, location: str,
