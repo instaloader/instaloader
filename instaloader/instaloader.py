@@ -146,6 +146,10 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
     def sanitize_path(ret: str) -> str:
         """Replaces '/' with similar looking Division Slash and some other illegal filename characters on Windows."""
         ret = ret.replace('/', '\u2215')
+
+        if ret.startswith('.'):
+            ret = ret.replace('.', '\u2024', 1)
+
         if platform.system() == 'Windows':
             ret = ret.replace(':', '\uff1a').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
             ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
