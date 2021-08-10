@@ -379,7 +379,11 @@ class Post:
         if self.is_video:
             version_urls = [self._field('video_url')]
             if self._context.iphone_support and self._context.is_logged_in:
-                version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+                try:
+                    version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+                except (InstaloaderException, KeyError, IndexError) as err:
+                    self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
+                    return version_urls[0]
             else:
                 return version_urls[0]
             url_candidates: List[Tuple[int, str]] = []
@@ -1127,7 +1131,11 @@ class StoryItem:
         if self.is_video:
             version_urls = [self._node['video_resources'][-1]['src']]
             if self._context.iphone_support and self._context.is_logged_in:
-                version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+                try:
+                    version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+                except (InstaloaderException, KeyError, IndexError) as err:
+                    self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
+                    return version_urls[0]
             else:
                 return version_urls[0]
             url_candidates: List[Tuple[int, str]] = []
