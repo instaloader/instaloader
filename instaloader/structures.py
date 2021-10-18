@@ -868,13 +868,16 @@ class Profile:
         else:
             return self._metadata("profile_pic_url_hd")
 
-    def business_email(self) -> str:
-        return self._metadata('business_email')
+    @property
+    def business_email(self) -> Optional[str]:
+        return self._metadata("business_email")
 
-    def business_phone_number(self) -> str:
-        return self._metadata('business_phone_number')
+    @property
+    def business_phone_number(self) -> Optional[str]:
+        return self._metadata("business_phone_number")
 
-    def mutual_followers(self) -> str:
+    @property
+    def mutual_followers(self) -> int:
         return self._metadata("edge_mutual_followed_by", "count")
 
     def get_profile_pic_url(self) -> str:
