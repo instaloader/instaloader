@@ -1086,6 +1086,13 @@ class StoryItem:
         return self.owner_profile.userid
 
     @property
+    def get_mentions(self) -> List[dict]:
+        """get the links in the stickers"""
+        tappable_objects = self._node['tappable_objects']
+        mentions = [tappable_obj for tappable_obj in tappable_objects if tappable_obj['__typename'] == 'GraphTappableMention']
+        return mentions
+
+    @property
     def date_local(self) -> datetime:
         """Timestamp when the StoryItem was created (local time zone)."""
         return datetime.fromtimestamp(self._node['taken_at_timestamp'])
