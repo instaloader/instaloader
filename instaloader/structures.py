@@ -1089,7 +1089,7 @@ class StoryItem:
     def get_mentions(self) -> List[dict]:
         """get the user mentions in the story"""
         tappable_objects = self._node['tappable_objects']
-        mentions = [tappable_obj for tappable_obj in tappable_objects if tappable_obj['__typename'] == 'GraphTappableMention']
+        mentions = [obj for obj in tappable_objects if obj['__typename'] == 'GraphTappableMention']
         return mentions
 
     @property
