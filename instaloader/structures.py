@@ -389,7 +389,7 @@ class Post:
                     self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")                    
             version_urls = list(dict.fromkeys(version_urls))
             if len(version_urls) == 0:
-                    return None
+                return None
             if len(version_urls) == 1:
                 return version_urls[0]
             url_candidates: List[Tuple[int, str]] = []
