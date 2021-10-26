@@ -386,7 +386,7 @@ class Post:
                 try:
                     version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
                 except (InstaloaderException, KeyError, IndexError) as err:
-                    self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")                    
+                    self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
             version_urls = list(dict.fromkeys(version_urls))
             if len(version_urls) == 0:
                 return None
