@@ -398,6 +398,16 @@ class Post:
         return _elliptify(self.caption) if self.caption else ''
 
     @property
+    def accessibility_caption(self) -> Optional[str]:
+        """Accessibility caption of the post, if available.
+
+        .. versionadded:: 4.9"""
+        try:
+            return self._field("accessibility_caption")
+        except KeyError:
+            return None
+
+    @property
     def tagged_users(self) -> List[str]:
         """List of all lowercased users that are tagged in the Post."""
         try:
