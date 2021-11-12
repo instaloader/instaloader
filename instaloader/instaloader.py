@@ -22,6 +22,7 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
 from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
+from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
 
@@ -1088,18 +1089,12 @@ class Instaloader:
         .. versionchanged:: 4.2.9
            Require being logged in (as required by Instagram)
         """
-        has_next_page = True
-        end_cursor = None
-        while has_next_page:
-            if end_cursor:
-                params = {'__a': 1, 'max_id': end_cursor}
-            else:
-                params = {'__a': 1}
-            location_data = self.context.get_json('explore/locations/{0}/'.format(location),
-                                                  params)['graphql']['location']['edge_location_to_media']
-            yield from (Post(self.context, edge['node']) for edge in location_data['edges'])
-            has_next_page = location_data['page_info']['has_next_page']
-            end_cursor = location_data['page_info']['end_cursor']
+        yield from SectionIterator(
+            self.context,
+            lambda d: d["native_location_data"]["recent"],
+            lambda m: Post.from_iphone_struct(self.context, m),
+            f"explore/locations/{location}/",
+        )
 
     @_requires_login
     def download_location(self, location: str,
