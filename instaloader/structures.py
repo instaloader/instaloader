@@ -377,20 +377,23 @@ class Post:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
-            version_urls = [self._field('video_url')]
+            version_urls = []
+            try:
+                version_urls.append(self._field('video_url'))
+            except (InstaloaderException, KeyError, IndexError) as err:
+                self._context.error(f"Warning: Unable to fetch video from graphql of {self}: {err}")
             if self._context.iphone_support and self._context.is_logged_in:
                 try:
                     version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
                 except (InstaloaderException, KeyError, IndexError) as err:
                     self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
-                    return version_urls[0]
-            else:
+            version_urls = list(dict.fromkeys(version_urls))
+            if len(version_urls) == 0:
+                return None
+            if len(version_urls) == 1:
                 return version_urls[0]
             url_candidates: List[Tuple[int, str]] = []
             for idx, version_url in enumerate(version_urls):
-                if any(url_candidate[1] == version_url for url_candidate in url_candidates):
-                    # Skip duplicates
-                    continue
                 try:
                     url_candidates.append((
                         int(self._context.head(version_url, allow_redirects=True).headers.get('Content-Length', 0)),
@@ -1129,20 +1132,23 @@ class StoryItem:
     def video_url(self) -> Optional[str]:
         """URL of the video, or None."""
         if self.is_video:
-            version_urls = [self._node['video_resources'][-1]['src']]
+            version_urls = []
+            try:
+                version_urls.append(self._node['video_resources'][-1]['src'])
+            except (InstaloaderException, KeyError, IndexError) as err:
+                self._context.error(f"Warning: Unable to fetch video from graphql of {self}: {err}")
             if self._context.iphone_support and self._context.is_logged_in:
                 try:
                     version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
                 except (InstaloaderException, KeyError, IndexError) as err:
                     self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
-                    return version_urls[0]
-            else:
+            version_urls = list(dict.fromkeys(version_urls))
+            if len(version_urls) == 0:
+                return None
+            if len(version_urls) == 1:
                 return version_urls[0]
             url_candidates: List[Tuple[int, str]] = []
             for idx, version_url in enumerate(version_urls):
-                if any(url_candidate[1] == version_url for url_candidate in url_candidates):
-                    # Skip duplicates
-                    continue
                 try:
                     url_candidates.append((
                         int(self._context.head(version_url, allow_redirects=True).headers.get('Content-Length', 0)),
