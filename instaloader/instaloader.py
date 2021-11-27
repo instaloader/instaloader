@@ -453,9 +453,12 @@ class Instaloader:
     def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
         """Save post location name and Google Maps link."""
         filename += '_location.txt'
-        location_string = (location.name + "\n" +
-                           "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location.lat,
-                                                                                        location.lng))
+        if location.lat is not None and location.lng is not None:
+            location_string = (location.name + "\n" +
+                               "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location.lat,
+                                                                                            location.lng))
+        else:
+            location_string = location.name
         with open(filename, 'wb') as text_file:
             with BytesIO(location_string.encode()) as bio:
                 shutil.copyfileobj(cast(IO, bio), text_file)
