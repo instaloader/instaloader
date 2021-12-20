@@ -226,7 +226,7 @@ class Post:
     def date_local(self) -> datetime:
         """Timestamp when the post was created (local time zone)."""
         def get_timedelta(timestamp) -> timedelta:
-            """Datetime time delta for a given date"""
+            """Timedelta for a given date"""
             return datetime.fromtimestamp(timestamp) - datetime.utcfromtimestamp(timestamp)
 
         timestamp_date = self.get_timestamp_date_created()
