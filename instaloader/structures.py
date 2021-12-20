@@ -1084,7 +1084,12 @@ class StoryItem:
     @property
     def date_local(self) -> datetime:
         """Timestamp when the StoryItem was created (local time zone)."""
-        return datetime.fromtimestamp(self._node['taken_at_timestamp'])
+        def get_timedelta(timestamp) -> timedelta:
+            """Timedelta for a given date"""
+            return datetime.fromtimestamp(timestamp) - datetime.utcfromtimestamp(timestamp)
+
+        tzinfo = timezone(get_timedelta(self._node['taken_at_timestamp']))
+        return datetime.fromtimestamp(self._node['taken_at_timestamp'], tzinfo)
 
     @property
     def date_utc(self) -> datetime:
