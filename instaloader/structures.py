@@ -225,8 +225,12 @@ class Post:
     @property
     def date_local(self) -> datetime:
         """Timestamp when the post was created (local time zone)."""
+        def get_timedelta(timestamp) -> timedelta:
+            """Datetime time delta for a given date"""
+            return datetime.fromtimestamp(timestamp) - datetime.utcfromtimestamp(timestamp)
+
         timestamp_date = self.get_timestamp_date_created()
-        tzinfo = timezone(timedelta(hours=self.get_timezone_offset(timestamp_date)))
+        tzinfo = timezone(get_timedelta(timestamp_date))
         return datetime.fromtimestamp(timestamp_date, tzinfo)
 
     @property
@@ -278,11 +282,6 @@ class Post:
         return (self._node["date"]
                 if "date" in self._node
                 else self._node["taken_at_timestamp"])
-
-    def get_timezone_offset(self, timestamp_date) -> float:
-        """Timestamp offset for a given date"""
-        diff_total_seconds = (datetime.fromtimestamp(timestamp_date) - datetime.utcfromtimestamp(timestamp_date)).total_seconds()
-        return diff_total_seconds / 3600
 
     def get_is_videos(self) -> List[bool]:
         """
