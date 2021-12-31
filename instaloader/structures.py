@@ -3,7 +3,7 @@ import lzma
 import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
@@ -225,16 +225,18 @@ class Post:
     @property
     def date_local(self) -> datetime:
         """Timestamp when the post was created (local time zone)."""
-        return datetime.fromtimestamp(self._node["date"]
-                                      if "date" in self._node
-                                      else self._node["taken_at_timestamp"])
+        def get_timedelta(timestamp) -> timedelta:
+            """Timedelta for a given date"""
+            return datetime.fromtimestamp(timestamp) - datetime.utcfromtimestamp(timestamp)
+
+        timestamp_date = self.get_timestamp_date_created()
+        tzinfo = timezone(get_timedelta(timestamp_date))
+        return datetime.fromtimestamp(timestamp_date, tzinfo)
 
     @property
     def date_utc(self) -> datetime:
         """Timestamp when the post was created (UTC)."""
-        return datetime.utcfromtimestamp(self._node["date"]
-                                         if "date" in self._node
-                                         else self._node["taken_at_timestamp"])
+        return datetime.utcfromtimestamp(self.get_timestamp_date_created())
 
     @property
     def date(self) -> datetime:
@@ -274,6 +276,12 @@ class Post:
             edges = self._field('edge_sidecar_to_children', 'edges')
             return len(edges)
         return 1
+
+    def get_timestamp_date_created(self) -> float:
+        """Timestamp when the post was created"""
+        return (self._node["date"]
+                if "date" in self._node
+                else self._node["taken_at_timestamp"])
 
     def get_is_videos(self) -> List[bool]:
         """
@@ -1079,7 +1087,12 @@ class StoryItem:
     @property
     def date_local(self) -> datetime:
         """Timestamp when the StoryItem was created (local time zone)."""
-        return datetime.fromtimestamp(self._node['taken_at_timestamp'])
+        def get_timedelta(timestamp) -> timedelta:
+            """Timedelta for a given date"""
+            return datetime.fromtimestamp(timestamp) - datetime.utcfromtimestamp(timestamp)
+
+        tzinfo = timezone(get_timedelta(self._node['taken_at_timestamp']))
+        return datetime.fromtimestamp(self._node['taken_at_timestamp'], tzinfo)
 
     @property
     def date_utc(self) -> datetime:
