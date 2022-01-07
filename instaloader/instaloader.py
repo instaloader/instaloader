@@ -811,7 +811,7 @@ class Instaloader:
                 last_scraped = latest_stamps.get_last_story_timestamp(name)
                 scraped_timestamp = datetime.now().astimezone()
             for item in user_story.get_items():
-                if latest_stamps is not None and item.date_utc.replace(tzinfo=timezone.utc) <= last_scraped:
+                if latest_stamps is not None and item.date_local <= last_scraped:
                     break
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log("<{} skipped>".format(item), flush=True)
@@ -1206,7 +1206,7 @@ class Instaloader:
         posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_tagged_timestamp(profile.username)
-            posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
+            posts_takewhile = lambda p: p.date_local > last_scraped
         tagged_posts = profile.get_tagged_posts()
         self.posts_download_loop(tagged_posts,
                                  target if target
@@ -1214,7 +1214,7 @@ class Instaloader:
                                        _PostPathFormatter.sanitize_path(':tagged')),
                                  fast_update, post_filter, takewhile=posts_takewhile)
         if latest_stamps is not None and tagged_posts.first_item is not None:
-            latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local.astimezone())
+            latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local)
 
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
@@ -1229,12 +1229,12 @@ class Instaloader:
         posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_igtv_timestamp(profile.username)
-            posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
+            posts_takewhile = lambda p: p.date_local > last_scraped
         igtv_posts = profile.get_igtv_posts()
         self.posts_download_loop(igtv_posts, profile.username, fast_update, post_filter,
                                  total_count=profile.igtvcount, owner_profile=profile, takewhile=posts_takewhile)
         if latest_stamps is not None and igtv_posts.first_item is not None:
-            latest_stamps.set_last_igtv_timestamp(profile.username, igtv_posts.first_item.date_local.astimezone())
+            latest_stamps.set_last_igtv_timestamp(profile.username, igtv_posts.first_item.date_local)
 
     def _get_id_filename(self, profile_name: str) -> str:
         if ((format_string_contains_key(self.dirname_pattern, 'profile') or
@@ -1427,14 +1427,14 @@ class Instaloader:
                     if latest_stamps is not None:
                         # pylint:disable=cell-var-from-loop
                         last_scraped = latest_stamps.get_last_post_timestamp(profile_name)
-                        posts_takewhile = lambda p: p.date_utc.replace(tzinfo=timezone.utc) > last_scraped
+                        posts_takewhile = lambda p: p.date_local > last_scraped
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
                                              takewhile=posts_takewhile)
                     if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
-                                                              posts_to_download.first_item.date_local.astimezone())
+                                                              posts_to_download.first_item.date_local)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
