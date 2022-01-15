@@ -262,17 +262,16 @@ class Post:
 
     @property
     def date_local(self) -> datetime:
-        """Timestamp when the post was created (local time zone)."""
-        return datetime.fromtimestamp(self._node["date"]
-                                      if "date" in self._node
-                                      else self._node["taken_at_timestamp"])
+        """Timestamp when the post was created (local time zone).
+
+        .. versionchanged:: 4.9
+           Return timezone aware datetime object."""
+        return datetime.fromtimestamp(self._get_timestamp_date_created()).astimezone()
 
     @property
     def date_utc(self) -> datetime:
         """Timestamp when the post was created (UTC)."""
-        return datetime.utcfromtimestamp(self._node["date"]
-                                         if "date" in self._node
-                                         else self._node["taken_at_timestamp"])
+        return datetime.utcfromtimestamp(self._get_timestamp_date_created())
 
     @property
     def date(self) -> datetime:
@@ -312,6 +311,12 @@ class Post:
             edges = self._field('edge_sidecar_to_children', 'edges')
             return len(edges)
         return 1
+
+    def _get_timestamp_date_created(self) -> float:
+        """Timestamp when the post was created"""
+        return (self._node["date"]
+                if "date" in self._node
+                else self._node["taken_at_timestamp"])
 
     def get_is_videos(self) -> List[bool]:
         """
@@ -1140,8 +1145,11 @@ class StoryItem:
 
     @property
     def date_local(self) -> datetime:
-        """Timestamp when the StoryItem was created (local time zone)."""
-        return datetime.fromtimestamp(self._node['taken_at_timestamp'])
+        """Timestamp when the StoryItem was created (local time zone).
+
+        .. versionchanged:: 4.9
+           Return timezone aware datetime object."""
+        return datetime.fromtimestamp(self._node['taken_at_timestamp']).astimezone()
 
     @property
     def date_utc(self) -> datetime:
