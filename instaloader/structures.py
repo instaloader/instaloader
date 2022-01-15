@@ -38,8 +38,8 @@ PostLocation.id.__doc__ = "ID number of location."
 PostLocation.name.__doc__ = "Location name."
 PostLocation.slug.__doc__ = "URL friendly variant of location name."
 PostLocation.has_public_page.__doc__ = "Whether location has a public page."
-PostLocation.lat.__doc__ = "Latitude (:class:`float`)."
-PostLocation.lng.__doc__ = "Longitude (:class:`float`)."
+PostLocation.lat.__doc__ = "Latitude (:class:`float` or None)."
+PostLocation.lng.__doc__ = "Longitude (:class:`float` or None)."
 
 
 class Post:
@@ -629,7 +629,7 @@ class Post:
             loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
                                               params={'__a': 1})['native_location_data']['location_info'])
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
-                                      loc['lat'], loc['lng'])
+                                      loc.get('lat'), loc.get('lng'))
         return self._location
 
 
@@ -1655,7 +1655,7 @@ class TopSearchResults:
             place = location.get('place', {})
             slug = place.get('slug')
             loc = place.get('location', {})
-            yield PostLocation(int(loc['pk']), loc['name'], slug, None, loc['lat'], loc['lng'])
+            yield PostLocation(int(loc['pk']), loc['name'], slug, None, loc.get('lat'), loc.get('lng'))
 
     def get_hashtag_strings(self) -> Iterator[str]:
         """
