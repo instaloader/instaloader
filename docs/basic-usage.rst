@@ -155,7 +155,7 @@ i.e. ``profile``, ``#hashtag``, ``%location id``, ``:feed``, etc. and therein sa
 posts in files named after the post's timestamp.
 
 :option:`--dirname-pattern` allows to configure the directory name of each
-target. The default is ``--dirname-pattern={target}``. In the dirname
+target. The default is ``--dirname-pattern={profile}/{target}``. In the dirname
 pattern, the token ``{target}`` is replaced by the target name, and
 ``{profile}`` is replaced by the owner of the post which is downloaded.
 

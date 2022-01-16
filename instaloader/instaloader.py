@@ -218,7 +218,7 @@ class Instaloader:
                                           iphone_support)
 
         # configuration parameters
-        self.dirname_pattern = dirname_pattern or "{target}"
+        self.dirname_pattern = dirname_pattern or "{profile}/{target}"
         self.filename_pattern = filename_pattern or "{date_utc}_UTC"
         if title_pattern is not None:
             self.title_pattern = title_pattern
@@ -909,8 +909,7 @@ class Instaloader:
             name = user_highlight.owner_username
             highlight_target = (filename_target
                                 if filename_target
-                                else (Path(_PostPathFormatter.sanitize_path(name)) /
-                                      _PostPathFormatter.sanitize_path(user_highlight.title)))  # type: Union[str, Path]
+                                else Path(_PostPathFormatter.sanitize_path(user_highlight.title))) # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
