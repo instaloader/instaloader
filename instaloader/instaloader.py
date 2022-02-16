@@ -1394,7 +1394,7 @@ class Instaloader:
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
-                if tagged or igtv or highlights or posts:
+                if tagged or igtv or highlights or posts or stories:
                     if (not self.context.is_logged_in and
                             profile.is_private):
                         raise LoginRequiredException("--login=USERNAME required.")
