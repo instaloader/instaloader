@@ -314,6 +314,12 @@ class Instaloader:
         Returns true, if file was actually downloaded, i.e. updated."""
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
+        webp_hack = False
+        if file_extension == "webp":
+            # https://github.com/instaloader/instaloader/issues/1414
+            # Instagram incorrectly sets the file extension to webp, even though the image is a jpg
+            file_extension = "jpg"
+            webp_hack = True
         if filename_suffix is not None:
             filename += '_' + filename_suffix
         filename += '.' + file_extension
@@ -322,6 +328,19 @@ class Instaloader:
             return False
         self.context.get_and_write_raw(url, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
+
+        if webp_hack:
+            # Ensure that WEBP URL actually contained a JPEG image
+            with open(filename, 'rb') as file:
+                header_byte = file.read(3)
+                header_byte_hex = header_byte[0:3].hex()
+                if header_byte_hex == 'ffd8ff':
+                    # Image is probably jpeg, cool
+                    pass
+                else:
+                    # Image is not jpeg, print error and abort because instagram is not supposed to return webp images
+                    self.context.error(f"\nWEBP image was saved as JPEG but it is not actually JPEG: {filename}")
+
         return True
 
     def save_metadata_json(self, filename: str, structure: JsonExportable) -> None:
