@@ -314,7 +314,7 @@ class Instaloader:
             slide=self.slide,
             fatal_status_codes=self.context.fatal_status_codes,
             iphone_support=self.context.iphone_support,
-            sanitize_paths=self.context.sanitize_paths)
+            sanitize_paths=self.sanitize_paths)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -525,8 +525,9 @@ class Instaloader:
         ig_filename = url.split('/')[-1].split('?')[0]
         pic_data = TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
         dirname = _PostPathFormatter(pic_data, self.sanitize_paths).format(self.dirname_pattern, target=target)
-        filename_template = os.path.join(dirname,
-                                         _PostPathFormatter(pic_data, self.sanitize_paths).format(self.title_pattern, target=target))
+        filename_template = os.path.join(
+                dirname,
+                _PostPathFormatter(pic_data, self.sanitize_paths).format(self.title_pattern, target=target))
         filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
@@ -933,7 +934,8 @@ class Instaloader:
             highlight_target = (filename_target
                                 if filename_target
                                 else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
-                                      _PostPathFormatter.sanitize_path(user_highlight.title, self.sanitize_paths)))  # type: Union[str, Path]
+                                      _PostPathFormatter.sanitize_path(user_highlight.title,
+                                                                       self.sanitize_paths)))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
