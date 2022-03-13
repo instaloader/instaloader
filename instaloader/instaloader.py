@@ -137,24 +137,38 @@ class _ArbitraryItemFormatter(string.Formatter):
 
 
 class _PostPathFormatter(_ArbitraryItemFormatter):
+    RESERVED: set = {'CON', 'PRN', 'AUX', 'NUL',
+                     'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+                     'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'}
+
+    def __init__(self, item: Any, force_windows_path: bool = False):
+        super().__init__(item)
+        self.force_windows_path = force_windows_path
+
     def get_value(self, key, args, kwargs):
         ret = super().get_value(key, args, kwargs)
         if not isinstance(ret, str):
             return ret
-        return self.sanitize_path(ret)
+        return self.sanitize_path(ret, self.force_windows_path)
 
     @staticmethod
-    def sanitize_path(ret: str) -> str:
+    def sanitize_path(ret: str, force_windows_path: bool = False) -> str:
         """Replaces '/' with similar looking Division Slash and some other illegal filename characters on Windows."""
         ret = ret.replace('/', '\u2215')
 
         if ret.startswith('.'):
             ret = ret.replace('.', '\u2024', 1)
 
-        if platform.system() == 'Windows':
+        if force_windows_path or platform.system() == 'Windows':
             ret = ret.replace(':', '\uff1a').replace('<', '\ufe64').replace('>', '\ufe65').replace('\"', '\uff02')
             ret = ret.replace('\\', '\ufe68').replace('|', '\uff5c').replace('?', '\ufe16').replace('*', '\uff0a')
             ret = ret.replace('\n', ' ').replace('\r', ' ')
+            root, ext = os.path.splitext(ret)
+            if root.upper() in _PostPathFormatter.RESERVED:
+                root += '_'
+            if ext == '.':
+                ext = '\u2024'
+            ret = root + ext
         return ret
 
 
@@ -187,6 +201,7 @@ class Instaloader:
     :param slide: :option:`--slide`
     :param fatal_status_codes: :option:`--abort-on`
     :param iphone_support: not :option:`--no-iphone`
+    :param sanitize_paths: :option:`--sanitize-paths`
 
     .. attribute:: context
 
@@ -216,7 +231,8 @@ class Instaloader:
                  slide: Optional[str] = None,
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
-                 title_pattern: Optional[str] = None):
+                 title_pattern: Optional[str] = None,
+                 sanitize_paths: bool = False):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
@@ -233,6 +249,7 @@ class Instaloader:
                 self.title_pattern = '{date_utc}_UTC_{typename}'
             else:
                 self.title_pattern = '{target}_{date_utc}_UTC_{typename}'
+        self.sanitize_paths = sanitize_paths
         self.download_pictures = download_pictures
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
@@ -296,7 +313,8 @@ class Instaloader:
             check_resume_bbd=self.check_resume_bbd,
             slide=self.slide,
             fatal_status_codes=self.context.fatal_status_codes,
-            iphone_support=self.context.iphone_support)
+            iphone_support=self.context.iphone_support,
+            sanitize_paths=self.context.sanitize_paths)
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -506,9 +524,9 @@ class Instaloader:
             pic_bytes = http_response.content
         ig_filename = url.split('/')[-1].split('?')[0]
         pic_data = TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
-        dirname = _PostPathFormatter(pic_data).format(self.dirname_pattern, target=target)
+        dirname = _PostPathFormatter(pic_data, self.sanitize_paths).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname,
-                                         _PostPathFormatter(pic_data).format(self.title_pattern, target=target))
+                                         _PostPathFormatter(pic_data, self.sanitize_paths).format(self.title_pattern, target=target))
         filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
@@ -633,7 +651,7 @@ class Instaloader:
         """Format filename of a :class:`Post` or :class:`StoryItem` according to ``filename-pattern`` parameter.
 
         .. versionadded:: 4.1"""
-        return _PostPathFormatter(item).format(self.filename_pattern, target=target)
+        return _PostPathFormatter(item, self.sanitize_paths).format(self.filename_pattern, target=target)
 
     def download_post(self, post: Post, target: Union[str, Path]) -> bool:
         """
@@ -665,7 +683,7 @@ class Instaloader:
                         return False
             return True
 
-        dirname = _PostPathFormatter(post).format(self.dirname_pattern, target=target)
+        dirname = _PostPathFormatter(post, self.sanitize_paths).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(post, target=target))
         filename = self.__prepare_filename(filename_template, lambda: post.url)
 
@@ -846,7 +864,7 @@ class Instaloader:
                 return True
 
         date_local = item.date_local
-        dirname = _PostPathFormatter(item).format(self.dirname_pattern, target=target)
+        dirname = _PostPathFormatter(item, self.sanitize_paths).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
@@ -914,8 +932,8 @@ class Instaloader:
             name = user_highlight.owner_username
             highlight_target = (filename_target
                                 if filename_target
-                                else (Path(_PostPathFormatter.sanitize_path(name)) /
-                                      _PostPathFormatter.sanitize_path(user_highlight.title)))  # type: Union[str, Path]
+                                else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
+                                      _PostPathFormatter.sanitize_path(user_highlight.title, self.sanitize_paths)))  # type: Union[str, Path]
             self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
@@ -965,7 +983,7 @@ class Instaloader:
                            else total_count)
         sanitized_target = target
         if isinstance(target, str):
-            sanitized_target = _PostPathFormatter.sanitize_path(target)
+            sanitized_target = _PostPathFormatter.sanitize_path(target, self.sanitize_paths)
         if takewhile is None:
             takewhile = lambda _: True
         with resumable_iteration(
@@ -1209,8 +1227,8 @@ class Instaloader:
         tagged_posts = profile.get_tagged_posts()
         self.posts_download_loop(tagged_posts,
                                  target if target
-                                 else (Path(_PostPathFormatter.sanitize_path(profile.username)) /
-                                       _PostPathFormatter.sanitize_path(':tagged')),
+                                 else (Path(_PostPathFormatter.sanitize_path(profile.username, self.sanitize_paths)) /
+                                       _PostPathFormatter.sanitize_path(':tagged', self.sanitize_paths)),
                                  fast_update, post_filter, takewhile=posts_takewhile)
         if latest_stamps is not None and tagged_posts.first_item is not None:
             latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local)

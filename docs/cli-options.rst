@@ -239,6 +239,13 @@ How to Download
 
    .. versionadded:: 4.8
 
+.. option:: --sanitize-paths
+
+   Force sanitization of paths so that the resulting file and directory names
+   are valid on both Windows and Unix.
+
+   .. versionadded:: 4.9
+
 .. option:: --resume-prefix prefix
 
    For many targets, Instaloader is capable of resuming a previously-aborted

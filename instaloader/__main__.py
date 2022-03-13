@@ -383,6 +383,9 @@ def main():
     g_how.add_argument('--resume-prefix', metavar='PREFIX',
                        help='Prefix for filenames that are used to save the information to resume an interrupted '
                             'download.')
+    g_how.add_argument('--sanitize-paths', action='store_true',
+                       help='Sanitize paths so that the resulting file and directory names are valid on both '
+                            'Windows and Unix.')
     g_how.add_argument('--no-resume', action='store_true',
                        help='Do not resume a previously-aborted download iteration, and do not save such information '
                             'when interrupted.')
@@ -463,7 +466,8 @@ def main():
                              slide=args.slide,
                              fatal_status_codes=args.abort_on,
                              iphone_support=not args.no_iphone,
-                             title_pattern=args.title_pattern)
+                             title_pattern=args.title_pattern,
+                             sanitize_paths=args.sanitize_paths)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
