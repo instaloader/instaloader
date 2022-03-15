@@ -521,13 +521,19 @@ class InstaloaderContext:
                 raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
             raise ConnectionException("HTTP error code {}.".format(resp.status_code))
 
-    def get_and_write_raw(self, url: str, filename: str) -> None:
+    def get_and_write_raw(self, url: str, filename: str, get_extension: bool = False) -> None:
         """Downloads and writes anonymously-requested raw data into a file.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When download repeatedly failed."""
-        self.write_raw(self.get_raw(url), filename)
+        resp = self.get_raw(url)
+        if get_extension and resp.headers['Content-Type']:
+            extension = '.' + resp.headers['Content-Type'].split('/')[1].lower()
+            extension = extension.replace('jpeg', 'jpg')
+            filename += extension
+        self.write_raw(resp, filename)
+        return filename
 
     def head(self, url: str, allow_redirects: bool = False) -> requests.Response:
         """HEAD a URL anonymously.
