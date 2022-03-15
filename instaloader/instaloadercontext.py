@@ -521,7 +521,7 @@ class InstaloaderContext:
                 raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
             raise ConnectionException("HTTP error code {}.".format(resp.status_code))
 
-    def get_and_write_raw(self, url: str, filename: str, get_extension: bool = False) -> None:
+    def get_and_write_raw(self, url: str, filename: str, get_extension: bool = False) -> str:
         """Downloads and writes anonymously-requested raw data into a file.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
