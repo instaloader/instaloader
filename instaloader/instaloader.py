@@ -314,8 +314,13 @@ class Instaloader:
         Returns true, if file was actually downloaded, i.e. updated."""
         if filename_suffix is not None:
             filename += '_' + filename_suffix
-        if os.path.isfile(filename):
-            self.context.log(filename + ' exists', end=' ', flush=True)
+        urlmatch = re.search('\\.[a-z0-9]*\\?', url)
+        file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
+        if filename_suffix is not None:
+            filename += '_' + filename_suffix
+        nominal_filename = filename + '.' + file_extension
+        if os.path.isfile(nominal_filename):
+            self.context.log(nominal_filename + ' exists', end=' ', flush=True)
             return False
         filename = self.context.get_and_write_raw(url, filename, get_extension=True)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
