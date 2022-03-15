@@ -529,7 +529,7 @@ class InstaloaderContext:
         :raises ConnectionException: When download repeatedly failed."""
         resp = self.get_raw(url)
         if get_extension and 'Content-Type' in resp.headers and resp.headers['Content-Type']:
-            extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1].lwoer().replace('jpeg', 'jpg')
+            extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1].lower().replace('jpeg', 'jpg')
             filename += extension
         self.write_raw(resp, filename)
         return filename
