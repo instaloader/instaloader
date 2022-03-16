@@ -11,6 +11,7 @@ from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
+from unicodedata import normalize
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
@@ -322,9 +323,9 @@ class Post:
     def caption(self) -> Optional[str]:
         """Caption."""
         if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
-            return self._node["edge_media_to_caption"]["edges"][0]["node"]["text"]
+            return normalize("NFC", self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in self._node:
-            return self._node["caption"]
+            return normalize("NFC", self._node["caption"])
         return None
 
     @property
