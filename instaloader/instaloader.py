@@ -320,6 +320,7 @@ class Instaloader:
         if os.path.isfile(nominal_filename):
             self.context.log(nominal_filename + ' exists', end=' ', flush=True)
             return False
+
         resp = self.context.get_raw(url)
         if 'Content-Type' in resp.headers and resp.headers['Content-Type']:
             header_extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1].lower().replace('jpeg', 'jpg')
