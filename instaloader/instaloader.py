@@ -316,13 +316,18 @@ class Instaloader:
             filename += '_' + filename_suffix
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
-        if filename_suffix is not None:
-            filename += '_' + filename_suffix
         nominal_filename = filename + '.' + file_extension
         if os.path.isfile(nominal_filename):
             self.context.log(nominal_filename + ' exists', end=' ', flush=True)
             return False
-        filename = self.context.get_and_write_raw(url, filename, get_extension=True)
+        resp = self.context.get_raw(url)
+        if 'Content-Type' in resp.headers and resp.headers['Content-Type']:
+            header_extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1].lower().replace('jpeg', 'jpg')
+            filename += header_extension
+        if os.path.isfile(filename):
+            self.context.log(filename + ' exists', end=' ', flush=True)
+            return False
+        self.context.write_raw(resp, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
