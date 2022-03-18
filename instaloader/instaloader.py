@@ -325,7 +325,9 @@ class Instaloader:
             header_extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1]
             header_extension = header_extension.lower().replace('jpeg', 'jpg')
             filename += header_extension
-        if os.path.isfile(filename):
+        else:
+            filename = nominal_filename
+        if filename != nominal_filename and os.path.isfile(filename):
             self.context.log(filename + ' exists', end=' ', flush=True)
             return False
         self.context.write_raw(resp, filename)
