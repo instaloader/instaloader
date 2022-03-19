@@ -312,15 +312,25 @@ class Instaloader:
                      filename_suffix: Optional[str] = None, _attempt: int = 1) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
-        urlmatch = re.search('\\.[a-z0-9]*\\?', url)
-        file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
         if filename_suffix is not None:
             filename += '_' + filename_suffix
-        filename += '.' + file_extension
-        if os.path.isfile(filename):
+        urlmatch = re.search('\\.[a-z0-9]*\\?', url)
+        file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
+        nominal_filename = filename + '.' + file_extension
+        if os.path.isfile(nominal_filename):
+            self.context.log(nominal_filename + ' exists', end=' ', flush=True)
+            return False
+        resp = self.context.get_raw(url)
+        if 'Content-Type' in resp.headers and resp.headers['Content-Type']:
+            header_extension = '.' + resp.headers['Content-Type'].split(';')[0].split('/')[-1]
+            header_extension = header_extension.lower().replace('jpeg', 'jpg')
+            filename += header_extension
+        else:
+            filename = nominal_filename
+        if filename != nominal_filename and os.path.isfile(filename):
             self.context.log(filename + ' exists', end=' ', flush=True)
             return False
-        self.context.get_and_write_raw(url, filename)
+        self.context.write_raw(resp, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
 
