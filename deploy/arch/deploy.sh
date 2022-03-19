@@ -3,7 +3,7 @@
 VERSION=${1:1}
 
 # do not deploy pre-releases
-#echo $VERSION | grep -qe "[abc]" && exit 0
+echo $VERSION | grep -qe "[abc]" && exit 0
 
 cd $(dirname $0)
 
@@ -12,6 +12,7 @@ openssl aes-256-cbc -K $AUR_KEY -iv $AUR_IV -in id_rsa_AUR.enc -out /tmp/AUR_ope
 eval "$(ssh-agent -s)"
 chmod 600 /tmp/AUR_openssh
 ssh-add /tmp/AUR_openssh
+mkdir -p ~/.ssh
 ssh-keyscan -t rsa aur.archlinux.org >> ~/.ssh/known_hosts
 
 # clone and modify AUR repo
