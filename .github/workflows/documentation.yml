@@ -28,4 +28,4 @@ jobs:
           branch: master
           repository-name: instaloader/instaloader.github.io
           folder: docs/_build/html
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAGES_DEPLOYMENT_TOKEN }}
