@@ -8,6 +8,7 @@ from datetime import datetime
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from unicodedata import normalize
 
 from . import __version__
 from .exceptions import *
@@ -365,9 +366,9 @@ class Post:
     def caption(self) -> Optional[str]:
         """Caption."""
         if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
-            return self._node["edge_media_to_caption"]["edges"][0]["node"]["text"]
+            return normalize("NFC", self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in self._node:
-            return self._node["caption"]
+            return normalize("NFC", self._node["caption"])
         return None
 
     @property
@@ -389,7 +390,7 @@ class Post:
         # support Unicode and a word/beginning of string delimiter at the beginning to ensure
         # that no email addresses join the list of mentions.
         # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-        mention_regex = re.compile(r"(?:^|\W|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)")
+        mention_regex = re.compile(r"(?:^|\W|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)", re.ASCII)
         return re.findall(mention_regex, self.caption.lower())
 
     @property
