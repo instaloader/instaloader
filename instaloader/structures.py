@@ -1,4 +1,9 @@
-import json
+try:
+    import ujson
+except ModuleNotFoundError:
+    import json
+else:
+    json = ujson
 import lzma
 import re
 from base64 import b64decode, b64encode

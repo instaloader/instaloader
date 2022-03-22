@@ -1,5 +1,10 @@
 import getpass
-import json
+try:
+    import ujson
+except ModuleNotFoundError:
+    import json
+else:
+    json = ujson
 import os
 import platform
 import re
