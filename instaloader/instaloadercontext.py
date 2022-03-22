@@ -1,10 +1,8 @@
 import hashlib
 try:
-    import ujson
+    import ujson as json
 except ModuleNotFoundError:
     import json
-else:
-    json = ujson
 import os
 import pickle
 import random

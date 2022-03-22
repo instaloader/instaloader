@@ -1,11 +1,9 @@
 import base64
 import hashlib
 try:
-    import ujson
+    import ujson as json
 except ModuleNotFoundError:
     import json
-else:
-    json = ujson
 import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta

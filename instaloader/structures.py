@@ -1,9 +1,7 @@
 try:
-    import ujson
+    import ujson as json
 except ModuleNotFoundError:
     import json
-else:
-    json = ujson
 import lzma
 import re
 from base64 import b64decode, b64encode
