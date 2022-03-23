@@ -1,6 +1,9 @@
 import base64
 import hashlib
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta

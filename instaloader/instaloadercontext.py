@@ -1,5 +1,8 @@
 import hashlib
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 import os
 import pickle
 import random

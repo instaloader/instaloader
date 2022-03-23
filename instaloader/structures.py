@@ -1,4 +1,7 @@
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 import lzma
 import re
 from base64 import b64decode, b64encode

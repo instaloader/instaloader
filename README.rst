@@ -39,6 +39,10 @@
 
     $ instaloader profile [profile ...]
 
+**Optional dependency**
+
+* The `ujson <https://pypi.org/project/ujson/>`_ library may be used to speed up JSON de- & encoding.
+
 **Instaloader**
 
 - downloads **public and private profiles, hashtags, user stories,

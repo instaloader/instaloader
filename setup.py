@@ -43,6 +43,7 @@ setup(
                 'from Instagram.',
     long_description=open(os.path.join(SRC, 'README.rst')).read(),
     install_requires=requirements,
+    extra_requires={'json': 'ujson'},
     python_requires='>=3.6',
     entry_points={'console_scripts': ['instaloader=instaloader.__main__:main']},
     zip_safe=False,

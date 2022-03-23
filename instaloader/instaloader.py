@@ -1,5 +1,8 @@
 import getpass
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 import os
 import platform
 import re
