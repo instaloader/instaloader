@@ -1115,6 +1115,21 @@ class StoryItem:
     def __hash__(self) -> int:
         return hash(self.mediaid)
 
+    @classmethod
+    def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
+        """Create a StoryItem object from a given mediaid.
+
+        .. versionadded:: 4.9
+        """
+        pic_json = context.graphql_query(
+            '2b0673e0dc4580674a88d426fe00ea90',
+            {'shortcode': Post.mediaid_to_shortcode(mediaid)}
+        )
+        shortcode_media = pic_json['data']['shortcode_media']
+        if shortcode_media is None:
+            raise BadResponseException("Fetching StoryItem metadata failed.")
+        return cls(context, shortcode_media)
+
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
         if not self._context.iphone_support:
