@@ -239,6 +239,13 @@ How to Download
 
    .. versionadded:: 4.8
 
+.. option:: --sanitize-paths
+
+   Force sanitization of paths so that the resulting file and directory names
+   are valid on both Windows and Unix.
+
+   .. versionadded:: 4.9
+
 .. option:: --resume-prefix prefix
 
    For many targets, Instaloader is capable of resuming a previously-aborted
@@ -251,7 +258,8 @@ How to Download
     - Profile posts,
     - Profile IGTV posts (:option:`--igtv`),
     - Profile tagged posts (:option:`--tagged`),
-    - Saved posts (``:saved``).
+    - Saved posts (``:saved``),
+    - Hashtags.
 
    This feature is enabled by default for targets where it is supported;
    :option:`--resume-prefix` only changes the name of the iterator files.
@@ -273,7 +281,7 @@ How to Download
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
-   Chrome/89 on Linux.
+   Chrome/92 on Linux.
 
 .. option:: --max-connection-attempts N
 

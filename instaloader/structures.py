@@ -3,7 +3,9 @@ import lzma
 import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
+from contextlib import suppress
 from datetime import datetime
+from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 from unicodedata import normalize
@@ -12,6 +14,7 @@ from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
+from .sectioniterator import SectionIterator
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
@@ -89,6 +92,41 @@ class Post:
     def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
         """Create a post object from a given mediaid"""
         return cls.from_shortcode(context, Post.mediaid_to_shortcode(mediaid))
+
+    @classmethod
+    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+        """Create a post from a given iphone_struct.
+
+        .. versionadded:: 4.9"""
+        media_types = {
+            1: "GraphImage",
+            2: "GraphVideo",
+            8: "GraphSidecar",
+        }
+        fake_node = {
+            "shortcode": media["code"],
+            "id": media["pk"],
+            "__typename": media_types[media["media_type"]],
+            "is_video": media_types[media["media_type"]] == "GraphVideo",
+            "date": media["taken_at"],
+            "caption": media["caption"].get("text") if media.get("caption") is not None else None,
+            "title": media.get("title"),
+            "viewer_has_liked": media["has_liked"],
+            "edge_media_preview_like": {"count": media["like_count"]},
+            "iphone_struct": media,
+        }
+        with suppress(KeyError):
+            fake_node["display_url"] = media['image_versions2']['candidates'][0]['url']
+        with suppress(KeyError):
+            fake_node["video_url"] = media['video_versions'][-1]['url']
+            fake_node["video_duration"] = media["video_duration"]
+            fake_node["video_view_count"] = media["view_count"]
+        with suppress(KeyError):
+            fake_node["edge_sidecar_to_children"] = {"edges": [{"node": {
+                "display_url": node['image_versions2']['candidates'][0]['url'],
+                "is_video": media_types[node["media_type"]] == "GraphVideo",
+            }} for node in media["carousel_media"]]}
+        return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
 
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
@@ -225,17 +263,16 @@ class Post:
 
     @property
     def date_local(self) -> datetime:
-        """Timestamp when the post was created (local time zone)."""
-        return datetime.fromtimestamp(self._node["date"]
-                                      if "date" in self._node
-                                      else self._node["taken_at_timestamp"])
+        """Timestamp when the post was created (local time zone).
+
+        .. versionchanged:: 4.9
+           Return timezone aware datetime object."""
+        return datetime.fromtimestamp(self._get_timestamp_date_created()).astimezone()
 
     @property
     def date_utc(self) -> datetime:
         """Timestamp when the post was created (UTC)."""
-        return datetime.utcfromtimestamp(self._node["date"]
-                                         if "date" in self._node
-                                         else self._node["taken_at_timestamp"])
+        return datetime.utcfromtimestamp(self._get_timestamp_date_created())
 
     @property
     def date(self) -> datetime:
@@ -275,6 +312,12 @@ class Post:
             edges = self._field('edge_sidecar_to_children', 'edges')
             return len(edges)
         return 1
+
+    def _get_timestamp_date_created(self) -> float:
+        """Timestamp when the post was created"""
+        return (self._node["date"]
+                if "date" in self._node
+                else self._node["taken_at_timestamp"])
 
     def get_is_videos(self) -> List[bool]:
         """
@@ -359,6 +402,16 @@ class Post:
             pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
             return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
         return _elliptify(self.caption) if self.caption else ''
+
+    @property
+    def accessibility_caption(self) -> Optional[str]:
+        """Accessibility caption of the post, if available.
+
+        .. versionadded:: 4.9"""
+        try:
+            return self._field("accessibility_caption")
+        except KeyError:
+            return None
 
     @property
     def tagged_users(self) -> List[str]:
@@ -665,6 +718,20 @@ class Profile:
                                             str(profile_id) + ").")
         context.profile_id_cache[profile_id] = profile
         return profile
+
+    @classmethod
+    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+        """Create a profile from a given iphone_struct.
+
+        .. versionadded:: 4.9"""
+        return cls(context, {
+            "id": media["pk"],
+            "username": media["username"],
+            "is_private": media["is_private"],
+            "full_name": media["full_name"],
+            "profile_pic_url_hd": media["profile_pic_url"],
+            "iphone_struct": media,
+        })
 
     @classmethod
     def own_profile(cls, context: InstaloaderContext):
@@ -1048,6 +1115,21 @@ class StoryItem:
     def __hash__(self) -> int:
         return hash(self.mediaid)
 
+    @classmethod
+    def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
+        """Create a StoryItem object from a given mediaid.
+
+        .. versionadded:: 4.9
+        """
+        pic_json = context.graphql_query(
+            '2b0673e0dc4580674a88d426fe00ea90',
+            {'shortcode': Post.mediaid_to_shortcode(mediaid)}
+        )
+        shortcode_media = pic_json['data']['shortcode_media']
+        if shortcode_media is None:
+            raise BadResponseException("Fetching StoryItem metadata failed.")
+        return cls(context, shortcode_media)
+
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
         if not self._context.iphone_support:
@@ -1079,8 +1161,11 @@ class StoryItem:
 
     @property
     def date_local(self) -> datetime:
-        """Timestamp when the StoryItem was created (local time zone)."""
-        return datetime.fromtimestamp(self._node['taken_at_timestamp'])
+        """Timestamp when the StoryItem was created (local time zone).
+
+        .. versionchanged:: 4.9
+           Return timezone aware datetime object."""
+        return datetime.fromtimestamp(self._node['taken_at_timestamp']).astimezone()
 
     @property
     def date_utc(self) -> datetime:
@@ -1360,6 +1445,9 @@ class Hashtag:
           L.download_post(post, target="#"+hashtag.name)
 
     Also, this class implements == and is hashable.
+
+    .. versionchanged:: 4.9
+       Removed ``get_related_tags()`` and ``is_top_media_only`` as these features were removed from Instagram.
     """
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert "name" in node
@@ -1388,8 +1476,8 @@ class Hashtag:
         return self._node["name"].lower()
 
     def _query(self, params):
-        return self._context.get_json("explore/tags/{0}/".format(self.name),
-                                      params)["graphql"]["hashtag"]
+        json_response = self._context.get_json("explore/tags/{0}/".format(self.name), params)
+        return json_response["graphql"]["hashtag"] if "graphql" in json_response else json_response["data"]
 
     def _obtain_metadata(self):
         if not self._has_full_metadata:
@@ -1400,7 +1488,9 @@ class Hashtag:
         json_node = self._node.copy()
         # remove posts
         json_node.pop("edge_hashtag_to_top_posts", None)
+        json_node.pop("top", None)
         json_node.pop("edge_hashtag_to_media", None)
+        json_node.pop("recent", None)
         return json_node
 
     def __repr__(self):
@@ -1436,30 +1526,33 @@ class Hashtag:
         return self._metadata("profile_pic_url")
 
     @property
-    def description(self) -> str:
+    def description(self) -> Optional[str]:
         return self._metadata("description")
 
     @property
     def allow_following(self) -> bool:
-        return self._metadata("allow_following")
+        return bool(self._metadata("allow_following"))
 
     @property
     def is_following(self) -> bool:
-        return self._metadata("is_following")
-
-    @property
-    def is_top_media_only(self) -> bool:
-        return self._metadata("is_top_media_only")
-
-    def get_related_tags(self) -> Iterator["Hashtag"]:
-        """Yields similar hashtags."""
-        yield from (Hashtag(self._context, edge["node"])
-                    for edge in self._metadata("edge_hashtag_to_related_tags", "edges"))
+        try:
+            return self._metadata("is_following")
+        except KeyError:
+            return bool(self._metadata("following"))
 
     def get_top_posts(self) -> Iterator[Post]:
         """Yields the top posts of the hashtag."""
-        yield from (Post(self._context, edge["node"])
-                    for edge in self._metadata("edge_hashtag_to_top_posts", "edges"))
+        try:
+            yield from (Post(self._context, edge["node"])
+                        for edge in self._metadata("edge_hashtag_to_top_posts", "edges"))
+        except KeyError:
+            yield from SectionIterator(
+                self._context,
+                lambda d: d["data"]["top"],
+                lambda m: Post.from_iphone_struct(self._context, m),
+                f"explore/tags/{self.name}/",
+                self._metadata("top"),
+            )
 
     @property
     def mediacount(self) -> int:
@@ -1469,23 +1562,38 @@ class Hashtag:
         The number of posts with a certain hashtag may differ from the number of posts that can actually be accessed, as
         the hashtag count might include private posts
         """
-        return self._metadata("edge_hashtag_to_media", "count")
+        try:
+            return self._metadata("edge_hashtag_to_media", "count")
+        except KeyError:
+            return self._metadata("media_count")
 
     def get_posts(self) -> Iterator[Post]:
-        """Yields the posts associated with this hashtag."""
-        self._metadata("edge_hashtag_to_media", "edges")
-        self._metadata("edge_hashtag_to_media", "page_info")
-        conn = self._metadata("edge_hashtag_to_media")
-        yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
-        while conn["page_info"]["has_next_page"]:
-            data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
-            conn = data["edge_hashtag_to_media"]
+        """Yields the recent posts associated with this hashtag.
+
+        .. deprecated:: 4.9
+           Use :meth:`Hashtag.get_posts_resumable` as this method may return incorrect results (:issue:`1457`)"""
+        try:
+            self._metadata("edge_hashtag_to_media", "edges")
+            self._metadata("edge_hashtag_to_media", "page_info")
+            conn = self._metadata("edge_hashtag_to_media")
             yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
+            while conn["page_info"]["has_next_page"]:
+                data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
+                conn = data["edge_hashtag_to_media"]
+                yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
+        except KeyError:
+            yield from SectionIterator(
+                self._context,
+                lambda d: d["data"]["recent"],
+                lambda m: Post.from_iphone_struct(self._context, m),
+                f"explore/tags/{self.name}/",
+                self._metadata("recent"),
+            )
 
     def get_all_posts(self) -> Iterator[Post]:
         """Yields all posts, i.e. all most recent posts and the top posts, in almost-chronological order."""
-        sorted_top_posts = iter(sorted(self.get_top_posts(), key=lambda p: p.date_utc, reverse=True))
-        other_posts = self.get_posts()
+        sorted_top_posts = iter(sorted(islice(self.get_top_posts(), 9), key=lambda p: p.date_utc, reverse=True))
+        other_posts = self.get_posts_resumable()
         next_top = next(sorted_top_posts, None)
         next_other = next(other_posts, None)
         while next_top is not None or next_other is not None:
@@ -1510,6 +1618,20 @@ class Hashtag:
             else:
                 yield next_other
                 next_other = next(other_posts, None)
+
+    def get_posts_resumable(self) -> NodeIterator[Post]:
+        """Get the recent posts of the hashtag in a resumable fashion.
+
+        :rtype: NodeIterator[Post]
+
+        .. versionadded:: 4.9"""
+        return NodeIterator(
+            self._context, "9b498c08113f1e09617a1703c22b2f32",
+            lambda d: d['data']['hashtag']['edge_hashtag_to_media'],
+            lambda n: Post(self._context, n),
+            {'tag_name': self.name},
+            f"https://www.instagram.com/explore/tags/{self.name}/"
+        )
 
 
 class TopSearchResults:
@@ -1714,6 +1836,7 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
     if compressed:
         fp = lzma.open(filename, 'rt')
     else:
+        # pylint:disable=consider-using-with
         fp = open(filename, 'rt')
     json_structure = json.load(fp)
     fp.close()
