@@ -1176,8 +1176,8 @@ class Instaloader:
         """Get Posts associated with a #hashtag.
 
         .. deprecated:: 4.4
-           Use :meth:`Hashtag.get_posts`."""
-        return Hashtag.from_name(self.context, hashtag).get_posts()
+           Use :meth:`Hashtag.get_posts_resumable`."""
+        return Hashtag.from_name(self.context, hashtag).get_posts_resumable()
 
     def download_hashtag(self, hashtag: Union[Hashtag, str],
                          max_count: Optional[int] = None,
@@ -1213,7 +1213,7 @@ class Instaloader:
                 self.download_hashtag_profilepic(hashtag)
         if posts:
             self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
-            self.posts_download_loop(hashtag.get_all_posts(), target, fast_update, post_filter,
+            self.posts_download_loop(hashtag.get_posts_resumable(), target, fast_update, post_filter,
                                      max_count=max_count)
         if self.save_metadata:
             json_filename = '{0}/{1}'.format(self.dirname_pattern.format(profile=target,

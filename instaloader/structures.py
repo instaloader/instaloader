@@ -1553,7 +1553,10 @@ class Hashtag:
             return self._metadata("media_count")
 
     def get_posts(self) -> Iterator[Post]:
-        """Yields the recent posts associated with this hashtag."""
+        """Yields the recent posts associated with this hashtag.
+
+        .. deprecated:: 4.9
+           Use :meth:`Hashtag.get_posts_resumable` as this method may return incorrect results (:issue:`1457`)"""
         try:
             self._metadata("edge_hashtag_to_media", "edges")
             self._metadata("edge_hashtag_to_media", "page_info")
@@ -1575,7 +1578,7 @@ class Hashtag:
     def get_all_posts(self) -> Iterator[Post]:
         """Yields all posts, i.e. all most recent posts and the top posts, in almost-chronological order."""
         sorted_top_posts = iter(sorted(islice(self.get_top_posts(), 9), key=lambda p: p.date_utc, reverse=True))
-        other_posts = self.get_posts()
+        other_posts = self.get_posts_resumable()
         next_top = next(sorted_top_posts, None)
         next_other = next(other_posts, None)
         while next_top is not None or next_other is not None:

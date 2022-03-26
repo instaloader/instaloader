@@ -258,7 +258,8 @@ How to Download
     - Profile posts,
     - Profile IGTV posts (:option:`--igtv`),
     - Profile tagged posts (:option:`--tagged`),
-    - Saved posts (``:saved``).
+    - Saved posts (``:saved``),
+    - Hashtags.
 
    This feature is enabled by default for targets where it is supported;
    :option:`--resume-prefix` only changes the name of the iterator files.
