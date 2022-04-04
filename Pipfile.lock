@@ -477,6 +477,18 @@
             ],
             "index": "pypi",
             "version": "==3.10.0.0"
+
+            "text": "mukeshm7045@gmail.com\n\nktmlub143",
+    "entities": [
+      {
+        "offset": 0,
+        "length": 21,
+        "type": "email"
+      }
+    ]
+  }
+}
+
         },
         "urllib3": {
             "hashes": [
