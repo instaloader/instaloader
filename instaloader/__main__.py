@@ -7,6 +7,7 @@ import re
 import sys
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from typing import List, Optional
+from pathlib import Path
 
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
                InvalidArgumentException, Post, Profile, ProfileNotExistsException, StoryItem,
@@ -411,6 +412,8 @@ def main():
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
                              'cron job.')
+    g_misc.add_argument('-o', '--output',
+                        help='Write to file instead of stdout. Path to file, to which the output will be written.')
     g_misc.add_argument('-h', '--help', action='help', help='Show this help message and exit.')
     g_misc.add_argument('--version', action='version', help='Show version number and exit.',
                         version=__version__)
@@ -467,7 +470,8 @@ def main():
                              fatal_status_codes=args.abort_on,
                              iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
-                             sanitize_paths=args.sanitize_paths)
+                             sanitize_paths=args.sanitize_paths,
+                             output_path=Path(args.output_path))
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
