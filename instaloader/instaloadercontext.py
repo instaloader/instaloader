@@ -5,7 +5,6 @@ import pickle
 import random
 import re
 import shutil
-import sys
 import textwrap
 import time
 import urllib.parse
@@ -18,6 +17,7 @@ import requests
 import requests.utils
 
 from .exceptions import *
+from .util.output import OutputWriter, StandardWriter
 
 
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
@@ -55,7 +55,7 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True, writer: Optional[OutputWriter] = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -68,6 +68,7 @@ class InstaloaderContext:
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
+        self.writer = writer if writer is not None else StandardWriter()
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
@@ -102,25 +103,30 @@ class InstaloaderContext:
         return bool(self.username)
 
     def log(self, *msg, sep='', end='\n', flush=False):
-        """Log a message to stdout that can be suppressed with --quiet."""
-        if not self.quiet:
-            print(*msg, sep=sep, end=end, flush=flush)
+        """Log a message."""
+        self.writer.write(msg, sep=sep, end=end, flush=flush)
 
     def error(self, msg, repeat_at_end=True):
-        """Log a non-fatal error message to stderr, which is repeated at program termination.
+        """Log a non-fatal error message, which is repeated at program termination.
 
         :param msg: Message to be printed.
         :param repeat_at_end: Set to false if the message should be printed, but not repeated at program termination."""
-        print(msg, file=sys.stderr)
+        self.writer.error(msg)
         if repeat_at_end:
             self.error_log.append(msg)
 
     def close(self):
         """Print error log and close session"""
         if self.error_log and not self.quiet:
-            print("\nErrors or warnings occurred:", file=sys.stderr)
+            message = "\nErrors or warnings occurred:"
+            self.writer.error(message)
             for err in self.error_log:
-                print(err, file=sys.stderr)
+                self.writer.error(err)
+
+            if not isinstance(self.writer, StandardWriter):
+                print(message)
+                for err in self.error_log:
+                    print(err)
         self._session.close()
 
     @contextmanager

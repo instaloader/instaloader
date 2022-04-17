@@ -15,6 +15,7 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
+from .util.output import StandardWriter, FileWriter, QuietWriter
 
 
 def usage_string():
@@ -103,7 +104,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.load_session_from_file(username, sessionfile)
         except FileNotFoundError as err:
             if sessionfile is not None:
-                print(err, file=sys.stderr)
+                instaloader.context.writer.error(err)
+                if not isinstance(instaloader.context.writer, StandardWriter):
+                    print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
@@ -116,7 +119,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             instaloader.two_factor_login(code)
                             break
                         except BadCredentialsException as err:
-                            print(err, file=sys.stderr)
+                            instaloader.context.error(err)
+                            if not isinstance(instaloader.context.writer, StandardWriter):
+                                print(err, file=sys.stderr)
                             pass
             else:
                 instaloader.interactive_login(username)
@@ -231,9 +236,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                    fast_update=fast_update, post_filter=post_filter,
                                                    latest_stamps=latest_stamps)
     except KeyboardInterrupt:
-        print("\nInterrupted by user.", file=sys.stderr)
+        message = "\nInterrupted by user."
+        instaloader.context.error(message)
+        if not isinstance(instaloader.context.writer, StandardWriter):
+            print(message, file=sys.stderr)
     except AbortDownloadException as exc:
-        print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
+        message = "\nDownload aborted: {}.".format(exc)
+        instaloader.context.error(message)
+        if not isinstance(instaloader.context.writer, StandardWriter):
+            print(message, file=sys.stderr)
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
@@ -419,9 +430,21 @@ def main():
                         version=__version__)
 
     args = parser.parse_args()
+
+    writer = StandardWriter()
+    if args.quiet:
+        writer = QuietWriter()
+    elif args.output is not None:
+        output_path = Path(args.output)
+        writer = FileWriter(output_path)
+
     try:
         if args.login is None and (args.stories or args.stories_only):
-            print("--login=USERNAME required to download stories.", file=sys.stderr)
+            message = "--login=USERNAME required to download stories."
+            writer.error(message)
+            # print to stderr too, because info is important
+            if not isinstance(writer, StandardWriter):
+                print(message, file=sys.stderr)
             args.stories = False
             if args.stories_only:
                 raise SystemExit(1)
@@ -471,7 +494,7 @@ def main():
                              iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
                              sanitize_paths=args.sanitize_paths,
-                             output_path=Path(args.output_path))
+                             writer=writer)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,

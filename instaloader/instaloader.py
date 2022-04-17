@@ -5,7 +5,6 @@ import platform
 import re
 import shutil
 import string
-import sys
 import tempfile
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
@@ -25,6 +24,7 @@ from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
+from .util.output import OutputWriter, StandardWriter
 
 
 def _get_config_dir() -> str:
@@ -232,11 +232,14 @@ class Instaloader:
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
                  title_pattern: Optional[str] = None,
-                 sanitize_paths: bool = False):
+                 sanitize_paths: bool = False,
+                 writer: OutputWriter = None):
+
+        writer = StandardWriter() if writer is None else writer
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+                                          iphone_support, writer)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -1560,7 +1563,7 @@ class Instaloader:
                 try:
                     self.login(username, password)
                 except BadCredentialsException as err:
-                    print(err, file=sys.stderr)
+                    self.writer.error(err)
                     password = None
         except TwoFactorAuthRequiredException:
             while True:
@@ -1569,5 +1572,5 @@ class Instaloader:
                     self.two_factor_login(code)
                     break
                 except BadCredentialsException as err:
-                    print(err, file=sys.stderr)
+                    self.writer.error(err)
                     pass
