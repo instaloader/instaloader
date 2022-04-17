@@ -5,19 +5,22 @@ from pathlib import Path
 
 
 class OutputWriter:
-    def write(self, msg: str):
+    """
+    Interface that is faithful to the builtin ``print`` function.
+    """
+    def write(self, *args, sep=' ', end='\n', flush=False):
         raise NotImplemented
 
-    def error(self, msg: str):
+    def error(self, *args, sep=' ', end='\n', flush=False):
         raise NotImplemented
 
 
 class StandardWriter(OutputWriter):
-    def write(self, msg: str):
-        print(msg)
+    def write(self, *args, sep=' ', end='\n', flush=False):
+        print(args, sep=sep, end=end, flush=flush)
 
-    def error(self, msg: str):
-        print(msg, file=sys.stderr)
+    def error(self, *args, sep=' ', end='\n', flush=False):
+        print(args, sep=sep, end=end, flush=flush, file=sys.stderr)
 
 
 class FileWriter(OutputWriter):
@@ -33,29 +36,37 @@ class FileWriter(OutputWriter):
             if os.path.exists(filepath):
                 print('File exists, overwriting file')
 
-    def write(self, msg: str):
+    def write(self, *args, sep=' ', end='\n', flush=False):
         """
         Writes normal output.
-        :param msg: Message
+        :param sep: seperator
+        :param end: end of message
+        :param flush: has no effect
         """
-        self._write_to_file(msg)
+        self._write_to_file(list(args), sep, end)
 
-    def error(self, msg: str):
+    def error(self, *args, sep=' ', end='\n', flush=False):
         """
         Writes error output.
         Prefixes ``ERROR:`` to message if writing to file, else writes to ``stderr``.
-        :param msg: Message
+        :param sep: seperator
+        :param end: end of message
+        :param flush: has no effect
         """
-        self._write_to_file(f'ERROR: {msg}')
+        self._write_to_file(['ERROR: '] + list(args), sep, end)
 
-    def _write_to_file(self, msg: str):
-        open(self.output_file, encoding='UTF-8', mode='a').write(f'{msg}\n')
+    def _write_to_file(self, *args, sep: str, end: str):
+        args = [str(arg) for arg in args]
+        message = sep.join(args)
+        message += end
+
+        open(self.output_file, encoding='UTF-8', mode='a').write(message)
 
 
 class QuietWriter(OutputWriter):
     """Does nothing"""
-    def write(self, msg: str):
+    def write(self, *args, sep=' ', end='\n', flush=False):
         pass
 
-    def error(self, msg: str):
+    def error(self, *args, sep=' ', end='\n', flush=False):
         pass
