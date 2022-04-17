@@ -17,7 +17,7 @@ import requests
 import requests.utils
 
 from .exceptions import *
-from .util.output import OutputWriter, StandardWriter
+from .util.output import OutputWriter, DefaultWriter
 
 
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
@@ -68,7 +68,7 @@ class InstaloaderContext:
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
-        self.writer = writer if writer is not None else StandardWriter()
+        self.writer = writer if writer is not None else DefaultWriter()
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
@@ -123,7 +123,7 @@ class InstaloaderContext:
             for err in self.error_log:
                 self.writer.error(err)
 
-            if not isinstance(self.writer, StandardWriter):
+            if not isinstance(self.writer, DefaultWriter):
                 print(message)
                 for err in self.error_log:
                     print(err)

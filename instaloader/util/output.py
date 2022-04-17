@@ -15,7 +15,7 @@ class OutputWriter:
         raise NotImplemented
 
 
-class StandardWriter(OutputWriter):
+class DefaultWriter(OutputWriter):
     def write(self, *args, sep=' ', end='\n', flush=False):
         print(args, sep=sep, end=end, flush=flush)
 

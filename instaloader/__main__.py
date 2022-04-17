@@ -15,7 +15,7 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
-from .util.output import StandardWriter, FileWriter, QuietWriter
+from .util.output import DefaultWriter, FileWriter, QuietWriter
 
 
 def usage_string():
@@ -105,7 +105,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         except FileNotFoundError as err:
             if sessionfile is not None:
                 instaloader.context.writer.error(err)
-                if not isinstance(instaloader.context.writer, StandardWriter):
+                if not isinstance(instaloader.context.writer, DefaultWriter):
                     print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
@@ -120,7 +120,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             break
                         except BadCredentialsException as err:
                             instaloader.context.error(err)
-                            if not isinstance(instaloader.context.writer, StandardWriter):
+                            if not isinstance(instaloader.context.writer, DefaultWriter):
                                 print(err, file=sys.stderr)
                             pass
             else:
@@ -238,12 +238,12 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     except KeyboardInterrupt:
         message = "\nInterrupted by user."
         instaloader.context.error(message)
-        if not isinstance(instaloader.context.writer, StandardWriter):
+        if not isinstance(instaloader.context.writer, DefaultWriter):
             print(message, file=sys.stderr)
     except AbortDownloadException as exc:
         message = "\nDownload aborted: {}.".format(exc)
         instaloader.context.error(message)
-        if not isinstance(instaloader.context.writer, StandardWriter):
+        if not isinstance(instaloader.context.writer, DefaultWriter):
             print(message, file=sys.stderr)
     # Save session if it is useful
     if instaloader.context.is_logged_in:
@@ -431,7 +431,7 @@ def main():
 
     args = parser.parse_args()
 
-    writer = StandardWriter()
+    writer = DefaultWriter()
     if args.quiet:
         writer = QuietWriter()
     elif args.output is not None:
@@ -443,7 +443,7 @@ def main():
             message = "--login=USERNAME required to download stories."
             writer.error(message)
             # print to stderr too, because info is important
-            if not isinstance(writer, StandardWriter):
+            if not isinstance(writer, DefaultWriter):
                 print(message, file=sys.stderr)
             args.stories = False
             if args.stories_only:

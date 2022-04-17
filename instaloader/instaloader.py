@@ -24,7 +24,7 @@ from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
-from .util.output import OutputWriter, StandardWriter
+from .util.output import OutputWriter, DefaultWriter
 
 
 def _get_config_dir() -> str:
@@ -235,7 +235,7 @@ class Instaloader:
                  sanitize_paths: bool = False,
                  writer: OutputWriter = None):
 
-        writer = StandardWriter() if writer is None else writer
+        writer = DefaultWriter() if writer is None else writer
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
