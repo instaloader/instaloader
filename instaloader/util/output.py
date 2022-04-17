@@ -9,10 +9,10 @@ class OutputWriter:
     Interface that is faithful to the builtin ``print`` function.
     """
     def write(self, *args, sep=' ', end='\n', flush=False):
-        raise NotImplemented
+        raise NotImplementedError
 
     def error(self, *args, sep=' ', end='\n', flush=False):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class DefaultWriter(OutputWriter):
@@ -43,7 +43,7 @@ class FileWriter(OutputWriter):
         :param end: end of message
         :param flush: has no effect
         """
-        self._write_to_file(list(args), sep, end)
+        self._write_to_file(list(args), sep=sep, end=end)
 
     def error(self, *args, sep=' ', end='\n', flush=False):
         """
@@ -53,14 +53,15 @@ class FileWriter(OutputWriter):
         :param end: end of message
         :param flush: has no effect
         """
-        self._write_to_file(['ERROR: '] + list(args), sep, end)
+        self._write_to_file(['ERROR: '] + list(args), sep=sep, end=end)
 
     def _write_to_file(self, *args, sep: str, end: str):
         args = [str(arg) for arg in args]
         message = sep.join(args)
         message += end
 
-        open(self.output_file, encoding='UTF-8', mode='a').write(message)
+        with open(self.output_file, encoding='UTF-8', mode='a') as logfile:
+            logfile.write(message)
 
 
 class QuietWriter(OutputWriter):

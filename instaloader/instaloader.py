@@ -236,6 +236,7 @@ class Instaloader:
                  writer: OutputWriter = None):
 
         writer = DefaultWriter() if writer is None else writer
+        self.writer = writer
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
