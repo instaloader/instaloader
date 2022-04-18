@@ -365,10 +365,16 @@ class Post:
     @property
     def caption(self) -> Optional[str]:
         """Caption."""
+        def _normalize(string: Optional[str]) -> Optional[str]:
+            if string is not None:
+                return normalize("NFC", string)
+            else:
+                return None
+
         if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
-            return normalize("NFC", self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+            return _normalize(self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in self._node:
-            return normalize("NFC", self._node["caption"])
+            return _normalize(self._node["caption"])
         return None
 
     @property
