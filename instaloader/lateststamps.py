@@ -1,6 +1,8 @@
 import configparser
 from datetime import datetime, timezone
 from typing import Optional
+from os.path import dirname
+from os import makedirs
 
 
 class LatestStamps:
@@ -25,6 +27,7 @@ class LatestStamps:
         self.data.read(latest_stamps_file)
 
     def _save(self):
+        makedirs(dirname(self.file), exist_ok=True)
         with open(self.file, 'w') as f:
             self.data.write(f)
 
