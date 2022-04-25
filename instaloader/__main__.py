@@ -32,7 +32,7 @@ def http_status_code_list(code_list_str: str) -> List[int]:
     codes = [int(s) for s in code_list_str.split(',')]
     for code in codes:
         if not 100 <= code <= 599:
-            raise ArgumentTypeError("Invalid HTTP status code: {}".format(code))
+            raise ArgumentTypeError(f"Invalid HTTP status code: {code}")
     return codes
 
 
@@ -47,7 +47,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
         def visit_Name(self, node: ast.Name):
             # pylint:disable=no-self-use
             if not isinstance(node.ctx, ast.Load):
-                raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
+                raise InvalidArgumentException(f"Invalid filter: Modifying variables ({node.id}) not allowed.")
             if node.id == "datetime":
                 return node
             if not hasattr(item_type, node.id):
@@ -85,11 +85,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     post_filter = None
     if post_filter_str is not None:
         post_filter = filterstr_to_filterfunc(post_filter_str, Post)
-        instaloader.context.log('Only download posts with property "{}".'.format(post_filter_str))
+        instaloader.context.log(f'Only download posts with property "{post_filter_str}".')
     storyitem_filter = None
     if storyitem_filter_str is not None:
         storyitem_filter = filterstr_to_filterfunc(storyitem_filter_str, StoryItem)
-        instaloader.context.log('Only download storyitems with property "{}".'.format(storyitem_filter_str))
+        instaloader.context.log(f'Only download storyitems with property "{storyitem_filter_str}".')
     latest_stamps = None
     if latest_stamps_file is not None:
         latest_stamps = LatestStamps(latest_stamps_file)
@@ -97,7 +97,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
-            instaloader.context.error("Warning: Parameter \"{}\" for --login is not a valid username.".format(username))
+            instaloader.context.error(f"Warning: Parameter \"{username}\" for --login is not a valid username.")
         try:
             instaloader.load_session_from_file(username, sessionfile)
         except FileNotFoundError as err:
@@ -134,15 +134,15 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     structure = load_structure_from_file(instaloader.context, target)
                     if isinstance(structure, Post):
                         if post_filter is not None and not post_filter(structure):
-                            instaloader.context.log("<{} ({}) skipped>".format(structure, target), flush=True)
+                            instaloader.context.log(f"<{structure} ({target}) skipped>", flush=True)
                             continue
-                        instaloader.context.log("Downloading {} ({})".format(structure, target))
+                        instaloader.context.log(f"Downloading {structure} ({target})")
                         instaloader.download_post(structure, os.path.dirname(target))
                     elif isinstance(structure, StoryItem):
                         if storyitem_filter is not None and not storyitem_filter(structure):
-                            instaloader.context.log("<{} ({}) skipped>".format(structure, target), flush=True)
+                            instaloader.context.log(f"<{structure} ({target}) skipped>", flush=True)
                             continue
-                        instaloader.context.log("Attempting to download {} ({})".format(structure, target))
+                        instaloader.context.log(f"Attempting to download {structure} ({target})")
                         instaloader.download_storyitem(structure, os.path.dirname(target))
                     elif isinstance(structure, Profile):
                         raise InvalidArgumentException("Profile JSON are ignored. Pass \"{}\" to download that profile"
@@ -186,7 +186,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                 raise ProfileNotExistsException("{} blocked you; But we download her anonymously."
                                                                 .format(target))
                             else:
-                                instaloader.context.error("{} blocked you.".format(target))
+                                instaloader.context.error(f"{target} blocked you.")
                         else:
                             profiles.add(profile)
                     except ProfileNotExistsException as err:
@@ -210,7 +210,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         '%': 'location',
                         '-': 'shortcode',
                     }.get(target[0], 'username')
-                    raise ProfileNotExistsException('Invalid {} {}'.format(target_type, target))
+                    raise ProfileNotExistsException(f'Invalid {target_type} {target}')
         if len(profiles) > 1:
             instaloader.context.log("Downloading {} profiles: {}".format(len(profiles),
                                                                          ' '.join([p.username for p in profiles])))
@@ -232,7 +232,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
     except AbortDownloadException as exc:
-        print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
+        print(f"\nDownload aborted: {exc}.", file=sys.stderr)
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
@@ -391,7 +391,7 @@ def main():
                             'when interrupted.')
     g_how.add_argument('--use-aged-resume-files', action='store_true', help=SUPPRESS)
     g_how.add_argument('--user-agent',
-                       help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
+                       help=f'User Agent to use for HTTP requests. Defaults to \'{default_user_agent()}\'.')
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
     g_how.add_argument('--max-connection-attempts', metavar='N', type=int, default=3,
                        help='Maximum number of connection attempts until a request is aborted. Defaults to 3. If a '

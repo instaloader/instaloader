@@ -131,14 +131,14 @@ class Post:
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
         if len(code) > 11:
-            raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
+            raise InvalidArgumentException(f"Wrong shortcode \"{code}\", unable to convert to mediaid.")
         code = 'A' * (12 - len(code)) + code
         return int.from_bytes(b64decode(code.encode(), b'-_'), 'big')
 
     @staticmethod
     def mediaid_to_shortcode(mediaid: int) -> str:
         if mediaid.bit_length() > 64:
-            raise InvalidArgumentException("Wrong mediaid {0}, unable to convert to shortcode".format(str(mediaid)))
+            raise InvalidArgumentException(f"Wrong mediaid {str(mediaid)}, unable to convert to shortcode")
         return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
 
     @staticmethod
@@ -177,7 +177,7 @@ class Post:
             return None
 
     def __repr__(self):
-        return '<Post {}>'.format(self.shortcode)
+        return f'<Post {self.shortcode}>'
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Post):
@@ -213,7 +213,7 @@ class Post:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            data = self._context.get_iphone_json(path=f'api/v1/media/{self.mediaid}/info/', params={})
             self._iphone_struct_ = data['items'][0]
         return self._iphone_struct_
 
@@ -293,7 +293,7 @@ class Post:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f'{err} Unable to fetch high quality image version of {self}.')
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -548,7 +548,7 @@ class Post:
                 lambda d: d['data']['comment']['edge_threaded_comments'],
                 _postcommentanswer,
                 {'comment_id': node['id']},
-                'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+                f'https://www.instagram.com/p/{self.shortcode}/',
             )
 
         def _postcomment(node):
@@ -559,7 +559,7 @@ class Post:
             return []
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
-        answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
+        answers_count = sum(edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges)
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
@@ -570,7 +570,7 @@ class Post:
             lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
             _postcomment,
             {'shortcode': self.shortcode},
-            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+            f'https://www.instagram.com/p/{self.shortcode}/',
         )
 
     def get_likes(self) -> Iterator['Profile']:
@@ -596,7 +596,7 @@ class Post:
             lambda d: d['data']['shortcode_media']['edge_liked_by'],
             lambda n: Profile(self._context, n),
             {'shortcode': self.shortcode},
-            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+            f'https://www.instagram.com/p/{self.shortcode}/',
         )
 
     @property
@@ -638,7 +638,7 @@ class Post:
             return None
         location_id = int(loc['id'])
         if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
-            loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
+            loc.update(self._context.get_json(f"explore/locations/{location_id}/",
                                               params={'__a': 1})['native_location_data']['location_info'])
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
                                       loc.get('lat'), loc.get('lng'))
@@ -764,7 +764,7 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_json('{}/feed/'.format(self.username), params={})
+                metadata = self._context.get_json(f'{self.username}/feed/', params={})
                 self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
@@ -775,7 +775,7 @@ class Profile:
                                                 .format(self.username,
                                                         's are' if len(similar_profiles) > 1 else ' is',
                                                         ', '.join(similar_profiles[0:5]))) from err
-            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
+            raise ProfileNotExistsException(f'Profile {self.username} does not exist.') from err
 
     def _metadata(self, *keys) -> Any:
         try:
@@ -797,7 +797,7 @@ class Profile:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone profile info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/users/{}/info/'.format(self.userid), params={})
+            data = self._context.get_iphone_json(path=f'api/v1/users/{self.userid}/info/', params={})
             self._iphone_struct_ = data['user']
         return self._iphone_struct_
 
@@ -812,7 +812,7 @@ class Profile:
         return self._metadata('username').lower()
 
     def __repr__(self):
-        return '<Profile {} ({})>'.format(self.username, self.userid)
+        return f'<Profile {self.username} ({self.userid})>'
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Profile):
@@ -900,7 +900,7 @@ class Profile:
                                                 'include_reel': False, 'include_suggested_users': False,
                                                 'include_logged_out_extras': True,
                                                 'include_highlight_reels': False},
-                                               'https://www.instagram.com/{}/'.format(self.username))
+                                               f'https://www.instagram.com/{self.username}/')
             self._has_public_story = data['data']['user']['has_public_story']
         assert self._has_public_story is not None
         return self._has_public_story
@@ -940,7 +940,7 @@ class Profile:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
             except (InstaloaderException, KeyError) as err:
-                self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
+                self._context.error(f'{err} Unable to fetch high quality profile pic.')
                 return self._metadata("profile_pic_url_hd")
         else:
             return self._metadata("profile_pic_url_hd")
@@ -962,7 +962,7 @@ class Profile:
             lambda d: d['data']['user']['edge_owner_to_timeline_media'],
             lambda n: Post(self._context, n, self),
             {'id': self.userid},
-            'https://www.instagram.com/{0}/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/',
             self._metadata('edge_owner_to_timeline_media'),
         )
 
@@ -972,7 +972,7 @@ class Profile:
         :rtype: NodeIterator[Post]"""
 
         if self.username != self._context.username:
-            raise LoginRequiredException("--login={} required to get that profile's saved posts.".format(self.username))
+            raise LoginRequiredException(f"--login={self.username} required to get that profile's saved posts.")
 
         return NodeIterator(
             self._context,
@@ -980,7 +980,7 @@ class Profile:
             lambda d: d['data']['user']['edge_saved_media'],
             lambda n: Post(self._context, n),
             {'id': self.userid},
-            'https://www.instagram.com/{0}/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/',
         )
 
     def get_tagged_posts(self) -> NodeIterator[Post]:
@@ -996,7 +996,7 @@ class Profile:
             lambda d: d['data']['user']['edge_user_to_photos_of_you'],
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
-            'https://www.instagram.com/{0}/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/',
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -1012,7 +1012,7 @@ class Profile:
             lambda d: d['data']['user']['edge_felix_video_timeline'],
             lambda n: Post(self._context, n, self),
             {'id': self.userid},
-            'https://www.instagram.com/{0}/channel/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/channel/',
             self._metadata('edge_felix_video_timeline'),
         )
 
@@ -1032,7 +1032,7 @@ class Profile:
             lambda d: d['data']['user']['edge_followed_by'],
             lambda n: Profile(self._context, n),
             {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/',
         )
 
     def get_followees(self) -> NodeIterator['Profile']:
@@ -1051,7 +1051,7 @@ class Profile:
             lambda d: d['data']['user']['edge_follow'],
             lambda n: Profile(self._context, n),
             {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
+            f'https://www.instagram.com/{self.username}/',
         )
 
     def get_similar_accounts(self) -> Iterator['Profile']:
@@ -1067,8 +1067,8 @@ class Profile:
         yield from (Profile(self._context, edge["node"]) for edge in
                     self._context.graphql_query("ad99dd9d3646cc3c0dda65debcd266a7",
                                                 {"user_id": str(self.userid), "include_chaining": True},
-                                                "https://www.instagram.com/{0}/"
-                                                .format(self.username))["data"]["user"]["edge_chaining"]["edges"])
+                                                f"https://www.instagram.com/{self.username}/"
+                                                )["data"]["user"]["edge_chaining"]["edges"])
 
 
 class StoryItem:
@@ -1111,7 +1111,7 @@ class StoryItem:
         return Post.mediaid_to_shortcode(self.mediaid)
 
     def __repr__(self):
-        return '<StoryItem {}>'.format(self.mediaid)
+        return f'<StoryItem {self.mediaid}>'
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, StoryItem):
@@ -1143,7 +1143,7 @@ class StoryItem:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+            data = self._context.get_iphone_json(path=f'api/v1/media/{self.mediaid}/info/', params={})
             self._iphone_struct_ = data['items'][0]
         return self._iphone_struct_
 
@@ -1207,7 +1207,7 @@ class StoryItem:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f'{err} Unable to fetch high quality image version of {self}.')
         return self._node['display_resources'][-1]['src']
 
     @property
@@ -1284,7 +1284,7 @@ class Story:
         self._owner_profile = None  # type: Optional[Profile]
 
     def __repr__(self):
-        return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
+        return f'<Story by {self.owner_username} changed {self.latest_media_utc:%Y-%m-%d_%H-%M-%S_UTC}>'
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Story):
@@ -1386,7 +1386,7 @@ class Highlight(Story):
         self._items = None  # type: Optional[List[Dict[str, Any]]]
 
     def __repr__(self):
-        return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
+        return f'<Highlight by {self.owner_username}: {self.title}>'
 
     @property
     def unique_id(self) -> int:
@@ -1482,7 +1482,7 @@ class Hashtag:
         return self._node["name"].lower()
 
     def _query(self, params):
-        json_response = self._context.get_json("explore/tags/{0}/".format(self.name), params)
+        json_response = self._context.get_json(f"explore/tags/{self.name}/", params)
         return json_response["graphql"]["hashtag"] if "graphql" in json_response else json_response["data"]
 
     def _obtain_metadata(self):
@@ -1500,7 +1500,7 @@ class Hashtag:
         return json_node
 
     def __repr__(self):
-        return "<Hashtag #{}>".format(self.name)
+        return f"<Hashtag #{self.name}>"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Hashtag):

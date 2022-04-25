@@ -133,9 +133,9 @@ class InstaloaderContext:
             yield
         except InstaloaderException as err:
             if extra_info:
-                self.error('{}: {}'.format(extra_info, err))
+                self.error(f'{extra_info}: {err}')
             else:
-                self.error('{}'.format(err))
+                self.error(f'{err}')
             if self.raise_all_errors:
                 raise
 
@@ -218,14 +218,14 @@ class InstaloaderContext:
         self.do_sleep()
         # Workaround credits to pgrimaud.
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
-        enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
+        enc_password = f'#PWD_INSTAGRAM_BROWSER:0:{int(datetime.now().timestamp())}:{passwd}'
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
                              data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError as err:
             raise ConnectionException(
-                "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
+                f"Login error: JSON decode fail, {login.status_code} - {login.reason}."
             ) from err
         if resp_json.get('two_factor_required'):
             two_factor_session = copy_session(session, self.request_timeout)
@@ -260,7 +260,7 @@ class InstaloaderContext:
                 # Raise InvalidArgumentException rather than BadCredentialException, because BadCredentialException
                 # triggers re-asking of password in Instaloader.interactive_login(), which makes no sense if the
                 # username is invalid.
-                raise InvalidArgumentException('Login error: User {} does not exist.'.format(user))
+                raise InvalidArgumentException(f'Login error: User {user} does not exist.')
         # '{"authenticated": true, "user": true, "userId": ..., "oneTapPrompt": false, "status": "ok"}'
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
@@ -322,7 +322,7 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+            resp = sess.get(f'https://{host}/{path}', params=params, allow_redirects=False)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
                 raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}".format(
@@ -330,13 +330,13 @@ class InstaloaderContext:
                 ))
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
-                self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
+                self.log(f'\nHTTP redirect from https://{host}/{path} to {redirect_url}')
                 if redirect_url.startswith('https://www.instagram.com/accounts/login'):
                     if not self.is_logged_in:
                         raise LoginRequiredException("Redirected to login page. Use --login.")
                     # alternate rate limit exceeded behavior
                     raise TooManyRequestsException("Redirected to login")
-                if redirect_url.startswith('https://{}/'.format(host)):
+                if redirect_url.startswith(f'https://{host}/'):
                     resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
                                     params=params, allow_redirects=False)
                 else:
@@ -348,7 +348,7 @@ class InstaloaderContext:
             if resp.status_code == 429:
                 raise TooManyRequestsException("429 Too Many Requests")
             if resp.status_code != 200:
-                raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise ConnectionException(f"HTTP error code {resp.status_code}.")
             is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
             if is_html_query:
                 match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
@@ -376,7 +376,7 @@ class InstaloaderContext:
                     raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
-            error_string = "JSON Query to {}: {}".format(path, err)
+            error_string = f"JSON Query to {path}: {err}"
             if _attempt == self.max_connection_attempts:
                 if isinstance(err, QueryReturnedNotFoundException):
                     raise QueryReturnedNotFoundException(error_string) from err
@@ -421,7 +421,7 @@ class InstaloaderContext:
 
             if rhx_gis:
                 #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
-                values = "{}:{}".format(rhx_gis, variables_json)
+                values = f"{rhx_gis}:{variables_json}"
                 x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
                 tmpsession.headers['x-instagram-gis'] = x_instagram_gis
 
@@ -515,11 +515,11 @@ class InstaloaderContext:
         else:
             if resp.status_code == 403:
                 # suspected invalid URL signature
-                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+                raise QueryReturnedForbiddenException(f"403 when accessing {url}.")
             if resp.status_code == 404:
                 # 404 not worth retrying.
-                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
-            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise QueryReturnedNotFoundException(f"404 when accessing {url}.")
+            raise ConnectionException(f"HTTP error code {resp.status_code}.")
 
     def get_and_write_raw(self, url: str, filename: str) -> None:
         """Downloads and writes anonymously-requested raw data into a file.
@@ -545,11 +545,11 @@ class InstaloaderContext:
         else:
             if resp.status_code == 403:
                 # suspected invalid URL signature
-                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+                raise QueryReturnedForbiddenException(f"403 when accessing {url}.")
             if resp.status_code == 404:
                 # 404 not worth retrying.
-                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
-            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise QueryReturnedNotFoundException(f"404 when accessing {url}.")
+            raise ConnectionException(f"HTTP error code {resp.status_code}.")
 
     @property
     def root_rhx_gis(self) -> Optional[str]:
@@ -602,7 +602,7 @@ class RateController:
             self._context.error(" {} {:>32}: {}".format(
                 "*" if query_type == failed_query_type else " ",
                 query_type,
-                " ".join("{:4}".format(reqs) for reqs in reqs_in_sliding_window)
+                " ".join(f"{reqs:4}" for reqs in reqs_in_sliding_window)
             ), repeat_at_end=False)
 
     def count_per_sliding_window(self, query_type: str) -> int:
@@ -689,8 +689,8 @@ class RateController:
         waittime = self.query_waittime(query_type, time.monotonic(), False)
         assert waittime >= 0
         if waittime > 15:
-            formatted_waittime = ("{} seconds".format(round(waittime)) if waittime <= 666 else
-                                  "{} minutes".format(round(waittime / 60)))
+            formatted_waittime = (f"{round(waittime)} seconds" if waittime <= 666 else
+                                  f"{round(waittime / 60)} minutes")
             self._context.log("\nToo many queries in the last time. Need to wait {}, until {:%H:%M}."
                               .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)))
         if waittime > 0:
@@ -714,8 +714,8 @@ class RateController:
                         "App while Instaloader is running.")
         self._context.error(textwrap.fill(text_for_429), repeat_at_end=False)
         if waittime > 1.5:
-            formatted_waittime = ("{} seconds".format(round(waittime)) if waittime <= 666 else
-                                  "{} minutes".format(round(waittime / 60)))
+            formatted_waittime = (f"{round(waittime)} seconds" if waittime <= 666 else
+                                  f"{round(waittime / 60)} minutes")
             self._context.error("The request will be retried in {}, at {:%H:%M}."
                                 .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)),
                                 repeat_at_end=False)

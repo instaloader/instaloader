@@ -11,4 +11,4 @@ for post in posts:
         L.download_post(post, '#urbanphotography')
         users.add(post.owner_profile)
     else:
-        print("{} from {} skipped.".format(post, post.owner_profile))
+        print(f"{post} from {post.owner_profile} skipped.")
