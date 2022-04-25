@@ -68,4 +68,4 @@ with open('dist/instaloader.exe.md5', 'w+') as f:
     f.write(f'{hash_md5.hexdigest()} *instaloader.exe\n')
 
 # Create ZIP file
-shutil.make_archive('instaloader-{}-windows-standalone'.format(os.getenv('VERSION_TAG')), 'zip', 'dist')
+shutil.make_archive(f'instaloader-{os.getenv("VERSION_TAG")}-windows-standalone', 'zip', 'dist')

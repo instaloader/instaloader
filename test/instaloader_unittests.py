@@ -138,9 +138,10 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_highlights_paging(self):
         for user_highlight in self.L.get_highlights(PROFILE_WITH_HIGHLIGHTS):
-            print("Retrieving {} highlights \"{}\" from profile {}".format(user_highlight.itemcount,
-                                                                           user_highlight.title,
-                                                                           user_highlight.owner_username))
+            print(
+                f"Retrieving {user_highlight.itemcount} highlights \"{user_highlight.title}\""
+                f" from profile {user_highlight.owner_username}"
+            )
             for item in user_highlight.get_items():
                 print(item)
 

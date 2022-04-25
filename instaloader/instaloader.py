@@ -956,8 +956,7 @@ class Instaloader:
                     continue
                 self.context.log(f"[{count: 3}/{totalcount: 3}] ", end="", flush=True)
                 count += 1
-                with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title,
-                                                                                                 name)):
+                with self.context.error_catcher(f'Download highlights \"{user_highlight.title}\" from user {name}'):
                     downloaded = self.download_storyitem(item, highlight_target)
                     if fast_update and not downloaded:
                         break
@@ -1325,11 +1324,9 @@ class Instaloader:
             if (profile is None) or \
                     (profile_id != profile.userid):
                 if profile is not None:
-                    self.context.log("Profile {} does not match the stored unique ID {}.".format(profile_name,
-                                                                                                   profile_id))
+                    self.context.log(f"Profile {profile_name} does not match the stored unique ID {profile_id}.")
                 else:
-                    self.context.log("Trying to find profile {} using its unique ID {}.".format(profile_name,
-                                                                                                  profile_id))
+                    self.context.log(f"Trying to find profile {profile_name} using its unique ID {profile_id}.")
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
                 self.context.error(f"Profile {profile_name} has changed its name to {newname}.")

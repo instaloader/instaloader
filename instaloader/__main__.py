@@ -51,8 +51,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
             if node.id == "datetime":
                 return node
             if not hasattr(item_type, node.id):
-                raise InvalidArgumentException("Invalid filter: {} not a {} attribute.".format(node.id,
-                                                                                               item_type.__name__))
+                raise InvalidArgumentException(f"Invalid filter: {node.id} not a {item_type.__name__} attribute.")
             new_node = ast.Attribute(ast.copy_location(ast.Name('item', ast.Load()), node), node.id,
                                      ast.copy_location(ast.Load(), node))
             return ast.copy_location(new_node, node)
@@ -145,11 +144,13 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         instaloader.context.log(f"Attempting to download {structure} ({target})")
                         instaloader.download_storyitem(structure, os.path.dirname(target))
                     elif isinstance(structure, Profile):
-                        raise InvalidArgumentException("Profile JSON are ignored. Pass \"{}\" to download that profile"
-                                                       .format(structure.username))
+                        raise InvalidArgumentException(
+                            f"Profile JSON are ignored. Pass \"{structure.username}\" to download that profile"
+                        )
                     else:
-                        raise InvalidArgumentException("{} JSON file not supported as target"
-                                                       .format(structure.__class__.__name__))
+                        raise InvalidArgumentException(
+                            f"{structure.__class__.__name__} JSON file not supported as target"
+                        )
                 continue
             # strip '/' characters to be more shell-autocompletion-friendly
             target = target.rstrip('/')
@@ -183,8 +184,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
                             if download_profile_pic or ((download_posts or download_tagged or download_igtv)
                                                         and not profile.is_private):
-                                raise ProfileNotExistsException("{} blocked you; But we download her anonymously."
-                                                                .format(target))
+                                raise ProfileNotExistsException(
+                                    f"{target} blocked you; But we download her anonymously."
+                                )
                             else:
                                 instaloader.context.error(f"{target} blocked you.")
                         else:
@@ -200,8 +202,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                 with instaloader.context.error_catcher():
                                     anonymous_retry_profiles.add(anonymous_loader.check_profile_id(target,
                                                                                                    latest_stamps))
-                                    instaloader.context.error("Warning: {} will be downloaded anonymously (\"{}\")."
-                                                              .format(target, err))
+                                    instaloader.context.error(
+                                        f"Warning: {target} will be downloaded anonymously (\"{err}\")."
+                                    )
                         else:
                             raise
                 else:
