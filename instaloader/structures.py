@@ -138,7 +138,7 @@ class Post:
     @staticmethod
     def mediaid_to_shortcode(mediaid: int) -> str:
         if mediaid.bit_length() > 64:
-            raise InvalidArgumentException(f"Wrong mediaid {str(mediaid)}, unable to convert to shortcode")
+            raise InvalidArgumentException(f"Wrong mediaid {mediaid}, unable to convert to shortcode")
         return b64encode(mediaid.to_bytes(9, 'big'), b'-_').decode().replace('A', ' ').lstrip().replace(' ', 'A')
 
     @staticmethod
