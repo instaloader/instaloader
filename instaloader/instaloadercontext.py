@@ -237,18 +237,19 @@ class InstaloaderContext:
             raise TwoFactorAuthRequiredException("Login error: two-factor authentication required.")
         if resp_json.get('checkpoint_url'):
             raise ConnectionException("Login: Checkpoint required. Point your browser to "
-                                      "https://www.instagram.com{} - "
-                                      "follow the instructions, then retry.".format(resp_json.get('checkpoint_url')))
+                                      f"https://www.instagram.com{resp_json.get('checkpoint_url')} - "
+                                      "follow the instructions, then retry.")
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
-                raise ConnectionException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
-                                                                                               resp_json['message']))
+                raise ConnectionException(
+                    f"Login error: \"{resp_json['status']}\" status, message \"{resp_json['message']}\"."
+                )
             else:
-                raise ConnectionException("Login error: \"{}\" status.".format(resp_json['status']))
+                raise ConnectionException(f"Login error: \"{resp_json['status']}\" status.")
         if 'authenticated' not in resp_json:
             # Issue #472
             if 'message' in resp_json:
-                raise ConnectionException("Login error: Unexpected response, \"{}\".".format(resp_json['message']))
+                raise ConnectionException(f"Login error: Unexpected response, \"{resp_json['message']}\".")
             else:
                 raise ConnectionException("Login error: Unexpected response, this might indicate a blocked IP.")
         if not resp_json['authenticated']:
@@ -284,9 +285,9 @@ class InstaloaderContext:
         resp_json = login.json()
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
-                raise BadCredentialsException("2FA error: {}".format(resp_json['message']))
+                raise BadCredentialsException(f"2FA error: {resp_json['message']}")
             else:
-                raise BadCredentialsException("2FA error: \"{}\" status.".format(resp_json['status']))
+                raise BadCredentialsException(f"2FA error: \"{resp_json['status']}\" status.")
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
@@ -324,10 +325,10 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('other')
             resp = sess.get(f'https://{host}/{path}', params=params, allow_redirects=False)
             if resp.status_code in self.fatal_status_codes:
-                redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
-                raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}".format(
-                    host, path, resp.status_code, resp.reason, redirect
-                ))
+                redirect = f" redirect to {resp.headers['location']}" if 'location' in resp.headers else ""
+                raise AbortDownloadException(
+                    f"Query to https://{host}/{path} responded with \"{resp.status_code} {resp.reason}\"{redirect}"
+                )
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
                 self.log(f'\nHTTP redirect from https://{host}/{path} to {redirect_url}')
@@ -370,10 +371,11 @@ class InstaloaderContext:
                 resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
                 if 'message' in resp_json:
-                    raise ConnectionException("Returned \"{}\" status, message \"{}\".".format(resp_json['status'],
-                                                                                               resp_json['message']))
+                    raise ConnectionException(
+                        f"Returned \"{resp_json['status']}\" status, message \"{resp_json['message']}\"."
+                    )
                 else:
-                    raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
+                    raise ConnectionException(f"Returned \"{resp_json['status']}\" status.")
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = f"JSON Query to {path}: {err}"
@@ -691,8 +693,10 @@ class RateController:
         if waittime > 15:
             formatted_waittime = (f"{round(waittime)} seconds" if waittime <= 666 else
                                   f"{round(waittime / 60)} minutes")
-            self._context.log("\nToo many queries in the last time. Need to wait {}, until {:%H:%M}."
-                              .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)))
+            self._context.log(
+                f"\nToo many queries in the last time. Need to wait {formatted_waittime}"
+                f", until {datetime.now() + timedelta(seconds=waittime):%H:%M}."
+            )
         if waittime > 0:
             self.sleep(waittime)
         if query_type not in self._query_timestamps:

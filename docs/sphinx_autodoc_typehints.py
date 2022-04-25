@@ -147,8 +147,7 @@ def format_annotation(annotation):
             extra = '\\[{}]'.format(', '.join(format_annotation(param) for param in params))
 
         module = annotation.__module__.split('.')[0]    # hack to 'fix' class linking for Instaloader project
-        return ':py:class:`~{}.{}`{}'.format(module, annotation_cls.__qualname__,
-                                             extra)
+        return f':py:class:`~{module}.{annotation_cls.__qualname__}`{extra}'
 
     return str(annotation)
 
