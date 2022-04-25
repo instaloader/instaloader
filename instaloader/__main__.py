@@ -119,7 +119,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             pass
             else:
                 instaloader.interactive_login(username)
-        instaloader.context.log("Logged in as %s." % username)
+        instaloader.context.log(f"Logged in as {username}.")
     # since 4.2.9 login is required for geotags
     if instaloader.download_geotags and not instaloader.context.is_logged_in:
         instaloader.context.error("Warning: Use --login to download geotags of posts.")
@@ -155,7 +155,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             target = target.rstrip('/')
             with instaloader.context.error_catcher(target):
                 if re.match(r"^@[A-Za-z0-9._]+$", target):
-                    instaloader.context.log("Retrieving followees of %s..." % target[1:])
+                    instaloader.context.log(f"Retrieving followees of {target[1:]}...")
                     profile = Profile.from_username(instaloader.context, target[1:])
                     for followee in profile.get_followees():
                         instaloader.save_profile_id(followee)
@@ -486,7 +486,7 @@ def main():
               storyitem_filter_str=args.storyitem_filter)
         loader.close()
     except InstaloaderException as err:
-        raise SystemExit("Fatal error: %s" % err) from err
+        raise SystemExit(f"Fatal error: {err}") from err
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@ def format_annotation(annotation):
         elif annotation is AnyStr:
             return ':py:data:`~typing.AnyStr`'
         elif isinstance(annotation, TypeVar):
-            return '\\%r' % annotation
+            return f'\\{annotation!r}'
         elif (annotation is Union or getattr(annotation, '__origin__', None) is Union or
               hasattr(annotation, '__union_params__')):
             prefix = ':py:data:'
