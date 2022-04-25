@@ -34,7 +34,7 @@ def _get_config_dir() -> str:
         if localappdata is not None:
             return os.path.join(localappdata, "Instaloader")
         # legacy fallback - store in temp dir if %LOCALAPPDATA% is not set
-        return os.path.join(tempfile.gettempdir(), ".instaloader-" + getpass.getuser())
+        return os.path.join(tempfile.gettempdir(), f".instaloader-{getpass.getuser()}")
     # on Unix, use ~/.config/instaloader
     return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader")
 
@@ -48,8 +48,8 @@ def get_default_session_filename(username: str) -> str:
 
 def get_legacy_session_filename(username: str) -> str:
     """Returns legacy (until v4.4.3) default session filename for given username."""
-    dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
-    filename = dirname + "/" + "session-" + username
+    dirname = f"{tempfile.gettempdir()}/.instaloader-{getpass.getuser()}"
+    filename = f"{dirname}/session-{username}"
     return filename.lower()
 
 
@@ -67,7 +67,7 @@ def get_default_stamps_filename() -> str:
 def format_string_contains_key(format_string: str, key: str) -> bool:
     # pylint:disable=unused-variable
     for literal_text, field_name, format_spec, conversion in string.Formatter().parse(format_string):
-        if field_name and (field_name == key or field_name.startswith(key + '.')):
+        if field_name and (field_name == key or field_name.startswith(f'{key}.')):
             return True
     return False
 
@@ -99,7 +99,7 @@ def _retry_on_connection_error(func: Callable) -> Callable:
             error_string = "{}({}): {}".format(func.__name__, ', '.join([repr(arg) for arg in args]), err)
             if (kwargs.get('_attempt') or 1) == instaloader.context.max_connection_attempts:
                 raise ConnectionException(error_string) from None
-            instaloader.context.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+            instaloader.context.error(f"{error_string} [retrying; skip with ^C]", repeat_at_end=False)
             try:
                 if kwargs.get('_attempt'):
                     kwargs['_attempt'] += 1
@@ -336,12 +336,12 @@ class Instaloader:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
         if filename_suffix is not None:
-            filename += '_' + filename_suffix
+            filename += f'_{filename_suffix}'
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
-        nominal_filename = filename + '.' + file_extension
+        nominal_filename = f'{filename}.{file_extension}'
         if os.path.isfile(nominal_filename):
-            self.context.log(nominal_filename + ' exists', end=' ', flush=True)
+            self.context.log(f'{nominal_filename} exists', end=' ', flush=True)
             return False
         resp = self.context.get_raw(url)
         if 'Content-Type' in resp.headers and resp.headers['Content-Type']:
@@ -351,7 +351,7 @@ class Instaloader:
         else:
             filename = nominal_filename
         if filename != nominal_filename and os.path.isfile(filename):
-            self.context.log(filename + ' exists', end=' ', flush=True)
+            self.context.log(f'{filename} exists', end=' ', flush=True)
             return False
         self.context.write_raw(resp, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
@@ -447,7 +447,7 @@ class Instaloader:
         """Updates picture caption / Post metadata info"""
         def _elliptify(caption):
             pcaption = caption.replace('\n', ' ').strip()
-            return '[' + ((pcaption[:29] + "\u2026") if len(pcaption) > 31 else pcaption) + ']'
+            return '[' + (f"{pcaption[:29]}\u2026" if len(pcaption) > 31 else pcaption) + ']'
         filename += '.txt'
         caption += '\n'
         pcaption = _elliptify(caption)
@@ -457,7 +457,7 @@ class Instaloader:
                 file_caption = file.read()
             if file_caption.replace(b'\r\n', b'\n') == bcaption.replace(b'\r\n', b'\n'):
                 try:
-                    self.context.log(pcaption + ' unchanged', end=' ', flush=True)
+                    self.context.log(f'{pcaption} unchanged', end=' ', flush=True)
                 except UnicodeEncodeError:
                     self.context.log('txt unchanged', end=' ', flush=True)
                 return None
@@ -471,7 +471,7 @@ class Instaloader:
                 for index in range(i, 0, -1):
                     os.rename(get_filename(index - 1), get_filename(index))
                 try:
-                    self.context.log(_elliptify(file_caption.decode("UTF-8")) + ' updated', end=' ', flush=True)
+                    self.context.log(f'{_elliptify(file_caption.decode("UTF-8"))} updated', end=' ', flush=True)
                 except UnicodeEncodeError:
                     self.context.log('txt updated', end=' ', flush=True)
         try:
@@ -487,9 +487,10 @@ class Instaloader:
         """Save post location name and Google Maps link."""
         filename += '_location.txt'
         if location.lat is not None and location.lng is not None:
-            location_string = (location.name + "\n" +
-                               "https://maps.google.com/maps?q={0},{1}&ll={0},{1}\n".format(location.lat,
-                                                                                            location.lng))
+            location_string = (
+                f"{location.name}\nhttps://maps.google.com"
+                f"/maps?q={location.lat},{location.lng}&ll={location.lat},{location.lng}\n"
+            )
         else:
             location_string = location.name
         with open(filename, 'wb') as text_file:
@@ -538,12 +539,12 @@ class Instaloader:
         filename_template = os.path.join(
                 dirname,
                 _PostPathFormatter(pic_data, self.sanitize_paths).format(self.title_pattern, target=target))
-        filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
+        filename = f"{self.__prepare_filename(filename_template, lambda: url)}.jpg"
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
                                           os.path.getsize(filename) >= int(content_length))):
-            self.context.log(filename + ' already exists')
+            self.context.log(f'{filename} already exists')
             return
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         self.context.write_raw(pic_bytes if pic_bytes else http_response, filename)
@@ -677,7 +678,7 @@ class Instaloader:
             if not os.path.isfile(path):
                 return False
             else:
-                self.context.log(path + ' exists', end=' ', flush=True)
+                self.context.log(f'{path} exists', end=' ', flush=True)
                 return True
 
         def _all_already_downloaded(path_base, is_videos_enumerated) -> bool:
@@ -735,13 +736,13 @@ class Instaloader:
         elif post.typename == 'GraphImage':
             # Download picture
             if self.download_pictures:
-                downloaded = (not _already_downloaded(filename + ".jpg") and
+                downloaded = (not _already_downloaded(f"{filename}.jpg") and
                               self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
         elif post.typename == 'GraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 with self.context.error_catcher(f"Video thumbnail of {post}"):
-                    downloaded = (not _already_downloaded(filename + ".jpg") and
+                    downloaded = (not _already_downloaded(f"{filename}.jpg") and
                                   self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
         else:
             self.context.error(f"Warning: {post} has unknown typename: {post.typename}")
@@ -753,7 +754,7 @@ class Instaloader:
 
         # Download video if desired
         if post.is_video and self.download_videos:
-            downloaded &= (not _already_downloaded(filename + ".mp4") and
+            downloaded &= (not _already_downloaded(f"{filename}.mp4") and
                            self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local))
 
         # Download geotags if desired
@@ -871,7 +872,7 @@ class Instaloader:
             if not os.path.isfile(path):
                 return False
             else:
-                self.context.log(path + ' exists', end=' ', flush=True)
+                self.context.log(f'{path} exists', end=' ', flush=True)
                 return True
 
         date_local = item.date_local
@@ -880,11 +881,11 @@ class Instaloader:
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
         if not item.is_video or self.download_video_thumbnails is True:
-            downloaded = (not _already_downloaded(filename + ".jpg") and
+            downloaded = (not _already_downloaded(f"{filename}.jpg") and
                           self.download_pic(filename=filename, url=item.url, mtime=date_local))
         if item.is_video and self.download_videos is True:
             filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
-            downloaded |= (not _already_downloaded(filename + ".mp4") and
+            downloaded |= (not _already_downloaded(f"{filename}.mp4") and
                            self.download_pic(filename=filename, url=item.video_url, mtime=date_local))
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
@@ -1152,7 +1153,7 @@ class Instaloader:
            Require being logged in (as required by Instagram)
         """
         self.context.log(f"Retrieving pictures for location {location}...")
-        self.posts_download_loop(self.get_location_posts(location), "%" + location, fast_update, post_filter,
+        self.posts_download_loop(self.get_location_posts(location), f"%{location}", fast_update, post_filter,
                                  max_count=max_count)
 
     @_requires_login
@@ -1206,7 +1207,7 @@ class Instaloader:
                 hashtag = Hashtag.from_name(self.context, hashtag)
         if not isinstance(hashtag, Hashtag):
             return
-        target = "#" + hashtag.name
+        target = f"#{hashtag.name}"
         if profile_pic:
             with self.context.error_catcher(f"Download profile picture of {target}"):
                 self.download_hashtag_profilepic(hashtag)
@@ -1294,7 +1295,7 @@ class Instaloader:
         os.makedirs(self.dirname_pattern.format(profile=profile.username,
                                                 target=profile.username), exist_ok=True)
         with open(self._get_id_filename(profile.username), 'w') as text_file:
-            text_file.write(str(profile.userid) + "\n")
+            text_file.write(f"{profile.userid}\n")
             self.context.log(f"Stored ID {profile.userid} for profile {profile.username}.")
 
     def check_profile_id(self, profile_name: str, latest_stamps: Optional[LatestStamps] = None) -> Profile:

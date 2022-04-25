@@ -246,7 +246,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.log("No targets were specified, thus nothing has been downloaded.")
         else:
             # Instaloader did not do anything
-            instaloader.context.log("usage:" + usage_string())
+            instaloader.context.log(f"usage:{usage_string()}")
 
 
 def main():
@@ -339,7 +339,7 @@ def main():
     g_cond.add_argument('--latest-stamps', nargs='?', metavar='STAMPSFILE', const=get_default_stamps_filename(),
                         help='Store the timestamps of latest media scraped for each profile. This allows updating '
                              'your personal Instagram archive even if you delete the destination directories. '
-                             'If STAMPSFILE is not provided, defaults to ' + get_default_stamps_filename())
+                             f'If STAMPSFILE is not provided, defaults to {get_default_stamps_filename()}')
     g_cond.add_argument('--post-filter', '--only-if', metavar='filter',
                         help='Expression that, if given, must evaluate to True for each post to be downloaded. Must be '
                              'a syntactically valid python expression. Variables are evaluated to '
