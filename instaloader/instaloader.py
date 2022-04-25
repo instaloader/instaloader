@@ -447,7 +447,7 @@ class Instaloader:
         """Updates picture caption / Post metadata info"""
         def _elliptify(caption):
             pcaption = caption.replace('\n', ' ').strip()
-            return '[' + ((pcaption[:29] + u"\u2026") if len(pcaption) > 31 else pcaption) + ']'
+            return '[' + ((pcaption[:29] + "\u2026") if len(pcaption) > 31 else pcaption) + ']'
         filename += '.txt'
         caption += '\n'
         pcaption = _elliptify(caption)
