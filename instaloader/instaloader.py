@@ -525,7 +525,7 @@ class Instaloader:
         .. versionadded:: 4.3"""
 
         http_response = self.context.get_raw(url)
-        date_object = None  # type: Optional[datetime]
+        date_object: Optional[datetime] = None
         if 'Last-Modified' in http_response.headers:
             date_object = datetime.strptime(http_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
             date_object = date_object.replace(tzinfo=timezone.utc)
@@ -713,7 +713,7 @@ class Instaloader:
                             post.get_sidecar_nodes(self.slide_start, self.slide_end),
                             start=self.slide_start % post.mediacount + 1
                     ):
-                        suffix = str(edge_number)  # type: Optional[str]
+                        suffix: Optional[str] = str(edge_number)
                         if '{filename}' in self.filename_pattern:
                             suffix = None
                         if self.download_pictures and (not sidecar_node.is_video or self.download_video_thumbnails):
@@ -941,11 +941,11 @@ class Instaloader:
         """
         for user_highlight in self.get_highlights(user):
             name = user_highlight.owner_username
-            highlight_target = (filename_target
-                                if filename_target
-                                else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
-                                      _PostPathFormatter.sanitize_path(user_highlight.title,
-                                                                       self.sanitize_paths)))  # type: Union[str, Path]
+            highlight_target: Union[str, Path] = (filename_target
+                                                    if filename_target
+                                                    else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
+                                                          _PostPathFormatter.sanitize_path(user_highlight.title,
+                                                                                           self.sanitize_paths)))
             self.context.log(f"Retrieving highlights \"{user_highlight.title}\" from profile {name}")
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount

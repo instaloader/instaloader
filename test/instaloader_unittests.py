@@ -23,7 +23,7 @@ PRIVATE_PROFILE_ID = 1706625676
 EMPTY_PROFILE = "not_public"
 EMPTY_PROFILE_ID = 1928659031
 
-ratecontroller = None  # type: Optional[instaloader.RateController]
+ratecontroller: Optional[instaloader.RateController] = None
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):
