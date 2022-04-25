@@ -42,7 +42,7 @@ def _get_config_dir() -> str:
 def get_default_session_filename(username: str) -> str:
     """Returns default session filename for given username."""
     configdir = _get_config_dir()
-    sessionfilename = "session-{}".format(username)
+    sessionfilename = f"session-{username}"
     return os.path.join(configdir, sessionfilename)
 
 
@@ -404,7 +404,7 @@ class Instaloader:
         def get_new_comments(new_comments, start):
             for idx, comment in enumerate(new_comments, start=start+1):
                 if idx % 250 == 0:
-                    self.context.log('{}'.format(idx), end='…', flush=True)
+                    self.context.log(f'{idx}', end='…', flush=True)
                 yield comment
 
         def save_comments(extended_comments):
@@ -429,7 +429,7 @@ class Instaloader:
                     iterator=comments_iterator,
                     load=load_structure_from_file,
                     save=save_structure_to_file,
-                    format_path=lambda magic: "{}_{}_{}.json.xz".format(base_filename, self.resume_prefix, magic),
+                    format_path=lambda magic: f"{base_filename}_{self.resume_prefix}_{magic}.json.xz",
                     check_bbd=self.check_resume_bbd,
                     enabled=self.resume_prefix is not None
             ) as (_is_resuming, start_index):
@@ -511,10 +511,10 @@ class Instaloader:
              format_string_contains_key(self.dirname_pattern, 'target'))):
             profile_str = owner_profile.username.lower() if owner_profile is not None else target
             return os.path.join(self.dirname_pattern.format(profile=profile_str, target=target),
-                                '{0}_{1}.{2}'.format(identifier, name_suffix, extension))
+                                f'{identifier}_{name_suffix}.{extension}')
         else:
             return os.path.join(self.dirname_pattern.format(),
-                                '{0}_{1}_{2}.{3}'.format(target, identifier, name_suffix, extension))
+                                f'{target}_{identifier}_{name_suffix}.{extension}')
 
     @_retry_on_connection_error
     def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile],
@@ -687,10 +687,10 @@ class Instaloader:
                 return False
             for idx, is_video in is_videos_enumerated:
                 if self.download_pictures and (not is_video or self.download_video_thumbnails):
-                    if not _already_downloaded("{0}_{1}.jpg".format(path_base, idx)):
+                    if not _already_downloaded(f"{path_base}_{idx}.jpg"):
                         return False
                 if is_video and self.download_videos:
-                    if not _already_downloaded("{0}_{1}.mp4".format(path_base, idx)):
+                    if not _already_downloaded(f"{path_base}_{idx}.mp4"):
                         return False
             return True
 
@@ -740,11 +740,11 @@ class Instaloader:
         elif post.typename == 'GraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
-                with self.context.error_catcher("Video thumbnail of {}".format(post)):
+                with self.context.error_catcher(f"Video thumbnail of {post}"):
                     downloaded = (not _already_downloaded(filename + ".jpg") and
                                   self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
         else:
-            self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
+            self.context.error(f"Warning: {post} has unknown typename: {post.typename}")
 
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
@@ -836,7 +836,7 @@ class Instaloader:
                 msg = "[{0:{w}d}/{1:{w}d}] Retrieving stories from profile {2}.".format(i, profile_count, name,
                                                                                         w=len(str(profile_count)))
             else:
-                msg = "[{:3d}] Retrieving stories from profile {}.".format(i, name)
+                msg = f"[{i:3d}] Retrieving stories from profile {name}."
             self.context.log(msg)
             totalcount = user_story.itemcount
             count = 1
@@ -848,11 +848,11 @@ class Instaloader:
                 if latest_stamps is not None and item.date_local <= last_scraped:
                     break
                 if storyitem_filter is not None and not storyitem_filter(item):
-                    self.context.log("<{} skipped>".format(item), flush=True)
+                    self.context.log(f"<{item} skipped>", flush=True)
                     continue
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
-                with self.context.error_catcher('Download story from user {}'.format(name)):
+                with self.context.error_catcher(f'Download story from user {name}'):
                     downloaded = self.download_storyitem(item, filename_target if filename_target else name)
                     if fast_update and not downloaded:
                         break
@@ -946,13 +946,13 @@ class Instaloader:
                                 else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
                                       _PostPathFormatter.sanitize_path(user_highlight.title,
                                                                        self.sanitize_paths)))  # type: Union[str, Path]
-            self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
+            self.context.log(f"Retrieving highlights \"{user_highlight.title}\" from profile {name}")
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
             count = 1
             for item in user_highlight.get_items():
                 if storyitem_filter is not None and not storyitem_filter(item):
-                    self.context.log("<{} skipped>".format(item), flush=True)
+                    self.context.log(f"<{item} skipped>", flush=True)
                     continue
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
                 count += 1
@@ -1017,16 +1017,16 @@ class Instaloader:
                                                                    w=len(str(displayed_count))),
                                      end="", flush=True)
                 else:
-                    self.context.log("[{:3d}] ".format(number), end="", flush=True)
+                    self.context.log(f"[{number:3d}] ", end="", flush=True)
                 if post_filter is not None:
                     try:
                         if not post_filter(post):
-                            self.context.log("{} skipped".format(post))
+                            self.context.log(f"{post} skipped")
                             continue
                     except (InstaloaderException, KeyError, TypeError) as err:
-                        self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
+                        self.context.error(f"{post} skipped. Filter evaluation failed: {err}")
                         continue
-                with self.context.error_catcher("Download {} of {}".format(post, target)):
+                with self.context.error_catcher(f"Download {post} of {target}"):
                     # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
                     # additional metadata. This is most likely the case if a HTTP redirect takes place while
                     # resolving the shortcode URL.
@@ -1152,7 +1152,7 @@ class Instaloader:
         .. versionchanged:: 4.2.9
            Require being logged in (as required by Instagram)
         """
-        self.context.log("Retrieving pictures for location {}...".format(location))
+        self.context.log(f"Retrieving pictures for location {location}...")
         self.posts_download_loop(self.get_location_posts(location), "%" + location, fast_update, post_filter,
                                  max_count=max_count)
 
@@ -1203,22 +1203,20 @@ class Instaloader:
            Add parameters `profile_pic` and `posts`.
         """
         if isinstance(hashtag, str):
-            with self.context.error_catcher("Get hashtag #{}".format(hashtag)):
+            with self.context.error_catcher(f"Get hashtag #{hashtag}"):
                 hashtag = Hashtag.from_name(self.context, hashtag)
         if not isinstance(hashtag, Hashtag):
             return
         target = "#" + hashtag.name
         if profile_pic:
-            with self.context.error_catcher("Download profile picture of {}".format(target)):
+            with self.context.error_catcher(f"Download profile picture of {target}"):
                 self.download_hashtag_profilepic(hashtag)
         if posts:
-            self.context.log("Retrieving pictures with hashtag #{}...".format(hashtag.name))
+            self.context.log(f"Retrieving pictures with hashtag #{hashtag.name}...")
             self.posts_download_loop(hashtag.get_posts_resumable(), target, fast_update, post_filter,
                                      max_count=max_count)
         if self.save_metadata:
-            json_filename = '{0}/{1}'.format(self.dirname_pattern.format(profile=target,
-                                                                         target=target),
-                                             target)
+            json_filename = f'{self.dirname_pattern.format(profile=target, target=target)}/{target}'
             self.save_metadata_json(json_filename, hashtag)
 
     def download_tagged(self, profile: Profile, fast_update: bool = False,
@@ -1231,7 +1229,7 @@ class Instaloader:
 
         .. versionchanged:: 4.8
            Add `latest_stamps` parameter."""
-        self.context.log("Retrieving tagged posts for profile {}.".format(profile.username))
+        self.context.log(f"Retrieving tagged posts for profile {profile.username}.")
         posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_tagged_timestamp(profile.username)
@@ -1254,7 +1252,7 @@ class Instaloader:
 
         .. versionchanged:: 4.8
            Add `latest_stamps` parameter."""
-        self.context.log("Retrieving IGTV videos for profile {}.".format(profile.username))
+        self.context.log(f"Retrieving IGTV videos for profile {profile.username}.")
         posts_takewhile: Optional[Callable[[Post], bool]] = None
         if latest_stamps is not None:
             last_scraped = latest_stamps.get_last_igtv_timestamp(profile.username)
@@ -1273,7 +1271,7 @@ class Instaloader:
                                 'id')
         else:
             return os.path.join(self.dirname_pattern.format(),
-                                '{0}_id'.format(profile_name.lower()))
+                                f'{profile_name.lower()}_id')
 
     def load_profile_id(self, profile_name: str) -> Optional[int]:
         """
@@ -1298,7 +1296,7 @@ class Instaloader:
                                                 target=profile.username), exist_ok=True)
         with open(self._get_id_filename(profile.username), 'w') as text_file:
             text_file.write(str(profile.userid) + "\n")
-            self.context.log("Stored ID {0} for profile {1}.".format(profile.userid, profile.username))
+            self.context.log(f"Stored ID {profile.userid} for profile {profile.username}.")
 
     def check_profile_id(self, profile_name: str, latest_stamps: Optional[LatestStamps] = None) -> Profile:
         """
@@ -1327,24 +1325,24 @@ class Instaloader:
             if (profile is None) or \
                     (profile_id != profile.userid):
                 if profile is not None:
-                    self.context.log("Profile {0} does not match the stored unique ID {1}.".format(profile_name,
+                    self.context.log("Profile {} does not match the stored unique ID {}.".format(profile_name,
                                                                                                    profile_id))
                 else:
-                    self.context.log("Trying to find profile {0} using its unique ID {1}.".format(profile_name,
+                    self.context.log("Trying to find profile {} using its unique ID {}.".format(profile_name,
                                                                                                   profile_id))
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
-                self.context.error("Profile {0} has changed its name to {1}.".format(profile_name, newname))
+                self.context.error(f"Profile {profile_name} has changed its name to {newname}.")
                 if latest_stamps is None:
-                    if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-                         format_string_contains_key(self.dirname_pattern, 'target'))):
+                    if (format_string_contains_key(self.dirname_pattern, 'profile') or
+                         format_string_contains_key(self.dirname_pattern, 'target')):
                         os.rename(self.dirname_pattern.format(profile=profile_name.lower(),
                                                               target=profile_name.lower()),
                                   self.dirname_pattern.format(profile=newname.lower(),
                                                               target=newname.lower()))
                     else:
-                        os.rename('{0}/{1}_id'.format(self.dirname_pattern.format(), profile_name.lower()),
-                                  '{0}/{1}_id'.format(self.dirname_pattern.format(), newname.lower()))
+                        os.rename(f'{self.dirname_pattern.format()}/{profile_name.lower()}_id',
+                                  f'{self.dirname_pattern.format()}/{newname.lower()}_id')
                 else:
                     latest_stamps.rename_profile(profile_name, newname)
                 return profile_from_id
@@ -1358,7 +1356,7 @@ class Instaloader:
             return profile
         if profile_name_not_exists_err:
             raise profile_name_not_exists_err
-        raise ProfileNotExistsException("Profile {0} does not exist.".format(profile_name))
+        raise ProfileNotExistsException(f"Profile {profile_name} does not exist.")
 
     def download_profiles(self, profiles: Set[Profile],
                           profile_pic: bool = True, posts: bool = True,
@@ -1412,14 +1410,14 @@ class Instaloader:
 
                 # Download profile picture
                 if profile_pic:
-                    with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
+                    with self.context.error_catcher(f'Download profile picture of {profile_name}'):
                         self.download_profilepic_if_new(profile, latest_stamps)
 
                 # Save metadata as JSON if desired.
                 if self.save_metadata:
                     json_filename = os.path.join(self.dirname_pattern.format(profile=profile_name,
                                                                              target=profile_name),
-                                                 '{0}_{1}'.format(profile_name, profile.userid))
+                                                 f'{profile_name}_{profile.userid}')
                     self.save_metadata_json(json_filename, profile)
 
                 # Catch some errors
@@ -1434,24 +1432,24 @@ class Instaloader:
 
                 # Download tagged, if requested
                 if tagged:
-                    with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
+                    with self.context.error_catcher(f'Download tagged of {profile_name}'):
                         self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter,
                                              latest_stamps=latest_stamps)
 
                 # Download IGTV, if requested
                 if igtv:
-                    with self.context.error_catcher('Download IGTV of {}'.format(profile_name)):
+                    with self.context.error_catcher(f'Download IGTV of {profile_name}'):
                         self.download_igtv(profile, fast_update=fast_update, post_filter=post_filter,
                                            latest_stamps=latest_stamps)
 
                 # Download highlights, if requested
                 if highlights:
-                    with self.context.error_catcher('Download highlights of {}'.format(profile_name)):
+                    with self.context.error_catcher(f'Download highlights of {profile_name}'):
                         self.download_highlights(profile, fast_update=fast_update, storyitem_filter=storyitem_filter)
 
                 # Iterate over pictures and download them
                 if posts:
-                    self.context.log("Retrieving posts from profile {}.".format(profile_name))
+                    self.context.log(f"Retrieving posts from profile {profile_name}.")
                     posts_takewhile: Optional[Callable[[Post], bool]] = None
                     if latest_stamps is not None:
                         # pylint:disable=cell-var-from-loop
@@ -1496,17 +1494,16 @@ class Instaloader:
 
         # Save metadata as JSON if desired.
         if self.save_metadata is not False:
-            json_filename = '{0}/{1}_{2}'.format(self.dirname_pattern.format(profile=profile_name, target=profile_name),
-                                                 profile_name, profile.userid)
+            json_filename = f'{self.dirname_pattern.format(profile=profile_name, target=profile_name)}/{profile_name}_{profile.userid}'
             self.save_metadata_json(json_filename, profile)
 
         if self.context.is_logged_in and profile.has_blocked_viewer and not profile.is_private:
             # raising ProfileNotExistsException invokes "trying again anonymously" logic
-            raise ProfileNotExistsException("Profile {} has blocked you".format(profile_name))
+            raise ProfileNotExistsException(f"Profile {profile_name} has blocked you")
 
         # Download profile picture
         if profile_pic or profile_pic_only:
-            with self.context.error_catcher('Download profile picture of {}'.format(profile_name)):
+            with self.context.error_catcher(f'Download profile picture of {profile_name}'):
                 self.download_profilepic(profile)
         if profile_pic_only:
             return
@@ -1525,23 +1522,23 @@ class Instaloader:
         # Download stories, if requested
         if download_stories or download_stories_only:
             if profile.has_viewable_story:
-                with self.context.error_catcher("Download stories of {}".format(profile_name)):
+                with self.context.error_catcher(f"Download stories of {profile_name}"):
                     self.download_stories(userids=[profile.userid], filename_target=profile_name,
                                           fast_update=fast_update, storyitem_filter=storyitem_filter)
             else:
-                self.context.log("{} does not have any stories.".format(profile_name))
+                self.context.log(f"{profile_name} does not have any stories.")
         if download_stories_only:
             return
 
         # Download tagged, if requested
         if download_tagged or download_tagged_only:
-            with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
+            with self.context.error_catcher(f'Download tagged of {profile_name}'):
                 self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter)
         if download_tagged_only:
             return
 
         # Iterate over pictures and download them
-        self.context.log("Retrieving posts from profile {}.".format(profile_name))
+        self.context.log(f"Retrieving posts from profile {profile_name}.")
         self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
                                  total_count=profile.mediacount, owner_profile=profile)
 

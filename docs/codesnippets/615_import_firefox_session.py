@@ -22,7 +22,7 @@ def get_cookiefile():
 
 
 def import_session(cookiefile, sessionfile):
-    print("Using cookies from {}.".format(cookiefile))
+    print(f"Using cookies from {cookiefile}.")
     conn = connect(f"file:{cookiefile}?immutable=1", uri=True)
     try:
         cookie_data = conn.execute(
@@ -37,7 +37,7 @@ def import_session(cookiefile, sessionfile):
     username = instaloader.test_login()
     if not username:
         raise SystemExit("Not logged in. Are you logged in successfully in Firefox?")
-    print("Imported session cookie for {}.".format(username))
+    print(f"Imported session cookie for {username}.")
     instaloader.context.username = username
     instaloader.save_session_to_file(sessionfile)
 
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     try:
         import_session(args.cookiefile or get_cookiefile(), args.sessionfile)
     except (ConnectionException, OperationalError) as e:
-        raise SystemExit("Cookie import failed: {}".format(e))
+        raise SystemExit(f"Cookie import failed: {e}")

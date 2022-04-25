@@ -30,7 +30,7 @@ class TestInstaloaderAnonymously(unittest.TestCase):
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
-        print("Testing in {}".format(self.dir))
+        print(f"Testing in {self.dir}")
         os.chdir(self.dir)
         self.L = instaloader.Instaloader(download_geotags=True,
                                          download_comments=True,
@@ -47,7 +47,7 @@ class TestInstaloaderAnonymously(unittest.TestCase):
         ratecontroller = self.L.context._rate_controller
         self.L.close()
         os.chdir('/')
-        print("Removing {}".format(self.dir))
+        print(f"Removing {self.dir}")
         shutil.rmtree(self.dir)
 
     def post_paging_test(self, iterator):
@@ -132,7 +132,7 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
 
     def test_stories_paging(self):
         for user_story in self.L.get_stories():
-            print("profile {}.".format(user_story.owner_username))
+            print(f"profile {user_story.owner_username}.")
             for item in user_story.get_items():
                 print(item)
 

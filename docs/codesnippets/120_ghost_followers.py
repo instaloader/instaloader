@@ -11,12 +11,12 @@ L.load_session_from_file(USER)
 profile = instaloader.Profile.from_username(L.context, PROFILE)
 
 likes = set()
-print("Fetching likes of all posts of profile {}.".format(profile.username))
+print(f"Fetching likes of all posts of profile {profile.username}.")
 for post in profile.get_posts():
     print(post)
     likes = likes | set(post.get_likes())
 
-print("Fetching followers of profile {}.".format(profile.username))
+print(f"Fetching followers of profile {profile.username}.")
 followers = set(profile.get_followers())
 
 ghosts = followers - likes
