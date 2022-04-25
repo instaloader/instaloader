@@ -603,7 +603,7 @@ class Instaloader:
         with open(filename, 'wb') as sessionfile:
             os.chmod(filename, 0o600)
             self.context.save_session_to_file(sessionfile)
-            self.context.log("Saved session to %s." % filename)
+            self.context.log(f"Saved session to {filename}.")
 
     def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
         """Internally stores :class:`requests.Session` object loaded from file.
@@ -618,7 +618,7 @@ class Instaloader:
                 filename = get_legacy_session_filename(username)
         with open(filename, 'rb') as sessionfile:
             self.context.load_session_from_file(username, sessionfile)
-            self.context.log("Loaded session from %s." % filename)
+            self.context.log(f"Loaded session from {filename}.")
 
     def test_login(self) -> Optional[str]:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
@@ -850,7 +850,7 @@ class Instaloader:
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log(f"<{item} skipped>", flush=True)
                     continue
-                self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                self.context.log(f"[{count: 3}/{totalcount: 3}] ", end="", flush=True)
                 count += 1
                 with self.context.error_catcher(f'Download story from user {name}'):
                     downloaded = self.download_storyitem(item, filename_target if filename_target else name)
@@ -954,7 +954,7 @@ class Instaloader:
                 if storyitem_filter is not None and not storyitem_filter(item):
                     self.context.log(f"<{item} skipped>", flush=True)
                     continue
-                self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                self.context.log(f"[{count: 3}/{totalcount: 3}] ", end="", flush=True)
                 count += 1
                 with self.context.error_catcher('Download highlights \"{}\" from user {}'.format(user_highlight.title,
                                                                                                  name)):
@@ -1512,13 +1512,13 @@ class Instaloader:
         # Catch some errors
         if profile.is_private:
             if not self.context.is_logged_in:
-                raise LoginRequiredException("profile %s requires login" % profile_name)
+                raise LoginRequiredException(f"profile {profile_name} requires login")
             if not profile.followed_by_viewer and \
                     self.context.username != profile.username:
-                raise PrivateProfileNotFollowedException("Profile %s: private but not followed." % profile_name)
+                raise PrivateProfileNotFollowedException(f"Profile {profile_name}: private but not followed.")
         else:
             if self.context.is_logged_in and not (download_stories or download_stories_only):
-                self.context.log("profile %s could also be downloaded anonymously." % profile_name)
+                self.context.log(f"profile {profile_name} could also be downloaded anonymously.")
 
         # Download stories, if requested
         if download_stories or download_stories_only:
@@ -1554,7 +1554,7 @@ class Instaloader:
         try:
             password = None
             while password is None:
-                password = getpass.getpass(prompt="Enter Instagram password for %s: " % username)
+                password = getpass.getpass(prompt=f"Enter Instagram password for {username}: ")
                 try:
                     self.login(username, password)
                 except BadCredentialsException as err:
