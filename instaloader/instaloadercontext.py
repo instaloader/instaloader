@@ -338,7 +338,7 @@ class InstaloaderContext:
                     # alternate rate limit exceeded behavior
                     raise TooManyRequestsException("Redirected to login")
                 if redirect_url.startswith(f'https://{host}/'):
-                    resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
+                    resp = sess.get(redirect_url if redirect_url.endswith('/') else f'{redirect_url}/',
                                     params=params, allow_redirects=False)
                 else:
                     break
@@ -384,7 +384,7 @@ class InstaloaderContext:
                     raise QueryReturnedNotFoundException(error_string) from err
                 else:
                     raise ConnectionException(error_string) from err
-            self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+            self.error(f"{error_string} [retrying; skip with ^C]", repeat_at_end=False)
             try:
                 if isinstance(err, TooManyRequestsException):
                     if is_graphql_query:
@@ -494,12 +494,12 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         self.log(filename, end=' ', flush=True)
-        with open(filename + '.temp', 'wb') as file:
+        with open(f'{filename}.temp', 'wb') as file:
             if isinstance(resp, requests.Response):
                 shutil.copyfileobj(resp.raw, file)
             else:
                 file.write(resp)
-        os.replace(filename + '.temp', filename)
+        os.replace(f'{filename}.temp', filename)
 
     def get_raw(self, url: str, _attempt=1) -> requests.Response:
         """Downloads a file anonymously.

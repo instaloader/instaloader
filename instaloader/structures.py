@@ -405,7 +405,7 @@ class Post:
         .. versionadded:: 4.2.6"""
         def _elliptify(caption):
             pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
-            return (pcaption[:30] + "\u2026") if len(pcaption) > 31 else pcaption
+            return f"{pcaption[:30]}\u2026" if len(pcaption) > 31 else pcaption
         return _elliptify(self.caption) if self.caption else ''
 
     @property
@@ -719,8 +719,7 @@ class Profile:
         if data:
             profile = cls(context, data['reel']['owner'])
         else:
-            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                            str(profile_id) + ").")
+            raise ProfileNotExistsException(f"No profile found, the user may have blocked you (ID: {profile_id}).")
         context.profile_id_cache[profile_id] = profile
         return profile
 
