@@ -507,8 +507,8 @@ class Instaloader:
         """Returns a filename within the target path.
 
         .. versionadded:: 4.5"""
-        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-             format_string_contains_key(self.dirname_pattern, 'target'))):
+        if (format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target')):
             profile_str = owner_profile.username.lower() if owner_profile is not None else target
             return os.path.join(self.dirname_pattern.format(profile=profile_str, target=target),
                                 f'{identifier}_{name_suffix}.{extension}')
@@ -1264,8 +1264,8 @@ class Instaloader:
             latest_stamps.set_last_igtv_timestamp(profile.username, igtv_posts.first_item.date_local)
 
     def _get_id_filename(self, profile_name: str) -> str:
-        if ((format_string_contains_key(self.dirname_pattern, 'profile') or
-             format_string_contains_key(self.dirname_pattern, 'target'))):
+        if (format_string_contains_key(self.dirname_pattern, 'profile') or
+             format_string_contains_key(self.dirname_pattern, 'target')):
             return os.path.join(self.dirname_pattern.format(profile=profile_name.lower(),
                                                             target=profile_name.lower()),
                                 'id')
