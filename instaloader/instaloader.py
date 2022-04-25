@@ -942,10 +942,10 @@ class Instaloader:
         for user_highlight in self.get_highlights(user):
             name = user_highlight.owner_username
             highlight_target: Union[str, Path] = (filename_target
-                                                    if filename_target
-                                                    else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
-                                                          _PostPathFormatter.sanitize_path(user_highlight.title,
-                                                                                           self.sanitize_paths)))
+                                                  if filename_target else
+                                                  (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
+                                                   _PostPathFormatter.sanitize_path(user_highlight.title,
+                                                                                    self.sanitize_paths)))
             self.context.log(f"Retrieving highlights \"{user_highlight.title}\" from profile {name}")
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
@@ -1494,7 +1494,8 @@ class Instaloader:
 
         # Save metadata as JSON if desired.
         if self.save_metadata is not False:
-            json_filename = f'{self.dirname_pattern.format(profile=profile_name, target=profile_name)}/{profile_name}_{profile.userid}'
+            json_filename = f'{self.dirname_pattern.format(profile=profile_name, target=profile_name)}'\
+                            f'/{profile_name}_{profile.userid}'
             self.save_metadata_json(json_filename, profile)
 
         if self.context.is_logged_in and profile.has_blocked_viewer and not profile.is_private:
