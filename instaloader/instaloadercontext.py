@@ -70,7 +70,7 @@ class InstaloaderContext:
         self.iphone_support = iphone_support
 
         # error log, filled with error() and printed at the end of Instaloader.main()
-        self.error_log = []                      # type: List[str]
+        self.error_log: List[str] = []
 
         self._rate_controller = rate_controller(self) if rate_controller is not None else RateController(self)
 
@@ -81,7 +81,7 @@ class InstaloaderContext:
         self.fatal_status_codes = fatal_status_codes or []
 
         # Cache profile from id (mapping from id to Profile)
-        self.profile_id_cache = dict()           # type: Dict[int, Any]
+        self.profile_id_cache: Dict[int, Any] = dict()
 
     @contextmanager
     def anonymous_copy(self):
@@ -581,7 +581,7 @@ class RateController:
 
     def __init__(self, context: InstaloaderContext):
         self._context = context
-        self._query_timestamps = dict()  # type: Dict[str, List[float]]
+        self._query_timestamps: Dict[str, List[float]] = dict()
         self._earliest_next_request_time = 0.0
         self._iphone_earliest_next_request_time = 0.0
 
