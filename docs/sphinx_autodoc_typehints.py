@@ -47,7 +47,7 @@ except ImportError:
             func = func.__wrapped__
             id_func = id(func)
             if id_func in memo:
-                raise ValueError(f'wrapper loop when unwrapping {f!r}')
+                raise ValueError('wrapper loop when unwrapping {!r}'.format(f))
             memo.add(id_func)
         return func
 
@@ -59,7 +59,7 @@ def format_annotation(annotation):
         if annotation.__qualname__ == 'NoneType':
             return '``None``'
         else:
-            return f':py:class:`{annotation.__qualname__}`'
+            return ':py:class:`{}`'.format(annotation.__qualname__)
 
     annotation_cls = annotation if inspect.isclass(annotation) else type(annotation)
     class_name = None
@@ -82,7 +82,7 @@ def format_annotation(annotation):
         elif annotation is AnyStr:
             return ':py:data:`~typing.AnyStr`'
         elif isinstance(annotation, TypeVar):
-            return f'\\{annotation!r}'
+            return '\\%r' % annotation
         elif (annotation is Union or getattr(annotation, '__origin__', None) is Union or
               hasattr(annotation, '__union_params__')):
             prefix = ':py:data:'
@@ -133,7 +133,7 @@ def format_annotation(annotation):
         if not class_name:
             class_name = annotation_cls.__qualname__.title()
 
-        return f'{prefix}`~{module}.{class_name}`{extra}'
+        return '{}`~{}.{}`{}'.format(prefix, module, class_name, extra)
     elif annotation is Ellipsis:
         return '...'
     elif inspect.isclass(annotation) or inspect.isclass(getattr(annotation, '__origin__', None)):
@@ -147,7 +147,8 @@ def format_annotation(annotation):
             extra = '\\[{}]'.format(', '.join(format_annotation(param) for param in params))
 
         module = annotation.__module__.split('.')[0]    # hack to 'fix' class linking for Instaloader project
-        return f':py:class:`~{module}.{annotation_cls.__qualname__}`{extra}'
+        return ':py:class:`~{}.{}`{}'.format(module, annotation_cls.__qualname__,
+                                             extra)
 
     return str(annotation)
 
@@ -183,7 +184,7 @@ def process_signature(app, what: str, name: str, obj, options, signature, return
                 # Python applies mangling so we need to prepend the class name.
                 # This doesn't happen if it always ends with double underscore.
                 class_name = obj.__qualname__.split('.')[-2]
-                method_name = f"_{class_name}{method_name}"
+                method_name = "_{c}{m}".format(c=class_name, m=method_name)
 
             method_object = outer.__dict__[method_name]
             if not isinstance(method_object, (classmethod, staticmethod)):
@@ -217,7 +218,7 @@ def process_docstring(app, what, name, obj, options, lines):
 
         for argname, annotation in type_hints.items():
             if argname.endswith('_'):
-                argname = f'{argname[:-1]}\\_'
+                argname = '{}\\_'.format(argname[:-1])
 
             formatted_annotation = format_annotation(annotation)
 
@@ -241,10 +242,10 @@ def process_docstring(app, what, name, obj, options, lines):
                         lines.append('')
                         insert_index += 1
 
-                    lines.insert(insert_index, f':rtype: {formatted_annotation}')
+                    lines.insert(insert_index, ':rtype: {}'.format(formatted_annotation))
             else:
-                searchfor = f':param {argname}:'
+                searchfor = ':param {}:'.format(argname)
                 for i, line in enumerate(lines):
                     if line.startswith(searchfor):
-                        lines.insert(i, f':type {argname}: {formatted_annotation}')
+                        lines.insert(i, ':type {}: {}'.format(argname, formatted_annotation))
                         break
