@@ -1233,6 +1233,37 @@ class StoryItem:
         return self._node['__typename']
 
     @property
+    def caption(self) -> Optional[str]:
+        """Caption."""
+        if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
+            return _optional_normalize(self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+        elif "caption" in self._node:
+            return _optional_normalize(self._node["caption"])
+        return None
+
+    @property
+    def caption_hashtags(self) -> List[str]:
+        """List of all lowercased hashtags (without preceeding #) that occur in the StoryItem's caption."""
+        if not self.caption:
+            return []
+        return _hashtag_regex.findall(self.caption.lower())
+
+    @property
+    def caption_mentions(self) -> List[str]:
+        """List of all lowercased profiles that are mentioned in the StoryItem's caption, without preceeding @."""
+        if not self.caption:
+            return []
+        return _mention_regex.findall(self.caption.lower())
+
+    @property
+    def pcaption(self) -> str:
+        """Printable caption, useful as a format specifier for --filename-pattern."""
+        def _elliptify(caption):
+            pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
+            return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
+        return _elliptify(self.caption) if self.caption else ''
+
+    @property
     def is_video(self) -> bool:
         """True if the StoryItem is a video."""
         return self._node['is_video']
