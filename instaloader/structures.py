@@ -868,6 +868,20 @@ class Profile:
         return normalize("NFC", self._metadata('biography'))
 
     @property
+    def biography_hashtags(self) -> List[str]:
+        """List of all lowercased hashtags (without preceeding #) that occur in the Profile's biography."""
+        if not self.biography:
+            return []
+        return _hashtag_regex.findall(self.biography.lower())
+
+    @property
+    def biography_mentions(self) -> List[str]:
+        """List of all lowercased profiles that are mentioned in the Profile's biography, without preceeding @."""
+        if not self.biography:
+            return []
+        return _mention_regex.findall(self.biography.lower())
+
+    @property
     def blocked_by_viewer(self) -> bool:
         return self._metadata('blocked_by_viewer')
 
