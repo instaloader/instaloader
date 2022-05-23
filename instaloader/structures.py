@@ -42,6 +42,23 @@ PostLocation.has_public_page.__doc__ = "Whether location has a public page."
 PostLocation.lat.__doc__ = "Latitude (:class:`float` or None)."
 PostLocation.lng.__doc__ = "Longitude (:class:`float` or None)."
 
+# This regular expression is by MiguelX413
+_hashtag_regex = re.compile(r"(?:#)((?:\w){1,150})")
+
+# This regular expression is modified from jStassen, adjusted to use Python's \w to
+# support Unicode and a word/beginning of string delimiter at the beginning to ensure
+# that no email addresses join the list of mentions, and adjusted to ensure usernames
+# only consisting of numbers are excluded.
+# http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
+_mention_regex = re.compile(r"(?:^|[^\w\n]|_])(?:@)(?!\d+$)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)", re.ASCII)
+
+
+def _optional_normalize(string: Optional[str]) -> Optional[str]:
+    if string is not None:
+        return normalize("NFC", string)
+    else:
+        return None
+
 
 class Post:
     """
@@ -365,16 +382,10 @@ class Post:
     @property
     def caption(self) -> Optional[str]:
         """Caption."""
-        def _normalize(string: Optional[str]) -> Optional[str]:
-            if string is not None:
-                return normalize("NFC", string)
-            else:
-                return None
-
         if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
-            return _normalize(self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+            return _optional_normalize(self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
         elif "caption" in self._node:
-            return _normalize(self._node["caption"])
+            return _optional_normalize(self._node["caption"])
         return None
 
     @property
@@ -382,22 +393,14 @@ class Post:
         """List of all lowercased hashtags (without preceeding #) that occur in the Post's caption."""
         if not self.caption:
             return []
-        # This regular expression is by MiguelX413
-        hashtag_regex = re.compile(r"(?:#)((?:\w){1,150})")
-        return re.findall(hashtag_regex, self.caption.lower())
+        return _hashtag_regex.findall(self.caption.lower())
 
     @property
     def caption_mentions(self) -> List[str]:
         """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
         if not self.caption:
             return []
-        # This regular expression is modified from jStassen, adjusted to use Python's \w to
-        # support Unicode and a word/beginning of string delimiter at the beginning to ensure
-        # that no email addresses join the list of mentions, and adjusted to ensure usernames
-        # only consisting of numbers are excluded.
-        # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-        mention_regex = re.compile(r"(?:^|[^\w\n]|_])(?:@)(?!\d+$)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)", re.ASCII)
-        return re.findall(mention_regex, self.caption.lower())
+        return _mention_regex.findall(self.caption.lower())
 
     @property
     def pcaption(self) -> str:
