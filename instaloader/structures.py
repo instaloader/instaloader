@@ -17,8 +17,12 @@ from .sectioniterator import SectionIterator
 
 try:
     import regex as re
+    # This regular expression is by MiguelX413
+    _hashtag_regex = re.compile(r"(?:#)((?:\w|\p{Extended_Pictographic}){1,150})")
 except ImportError:
     import re # type: ignore[no-redef]
+    # This regular expression is the same but without emoji support.
+    _hashtag_regex = re.compile(r"(?:#)((?:\w){1,150})")
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
@@ -45,9 +49,6 @@ PostLocation.slug.__doc__ = "URL friendly variant of location name."
 PostLocation.has_public_page.__doc__ = "Whether location has a public page."
 PostLocation.lat.__doc__ = "Latitude (:class:`float` or None)."
 PostLocation.lng.__doc__ = "Longitude (:class:`float` or None)."
-
-# This regular expression is by MiguelX413
-_hashtag_regex = re.compile(r"(?:#)((?:\w){1,150})")
 
 # This regular expression is modified from jStassen, adjusted to use Python's \w to
 # support Unicode and a word/beginning of string delimiter at the beginning to ensure
