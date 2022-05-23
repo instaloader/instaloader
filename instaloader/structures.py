@@ -1,6 +1,5 @@
 import json
 import lzma
-import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from contextlib import suppress
@@ -15,6 +14,11 @@ from .exceptions import *
 from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
 from .sectioniterator import SectionIterator
+
+try:
+    import regex as re
+except ImportError:
+    import re # type: ignore[no-redef]
 
 PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
 PostSidecarNode.__doc__ = "Item of a Sidecar Post."
