@@ -772,7 +772,8 @@ class Profile:
             similar_profiles = [profile.username for profile in top_search_results.get_profiles()]
             if similar_profiles:
                 if self.username in similar_profiles:
-                    raise ProfileNotExistsException(f"Profile {self.username} seems to exist, but could not be loaded.") from err
+                    raise ProfileNotExistsException(
+                        f"Profile {self.username} seems to exist, but could not be loaded.") from err
                 raise ProfileNotExistsException('Profile {} does not exist.\nThe most similar profile{}: {}.'
                                                 .format(self.username,
                                                         's are' if len(similar_profiles) > 1 else ' is',

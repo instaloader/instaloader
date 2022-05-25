@@ -1335,7 +1335,8 @@ class Instaloader:
                 profile_from_id = Profile.from_id(self.context, profile_id)
                 newname = profile_from_id.username
                 if profile_name == newname:
-                    self.context.error(f"Warning: Profile {profile_name} could not be retrieved by its name, but by its ID.")
+                    self.context.error(
+                        f"Warning: Profile {profile_name} could not be retrieved by its name, but by its ID.")
                     return profile_from_id
                 self.context.error("Profile {0} has changed its name to {1}.".format(profile_name, newname))
                 if latest_stamps is None:
