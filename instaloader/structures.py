@@ -4,7 +4,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
@@ -272,7 +272,7 @@ class Post:
     @property
     def date_utc(self) -> datetime:
         """Timestamp when the post was created (UTC)."""
-        return datetime.utcfromtimestamp(self._get_timestamp_date_created())
+        return datetime.fromtimestamp(self._get_timestamp_date_created(), tz=timezone.utc)
 
     @property
     def date(self) -> datetime:
