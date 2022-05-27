@@ -2,12 +2,11 @@ import json
 import lzma
 import re
 from base64 import b64decode, b64encode
-from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 from unicodedata import normalize
 
 from . import __version__
@@ -16,25 +15,57 @@ from .instaloadercontext import InstaloaderContext
 from .nodeiterator import FrozenNodeIterator, NodeIterator
 from .sectioniterator import SectionIterator
 
-PostSidecarNode = namedtuple('PostSidecarNode', ['is_video', 'display_url', 'video_url'])
-PostSidecarNode.__doc__ = "Item of a Sidecar Post."
+
+class PostSidecarNode(NamedTuple):
+    """Item of a Sidecar Post."""
+    is_video: bool
+    display_url: str
+    video_url: str
+
+
 PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
 PostSidecarNode.display_url.__doc__ = "URL of image or video thumbnail."
 PostSidecarNode.video_url.__doc__ = "URL of video or None."
 
-PostCommentAnswer = namedtuple('PostCommentAnswer', ['id', 'created_at_utc', 'text', 'owner', 'likes_count'])
+
+class PostCommentAnswer(NamedTuple):
+    id: int
+    created_at_utc: datetime
+    text: str
+    owner: 'Profile'
+    likes_count: int
+
+
 PostCommentAnswer.id.__doc__ = "ID number of comment."
 PostCommentAnswer.created_at_utc.__doc__ = ":class:`~datetime.datetime` when comment was created (UTC)."
 PostCommentAnswer.text.__doc__ = "Comment text."
 PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
 PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
-PostComment = namedtuple('PostComment', (*PostCommentAnswer._fields, 'answers')) # type: ignore
+
+class PostComment(NamedTuple):
+    id: int
+    created_at_utc: datetime
+    text: str
+    owner: 'Profile'
+    likes_count: int
+    answers: Iterator[PostCommentAnswer]
+
+
 for field in PostCommentAnswer._fields:
     getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__  # pylint: disable=no-member
-PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment." # type: ignore
+PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."
 
-PostLocation = namedtuple('PostLocation', ['id', 'name', 'slug', 'has_public_page', 'lat', 'lng'])
+
+class PostLocation(NamedTuple):
+    id: int
+    name: str
+    slug: str
+    has_public_page: Optional[bool]
+    lat: Optional[float]
+    lng: Optional[float]
+
+
 PostLocation.id.__doc__ = "ID number of location."
 PostLocation.name.__doc__ = "Location name."
 PostLocation.slug.__doc__ = "URL friendly variant of location name."
@@ -515,7 +546,7 @@ class Post:
     def get_comments(self) -> Iterable[PostComment]:
         r"""Iterate over all comments of the post.
 
-        Each comment is represented by a PostComment namedtuple with fields text (string), created_at (datetime),
+        Each comment is represented by a PostComment NamedTuple with fields text (string), created_at (datetime),
         id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
         if available.
 
@@ -625,7 +656,7 @@ class Post:
     @property
     def location(self) -> Optional[PostLocation]:
         """
-        If the Post has a location, returns PostLocation namedtuple with fields 'id', 'lat' and 'lng' and 'name'.
+        If the Post has a location, returns PostLocation NamedTuple with fields 'id', 'lat' and 'lng' and 'name'.
 
         .. versionchanged:: 4.2.9
            Require being logged in (as required by Instagram), return None if not logged-in.
