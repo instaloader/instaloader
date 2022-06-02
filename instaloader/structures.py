@@ -1204,7 +1204,8 @@ class StoryItem:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the StoryItem"""
-        if self.typename in ["GraphStoryImage", "StoryImage"] and self._context.iphone_support and self._context.is_logged_in:
+        if self.typename in ["GraphStoryImage", "StoryImage"] and \
+                self._context.iphone_support and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
