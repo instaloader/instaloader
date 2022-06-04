@@ -766,6 +766,10 @@ class Profile:
             if not self._has_full_metadata:
                 metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
                                                          params={})
+		
+		if metadata['data']['user'] is None:
+                    raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+		
                 self._node = metadata['data']['user']
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
