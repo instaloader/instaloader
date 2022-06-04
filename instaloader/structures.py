@@ -764,8 +764,9 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_json('{}/feed/'.format(self.username), params={})
-                self._node = metadata['entry_data']['ProfilePage'][0]['graphql']['user']
+                metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
+                                                         params={})
+                self._node = metadata['data']['user']
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
             top_search_results = TopSearchResults(self._context, self.username)
