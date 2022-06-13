@@ -12,7 +12,7 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
                InvalidArgumentException, Post, Profile, ProfileNotExistsException, StoryItem,
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
-from .instaloadercontext import default_user_agent
+from .instaloadercontext import default_user_agent, RateController
 from .lateststamps import LatestStamps
 
 
@@ -405,6 +405,8 @@ def main():
                             'retry logic.')
     g_how.add_argument('--no-iphone', action='store_true',
                         help='Do not attempt to download iPhone version of images and videos.')
+    g_how.add_argument('--rate-control', action='store_true',
+                        help='Enables rate control.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
     g_misc.add_argument('-q', '--quiet', action='store_true',
@@ -449,7 +451,8 @@ def main():
         download_profile_pic = not args.no_profile_pic or args.profile_pic_only
         download_posts = not (args.no_posts or args.stories_only or args.profile_pic_only)
         download_stories = args.stories or args.stories_only
-
+        rate_control = args.rate_control
+        
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_pictures=not args.no_pictures,
@@ -467,7 +470,8 @@ def main():
                              fatal_status_codes=args.abort_on,
                              iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
-                             sanitize_paths=args.sanitize_paths)
+                             sanitize_paths=args.sanitize_paths,
+                             rate_controller=lambda context: RateController(context) if rate_control else None)
         _main(loader,
               args.profile,
               username=args.login.lower() if args.login is not None else None,
