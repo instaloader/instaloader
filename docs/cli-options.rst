@@ -315,6 +315,12 @@ How to Download
 
    .. versionadded:: 4.8
 
+.. option:: --rate-control
+
+   Enables default rate control / rate limiting.
+
+   .. versionadded:: 4.9
+
 Miscellaneous Options
 ^^^^^^^^^^^^^^^^^^^^^
 

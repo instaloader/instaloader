@@ -1,0 +1,17 @@
+15c15
+< from .instaloadercontext import default_user_agent
+---
+> from .instaloadercontext import default_user_agent, RateController
+407a408,409
+>     g_how.add_argument('--rate-control', action='store_true',
+>                         help='Enables rate control.')
+452c454,455
+< 
+---
+>         rate_control = args.rate_control
+>         
+470c473,474
+<                              sanitize_paths=args.sanitize_paths)
+---
+>                              sanitize_paths=args.sanitize_paths,
+>                              rate_controller=lambda context: RateController(context) if rate_control else None)
