@@ -644,6 +644,13 @@ class Post:
                                       loc.get('lat'), loc.get('lng'))
         return self._location
 
+    @property
+    def is_pinned(self) -> bool:
+        """True if this Post has been pinned by at least one user.
+
+        .. versionadded: 4.10"""
+        return bool(self._node['pinned_for_users'])
+
 
 class Profile:
     """
