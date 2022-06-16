@@ -1042,7 +1042,7 @@ class Instaloader:
                         except PostChangedException:
                             post_changed = True
                             continue
-                    if fast_update and not downloaded and not post_changed:
+                    if fast_update and not downloaded and not post_changed and not post.is_pinned:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break
