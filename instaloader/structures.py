@@ -649,7 +649,7 @@ class Post:
         """True if this Post has been pinned by at least one user.
 
         .. versionadded: 4.10"""
-        return bool(self._node['pinned_for_users'])
+        return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
 class Profile:
