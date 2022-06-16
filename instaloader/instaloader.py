@@ -1010,7 +1010,10 @@ class Instaloader:
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
             for number, post in enumerate(posts, start=start_index + 1):
-                if (max_count is not None and number > max_count) or not takewhile(post):
+                should_stop = not takewhile(post)
+                if should_stop and post.is_pinned:
+                    continue
+                if (max_count is not None and number > max_count) or should_stop:
                     break
                 if displayed_count is not None:
                     self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,

@@ -129,7 +129,9 @@ class NodeIterator(Iterator[T]):
                 raise
             item = self._node_wrapper(node)
             if self._first_node is None:
-                self._first_node = node
+                pinned = 'pinned_for_users' in node and bool(node['pinned_for_users'])
+                if not pinned:
+                    self._first_node = node
             return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
