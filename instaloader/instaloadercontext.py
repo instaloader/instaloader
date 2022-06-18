@@ -170,21 +170,29 @@ class InstaloaderContext:
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
         return session
 
-    def save_session_to_file(self, sessionfile):
-        """Not meant to be used directly, use :meth:`Instaloader.save_session_to_file`."""
-        pickle.dump(requests.utils.dict_from_cookiejar(self._session.cookies), sessionfile)
+    def save_session(self):
+        """Not meant to be used directly, use :meth:`Instaloader.save_session`."""
+        return requests.utils.dict_from_cookiejar(self._session.cookies)
 
-    def load_session_from_file(self, username, sessionfile):
-        """Not meant to be used directly, use :meth:`Instaloader.load_session_from_file`."""
+    def load_session(self, username, sessiondata):
+        """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
         session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
+        session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-        session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
+        session.request = partial(session.request, timeout=self.request_timeout)  # type: ignore
         self._session = session
         self.username = username
+
+    def save_session_to_file(self, sessionfile):
+        """Not meant to be used directly, use :meth:`Instaloader.save_session_to_file`."""
+        pickle.dump(self.save_session(), sessionfile)
+
+    def load_session_from_file(self, username, sessionfile):
+        """Not meant to be used directly, use :meth:`Instaloader.load_session_from_file`."""
+        self.load_session(username, pickle.load(sessionfile))
 
     def test_login(self) -> Optional[str]:
         """Not meant to be used directly, use :meth:`Instaloader.test_login`."""
