@@ -48,7 +48,7 @@ autodoc_default_flags = ['show-inheritance', 'members', 'undoc-members']
 autodoc_member_order = 'bysource'
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
-                       'requests': ('https://requests.kennethreitz.org/en/master/', None)}
+                       'requests': ('https://requests.readthedocs.io/en/latest/', None)}
 
 nitpick_ignore = [('py:class', 'typing.Tuple')]
 
