@@ -191,7 +191,7 @@ class InstaloaderContext:
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
-    def login(self, user, passwd):
+    def login(self, user, passwd, proxies):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
 
         :raises InvalidArgumentException: If the provided username does not exist.
@@ -220,7 +220,8 @@ class InstaloaderContext:
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
         login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
+                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True,
+                             proxies=proxies)
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError as err:
