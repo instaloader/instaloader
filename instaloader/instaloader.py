@@ -587,6 +587,23 @@ class Instaloader:
         self.download_title_pic(hashtag.profile_pic_url, '#' + hashtag.name, 'profile_pic', None)
 
     @_requires_login
+    def save_session(self) -> dict:
+        """Saves internally stored :class:`requests.Session` object to :class:`dict`.
+
+        :raises LoginRequiredException: If called without being logged in.
+
+        .. versionadded:: 4.10
+        """
+        return self.context.save_session()
+
+    def load_session(self, username: str, session_data: dict) -> None:
+        """Internally stores :class:`requests.Session` object from :class:`dict`.
+
+        .. versionadded:: 4.10
+        """
+        self.context.load_session(username, session_data)
+
+    @_requires_login
     def save_session_to_file(self, filename: Optional[str] = None) -> None:
         """Saves internally stored :class:`requests.Session` object.
 
