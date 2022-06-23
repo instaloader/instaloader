@@ -591,11 +591,15 @@ class Instaloader:
         """Saves internally stored :class:`requests.Session` object to :class:`dict`.
 
         :raises LoginRequiredException: If called without being logged in.
+
+        .. versionadded:: 4.10
         """
         return self.context.save_session()
 
     def load_session(self, username: str, session_data: dict) -> None:
         """Internally stores :class:`requests.Session` object from :class:`dict`.
+
+        .. versionadded:: 4.10
         """
         self.context.load_session(username, session_data)
 
