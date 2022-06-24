@@ -7,7 +7,7 @@ from contextlib import suppress
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 from unicodedata import normalize
 
 from . import __version__
@@ -977,6 +977,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
             self._metadata('edge_owner_to_timeline_media'),
+            self._make_is_newest_checker()
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1010,6 +1011,7 @@ class Profile:
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
+            is_first=self._make_is_newest_checker()
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -1027,7 +1029,20 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/channel/'.format(self.username),
             self._metadata('edge_felix_video_timeline'),
+            self._make_is_newest_checker()
         )
+
+    def _make_is_newest_checker(self) -> Callable[[Post], bool]:
+        newest_date: Optional[Datetime] = None
+        def is_newest(p: Post) -> bool:
+            nonlocal newest_date
+            post_date = p.date_local
+            if newest_date is None or post_date > newest_date:
+                newest_date = post_date
+                return True
+            else:
+                return False
+        return is_newest
 
     def get_followers(self) -> NodeIterator['Profile']:
         """
