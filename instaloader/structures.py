@@ -977,7 +977,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
             self._metadata('edge_owner_to_timeline_media'),
-            self._make_is_newest_checker()
+            Profile._make_is_newest_checker()
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1011,7 +1011,7 @@ class Profile:
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
-            is_first=self._make_is_newest_checker()
+            is_first=Profile._make_is_newest_checker()
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -1029,11 +1029,12 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/channel/'.format(self.username),
             self._metadata('edge_felix_video_timeline'),
-            self._make_is_newest_checker()
+            Profile._make_is_newest_checker()
         )
 
-    def _make_is_newest_checker(self) -> Callable[[Post], bool]:
-        newest_date: Optional[Datetime] = None
+    @staticmethod
+    def _make_is_newest_checker() -> Callable[[Post], bool]:
+        newest_date: Optional[datetime] = None
         def is_newest(p: Post) -> bool:
             nonlocal newest_date
             post_date = p.date_local
