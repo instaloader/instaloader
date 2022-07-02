@@ -1092,6 +1092,7 @@ class StoryItem:
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
+	self._original_poster_username = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
@@ -1259,6 +1260,22 @@ class StoryItem:
                 return version_urls[0]
             url_candidates.sort()
             return url_candidates[-1][1]
+        return None
+    
+    @property
+    def is_reposted(self) -> bool:
+        """True if the StoryItem is reposted by other profile."""
+        for tappable_object in self._node['tappable_objects']:
+            if tappable_object['__typename'] == "GraphTappableMention":
+                self._original_poster_username = tappable_object['username']
+                return True
+        return False
+
+    @property
+    def original_poster_profile(self) -> Profile:
+        """:class:`Profile` instance of the story item's original poster."""
+        if self.is_reposted:
+            return Profile.from_username(self._context, self._original_poster_username)
         return None
 
 
