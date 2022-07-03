@@ -30,7 +30,7 @@ Iterator :class:`NodeIterator` and a context manager
 
    It can be serialized and deserialized with :func:`save_structure_to_file`
    and :func:`load_structure_from_file`, as well as with :mod:`json` and
-   :mod:`pickle` thanks to being a :func:`~collections.namedtuple`.
+   :mod:`pickle` thanks to being a :class:`~typing.NamedTuple`.
 
 ``resumable_iteration``
 """""""""""""""""""""""
