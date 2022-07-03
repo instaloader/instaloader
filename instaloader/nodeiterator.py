@@ -93,7 +93,7 @@ class NodeIterator(Iterator[T]):
         self._first_node: Optional[Dict] = None
 
     def _query(self, after: Optional[str] = None) -> Dict:
-        pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
+        pagination_variables: Dict[str, Any] = {'first': NodeIterator._graphql_page_length}
         if after is not None:
             pagination_variables['after'] = after
         try:

@@ -73,8 +73,8 @@ class Post:
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
-        self._full_metadata_dict = None  # type: Optional[Dict[str, Any]]
-        self._location = None            # type: Optional[PostLocation]
+        self._full_metadata_dict: Optional[Dict[str, Any]] = None
+        self._location: Optional[PostLocation] = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
@@ -675,7 +675,7 @@ class Profile:
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         assert 'username' in node
         self._context = context
-        self._has_public_story = None  # type: Optional[bool]
+        self._has_public_story: Optional[bool] = None
         self._node = node
         self._has_full_metadata = False
         self._iphone_struct_ = None
@@ -1286,8 +1286,8 @@ class Story:
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
         self._context = context
         self._node = node
-        self._unique_id = None      # type: Optional[str]
-        self._owner_profile = None  # type: Optional[Profile]
+        self._unique_id: Optional[str] = None
+        self._owner_profile: Optional[Profile] = None
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -1389,7 +1389,7 @@ class Highlight(Story):
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any], owner: Optional[Profile] = None):
         super().__init__(context, node)
         self._owner_profile = owner
-        self._items = None  # type: Optional[List[Dict[str, Any]]]
+        self._items: Optional[List[Dict[str, Any]]] = None
 
     def __repr__(self):
         return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
