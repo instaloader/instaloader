@@ -76,7 +76,8 @@ class NodeIterator(Iterator[T]):
                  node_wrapper: Callable[[Dict], T],
                  query_variables: Optional[Dict[str, Any]] = None,
                  query_referer: Optional[str] = None,
-                 first_data: Optional[Dict[str, Any]] = None):
+                 first_data: Optional[Dict[str, Any]] = None,
+                 is_first: Optional[Callable[[T], bool]] = None):
         self._context = context
         self._query_hash = query_hash
         self._edge_extractor = edge_extractor
@@ -91,6 +92,7 @@ class NodeIterator(Iterator[T]):
         else:
             self._data = self._query()
         self._first_node: Optional[Dict] = None
+        self._is_first = is_first
 
     def _query(self, after: Optional[str] = None) -> Dict:
         pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
@@ -128,8 +130,12 @@ class NodeIterator(Iterator[T]):
                 self._page_index, self._total_index = page_index, total_index
                 raise
             item = self._node_wrapper(node)
-            if self._first_node is None:
-                self._first_node = node
+            if self._is_first is not None:
+                if self._is_first(item):
+                    self._first_node = node
+            else:
+                if self._first_node is None:
+                    self._first_node = node
             return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
@@ -168,7 +174,13 @@ class NodeIterator(Iterator[T]):
         """
         If this iterator has produced any items, returns the first item produced.
 
+        It is possible to override what is considered the first item (for example, to consider the
+        newest item in case items are not in strict chronological order) by passing a callback
+        function as the `is_first` parameter when creating the class.
+
         .. versionadded:: 4.8
+        .. versionchanged:: 4.9.2
+           What is considered the first item can be overridden.
         """
         return self._node_wrapper(self._first_node) if self._first_node is not None else None
 

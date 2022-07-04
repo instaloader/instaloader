@@ -7,7 +7,7 @@ from contextlib import suppress
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 from unicodedata import normalize
 
 from . import __version__
@@ -644,6 +644,13 @@ class Post:
                                       loc.get('lat'), loc.get('lng'))
         return self._location
 
+    @property
+    def is_pinned(self) -> bool:
+        """True if this Post has been pinned by at least one user.
+
+        .. versionadded: 4.9.2"""
+        return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
+
 
 class Profile:
     """
@@ -970,6 +977,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
             self._metadata('edge_owner_to_timeline_media'),
+            Profile._make_is_newest_checker()
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1003,6 +1011,7 @@ class Profile:
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
+            is_first=Profile._make_is_newest_checker()
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -1020,7 +1029,21 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/channel/'.format(self.username),
             self._metadata('edge_felix_video_timeline'),
+            Profile._make_is_newest_checker()
         )
+
+    @staticmethod
+    def _make_is_newest_checker() -> Callable[[Post], bool]:
+        newest_date: Optional[datetime] = None
+        def is_newest(p: Post) -> bool:
+            nonlocal newest_date
+            post_date = p.date_local
+            if newest_date is None or post_date > newest_date:
+                newest_date = post_date
+                return True
+            else:
+                return False
+        return is_newest
 
     def get_followers(self) -> NodeIterator['Profile']:
         """
