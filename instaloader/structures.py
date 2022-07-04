@@ -648,7 +648,7 @@ class Post:
     def is_pinned(self) -> bool:
         """True if this Post has been pinned by at least one user.
 
-        .. versionadded: 4.10"""
+        .. versionadded: 4.9.2"""
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
