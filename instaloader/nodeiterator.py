@@ -10,15 +10,15 @@ from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional
 from .exceptions import AbortDownloadException, InvalidArgumentException, QueryReturnedBadRequestException
 from .instaloadercontext import InstaloaderContext
 
-FrozenNodeIterator = NamedTuple('FrozenNodeIterator',
-                                [('query_hash', str),
-                                 ('query_variables', Dict),
-                                 ('query_referer', Optional[str]),
-                                 ('context_username', Optional[str]),
-                                 ('total_index', int),
-                                 ('best_before', Optional[float]),
-                                 ('remaining_data', Optional[Dict]),
-                                 ('first_node', Optional[Dict])])
+class FrozenNodeIterator(NamedTuple):
+    query_hash: str
+    query_variables: Dict
+    query_referer: Optional[str]
+    context_username: Optional[str]
+    total_index: int
+    best_before: Optional[float]
+    remaining_data: Optional[Dict]
+    first_node: Optional[Dict]
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -93,7 +93,7 @@ class NodeIterator(Iterator[T]):
         self._first_node: Optional[Dict] = None
 
     def _query(self, after: Optional[str] = None) -> Dict:
-        pagination_variables = {'first': NodeIterator._graphql_page_length}  # type: Dict[str, Any]
+        pagination_variables: Dict[str, Any] = {'first': NodeIterator._graphql_page_length}
         if after is not None:
             pagination_variables['after'] = after
         try:
