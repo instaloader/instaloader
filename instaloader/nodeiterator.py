@@ -179,7 +179,7 @@ class NodeIterator(Iterator[T]):
         function as the `is_first` parameter when creating the class.
 
         .. versionadded:: 4.8
-        .. versionchanged:: 4.10
+        .. versionchanged:: 4.9.2
            What is considered the first item can be overridden.
         """
         return self._node_wrapper(self._first_node) if self._first_node is not None else None
