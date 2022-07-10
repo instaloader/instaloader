@@ -1123,7 +1123,7 @@ class StoryItem:
         self._context = context
         self._node = node
         self._owner_profile = owner_profile
-	self._original_poster_username = None
+        self._original_poster_username = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
