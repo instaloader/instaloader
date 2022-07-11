@@ -191,7 +191,7 @@ class InstaloaderContext:
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
-    def login(self, user, passwd):
+    def login(self, user, passwd, proxy_type, ip, port):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
 
         :raises InvalidArgumentException: If the provided username does not exist.
@@ -204,6 +204,11 @@ class InstaloaderContext:
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
         session = requests.Session()
+        proxy = {
+            "https": f"{proxy_type}://{ip}:{port}",
+            "http": f"{proxy_type}://{ip}:{port}",
+            "socks5": f"{proxy_type}://{ip}:{port}",
+        } if all((proxy_type, ip, port)) else None
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -219,8 +224,14 @@ class InstaloaderContext:
         # Workaround credits to pgrimaud.
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
-        login = session.post('https://www.instagram.com/accounts/login/ajax/',
-                             data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
+        if proxy is not None:
+            login = session.post('https://www.instagram.com/accounts/login/ajax/',
+                                 data={'enc_password': enc_password, 'username': user}, allow_redirects=True,
+                                 proxies=proxy)
+        else:
+            login = session.post('https://www.instagram.com/accounts/login/ajax/',
+                                 data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
+
         try:
             resp_json = login.json()
         except json.decoder.JSONDecodeError as err:

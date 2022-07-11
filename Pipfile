@@ -17,3 +17,4 @@ typed-ast = "*"
 
 [packages]
 requests = "*"
+pysocks = "*"
