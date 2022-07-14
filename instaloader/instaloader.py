@@ -478,9 +478,8 @@ class Instaloader:
             self.context.log(pcaption, end=' ', flush=True)
         except UnicodeEncodeError:
             self.context.log('txt', end=' ', flush=True)
-        with open(filename, 'wb') as text_file:
-            with BytesIO(bcaption) as bio:
-                shutil.copyfileobj(cast(IO, bio), text_file)
+        with open(filename, 'w', encoding='UTF-8') as fio:
+            fio.write(caption)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
     def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
