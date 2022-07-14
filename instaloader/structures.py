@@ -1292,7 +1292,7 @@ class StoryItem:
             url_candidates.sort()
             return url_candidates[-1][1]
         return None
-    
+
     @property
     def is_reposted(self) -> bool:
         """True if the StoryItem is reposted by other profile."""
