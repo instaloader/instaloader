@@ -904,6 +904,28 @@ class Profile:
         return normalize("NFC", self._metadata('biography'))
 
     @property
+    def biography_hashtags(self) -> List[str]:
+        """
+        List of all lowercased hashtags (without preceeding #) that occur in the Profile's biography.
+
+        .. versionadded:: 4.10
+        """
+        if not self.biography:
+            return []
+        return _hashtag_regex.findall(self.biography.lower())
+
+    @property
+    def biography_mentions(self) -> List[str]:
+        """
+        List of all lowercased profiles that are mentioned in the Profile's biography, without preceeding @.
+
+        .. versionadded:: 4.10
+        """
+        if not self.biography:
+            return []
+        return _mention_regex.findall(self.biography.lower())
+
+    @property
     def blocked_by_viewer(self) -> bool:
         return self._metadata('blocked_by_viewer')
 
@@ -1253,6 +1275,53 @@ class StoryItem:
     def typename(self) -> str:
         """Type of post, GraphStoryImage or GraphStoryVideo"""
         return self._node['__typename']
+
+    @property
+    def caption(self) -> Optional[str]:
+        """
+        Caption.
+
+        .. versionadded:: 4.10
+        """
+        if "edge_media_to_caption" in self._node and self._node["edge_media_to_caption"]["edges"]:
+            return _optional_normalize(self._node["edge_media_to_caption"]["edges"][0]["node"]["text"])
+        elif "caption" in self._node:
+            return _optional_normalize(self._node["caption"])
+        return None
+
+    @property
+    def caption_hashtags(self) -> List[str]:
+        """
+        List of all lowercased hashtags (without preceeding #) that occur in the StoryItem's caption.
+
+        .. versionadded:: 4.10
+        """
+        if not self.caption:
+            return []
+        return _hashtag_regex.findall(self.caption.lower())
+
+    @property
+    def caption_mentions(self) -> List[str]:
+        """
+        List of all lowercased profiles that are mentioned in the StoryItem's caption, without preceeding @.
+
+        .. versionadded:: 4.10
+        """
+        if not self.caption:
+            return []
+        return _mention_regex.findall(self.caption.lower())
+
+    @property
+    def pcaption(self) -> str:
+        """
+        Printable caption, useful as a format specifier for --filename-pattern.
+
+        .. versionadded:: 4.10
+        """
+        def _elliptify(caption):
+            pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
+            return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
+        return _elliptify(self.caption) if self.caption else ''
 
     @property
     def is_video(self) -> bool:
