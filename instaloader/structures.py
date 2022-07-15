@@ -901,7 +901,7 @@ class Profile:
 
     @property
     def biography(self) -> str:
-        return self._metadata('biography')
+        return normalize("NFC", self._metadata('biography'))
 
     @property
     def blocked_by_viewer(self) -> bool:
