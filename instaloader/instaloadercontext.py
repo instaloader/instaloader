@@ -19,6 +19,15 @@ import requests.utils
 
 from .exceptions import *
 
+print("USING FORK \n")
+
+try:
+    proxy = os.environ['IL_PROXY']
+    use_proxy = True
+    print("Using proxy: " + proxy)
+except:
+    use_proxy = False
+    print("Not using proxy")
 
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
@@ -313,7 +322,17 @@ class InstaloaderContext:
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         is_iphone_query = host == 'i.instagram.com'
         is_other_query = not is_graphql_query and host == "www.instagram.com"
-        sess = session if session else self._session
+
+        sess = requests.Session()
+
+        if use_proxy:
+            proxies = {
+                'http': 'http://' + proxy,
+                'https': 'https://' + proxy}
+            sess.proxies = proxies
+
+
+
         try:
             self.do_sleep()
             if is_graphql_query:
