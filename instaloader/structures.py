@@ -1172,8 +1172,13 @@ class StoryItem:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
-            self._iphone_struct_ = data['items'][0]
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            for item in data['reels'][str(self.owner_id)]['items']:
+                if item['pk'] == self.mediaid:
+                    self._iphone_struct_ = item
+                    break
         return self._iphone_struct_
 
     @property
