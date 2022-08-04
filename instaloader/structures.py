@@ -1175,6 +1175,7 @@ class StoryItem:
             data = self._context.get_iphone_json(
                 path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
             )
+            self._iphone_struct_ = {}
             for item in data['reels'][str(self.owner_id)]['items']:
                 if item['pk'] == self.mediaid:
                     self._iphone_struct_ = item
