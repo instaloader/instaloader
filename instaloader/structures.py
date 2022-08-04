@@ -1419,6 +1419,7 @@ class Highlight(Story):
         super().__init__(context, node)
         self._owner_profile = owner
         self._items = None  # type: Optional[List[Dict[str, Any]]]
+        self._iphone_struct_ = None  # type: Optional[Dict[str, Any]]
 
     def __repr__(self):
         return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
@@ -1450,12 +1451,27 @@ class Highlight(Story):
         """URL of the cropped version of the cover."""
         return self._node['cover_media_cropped_thumbnail']['url']
 
+    @property
+    def _iphone_struct(self) -> Dict[str, Any]:
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access iPhone media info endpoint.")
+        return self._iphone_struct_
+
     def _fetch_items(self):
         if not self._items:
             self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
                                                       {"reel_ids": [], "tag_names": [], "location_ids": [],
                                                        "highlight_reel_ids": [str(self.unique_id)],
                                                        "precomposed_overlay": False})['data']['reels_media'][0]['items']
+
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
+            )
+            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
 
     @property
     def itemcount(self) -> int:
@@ -1467,8 +1483,15 @@ class Highlight(Story):
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all associated highlight items."""
         self._fetch_items()
+        self._fetch_iphone_struct()
         assert self._items is not None
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
+        for item in self._items:
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Hashtag:
