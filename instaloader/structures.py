@@ -293,7 +293,7 @@ class Post:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -357,8 +357,7 @@ class Post:
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
                             display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                         except (InstaloaderException, KeyError, IndexError) as err:
-                            self._context.error('{} Unable to fetch high quality image version of {}.'.format(
-                                err, self))
+                            self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
@@ -953,7 +952,7 @@ class Profile:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
             except (InstaloaderException, KeyError) as err:
-                self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
+                self._context.error(f"Unable to fetch high quality profile pic: {err}")
                 return self._metadata("profile_pic_url_hd")
         else:
             return self._metadata("profile_pic_url_hd")
@@ -1243,7 +1242,7 @@ class StoryItem:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node['display_resources'][-1]['src']
 
     @property
