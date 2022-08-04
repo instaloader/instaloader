@@ -1451,14 +1451,6 @@ class Highlight(Story):
         """URL of the cropped version of the cover."""
         return self._node['cover_media_cropped_thumbnail']['url']
 
-    @property
-    def _iphone_struct(self) -> Dict[str, Any]:
-        if not self._context.iphone_support:
-            raise IPhoneSupportDisabledException("iPhone support is disabled.")
-        if not self._context.is_logged_in:
-            raise LoginRequiredException("--login required to access iPhone media info endpoint.")
-        return self._iphone_struct_
-
     def _fetch_items(self):
         if not self._items:
             self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
