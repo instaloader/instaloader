@@ -958,6 +958,13 @@ class Profile:
         else:
             return self._metadata("profile_pic_url_hd")
 
+    @property
+    def profile_pic_url_no_iphone(self) -> str:
+        """Return URL of lower-quality profile picture.
+
+        .. versionadded:: 4.9.3"""
+        return self._metadata("profile_pic_url_hd")
+
     def get_profile_pic_url(self) -> str:
         """.. deprecated:: 4.0.3
 

@@ -562,7 +562,7 @@ class Instaloader:
         if latest_stamps is None:
             self.download_profilepic(profile)
             return
-        profile_pic_basename = profile.profile_pic_url.split('/')[-1].split('?')[0]
+        profile_pic_basename = profile.profile_pic_url_no_iphone.split('/')[-1].split('?')[0]
         saved_basename = latest_stamps.get_profile_pic(profile.username)
         if saved_basename == profile_pic_basename:
             return
