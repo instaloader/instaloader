@@ -293,7 +293,7 @@ class Post:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -357,8 +357,7 @@ class Post:
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
                             display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                         except (InstaloaderException, KeyError, IndexError) as err:
-                            self._context.error('{} Unable to fetch high quality image version of {}.'.format(
-                                err, self))
+                            self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
@@ -953,7 +952,7 @@ class Profile:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
             except (InstaloaderException, KeyError) as err:
-                self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
+                self._context.error(f"Unable to fetch high quality profile pic: {err}")
                 return self._metadata("profile_pic_url_hd")
         else:
             return self._metadata("profile_pic_url_hd")
@@ -1179,8 +1178,14 @@ class StoryItem:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
-            self._iphone_struct_ = data['items'][0]
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            self._iphone_struct_ = {}
+            for item in data['reels'][str(self.owner_id)]['items']:
+                if item['pk'] == self.mediaid:
+                    self._iphone_struct_ = item
+                    break
         return self._iphone_struct_
 
     @property
@@ -1244,7 +1249,7 @@ class StoryItem:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node['display_resources'][-1]['src']
 
     @property
@@ -1319,6 +1324,7 @@ class Story:
         self._node = node
         self._unique_id = None      # type: Optional[str]
         self._owner_profile = None  # type: Optional[Profile]
+        self._iphone_struct_ = None  # type: Optional[Dict[str, Any]]
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -1389,9 +1395,23 @@ class Story:
         """The story owner's ID."""
         return self.owner_profile.userid
 
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            self._iphone_struct_ = data['reels'][str(self.owner_id)]
+
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+        self._fetch_iphone_struct()
+        for item in reversed(self._node['items']):
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct_['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Highlight(Story):
@@ -1421,6 +1441,7 @@ class Highlight(Story):
         super().__init__(context, node)
         self._owner_profile = owner
         self._items = None  # type: Optional[List[Dict[str, Any]]]
+        self._iphone_struct_ = None  # type: Optional[Dict[str, Any]]
 
     def __repr__(self):
         return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
@@ -1459,6 +1480,13 @@ class Highlight(Story):
                                                        "highlight_reel_ids": [str(self.unique_id)],
                                                        "precomposed_overlay": False})['data']['reels_media'][0]['items']
 
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
+            )
+            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+
     @property
     def itemcount(self) -> int:
         """Count of items associated with the :class:`Highlight` instance."""
@@ -1469,8 +1497,15 @@ class Highlight(Story):
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all associated highlight items."""
         self._fetch_items()
+        self._fetch_iphone_struct()
         assert self._items is not None
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
+        for item in self._items:
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct_['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Hashtag:
