@@ -1317,6 +1317,7 @@ class Story:
         self._node = node
         self._unique_id = None      # type: Optional[str]
         self._owner_profile = None  # type: Optional[Profile]
+        self._iphone_struct_ = None  # type: Optional[Dict[str, Any]]
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -1387,9 +1388,23 @@ class Story:
         """The story owner's ID."""
         return self.owner_profile.userid
 
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            self._iphone_struct_ = data['reels'][str(self.owner_id)]
+
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+        self._fetch_iphone_struct()
+        for item in reversed(self._node['items']):
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct_['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Highlight(Story):
