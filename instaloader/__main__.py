@@ -79,7 +79,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           fast_update: bool = False,
           latest_stamps_file: Optional[str] = None,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
-          storyitem_filter_str: Optional[str] = None) -> None:
+          storyitem_filter_str: Optional[str] = None,
+          download_limit: Optional[int] = None) -> None:
+
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -220,7 +222,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
                                       download_highlights, download_stories,
-                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps)
+                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps, download_limit=download_limit)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
@@ -349,6 +351,10 @@ def main():
     g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
                              'Applies to #hashtag, %%location_id, :feed, and :saved.')
+   
+    g_cond.add_argument('-dl', '--download-limit',
+                        help='Limit the download on the posts, respecting pictures-only, video-only '
+                             'or both applies to :posts only')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
@@ -483,7 +489,8 @@ def main():
               latest_stamps_file=args.latest_stamps,
               max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
-              storyitem_filter_str=args.storyitem_filter)
+              storyitem_filter_str=args.storyitem_filter,
+              download_limit=args.download_limit)
         loader.close()
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err) from err

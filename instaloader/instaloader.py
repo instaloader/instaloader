@@ -699,6 +699,7 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
+        len_downloaded = 0
         if post.typename == 'GraphSidecar':
             if self.download_pictures or self.download_videos:
                 if not _all_already_downloaded(
@@ -712,6 +713,7 @@ class Instaloader:
                             post.get_sidecar_nodes(self.slide_start, self.slide_end),
                             start=self.slide_start % post.mediacount + 1
                     ):
+                        len_downloaded = edge_number
                         suffix = str(edge_number)  # type: Optional[str]
                         if '{filename}' in self.filename_pattern:
                             suffix = None
@@ -722,6 +724,7 @@ class Instaloader:
                             # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
                             downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.display_url,
                                                             mtime=post.date_local, filename_suffix=suffix)
+                            len_downloaded += 1
                         if sidecar_node.is_video and self.download_videos:
                             # pylint:disable=cell-var-from-loop
                             sidecar_filename = self.__prepare_filename(filename_template,
@@ -729,6 +732,8 @@ class Instaloader:
                             # Download sidecar video if desired
                             downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.video_url,
                                                             mtime=post.date_local, filename_suffix=suffix)
+                            len_downloaded += 1
+
                 else:
                     downloaded = False
         elif post.typename == 'GraphImage':
@@ -736,12 +741,14 @@ class Instaloader:
             if self.download_pictures:
                 downloaded = (not _already_downloaded(filename + ".jpg") and
                               self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+                len_downloaded += 1
         elif post.typename == 'GraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 with self.context.error_catcher("Video thumbnail of {}".format(post)):
                     downloaded = (not _already_downloaded(filename + ".jpg") and
                                   self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+                    len_downloaded += 1
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
@@ -754,6 +761,7 @@ class Instaloader:
         if post.is_video and self.download_videos:
             downloaded &= (not _already_downloaded(filename + ".mp4") and
                            self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local))
+            len_downloaded += 1
 
         # Download geotags if desired
         if self.download_geotags and post.location:
@@ -768,7 +776,8 @@ class Instaloader:
             self.save_metadata_json(filename, post)
 
         self.context.log()
-        return downloaded
+        len_downloaded = 0 if downloaded is False else len_downloaded
+        return downloaded, len_downloaded
 
     @_requires_login
     def get_stories(self, userids: Optional[List[int]] = None) -> Iterator[Story]:
@@ -969,7 +978,8 @@ class Instaloader:
                             max_count: Optional[int] = None,
                             total_count: Optional[int] = None,
                             owner_profile: Optional[Profile] = None,
-                            takewhile: Optional[Callable[[Post], bool]] = None) -> None:
+                            takewhile: Optional[Callable[[Post], bool]] = None,
+                            download_limit: Optional[int] = None) -> None:
         """
         Download the Posts returned by given Post Iterator.
 
@@ -997,6 +1007,12 @@ class Instaloader:
             sanitized_target = _PostPathFormatter.sanitize_path(target, self.sanitize_paths)
         if takewhile is None:
             takewhile = lambda _: True
+        
+        download_limit = None if download_limit is None else int(download_limit)
+        total_downloaded = 0
+        if (download_limit is not None and download_limit > displayed_count):
+            raise ProfileHasNoPicsException("User has less photos in account")
+
         with resumable_iteration(
                 context=self.context,
                 iterator=posts,
@@ -1012,6 +1028,10 @@ class Instaloader:
                 should_stop = not takewhile(post)
                 if should_stop and post.is_pinned:
                     continue
+
+                if download_limit is not None and total_downloaded >= download_limit:
+                    break
+
                 if (max_count is not None and number > max_count) or should_stop:
                     break
                 if displayed_count is not None:
@@ -1039,12 +1059,13 @@ class Instaloader:
                     post_changed = False
                     while True:
                         try:
-                            downloaded = self.download_post(post, target=target)
+                            downloaded, len_downloaded = self.download_post(post, target=target)
+                            total_downloaded += len_downloaded
                             break
                         except PostChangedException:
                             post_changed = True
                             continue
-                    if fast_update and not downloaded and not post_changed and not post.is_pinned:
+                    if fast_update and not downloaded and not post_changed:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break
@@ -1376,7 +1397,8 @@ class Instaloader:
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
                           raise_errors: bool = False,
-                          latest_stamps: Optional[LatestStamps] = None):
+                          latest_stamps: Optional[LatestStamps] = None,
+                          download_limit: Optional[int] = None):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -1466,7 +1488,7 @@ class Instaloader:
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
-                                             takewhile=posts_takewhile)
+                                             takewhile=posts_takewhile, download_limit=download_limit)
                     if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
                                                               posts_to_download.first_item.date_local)
@@ -1483,7 +1505,8 @@ class Instaloader:
                          download_stories: bool = False, download_stories_only: bool = False,
                          download_tagged: bool = False, download_tagged_only: bool = False,
                          post_filter: Optional[Callable[[Post], bool]] = None,
-                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None) -> None:
+                         storyitem_filter: Optional[Callable[[StoryItem], bool]] = None,
+                         download_limit: Optional[int] = None) -> None:
         """Download one profile
 
         .. deprecated:: 4.1
