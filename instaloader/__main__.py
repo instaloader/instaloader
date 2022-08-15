@@ -34,13 +34,11 @@ def targetlist_parser(targets: List[str]) -> List[str]:
         # Ignore blank lines and line startswith
         if len(target) <= 0 or target.isspace() or target.strip().startswith("#"):
             continue
-     
         # Removing # from line
         if "#" in target:
             target = re.sub("#.+", "", target)
 
         parsed_targets.append(target.strip())
-  
     return parsed_targets
 
 def usage_string():
@@ -155,7 +153,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     anonymous_retry_profiles = set()
     try:
         # Generate set of profiles, already downloading non-profile targets
-        targetlist = targetlist_parser(targetlist) # Removes Blanklinks 
+        targetlist = targetlist_parser(targetlist) # Removes Blanklinks
         for target in targetlist:
             if (target.endswith('.json') or target.endswith('.json.xz')) and os.path.isfile(target):
                 with instaloader.context.error_catcher(target):
