@@ -15,6 +15,33 @@ from .instaloader import (get_default_session_filename, get_default_stamps_filen
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 
+def targetlist_parser(targets: List[str]) -> List[str]:
+    """Take the list of targets and remove 
+    - Blanklines
+    - lines starts withs #
+    - # from line, used as line comment
+
+    Args:
+        targets (List[str]): List contains args strings
+
+    Returns:
+        List[str]: Clean list
+    """
+
+    parsed_targets = []
+
+    for target in targets:
+        # Ignore blank lines and line startswith # 
+        if len(target) <= 0 or target.isspace() or target.strip().startswith("#"):
+            continue
+        
+        # Removing # from line 
+        if "#" in target:
+            target = re.sub("#.+", "", target)
+
+        parsed_targets.append(target.strip())
+    
+    return parsed_targets
 
 def usage_string():
     # NOTE: duplicated in README.rst and docs/index.rst
@@ -128,6 +155,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     anonymous_retry_profiles = set()
     try:
         # Generate set of profiles, already downloading non-profile targets
+        targetlist = targetlist_parser(targetlist) # Removes Blanklinks, # 
         for target in targetlist:
             if (target.endswith('.json') or target.endswith('.json.xz')) and os.path.isfile(target):
                 with instaloader.context.error_catcher(target):
@@ -250,7 +278,8 @@ def main():
     parser = ArgumentParser(description=__doc__, add_help=False, usage=usage_string(),
                             epilog="The complete documentation can be found at "
                                    "https://instaloader.github.io/.",
-                            fromfile_prefix_chars='+')
+                            fromfile_prefix_chars='+'
+                            )
 
     g_targets = parser.add_argument_group("What to Download",
                                           "Specify a list of targets. For each of these, Instaloader creates a folder "
