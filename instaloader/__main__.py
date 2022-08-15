@@ -16,7 +16,7 @@ from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 
 def targetlist_parser(targets: List[str]) -> List[str]:
-    """Take the list of targets and remove 
+    """Take the list of targets and remove
     - Blanklines
     - lines starts withs #
     - # from line, used as line comment
@@ -31,16 +31,16 @@ def targetlist_parser(targets: List[str]) -> List[str]:
     parsed_targets = []
 
     for target in targets:
-        # Ignore blank lines and line startswith # 
+        # Ignore blank lines and line startswith
         if len(target) <= 0 or target.isspace() or target.strip().startswith("#"):
             continue
-        
-        # Removing # from line 
+     
+        # Removing # from line
         if "#" in target:
             target = re.sub("#.+", "", target)
 
         parsed_targets.append(target.strip())
-    
+  
     return parsed_targets
 
 def usage_string():
@@ -155,7 +155,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     anonymous_retry_profiles = set()
     try:
         # Generate set of profiles, already downloading non-profile targets
-        targetlist = targetlist_parser(targetlist) # Removes Blanklinks, # 
+        targetlist = targetlist_parser(targetlist) # Removes Blanklinks 
         for target in targetlist:
             if (target.endswith('.json') or target.endswith('.json.xz')) and os.path.isfile(target):
                 with instaloader.context.error_catcher(target):
