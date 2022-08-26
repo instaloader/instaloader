@@ -15,6 +15,7 @@ from .instaloader import (get_default_session_filename, get_default_stamps_filen
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 
+import subprocess
 
 def usage_string():
     # NOTE: duplicated in README.rst and docs/index.rst
@@ -407,6 +408,10 @@ def main():
                         help='Do not attempt to download iPhone version of images and videos.')
 
     g_misc = parser.add_argument_group('Miscellaneous Options')
+
+    g_misc.add_argument('-U', '--update', action='store_true',
+                        help='Updates Instaloader to latest available version using pip')
+
     g_misc.add_argument('-q', '--quiet', action='store_true',
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
@@ -444,6 +449,13 @@ def main():
 
         if args.no_pictures and args.fast_update:
             raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+
+        if args.update:
+            subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
+            subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'instaloader'])
+            print("Update complete")
+            sys.exit(0) # Exit system with success code
+
 
         # Determine what to download
         download_profile_pic = not args.no_profile_pic or args.profile_pic_only
