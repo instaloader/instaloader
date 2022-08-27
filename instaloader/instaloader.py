@@ -623,7 +623,7 @@ class Instaloader:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
         return self.context.test_login()
 
-    def login(self, user: str, passwd: str, proxies: dict) -> None:
+    def login(self, user: str, passwd: str, proxies: dict = None) -> None:
         """Log in to instagram with given username and password and internally store session object.
 
         :raises InvalidArgumentException: If the provided username does not exist.
