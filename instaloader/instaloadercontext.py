@@ -191,7 +191,7 @@ class InstaloaderContext:
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
-    def login(self, user, passwd):
+    def login(self, user, passwd, proxies):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
 
         :raises InvalidArgumentException: If the provided username does not exist.
@@ -204,6 +204,7 @@ class InstaloaderContext:
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
         session = requests.Session()
+        session.proxies = proxies
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
