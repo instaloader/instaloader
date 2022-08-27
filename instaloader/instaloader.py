@@ -604,7 +604,7 @@ class Instaloader:
             self.context.save_session_to_file(sessionfile)
             self.context.log("Saved session to %s." % filename)
 
-    def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
+    def load_session_from_file(self, username: str, filename: Optional[str] = None, proxies=None) -> None:
         """Internally stores :class:`requests.Session` object loaded from file.
 
         If filename is None, the file with the default session path is loaded.
@@ -616,7 +616,7 @@ class Instaloader:
             if not os.path.exists(filename):
                 filename = get_legacy_session_filename(username)
         with open(filename, 'rb') as sessionfile:
-            self.context.load_session_from_file(username, sessionfile)
+            self.context.load_session_from_file(username, sessionfile, proxies)
             self.context.log("Loaded session from %s." % filename)
 
     def test_login(self) -> Optional[str]:
@@ -633,7 +633,7 @@ class Instaloader:
            :meth:`Instaloader.two_factor_login`."""
         self.context.login(user, passwd, proxies)
 
-    def two_factor_login(self, two_factor_code, proxies) -> None:
+    def two_factor_login(self, two_factor_code, proxies=None) -> None:
         """Second step of login if 2FA is enabled.
         Not meant to be used directly, use :meth:`Instaloader.two_factor_login`.
 
@@ -641,7 +641,7 @@ class Instaloader:
         :raises BadCredentialsException: 2FA verification code invalid.
 
         .. versionadded:: 4.2"""
-        self.context.two_factor_login(two_factor_code)
+        self.context.two_factor_login(two_factor_code, proxies)
 
     @staticmethod
     def __prepare_filename(filename_template: str, url: Callable[[], str]) -> str:

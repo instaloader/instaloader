@@ -174,9 +174,11 @@ class InstaloaderContext:
         """Not meant to be used directly, use :meth:`Instaloader.save_session_to_file`."""
         pickle.dump(requests.utils.dict_from_cookiejar(self._session.cookies), sessionfile)
 
-    def load_session_from_file(self, username, sessionfile):
+    def load_session_from_file(self, username, sessionfile, proxies=None):
         """Not meant to be used directly, use :meth:`Instaloader.load_session_from_file`."""
         session = requests.Session()
+        if proxies is not None:
+            session.proxies = proxies
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
@@ -268,7 +270,7 @@ class InstaloaderContext:
         self._session = session
         self.username = user
 
-    def two_factor_login(self, two_factor_code):
+    def two_factor_login(self, two_factor_code, proxies):
         """Second step of login if 2FA is enabled.
         Not meant to be used directly, use :meth:`Instaloader.two_factor_login`.
 
