@@ -232,11 +232,12 @@ class Instaloader:
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
                  title_pattern: Optional[str] = None,
-                 sanitize_paths: bool = False):
+                 sanitize_paths: bool = False,
+                 proxies: dict = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+                                          iphone_support, proxies)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"

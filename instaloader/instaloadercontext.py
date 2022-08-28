@@ -25,9 +25,10 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()
+    new.proxies = session.proxies
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-    new.request = partial(new.request, timeout=request_timeout) # type: ignore
+    new.request = partial(new.request, timeout=request_timeout)  # type: ignore
     return new
 
 
@@ -55,7 +56,7 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True, proxies: dict = None):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -68,6 +69,7 @@ class InstaloaderContext:
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
+        self.proxies = proxies
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
@@ -161,6 +163,8 @@ class InstaloaderContext:
     def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
         session = requests.Session()
+        if self.proxies is not None:
+            session.proxies = self.proxies
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -174,11 +178,11 @@ class InstaloaderContext:
         """Not meant to be used directly, use :meth:`Instaloader.save_session_to_file`."""
         pickle.dump(requests.utils.dict_from_cookiejar(self._session.cookies), sessionfile)
 
-    def load_session_from_file(self, username, sessionfile, proxies=None):
+    def load_session_from_file(self, username, sessionfile):
         """Not meant to be used directly, use :meth:`Instaloader.load_session_from_file`."""
         session = requests.Session()
-        if proxies is not None:
-            session.proxies = proxies
+        if self.proxies is not None:
+            session.proxies = self.proxies
         session.cookies = requests.utils.cookiejar_from_dict(pickle.load(sessionfile))
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
@@ -193,7 +197,7 @@ class InstaloaderContext:
         data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
         return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
 
-    def login(self, user, passwd, proxies):
+    def login(self, user, passwd):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
 
         :raises InvalidArgumentException: If the provided username does not exist.
@@ -206,8 +210,8 @@ class InstaloaderContext:
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
         session = requests.Session()
-        if proxies is not None:
-            session.proxies = proxies
+        if self.proxies is not None:
+            session.proxies = self.proxies
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
