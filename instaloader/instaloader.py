@@ -624,7 +624,7 @@ class Instaloader:
         """Returns the Instagram username to which given :class:`requests.Session` object belongs, or None."""
         return self.context.test_login()
 
-    def login(self, user: str, passwd: str, proxies: dict = None) -> None:
+    def login(self, user: str, passwd: str) -> None:
         """Log in to instagram with given username and password and internally store session object.
 
         :raises InvalidArgumentException: If the provided username does not exist.
@@ -632,7 +632,7 @@ class Instaloader:
         :raises ConnectionException: If connection to Instagram failed.
         :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
            :meth:`Instaloader.two_factor_login`."""
-        self.context.login(user, passwd, proxies)
+        self.context.login(user, passwd)
 
     def two_factor_login(self, two_factor_code, proxies=None) -> None:
         """Second step of login if 2FA is enabled.
