@@ -77,7 +77,7 @@ class NodeIterator(Iterator[T]):
                  query_variables: Optional[Dict[str, Any]] = None,
                  query_referer: Optional[str] = None,
                  first_data: Optional[Dict[str, Any]] = None,
-                 is_first: Optional[Callable[[T], bool]] = None):
+                 is_first: Optional[Callable[[T, Optional[T]], bool]] = None):
         self._context = context
         self._query_hash = query_hash
         self._edge_extractor = edge_extractor
@@ -92,6 +92,7 @@ class NodeIterator(Iterator[T]):
         else:
             self._data = self._query()
         self._first_node: Optional[Dict] = None
+        self._first_item: Optional[T] = None
         self._is_first = is_first
 
     def _query(self, after: Optional[str] = None) -> Dict:
@@ -131,11 +132,13 @@ class NodeIterator(Iterator[T]):
                 raise
             item = self._node_wrapper(node)
             if self._is_first is not None:
-                if self._is_first(item):
+                if self._is_first(item, self._first_item):
                     self._first_node = node
+                    self._first_item = item
             else:
                 if self._first_node is None:
                     self._first_node = node
+                    self._first_item = item
             return item
         if self._data['page_info']['has_next_page']:
             query_response = self._query(self._data['page_info']['end_cursor'])
@@ -182,7 +185,7 @@ class NodeIterator(Iterator[T]):
         .. versionchanged:: 4.9.2
            What is considered the first item can be overridden.
         """
-        return self._node_wrapper(self._first_node) if self._first_node is not None else None
+        return self._first_item
 
     def freeze(self) -> FrozenNodeIterator:
         """Freeze the iterator for later resuming."""
@@ -227,6 +230,7 @@ class NodeIterator(Iterator[T]):
         self._data = frozen.remaining_data
         if frozen.first_node is not None:
             self._first_node = frozen.first_node
+            self._first_item = self._node_wrapper(self._first_node)
 
 
 @contextmanager
