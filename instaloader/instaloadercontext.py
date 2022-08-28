@@ -57,7 +57,7 @@ class InstaloaderContext:
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True, proxies: dict = None):
-
+        self.proxies = proxies
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
@@ -69,7 +69,6 @@ class InstaloaderContext:
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
-        self.proxies = proxies
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
