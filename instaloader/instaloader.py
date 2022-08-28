@@ -605,7 +605,7 @@ class Instaloader:
             self.context.save_session_to_file(sessionfile)
             self.context.log("Saved session to %s." % filename)
 
-    def load_session_from_file(self, username: str, filename: Optional[str] = None, proxies=None) -> None:
+    def load_session_from_file(self, username: str, filename: Optional[str] = None) -> None:
         """Internally stores :class:`requests.Session` object loaded from file.
 
         If filename is None, the file with the default session path is loaded.
@@ -617,7 +617,7 @@ class Instaloader:
             if not os.path.exists(filename):
                 filename = get_legacy_session_filename(username)
         with open(filename, 'rb') as sessionfile:
-            self.context.load_session_from_file(username, sessionfile, proxies)
+            self.context.load_session_from_file(username, sessionfile)
             self.context.log("Loaded session from %s." % filename)
 
     def test_login(self) -> Optional[str]:
