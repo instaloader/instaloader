@@ -880,13 +880,18 @@ class Instaloader:
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
-        if not item.is_video or self.download_video_thumbnails is True:
+        video_url_fetch_failed = False
+        if item.is_video and self.download_videos is True:
+            video_url = item.video_url
+            if video_url:
+                filename = self.__prepare_filename(filename_template, lambda: str(video_url))
+                downloaded |= (not _already_downloaded(filename + ".mp4") and
+                               self.download_pic(filename=filename, url=video_url, mtime=date_local))
+            else:
+                video_url_fetch_failed = True
+        if video_url_fetch_failed or not item.is_video or self.download_video_thumbnails is True:
             downloaded = (not _already_downloaded(filename + ".jpg") and
                           self.download_pic(filename=filename, url=item.url, mtime=date_local))
-        if item.is_video and self.download_videos is True:
-            filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
-            downloaded |= (not _already_downloaded(filename + ".mp4") and
-                           self.download_pic(filename=filename, url=item.video_url, mtime=date_local))
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
         if metadata_string:
