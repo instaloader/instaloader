@@ -337,6 +337,8 @@ class Instaloader:
         Returns true, if file was actually downloaded, i.e. updated."""
         if filename_suffix is not None:
             filename += '_' + filename_suffix
+        if not url:
+            return False
         urlmatch = re.search('\\.[a-z0-9]*\\?', url)
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
         nominal_filename = filename + '.' + file_extension
