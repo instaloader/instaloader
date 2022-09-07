@@ -77,7 +77,7 @@ class NodeIterator(Iterator[T]):
                  query_variables: Optional[Dict[str, Any]] = None,
                  query_referer: Optional[str] = None,
                  first_data: Optional[Dict[str, Any]] = None,
-                 is_first: Optional[Callable[[T], bool]] = None):
+                 is_first: Optional[Callable[[T, Optional[T]], bool]] = None):
         self._context = context
         self._query_hash = query_hash
         self._edge_extractor = edge_extractor
@@ -131,7 +131,7 @@ class NodeIterator(Iterator[T]):
                 raise
             item = self._node_wrapper(node)
             if self._is_first is not None:
-                if self._is_first(item):
+                if self._is_first(item, self.first_item):
                     self._first_node = node
             else:
                 if self._first_node is None:

@@ -1039,17 +1039,8 @@ class Profile:
         )
 
     @staticmethod
-    def _make_is_newest_checker() -> Callable[[Post], bool]:
-        newest_date: Optional[datetime] = None
-        def is_newest(p: Post) -> bool:
-            nonlocal newest_date
-            post_date = p.date_local
-            if newest_date is None or post_date > newest_date:
-                newest_date = post_date
-                return True
-            else:
-                return False
-        return is_newest
+    def _make_is_newest_checker() -> Callable[[Post, Optional[Post]], bool]:
+        return lambda post, first: first is None or post.date_local > first.date_local
 
     def get_followers(self) -> NodeIterator['Profile']:
         """
