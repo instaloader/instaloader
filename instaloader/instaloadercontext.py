@@ -73,7 +73,7 @@ class InstaloaderContext:
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
 
-        self._rate_controller = rate_controller(self) if rate_controller is not None else RateController(self)
+        self._rate_controller = rate_controller(self) if rate_controller is not None else RateController(self, sleep)
 
         # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
@@ -586,7 +586,8 @@ class RateController:
        L = instaloader.Instaloader(rate_controller=lambda ctx: MyRateController(ctx))
     """
 
-    def __init__(self, context: InstaloaderContext):
+    def __init__(self, context: InstaloaderContext, sleep: bool):
+        self._is_sleep = sleep
         self._context = context
         self._query_timestamps = dict()  # type: Dict[str, List[float]]
         self._earliest_next_request_time = 0.0
@@ -597,7 +598,8 @@ class RateController:
         # Not static, to allow for the behavior of this method to depend on context-inherent properties, such as
         # whether we are logged in.
         # pylint:disable=no-self-use
-        time.sleep(secs)
+        if self.sleep:
+            time.sleep(secs)
 
     def _dump_query_timestamps(self, current_time: float, failed_query_type: str):
         windows = [10, 11, 20, 22, 30, 60]
