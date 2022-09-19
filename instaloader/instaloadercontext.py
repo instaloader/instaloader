@@ -9,6 +9,7 @@ import sys
 import textwrap
 import time
 import urllib.parse
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import partial
@@ -36,6 +37,34 @@ def default_user_agent() -> str:
            '(KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
 
 
+def default_iphone_headers() -> Dict[str, Any]:
+    return {'User-Agent': 'Instagram 252.1.0.19.111 (iPad13,8; iOS 15_7; en_US; en-US; ' \
+                          'scale=2.00; 2048x2732; 397943498) AppleWebKit/420+',
+            'x-ads-opt-out': '1',
+            'x-bloks-is-panorama-enabled': 'true',
+            'x-bloks-version-id': 'f4b030ed39b78b24fcc16471d1bffebceaf7d7c01800b24320cc095bda9c63bd',
+            'x-fb-client-ip': 'True',
+            'x-fb-connection-type': 'wifi',
+            'x-fb-http-engine': 'Liger',
+            'x-fb-server-cluster': 'True',
+            'x-fb': '1',
+            'x-ig-abr-connection-speed-kbps': '2',
+            'x-ig-app-id': '124024574287414',
+            'x-ig-app-locale': 'en-US',
+            'x-ig-app-startup-country': 'US',
+            'x-ig-bandwidth-speed-kbps': '0.000',
+            'x-ig-capabilities': '36r/F/8=',
+            'x-ig-connection-speed': '{}kbps'.format(random.randint(1000, 20000)),
+            'x-ig-connection-type': 'WiFi',
+            'x-ig-device-locale': 'en-US',
+            'x-ig-mapped-locale': 'en-US',
+            'x-ig-timezone-offset': str((datetime.now().astimezone().utcoffset() or timedelta(seconds=0)).seconds),
+            'x-ig-www-claim': '0',
+            'x-pigeon-session-id': str(uuid.uuid4()),
+            'x-tigon-is-retry': 'False',
+            'x-whatsapp': '0'}
+
+
 class InstaloaderContext:
     """Class providing methods for (error) logging and low-level communication with Instagram.
 
@@ -61,6 +90,7 @@ class InstaloaderContext:
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
         self.username = None
+        self.user_id = None
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
@@ -68,6 +98,7 @@ class InstaloaderContext:
         self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
+        self.iphone_headers = default_iphone_headers()
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log = []                      # type: List[str]
@@ -87,14 +118,20 @@ class InstaloaderContext:
     def anonymous_copy(self):
         session = self._session
         username = self.username
+        user_id = self.user_id
+        iphone_headers = self.iphone_headers
         self._session = self.get_anonymous_session()
         self.username = None
+        self.user_id = None
+        self.iphone_headers = default_iphone_headers()
         try:
             yield self
         finally:
             self._session.close()
             self.username = username
             self._session = session
+            self.user_id = user_id
+            self.iphone_headers = iphone_headers
 
     @property
     def is_logged_in(self) -> bool:
@@ -265,6 +302,7 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
+        self.user_id = resp_json['userId']
 
     def two_factor_login(self, two_factor_code):
         """Second step of login if 2FA is enabled.
@@ -298,7 +336,8 @@ class InstaloaderContext:
             time.sleep(min(random.expovariate(0.6), 15.0))
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
-                 session: Optional[requests.Session] = None, _attempt=1) -> Dict[str, Any]:
+                 session: Optional[requests.Session] = None, _attempt=1,
+                 response_headers: Dict[str, Any] = None) -> Dict[str, Any]:
         """JSON request to Instagram.
 
         :param path: URL, relative to the given domain which defaults to www.instagram.com/
@@ -341,6 +380,9 @@ class InstaloaderContext:
                                     params=params, allow_redirects=False)
                 else:
                     break
+            if response_headers is not None:
+                response_headers.clear()
+                response_headers.update(resp.headers)
             if resp.status_code == 400:
                 raise QueryReturnedBadRequestException("400 Bad Request")
             if resp.status_code == 404:
@@ -391,7 +433,8 @@ class InstaloaderContext:
                         self._rate_controller.handle_429('iphone')
                     if is_other_query:
                         self._rate_controller.handle_429('other')
-                return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1)
+                return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1,
+                                     response_headers=response_headers)
             except KeyboardInterrupt:
                 self.error("[skipped by user]", repeat_at_end=False)
                 raise ConnectionException(error_string) from err
@@ -481,11 +524,57 @@ class InstaloaderContext:
 
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
-            tempsession.headers['User-Agent'] = 'Instagram 146.0.0.27.125 (iPhone12,1; iOS 13_3; en_US; en-US; ' \
-                                                'scale=2.00; 1656x3584; 190542906)'
-            for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With']:
+            # Set headers to simulate an API request from iPad
+            tempsession.headers['ig-intended-user-id'] = str(self.user_id)
+            tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
+
+            # Add headers obtained from previous iPad request
+            tempsession.headers.update(self.iphone_headers)
+
+            # Extract key information from cookies if we haven't got it already from a previous request
+            header_cookies_mapping = {'x-mid': 'mid',
+                                     'ig-u-ds-user-id': 'ds_user_id',
+                                     'x-ig-device-id': 'ig_did',
+                                     'x-ig-family-device-id': 'ig_did',
+                                     'family_device_id': 'ig_did'}
+
+            # Map the cookie value to the matching HTTP request header
+            cookies = tempsession.cookies.get_dict().copy()
+            for key, value in header_cookies_mapping.items():
+                if value in cookies:
+                    if key not in tempsession.headers:
+                        tempsession.headers[key] = cookies[value]
+                    else:
+                        # Remove the cookie value if it's already specified as a header
+                        tempsession.cookies.pop(value, None)
+
+            # Edge case for ig-u-rur header due to special string encoding in cookie
+            if 'rur' in cookies:
+                if 'ig-u-rur' not in tempsession.headers:
+                    tempsession.headers['ig-u-rur'] = cookies['rur'].strip('\"').encode('utf-8') \
+                                                                    .decode('unicode_escape')
+                else:
+                    tempsession.cookies.pop('rur', None)
+
+            # Remove headers specific to Desktop version
+            for header in ['Host', 'Origin', 'X-Instagram-AJAX', 'X-Requested-With', 'Referer']:
                 tempsession.headers.pop(header, None)
-            return self.get_json(path, params, 'i.instagram.com', tempsession)
+
+            # No need for cookies if we have a bearer token
+            if 'authorization' in tempsession.headers:
+                tempsession.cookies.clear()
+
+            response_headers = dict()    # type: Dict[str, Any]
+            response = self.get_json(path, params, 'i.instagram.com', tempsession, response_headers=response_headers)
+
+            # Extract the ig-set-* headers and use them in the next request
+            for key, value in response_headers.items():
+                if key.startswith('ig-set-'):
+                    self.iphone_headers[key.replace('ig-set-', '')] = value
+                elif key.startswith('x-ig-set-'):
+                    self.iphone_headers[key.replace('x-ig-set-', 'x-ig-')] = value
+
+            return response
 
     def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
         """Write raw response data into a file.
