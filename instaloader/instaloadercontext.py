@@ -710,23 +710,4 @@ class RateController:
             self._query_timestamps[query_type].append(time.monotonic())
 
     def handle_429(self, query_type: str) -> None:
-        """This method is called to handle a 429 Too Many Requests response.
-
-        It calls :meth:`RateController.query_waittime` to determine the time needed to wait and then calls
-        :meth:`RateController.sleep` to wait until we can repeat the same request."""
-        current_time = time.monotonic()
-        waittime = self.query_waittime(query_type, current_time, True)
-        assert waittime >= 0
-        self._dump_query_timestamps(current_time, query_type)
-        text_for_429 = ("Instagram responded with HTTP error \"429 - Too Many Requests\". Please do not run multiple "
-                        "instances of Instaloader in parallel or within short sequence. Also, do not use any Instagram "
-                        "App while Instaloader is running.")
-        self._context.error(textwrap.fill(text_for_429), repeat_at_end=False)
-        if waittime > 1.5:
-            formatted_waittime = ("{} seconds".format(round(waittime)) if waittime <= 666 else
-                                  "{} minutes".format(round(waittime / 60)))
-            self._context.error("The request will be retried in {}, at {:%H:%M}."
-                                .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)),
-                                repeat_at_end=False)
-        if waittime > 0:
-            self.sleep(waittime)
+        pass
