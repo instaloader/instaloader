@@ -1550,7 +1550,7 @@ class Hashtag:
 
     def _obtain_metadata(self):
         if not self._has_full_metadata:
-            self._node = self._query({"__a": 1,"__d": "dis"})
+            self._node = self._query({"__a": 1, "__d": "dis"})
             self._has_full_metadata = True
 
     def _asdict(self):
