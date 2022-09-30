@@ -1647,7 +1647,7 @@ class Hashtag:
             conn = self._metadata("edge_hashtag_to_media")
             yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
             while conn["page_info"]["has_next_page"]:
-                data = self._query({'__a': 1, 'max_id': conn["page_info"]["end_cursor"]})
+                data = self._query({'__a': 1, '__d': 'dis', 'max_id': conn["page_info"]["end_cursor"]})
                 conn = data["edge_hashtag_to_media"]
                 yield from (Post(self._context, edge["node"]) for edge in conn["edges"])
         except KeyError:
