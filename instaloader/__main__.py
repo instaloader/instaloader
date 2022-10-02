@@ -100,7 +100,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.error("Warning: Parameter \"{}\" for --login is not a valid username.".format(username))
         try:
             instaloader.load_session_from_file(username, sessionfile)
-        except FileNotFoundError as err:
+        except (FileNotFoundError, EOFError) as err:
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
