@@ -6,7 +6,7 @@ from contextlib import suppress
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 from unicodedata import normalize
 
 from . import __version__
@@ -340,7 +340,7 @@ class Post:
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
 
     @property
@@ -404,8 +404,7 @@ class Post:
                             orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
                             display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                         except (InstaloaderException, KeyError, IndexError) as err:
-                            self._context.error('{} Unable to fetch high quality image version of {}.'.format(
-                                err, self))
+                            self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
@@ -676,6 +675,13 @@ class Post:
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
                                       loc.get('lat'), loc.get('lng'))
         return self._location
+
+    @property
+    def is_pinned(self) -> bool:
+        """True if this Post has been pinned by at least one user.
+
+        .. versionadded: 4.9.2"""
+        return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
 class Profile:
@@ -1001,10 +1007,17 @@ class Profile:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
             except (InstaloaderException, KeyError) as err:
-                self._context.error('{} Unable to fetch high quality profile pic.'.format(err))
+                self._context.error(f"Unable to fetch high quality profile pic: {err}")
                 return self._metadata("profile_pic_url_hd")
         else:
             return self._metadata("profile_pic_url_hd")
+
+    @property
+    def profile_pic_url_no_iphone(self) -> str:
+        """Return URL of lower-quality profile picture.
+
+        .. versionadded:: 4.9.3"""
+        return self._metadata("profile_pic_url_hd")
 
     def get_profile_pic_url(self) -> str:
         """.. deprecated:: 4.0.3
@@ -1025,6 +1038,7 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
             self._metadata('edge_owner_to_timeline_media'),
+            Profile._make_is_newest_checker()
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1058,6 +1072,7 @@ class Profile:
             lambda n: Post(self._context, n, self if int(n['owner']['id']) == self.userid else None),
             {'id': self.userid},
             'https://www.instagram.com/{0}/'.format(self.username),
+            is_first=Profile._make_is_newest_checker()
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
@@ -1075,7 +1090,12 @@ class Profile:
             {'id': self.userid},
             'https://www.instagram.com/{0}/channel/'.format(self.username),
             self._metadata('edge_felix_video_timeline'),
+            Profile._make_is_newest_checker()
         )
+
+    @staticmethod
+    def _make_is_newest_checker() -> Callable[[Post, Optional[Post]], bool]:
+        return lambda post, first: first is None or post.date_local > first.date_local
 
     def get_followers(self) -> NodeIterator['Profile']:
         """
@@ -1204,8 +1224,14 @@ class StoryItem:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
         if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
-            self._iphone_struct_ = data['items'][0]
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            self._iphone_struct_ = {}
+            for item in data['reels'][str(self.owner_id)]['items']:
+                if item['pk'] == self.mediaid:
+                    self._iphone_struct_ = item
+                    break
         return self._iphone_struct_
 
     @property
@@ -1262,13 +1288,14 @@ class StoryItem:
     @property
     def url(self) -> str:
         """URL of the picture / video thumbnail of the StoryItem"""
-        if self.typename == "GraphStoryImage" and self._context.iphone_support and self._context.is_logged_in:
+        if self.typename in ["GraphStoryImage", "StoryImage"] and \
+                self._context.iphone_support and self._context.is_logged_in:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
                 return url
             except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error('{} Unable to fetch high quality image version of {}.'.format(err, self))
+                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node['display_resources'][-1]['src']
 
     @property
@@ -1390,6 +1417,7 @@ class Story:
         self._node = node
         self._unique_id: Optional[str] = None
         self._owner_profile: Optional[Profile] = None
+        self._iphone_struct_: Optional[Dict[str, Any]] = None
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -1460,9 +1488,23 @@ class Story:
         """The story owner's ID."""
         return self.owner_profile.userid
 
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
+            )
+            self._iphone_struct_ = data['reels'][str(self.owner_id)]
+
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in reversed(self._node['items']))
+        self._fetch_iphone_struct()
+        for item in reversed(self._node['items']):
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct_['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Highlight(Story):
@@ -1492,6 +1534,7 @@ class Highlight(Story):
         super().__init__(context, node)
         self._owner_profile = owner
         self._items: Optional[List[Dict[str, Any]]] = None
+        self._iphone_struct_: Optional[Dict[str, Any]] = None
 
     def __repr__(self):
         return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
@@ -1530,6 +1573,13 @@ class Highlight(Story):
                                                        "highlight_reel_ids": [str(self.unique_id)],
                                                        "precomposed_overlay": False})['data']['reels_media'][0]['items']
 
+    def _fetch_iphone_struct(self) -> None:
+        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
+            data = self._context.get_iphone_json(
+                path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
+            )
+            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+
     @property
     def itemcount(self) -> int:
         """Count of items associated with the :class:`Highlight` instance."""
@@ -1540,8 +1590,15 @@ class Highlight(Story):
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all associated highlight items."""
         self._fetch_items()
+        self._fetch_iphone_struct()
         assert self._items is not None
-        yield from (StoryItem(self._context, item, self.owner_profile) for item in self._items)
+        for item in self._items:
+            if self._iphone_struct_ is not None:
+                for iphone_struct_item in self._iphone_struct_['items']:
+                    if iphone_struct_item['pk'] == int(item['id']):
+                        item['iphone_struct'] = iphone_struct_item
+                        break
+            yield StoryItem(self._context, item, self.owner_profile)
 
 
 class Hashtag:
@@ -1595,7 +1652,7 @@ class Hashtag:
 
     def _obtain_metadata(self):
         if not self._has_full_metadata:
-            self._node = self._query({"__a": 1})
+            self._node = self._query({"__a": 1, "__d": "dis"})
             self._has_full_metadata = True
 
     def _asdict(self):

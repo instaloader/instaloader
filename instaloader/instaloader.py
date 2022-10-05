@@ -478,9 +478,8 @@ class Instaloader:
             self.context.log(pcaption, end=' ', flush=True)
         except UnicodeEncodeError:
             self.context.log('txt', end=' ', flush=True)
-        with open(filename, 'wb') as text_file:
-            with BytesIO(bcaption) as bio:
-                shutil.copyfileobj(cast(IO, bio), text_file)
+        with open(filename, 'w', encoding='UTF-8') as fio:
+            fio.write(caption)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
 
     def save_location(self, filename: str, location: PostLocation, mtime: datetime) -> None:
@@ -563,7 +562,7 @@ class Instaloader:
         if latest_stamps is None:
             self.download_profilepic(profile)
             return
-        profile_pic_basename = profile.profile_pic_url.split('/')[-1].split('?')[0]
+        profile_pic_basename = profile.profile_pic_url_no_iphone.split('/')[-1].split('?')[0]
         saved_basename = latest_stamps.get_profile_pic(profile.username)
         if saved_basename == profile_pic_basename:
             return
@@ -896,13 +895,18 @@ class Instaloader:
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
         downloaded = False
-        if not item.is_video or self.download_video_thumbnails is True:
+        video_url_fetch_failed = False
+        if item.is_video and self.download_videos is True:
+            video_url = item.video_url
+            if video_url:
+                filename = self.__prepare_filename(filename_template, lambda: str(video_url))
+                downloaded |= (not _already_downloaded(filename + ".mp4") and
+                               self.download_pic(filename=filename, url=video_url, mtime=date_local))
+            else:
+                video_url_fetch_failed = True
+        if video_url_fetch_failed or not item.is_video or self.download_video_thumbnails is True:
             downloaded = (not _already_downloaded(filename + ".jpg") and
                           self.download_pic(filename=filename, url=item.url, mtime=date_local))
-        if item.is_video and self.download_videos is True:
-            filename = self.__prepare_filename(filename_template, lambda: str(item.video_url))
-            downloaded |= (not _already_downloaded(filename + ".mp4") and
-                           self.download_pic(filename=filename, url=item.video_url, mtime=date_local))
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(item).format(self.storyitem_metadata_txt_pattern).strip()
         if metadata_string:
@@ -1027,7 +1031,10 @@ class Instaloader:
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
             for number, post in enumerate(posts, start=start_index + 1):
-                if (max_count is not None and number > max_count) or not takewhile(post):
+                should_stop = not takewhile(post)
+                if should_stop and post.is_pinned:
+                    continue
+                if (max_count is not None and number > max_count) or should_stop:
                     break
                 if displayed_count is not None:
                     self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,
@@ -1059,7 +1066,7 @@ class Instaloader:
                         except PostChangedException:
                             post_changed = True
                             continue
-                    if fast_update and not downloaded and not post_changed:
+                    if fast_update and not downloaded and not post_changed and not post.is_pinned:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break

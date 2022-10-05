@@ -329,12 +329,13 @@ Miscellaneous Options
    Read arguments from file `args.txt`, a shortcut to provide arguments from
    file rather than command-line. This provides a convenient way to hide login
    info from CLI, and can also be used to simplify management of long arguments.
+   You can provide more than one file at once, e.g.: ``+args1.txt +args2.txt``.
 
    .. note::
 
       Text file should separate arguments with line breaks.
 
-   args.txt example::
+   `args.txt` example::
 
       --login=MYUSERNAME
       --password=MYPASSWORD

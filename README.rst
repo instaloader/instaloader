@@ -127,6 +127,9 @@ Supporters
 
 .. current-sponsors-start
 
+| Instaloader is proudly sponsored by
+|  `@socialmethod <https://github.com/socialmethod>`__
+
 See `Alex' GitHub Sponsors <https://github.com/sponsors/aandergr>`__ page for
 how you can sponsor the development of Instaloader!
 
