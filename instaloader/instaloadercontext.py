@@ -32,8 +32,9 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
 
 
 def default_user_agent() -> str:
-    return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
-           '(KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
+    return 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 ' \
+            '(KHTML, like Gecko) Chrome/106.0.5249.79 Mobile Safari/537.36 ' \
+            'Instagram 255.1.0.17.102'
 
 
 class InstaloaderContext:
