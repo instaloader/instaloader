@@ -34,9 +34,9 @@ picture, video or sidecar (set of multiple pictures/videos) posted in a user's
 profile. :class:`Instaloader` provides methods to iterate over Posts from a
 certain source::
 
-    for post in instaloader.Hashtag.from_name(L.context, 'cat').get_posts():
+    for post in instaloader.Profile.from_username(L.context, 'instagram').get_posts():
         # post is an instance of instaloader.Post
-        L.download_post(post, target='#cat')
+        L.download_post(post, target='instagram')
 
 :class:`Post` instances can be created with:
 

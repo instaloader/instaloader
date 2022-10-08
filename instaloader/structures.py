@@ -47,12 +47,13 @@ class Post:
     """
     Structure containing information about an Instagram post.
 
-    Created by methods :meth:`Profile.get_posts`, :meth:`Instaloader.get_hashtag_posts`,
+    Created by methods :meth:`Profile.get_posts`, :meth:`Hashtag.get_posts_resumable`,
     :meth:`Instaloader.get_feed_posts` and :meth:`Profile.get_saved_posts`, which return iterators of Posts::
 
        L = Instaloader()
-       for post in L.get_hashtag_posts(HASHTAG):
-           L.download_post(post, target='#'+HASHTAG)
+       profile = Profile.from_username(L.context, USERNAME)
+       for post in profile.get_posts():
+           L.download_post(post, target=profile.username)
 
     Might also be created with::
 
@@ -1510,7 +1511,7 @@ class Hashtag:
 
     To then download the Hashtag's Posts, do::
 
-       for post in hashtag.get_posts():
+       for post in hashtag.get_posts_resumable():
           L.download_post(post, target="#"+hashtag.name)
 
     Also, this class implements == and is hashable.
