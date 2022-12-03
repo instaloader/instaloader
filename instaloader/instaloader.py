@@ -1381,7 +1381,8 @@ class Instaloader:
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
                           raise_errors: bool = False,
-                          latest_stamps: Optional[LatestStamps] = None):
+                          latest_stamps: Optional[LatestStamps] = None,
+						  max_count: Optional[int] = None):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -1398,6 +1399,7 @@ class Instaloader:
            Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
         :param latest_stamps: :option:`--latest-stamps`.
+		:param max_count: Maximum count of Posts to download (:option:`--count`).
 
         .. versionadded:: 4.1
 
@@ -1471,7 +1473,7 @@ class Instaloader:
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
-                                             takewhile=posts_takewhile)
+                                             takewhile=posts_takewhile, max_count=max_count)
                     if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
                                                               posts_to_download.first_item.date_local)
