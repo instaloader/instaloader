@@ -527,7 +527,8 @@ class Instaloader:
         http_response = self.context.get_raw(url)
         date_object = None  # type: Optional[datetime]
         if 'Last-Modified' in http_response.headers:
-            locale.setlocale(locale.LC_TIME, 'en_US')  # use the locale specified in the request header for parsing datetime
+            # use the locale specified in the request header for parsing datetime
+            locale.setlocale(locale.LC_TIME, 'en_US')
             date_object = datetime.strptime(http_response.headers["Last-Modified"], '%a, %d %b %Y %H:%M:%S GMT')
             date_object = date_object.replace(tzinfo=timezone.utc)
             pic_bytes = None
