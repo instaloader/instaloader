@@ -25,6 +25,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()
+    new.proxies = session.proxies.copy()
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
     new.request = partial(new.request, timeout=request_timeout) # type: ignore
