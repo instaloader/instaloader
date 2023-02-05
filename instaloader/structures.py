@@ -638,7 +638,7 @@ class Post:
         location_id = int(loc['id'])
         if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
             loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
-                                              params={'__a': 1})['native_location_data']['location_info'])
+                                              params={'__a': 1, '__d': 'dis'})['native_location_data']['location_info'])
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
                                       loc.get('lat'), loc.get('lng'))
         return self._location

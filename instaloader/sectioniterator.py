@@ -29,7 +29,7 @@ class SectionIterator(Iterator[T]):
     def _query(self, max_id: Optional[str] = None) -> Dict[str, Any]:
         pagination_variables = {"max_id": max_id} if max_id is not None else {}
         return self._sections_extractor(
-            self._context.get_json(self._query_path, params={"__a": 1, **pagination_variables})
+            self._context.get_json(self._query_path, params={"__a": 1, "__d": "dis", **pagination_variables})
         )
 
     def __next__(self) -> T:
