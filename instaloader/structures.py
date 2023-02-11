@@ -405,7 +405,7 @@ class Post:
         .. versionadded:: 4.2.6"""
         def _elliptify(caption):
             pcaption = ' '.join([s.replace('/', '\u2215') for s in caption.splitlines() if s]).strip()
-            return (pcaption[:30] + u"\u2026") if len(pcaption) > 31 else pcaption
+            return (pcaption[:30] + "\u2026") if len(pcaption) > 31 else pcaption
         return _elliptify(self.caption) if self.caption else ''
 
     @property
@@ -558,7 +558,7 @@ class Post:
             return []
 
         comment_edges = self._field('edge_media_to_comment', 'edges')
-        answers_count = sum([edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges])
+        answers_count = sum(edge['node'].get('edge_threaded_comments', {}).get('count', 0) for edge in comment_edges)
 
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them

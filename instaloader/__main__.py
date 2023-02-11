@@ -45,7 +45,6 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     class TransformFilterAst(ast.NodeTransformer):
         def visit_Name(self, node: ast.Name):
-            # pylint:disable=no-self-use
             if not isinstance(node.ctx, ast.Load):
                 raise InvalidArgumentException("Invalid filter: Modifying variables ({}) not allowed.".format(node.id))
             if node.id == "datetime":
