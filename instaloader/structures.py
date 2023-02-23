@@ -878,9 +878,7 @@ class Profile:
 
     @property
     def entities(self) -> str:
-        '''This property will return a list or single ``string`` of the sponsored accounts/entities showed in the target profile
-        or ``No sponsors list.`` string.
-        '''
+	'''This return a ``str`` of the sponsored accounts/entities showed in the target profile otherwise ``No sponsors list.`` string.'''
         # Check if the target has entities.
         if len(self._metadata('biography_with_entities')["entities"]) == 0:
             return "No sponsors list."
