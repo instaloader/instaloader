@@ -372,8 +372,8 @@ class InstaloaderContext:
             resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
-                raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}".format(
-                    host, path, resp.status_code, resp.reason, redirect
+                raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}:{}".format(
+                    host, path, resp.status_code, resp.reason, redirect, resp.text
                 ))
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
