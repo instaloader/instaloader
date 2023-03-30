@@ -877,16 +877,15 @@ class Profile:
         return self._metadata('biography')
 
     @property
-    def entities(self) -> str:
-	'''This return a ``str`` of the sponsored accounts/entities showed in the target profile otherwise ``No sponsors list.`` string.'''
-        # Check if the target has entities.
+    def entities(self) -> list:
+        """Return a list of entities / sponsors"""
         if len(self._metadata('biography_with_entities')["entities"]) == 0:
             return "No sponsors list."
         else:
             # If so, create the list/single string and return it.
-            sponsorsList = ""
+            sponsorsList = []
             for item in self._metadata('biography_with_entities')["entities"]:
-                sponsorsList = sponsorsList + f'{item["user"]["username"]}\n'
+                sponsorsList.append(item["user"]["username"])
             return sponsorsList
 
     @property
