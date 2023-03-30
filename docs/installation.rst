@@ -8,7 +8,7 @@ Install Instaloader
 To **install Instaloader**,
 
 #. Ensure that you have `Python <https://www.python.org/>`__, at least
-   version 3.6, and `pip <https://pypi.python.org/pypi/pip>`__
+   version 3.8, and `pip <https://pypi.python.org/pypi/pip>`__
    installed.
 
 #. Then, install Instaloader using::

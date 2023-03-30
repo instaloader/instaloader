@@ -25,10 +25,10 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     """Duplicates a requests.Session."""
     new = requests.Session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
-    new.headers = session.headers.copy()
+    new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-    new.request = partial(new.request, timeout=request_timeout) # type: ignore
+    new.request = partial(new.request, timeout=request_timeout)  # type: ignore
     return new
 
 
@@ -345,7 +345,7 @@ class InstaloaderContext:
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1,
-                 response_headers: Dict[str, Any] = None) -> Dict[str, Any]:
+                 response_headers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """JSON request to Instagram.
 
         :param path: URL, relative to the given domain which defaults to www.instagram.com/
@@ -686,7 +686,6 @@ class RateController:
         """Wait given number of seconds."""
         # Not static, to allow for the behavior of this method to depend on context-inherent properties, such as
         # whether we are logged in.
-        # pylint:disable=no-self-use
         time.sleep(secs)
 
     def _dump_query_timestamps(self, current_time: float, failed_query_type: str):
@@ -710,7 +709,6 @@ class RateController:
         control."""
         # Not static, to allow for the count_per_sliding_window to depend on context-inherent properties, such as
         # whether we are logged in.
-        # pylint:disable=no-self-use
         return 75 if query_type == 'other' else 200
 
     def _reqs_in_sliding_window(self, query_type: Optional[str], current_time: float, window: float) -> List[float]:

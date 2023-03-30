@@ -8,7 +8,7 @@ arch=('any')
 url="https://instaloader.github.io/"
 license=('MIT')
 groups=()
-depends=('python>=3.6' 'python-requests>=2.4')
+depends=('python>=3.8' 'python-requests>=2.4')
 makedepends=('python-setuptools')
 options=('!emptydirs')
 source=($pkgname-$pkgver.tar.gz::https://codeload.github.com/instaloader/instaloader/tar.gz/v$pkgver)

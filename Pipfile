@@ -14,6 +14,10 @@ psutil = "*"
 typing-extensions = "*"
 types-requests = "*"
 typed-ast = "*"
+jinja2 = "~=3.0.1"
+wrapt = "*"  # Needed for Python<3.11
+tomli = "*"  # Needed for Python<3.11
+dill = "*"  # Needed for Python<3.11
 
 [packages]
 requests = "*"
