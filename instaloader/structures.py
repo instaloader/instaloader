@@ -876,18 +876,20 @@ class Profile:
     def biography(self) -> str:
         return self._metadata('biography')
 
-    @property
-    def entities(self) -> list:
-        """Return a list of entities / sponsors"""
-        if len(self._metadata('biography_with_entities')["entities"]) == 0:
-            return "No sponsors list."
-        else:
-            # If so, create the list/single string and return it.
-            sponsorsList = []
-            for item in self._metadata('biography_with_entities')["entities"]:
-                sponsorsList.append(item["user"]["username"])
-            return sponsorsList
+    def get_sponsors(self) -> List['Profile']:
+        """
+        Return a list of :class:`Profile` sponsors wich you can iterate over.
 
+        .. versionadded:: 4.10
+        """
+        if len(self._metadata('biography_with_entities')["entities"]) == 0:
+            return []
+        else:
+            sponsorsList = []
+            for sponsor in self._metadata('biography_with_entities')["entities"]:
+                sponsorsList.append(Profile.from_username(self._context, sponsor["user"]["username"]))
+            return sponsorsList
+        
     @property
     def blocked_by_viewer(self) -> bool:
         return self._metadata('blocked_by_viewer')
