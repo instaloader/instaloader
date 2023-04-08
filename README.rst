@@ -2,11 +2,7 @@
 
 .. badges-start
 
-|travis| |pypi| |pyversion| |license| |aur| |contributors| |downloads|
-
-.. |travis| image:: https://img.shields.io/travis/instaloader/instaloader/master.svg
-   :alt: Travis-CI Build Status
-   :target: https://travis-ci.org/instaloader/instaloader
+|pypi| |pyversion| |license| |aur| |contributors| |downloads|
 
 .. |pypi| image:: https://img.shields.io/pypi/v/instaloader.svg
    :alt: Instaloader PyPI Project Page
