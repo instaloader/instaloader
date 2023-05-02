@@ -289,7 +289,7 @@ def resumable_iteration(context: InstaloaderContext,
             is_resuming = True
             start_index = iterator.total_index
             context.log("Resuming from {}.".format(resume_file_path))
-        except (InvalidArgumentException, LZMAError, json.decoder.JSONDecodeError) as exc:
+        except (InvalidArgumentException, LZMAError, json.decoder.JSONDecodeError, EOFError) as exc:
             context.error("Warning: Not resuming from {}: {}".format(resume_file_path, exc))
     try:
         yield is_resuming, start_index
