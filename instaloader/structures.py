@@ -452,6 +452,25 @@ class Post:
             return None
 
     @property
+    def translated_caption(self) -> Optional[str]:
+        """Translated caption of the post, if caption is available.
+
+        .. versionadded:: 4.10"""
+        if not self._context.iphone_support:
+            raise IPhoneSupportDisabledException("iPhone support is disabled.")
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to access iPhone media info endpoint.")
+
+        if not self.caption:
+            return None
+        try:
+            pk = self._iphone_struct['caption']['pk']
+            data = self._context.get_iphone_json(path=f'api/v1/language/bulk_translate/?comment_ids={pk}', params={})
+            return data['comment_translations'][0]['translation']
+        except KeyError:
+            return None
+
+    @property
     def tagged_users(self) -> List[str]:
         """List of all lowercased users that are tagged in the Post."""
         try:
