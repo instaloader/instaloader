@@ -137,7 +137,7 @@ class NodeIterator(Iterator[T]):
                 if self._first_node is None:
                     self._first_node = node
             return item
-        if self._data['page_info']['has_next_page']:
+        if self._data.get('page_info', {}).get('has_next_page'):
             query_response = self._query(self._data['page_info']['end_cursor'])
             if self._data['edges'] != query_response['edges'] and len(query_response['edges']) > 0:
                 page_index, data = self._page_index, self._data
