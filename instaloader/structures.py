@@ -1097,6 +1097,26 @@ class Profile:
     def _make_is_newest_checker() -> Callable[[Post, Optional[Post]], bool]:
         return lambda post, first: first is None or post.date_local > first.date_local
 
+    def get_followed_hashtags(self) -> NodeIterator['Hashtag']:
+        """
+        Retrieve list of hashtags followed by given profile.
+        To use this, one needs to be logged in and private profiles has to be followed.
+
+        :rtype: NodeIterator[Hashtag]
+        .. versionadded:: 4.10
+        """
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("--login required to get a profile's followers.")
+        self._obtain_metadata()
+        return NodeIterator(
+            self._context,
+            'e6306cc3dbe69d6a82ef8b5f8654c50b',
+            lambda d: d["data"]["user"]["edge_following_hashtag"],
+            lambda n: Hashtag(self._context, n),
+            {'id': str(self.userid)},
+            'https://www.instagram.com/{0}/'.format(self.username),
+        )
+
     def get_followers(self) -> NodeIterator['Profile']:
         """
         Retrieve list of followers of given profile.
