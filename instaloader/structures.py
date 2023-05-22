@@ -1103,6 +1103,7 @@ class Profile:
         To use this, one needs to be logged in and private profiles has to be followed.
 
         :rtype: NodeIterator[Hashtag]
+
         .. versionadded:: 4.10
         """
         if not self._context.is_logged_in:
