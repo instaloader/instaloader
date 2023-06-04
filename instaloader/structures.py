@@ -49,6 +49,7 @@ class PostComment(NamedTuple):
     text: str
     owner: 'Profile'
     likes_count: int
+    likes: Iterator['Profile']
     answers: Iterator[PostCommentAnswer]
 
 
@@ -583,9 +584,20 @@ class Post:
                 'https://www.instagram.com/p/{0}/'.format(self.shortcode),
             )
 
+        def _postcommentlikes(node):
+            if node.get('edge_liked_by', {}).get('count', 0) != 0:
+                yield from NodeIterator(
+                    self._context,
+                    '5f0b1f6281e72053cbc07909c8d154ae',
+                    lambda d: d['data']['comment']['edge_liked_by'],
+                    lambda n: Profile(self._context, n),
+                    {'comment_id': node['id']},
+                    'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+                )
+
         def _postcomment(node):
             return PostComment(*_postcommentanswer(node),
-                               answers=_postcommentanswers(node))
+                               answers=_postcommentanswers(node), likes=_postcommentlikes(node))
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return []
