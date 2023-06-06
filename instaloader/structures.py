@@ -60,14 +60,16 @@ class PostComment(NamedTuple):
 
         .. versionchanged:: 4.10
         """
-        return NodeIterator(
-            self.context,
-            '5f0b1f6281e72053cbc07909c8d154ae',
-            lambda d: d['data']['comment']['edge_liked_by'],
-            lambda n: Profile(self.context, n),
-            {'comment_id': self.id},
-            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
-        )
+        if self.likes_count != 0:
+            return NodeIterator(
+                self.context,
+                '5f0b1f6281e72053cbc07909c8d154ae',
+                lambda d: d['data']['comment']['edge_liked_by'],
+                lambda n: Profile(self.context, n),
+                {'comment_id': self.id},
+                'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+            )
+        return iter([])
 
 for field in PostCommentAnswer._fields:
     getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__  # pylint: disable=no-member
