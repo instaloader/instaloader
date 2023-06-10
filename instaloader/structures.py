@@ -408,6 +408,21 @@ class Post:
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
+    def get_translated_caption(self) -> Optional[str]:
+        """Retrieve translation of the caption.
+
+        .. versionadded:: 4.10"""
+        if self.caption and self._context.iphone_support and self._context.is_logged_in:
+            try:
+                pk = self._iphone_struct['caption']['pk']
+                data = self._context.get_iphone_json(path=f'api/v1/language/bulk_translate/?comment_ids={pk}',
+                                                    params={})
+                self._node["translated_caption"] = data['comment_translations'][0]['translation']
+                return data['comment_translations'][0]['translation']
+            except (InstaloaderException, KeyError, IndexError) as err:
+                self._context.error(f"Unable to get translation: {err}")
+        return None
+
     @property
     def caption(self) -> Optional[str]:
         """Caption."""
@@ -461,14 +476,12 @@ class Post:
         if not self._context.is_logged_in:
             raise LoginRequiredException("--login required to access iPhone media info endpoint.")
 
-        if not self.caption:
-            return None
-        try:
-            pk = self._iphone_struct['caption']['pk']
-            data = self._context.get_iphone_json(path=f'api/v1/language/bulk_translate/?comment_ids={pk}', params={})
-            return data['comment_translations'][0]['translation']
-        except KeyError:
-            return None
+        if self.caption:
+            try:
+                return self._field("translated_caption")
+            except KeyError:
+                return self.get_translated_caption()
+        return None
 
     @property
     def tagged_users(self) -> List[str]:
