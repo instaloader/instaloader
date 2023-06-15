@@ -44,7 +44,8 @@ PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 
 class PostComment:
-    def __init__(self, node: Dict[str, Any] , answers: Iterator['PostCommentAnswer'], context: 'InstaloaderContext', shortcode: str):
+    def __init__(self, node: Dict[str, Any], answers: Iterator['PostCommentAnswer'],
+                 context: 'InstaloaderContext', shortcode: str):
         self._node = node
         self._answers = answers
         self._context = context
@@ -77,7 +78,7 @@ class PostComment:
 
     @property
     def answers(self) -> Iterator['PostCommentAnswer']:
-        """ Iterator which yields all :class:`PostCommentAnswer`s for the comment. """
+        """ Iterator which yields all :class:`PostCommentAnswer` for the comment. """
         return self._answers
 
     @property
