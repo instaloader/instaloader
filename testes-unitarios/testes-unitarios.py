@@ -24,6 +24,13 @@ class TestesUnitarios(unittest.TestCase):
         getpass.getuser = lambda: USUARIO_TESTE
         expected_dir = os.path.normpath("/tmp/.instaloader-{}".format(USUARIO_TESTE))
         self.assertEqual(instaloader._get_config_dir(), expected_dir)
+    
+    @patch('platform.system')
+    def test_unix(self, mock_system):
+        mock_system.return_value = UNIX
+        os.environ["XDG_CONFIG_HOME"] = "/home/{}/.config".format(USUARIO_TESTE)
+        expected_dir = "/home/{}/.config/instaloader".format(USUARIO_TESTE)
+        self.assertEqual(instaloader._get_config_dir(), expected_dir)
 
 if __name__ == '__main__':
     unittest.main()
