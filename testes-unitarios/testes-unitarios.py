@@ -17,6 +17,13 @@ class TestesUnitarios(unittest.TestCase):
         os.environ["LOCALAPPDATA"] = "C:/Users/{}/AppData/Local".format(USUARIO_TESTE)
         expected_dir = os.path.normpath("C:/Users/{}/AppData/Local/Instaloader".format(USUARIO_TESTE))
         self.assertEqual(instaloader._get_config_dir(), expected_dir)
+    
+    @patch('platform.system')
+    def test_windows_fallback(self, mock_system):
+        mock_system.return_value = WINDOS
+        getpass.getuser = lambda: USUARIO_TESTE
+        expected_dir = os.path.normpath("/tmp/.instaloader-{}".format(USUARIO_TESTE))
+        self.assertEqual(instaloader._get_config_dir(), expected_dir)
 
 if __name__ == '__main__':
     unittest.main()
