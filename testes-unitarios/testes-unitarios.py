@@ -33,11 +33,17 @@ class TestesUnitarios(unittest.TestCase):
     
     @patch('platform.system')
     def test_windows_get_default_session_filename(self, mock_system):
-        mock_system.return_value = "Windows"
+        mock_system.return_value = WINDOS
         os.environ["LOCALAPPDATA"] = "C:\\Users\\testuser\\AppData\\Local"
         expected_filename = "C:\\Users\\testuser\\AppData\\Local/Instaloader/session-{}".format(USUARIO_TESTE)
         self.assertEqual(instaloader.get_default_session_filename(USUARIO_TESTE), expected_filename)
 
+    @patch('platform.system')
+    def test_unix_get_default_session_filename(self, mock_system):
+        mock_system.return_value = UNIX
+        os.environ["XDG_CONFIG_HOME"] = "/home/testuser/.config"
+        expected_filename = "/home/testuser/.config/instaloader/session-{}".format(USUARIO_TESTE)
+        self.assertEqual(instaloader.get_default_session_filename(USUARIO_TESTE), expected_filename)
 
 if __name__ == '__main__':
     unittest.main()
