@@ -27,7 +27,7 @@ To **download all pictures and videos of a profile**, as well as the
 
     instaloader profile [profile ...]
 
-where ``profile`` is the name of a profile you want to download. Instead
+where ``profile`` is the instagram username of a profile you want to download. Instead
 of only one profile, you may also specify a list of profiles.
 
 To later **update your local copy** of that profiles, you may run
@@ -75,25 +75,23 @@ What to Download
 Instaloader supports the following targets:
 
 - ``profile``
-   Public profile, or private profile with :option:`--login`.
+   Posts from the feed of a public profile, or a private profile with :option:`--login`. 
+   The current profile picture is also downloaded. 
+   ``profile`` must be an instagram username. 
+   
+   If an already-downloaded profile has been renamed, 
+   Instaloader automatically finds it by its unique ID and renames the folder accordingly.
 
-   If an already-downloaded profile has been renamed, Instaloader automatically
-   finds it by its unique ID and renames the folder accordingly.
-
-   Besides the profile's posts, its current profile picture is downloaded. For
-   each profile you download,
+   The following options can be specified to instruct instaloader to download additional posts for each profile:
 
    - :option:`--stories`
-      instructs Instaloader to also **download the user's stories**,
+      Downloads current stories from the profile (requires :option:`--login`)
 
    - :option:`--highlights`
-      to **download the highlights of that profile**,
+      Downloads highlights of the profile (requires :option:`--login`)
 
    - :option:`--tagged`
-      to **download posts where the user is tagged**, and
-
-   - :option:`--igtv`
-      to **download IGTV videos**.
+      Downloads posts where the specified profile is tagged
 
 - ``"#hashtag"``
    Posts with a certain **hashtag** (the quotes are usually necessary).
@@ -101,20 +99,20 @@ Instaloader supports the following targets:
 - ``%location id``
    Posts tagged with a given location; the location ID is the numerical ID
    Instagram labels a location with (e.g.
-   \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/).
-   Requires :option:`--login`.
+   \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/)
+   (requires :option:`--login`).
 
    .. versionadded:: 4.2
 
 - ``:stories``
-   The currently-visible **stories** of your followees (requires
+   The currently-visible **stories** of the profiles you follow, i.e. your *followees* (requires
    :option:`--login`).
 
 - ``:feed``
    Your **feed** (requires :option:`--login`).
 
 - ``:saved``
-   Posts which are marked as **saved** (requires :option:`--login`).
+   Posts which are marked as **saved** by you (requires :option:`--login`).
 
 - ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of

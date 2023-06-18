@@ -135,6 +135,11 @@ What to Download of each Profile
 
    Also download IGTV videos.
 
+   .. note::
+
+      IGTV videos are now available on a profile feed and are downloaded automatically 
+      without specifying this option.
+
    .. versionadded:: 4.3
 
 Which Posts to Download
