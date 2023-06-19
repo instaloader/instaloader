@@ -1,4 +1,5 @@
 from instaloader.structures import Post
+from instaloader import instaloadercontext
 
 import unittest
 
@@ -18,6 +19,14 @@ class TestesUnitarios(unittest.TestCase):
                 for graphql_type in graphql_types)
 
         self.assertTrue(has_all_graphql_types)
+    
+    def test_has_valid_user_agent(self):
+        expected_user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
+           '(KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
+        
+        user_agent_subject = instaloadercontext.default_user_agent()
+
+        self.assertEqual(user_agent_subject, expected_user_agent)
 
 
 if __name__ == '__main__':
