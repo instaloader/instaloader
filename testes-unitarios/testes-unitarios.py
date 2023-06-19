@@ -46,7 +46,7 @@ class MockPost:
     @property
     def date(self):
         timestamp = 1687140049
-        print(datetime.datetime.fromtimestamp(timestamp))
+        
         return datetime.datetime.fromtimestamp(timestamp)
 
 
