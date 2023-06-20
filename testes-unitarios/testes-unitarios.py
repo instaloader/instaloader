@@ -1,5 +1,6 @@
 from instaloader.structures import Post
 from instaloader import instaloadercontext
+from instaloader.exceptions import InvalidArgumentException
 
 import unittest
 
@@ -27,6 +28,21 @@ class TestesUnitarios(unittest.TestCase):
         user_agent_subject = instaloadercontext.default_user_agent()
 
         self.assertEqual(user_agent_subject, expected_user_agent)
+    
+    def test_too_long_media_id_should_raise_invalid_argument_exception(self):
+        invalid_media_id = 10 ** 100
+
+        self.assertRaises(InvalidArgumentException, lambda: Post.mediaid_to_shortcode(invalid_media_id))
+    
+    def test_negative_media_id_should_raise_invalid_argument_exception(self):
+        invalid_media_id = -1
+
+        self.assertRaises(OverflowError, lambda: Post.mediaid_to_shortcode(invalid_media_id))
+    
+    def test_valid_mediaid_to_shortcode(self):
+        result = Post.mediaid_to_shortcode(1)
+
+        self.assertEqual(result, 'B')
 
 
 if __name__ == '__main__':
