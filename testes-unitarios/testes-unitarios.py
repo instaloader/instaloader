@@ -43,7 +43,16 @@ class TestesUnitarios(unittest.TestCase):
         result = Post.mediaid_to_shortcode(1)
 
         self.assertEqual(result, 'B')
+    
+    def test_too_long_shortcode_should_raise_invalid_argument_exception(self):
+        invalid_shortcode = "XXXXXXXXXXXX"
 
+        self.assertRaises(InvalidArgumentException, lambda: Post.shortcode_to_mediaid(invalid_shortcode))
+
+    def test_valid_shortcode_to_mediaid(self):
+        result = Post.shortcode_to_mediaid("X")
+
+        self.assertEqual(result, 23)
 
 if __name__ == '__main__':
     unittest.main()
