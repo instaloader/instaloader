@@ -44,12 +44,12 @@ PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 
 class PostComment:
-    def __init__(self, node: Dict[str, Any], answers: Iterator['PostCommentAnswer'],
-                 context: 'InstaloaderContext', shortcode: str):
+    def __init__(self, context: 'InstaloaderContext', node: Dict[str, Any],
+                 answers: Iterator['PostCommentAnswer'], shortcode: str):
+        self._context = context
         self._node = node
         self._answers = answers
-        self._context = context
-        self.shortcode = shortcode
+        self._shortcode = shortcode
 
     @property
     def id(self) -> int:
@@ -95,17 +95,12 @@ class PostComment:
                 lambda d: d['data']['comment']['edge_liked_by'],
                 lambda n: Profile(self._context, n),
                 {'comment_id': self.id},
-                'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+                'https://www.instagram.com/p/{0}/'.format(self._shortcode),
             )
         return []
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}(id={self.id!r}, '
-            f'created_at_utc={self.created_at_utc!r}, '
-            f'text={self.text!r}, '
-            f'owner={self.owner.username!r}, '
-            f'likes_count={self.likes_count!r})')
-
+        return f'<PostComment {self.id} of {self._shortcode}>'
 
 class PostLocation(NamedTuple):
     id: int
@@ -634,8 +629,8 @@ class Post:
             )
 
         def _postcomment(node):
-            return PostComment(node=node, answers=_postcommentanswers(node),
-                               context=self._context, shortcode=self.shortcode)
+            return PostComment(context=self._context, node=node,
+                               answers=_postcommentanswers(node), shortcode=self.shortcode)
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return []
