@@ -35,31 +35,29 @@ class TestsPost:
         profile = Profile.from_username(self.instaLoader.context, self.user )
 
         post2 = Post(self.instaLoader.context, self.mockpost)
-        print(profile, post2)
-        print('aqui', post.shortcode)
-        print('title', post2.title)
-        print()
-        print('datelocal', post._node.keys())
+        # print(profile, post2)
+        # print('aqui', post.shortcode)
+        # print('title', post2.title)
+        print('post')
+        print( post2.title)
     
     def util_datetime(self):
         return datetime.datetime.fromtimestamp(self.timestamp)
+    
     @property
     def mockpost(self):
         return  {   
                 'owner': 'gabriel', 
-                'shortcode': 'Cs894TXOetY', 
+                'shortcode': 'shortcode123', #Cs894TXOetY
+                'code': 'shortcode123',
                 'id': '1234', 
                 'title': 'post da ufs', 
                 'date': self.timestamp, 
                 'taken_at_timestamp': self.timestamp
                 }
-
-    
-
     
 
 
-        
 
 
 
@@ -68,8 +66,7 @@ class TestesUnitarios(unittest.TestCase):
     data_tests = TestsPost()
     mockpost = data_tests.mockpost
     timestamp = data_tests.timestamp
-
-
+    context = data_tests.instaLoader.context
 
     def test_local_date_with_date_key(self):
         from_timestamp = self.data_tests.util_datetime().astimezone()
@@ -87,6 +84,57 @@ class TestesUnitarios(unittest.TestCase):
         post = Post(self.data_tests.instaLoader.context, self.mockpost)
 
         self.assertEqual(post.date_local, from_timestamp)
+    
+    def test_with_title_post(self):
+        title = 'post da ufs'
+
+        post = Post(self.data_tests.instaLoader.context,  self.mockpost)
+        
+        self.assertEqual(post.title, title)
+    
+
+    def test_without_title_post(self):
+        mediaid = None
+        copymock = self.mockpost.copy()
+
+        del copymock['']
+        post = Post(self.context, self.mockpost)
+
+        self.assertEqual(mediaid, post.mediaid)
+
+
+    def test_media_id(self):
+        mediaid = 1234
+        post = Post(self.data_tests.instaLoader.context,  self.mockpost)
+
+        self.assertEqual(mediaid, post.mediaid)
+    
+    
+
+    def test_shortcode_with_shortcode_key(self):
+        shortcode = 'shortcode123'
+        post = Post(self.data_tests.instaLoader.context, self.mockpost)
+
+        self.assertEqual(post.shortcode, shortcode)
+    
+    def test_shortcode_without_shortcode_key(self):
+        shortcode = 'shortcode123'
+
+        copymock = self.mockpost.copy()
+        del copymock['shortcode']
+
+        post = Post(self.data_tests.instaLoader.context, copymock)
+
+        self.assertEqual(post.shortcode, shortcode)
+
+
+
+
+
+
+        
+
+
 
 
 
