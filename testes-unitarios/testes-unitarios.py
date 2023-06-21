@@ -12,8 +12,6 @@ from instaloader.instaloadercontext import InstaloaderContext
 from instaloader.instaloader import Instaloader
 from instaloader.structures import Post, Profile
 
-import time
-
 
 
 import datetime
@@ -21,7 +19,7 @@ import datetime
 
 
 
-class TestsPost:
+class MockTestsPost:
     def __init__(self) -> None:
         self.instaLoader = Instaloader()
         self.user = 'ufsoficial'
@@ -63,7 +61,7 @@ class TestsPost:
 
 class TestesUnitarios(unittest.TestCase):
 
-    data_tests = TestsPost()
+    data_tests = MockTestsPost()
     mockpost = data_tests.mockpost
     timestamp = data_tests.timestamp
     context = data_tests.instaLoader.context
@@ -72,7 +70,7 @@ class TestesUnitarios(unittest.TestCase):
         print('test_local_date_with_date_key')
         from_timestamp = self.data_tests.util_datetime().astimezone()
 
-        post = Post(self.data_tests.instaLoader.context, self.mockpost)
+        post = Post(self.context, self.mockpost)
 
         self.assertEqual(post.date_local, from_timestamp)
     
@@ -83,7 +81,7 @@ class TestesUnitarios(unittest.TestCase):
 
         from_timestamp = self.data_tests.util_datetime().astimezone()
 
-        post = Post(self.data_tests.instaLoader.context, self.mockpost)
+        post = Post(self.context, self.mockpost)
 
         self.assertEqual(post.date_local, from_timestamp)
     
@@ -91,7 +89,7 @@ class TestesUnitarios(unittest.TestCase):
         print('test_with_title_post')
         title = 'post da ufs'
 
-        post = Post(self.data_tests.instaLoader.context,  self.mockpost)
+        post = Post(self.context,  self.mockpost)
         
         self.assertEqual(post.title, title)
     
@@ -104,14 +102,14 @@ class TestesUnitarios(unittest.TestCase):
         del copymock['title']
         post = Post(self.context, copymock)
         post._full_metadata_dict = {'teste': 'title'}
-        
+
         self.assertEqual( post.title, title)
 
 
     def test_media_id(self):
         print('test_media_id')
         mediaid = 1234
-        post = Post(self.data_tests.instaLoader.context,  self.mockpost)
+        post = Post(self.context,  self.mockpost)
 
         self.assertEqual(mediaid, post.mediaid)
     
@@ -120,7 +118,7 @@ class TestesUnitarios(unittest.TestCase):
     def test_shortcode_with_shortcode_key(self):
         print('test_shortcode_with_shortcode_key')
         shortcode = 'shortcode123'
-        post = Post(self.data_tests.instaLoader.context, self.mockpost)
+        post = Post(self.context, self.mockpost)
 
         self.assertEqual(post.shortcode, shortcode)
     
@@ -131,13 +129,12 @@ class TestesUnitarios(unittest.TestCase):
         copymock = self.mockpost.copy()
         del copymock['shortcode']
 
-        post = Post(self.data_tests.instaLoader.context, copymock)
+        post = Post(self.context, copymock)
 
         self.assertEqual(post.shortcode, shortcode)
 
    
 
 if __name__ == '__main__':
-    mock = TestsPost()
 
     unittest.main()
