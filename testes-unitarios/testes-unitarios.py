@@ -69,6 +69,7 @@ class TestesUnitarios(unittest.TestCase):
     context = data_tests.instaLoader.context
 
     def test_local_date_with_date_key(self):
+        print('test_local_date_with_date_key')
         from_timestamp = self.data_tests.util_datetime().astimezone()
 
         post = Post(self.data_tests.instaLoader.context, self.mockpost)
@@ -76,6 +77,7 @@ class TestesUnitarios(unittest.TestCase):
         self.assertEqual(post.date_local, from_timestamp)
     
     def test_local_date_without_date_key(self):
+        print('test_local_date_without_date_key')
         copy_date = self.mockpost.copy()
         del copy_date['date']
 
@@ -86,6 +88,7 @@ class TestesUnitarios(unittest.TestCase):
         self.assertEqual(post.date_local, from_timestamp)
     
     def test_with_title_post(self):
+        print('test_with_title_post')
         title = 'post da ufs'
 
         post = Post(self.data_tests.instaLoader.context,  self.mockpost)
@@ -94,16 +97,19 @@ class TestesUnitarios(unittest.TestCase):
     
 
     def test_without_title_post(self):
-        mediaid = None
+        print('test_without_title_post')
+        title = None
         copymock = self.mockpost.copy()
 
-        del copymock['']
-        post = Post(self.context, self.mockpost)
-
-        self.assertEqual(mediaid, post.mediaid)
+        del copymock['title']
+        post = Post(self.context, copymock)
+        post._full_metadata_dict = {'teste': 'title'}
+        
+        self.assertEqual( post.title, title)
 
 
     def test_media_id(self):
+        print('test_media_id')
         mediaid = 1234
         post = Post(self.data_tests.instaLoader.context,  self.mockpost)
 
@@ -112,12 +118,14 @@ class TestesUnitarios(unittest.TestCase):
     
 
     def test_shortcode_with_shortcode_key(self):
+        print('test_shortcode_with_shortcode_key')
         shortcode = 'shortcode123'
         post = Post(self.data_tests.instaLoader.context, self.mockpost)
 
         self.assertEqual(post.shortcode, shortcode)
     
     def test_shortcode_without_shortcode_key(self):
+        print('test_shortcode_without_shortcode_key')
         shortcode = 'shortcode123'
 
         copymock = self.mockpost.copy()
@@ -127,24 +135,6 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertEqual(post.shortcode, shortcode)
 
-
-
-
-
-
-        
-
-
-
-
-
-    
-
-
-    
-
-        
-        
    
 
 if __name__ == '__main__':
