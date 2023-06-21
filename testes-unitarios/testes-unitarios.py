@@ -1,5 +1,16 @@
+import os
 import unittest
 import datetime
+
+from unittest.mock import patch
+
+from instaloader import instaloader
+USUARIO_TESTE = 'kaell_andrade'
+WINDOS = 'Windows'
+UNIX = 'Unix'
+
+
+
 
 from instaloader.structures import Post
 from instaloader import instaloadercontext
@@ -16,14 +27,6 @@ Para executar esse teste, faz-se necessario estar no diretorio instaloader-tests
 
 python3 -m testes-unitarios.testes-unitarios
 """
-
-
-
-
-
-
-
-
 
 
 
@@ -73,6 +76,35 @@ class TestesUnitarios(unittest.TestCase):
     mockpost = data_tests.mockpost
     timestamp = data_tests.timestamp
     context = data_tests.instaLoader.context
+
+    @patch('platform.system')
+    def test_windows_localappdata_get_config_dir(self, mock_system):
+        mock_system.return_value = WINDOS
+        os.environ["LOCALAPPDATA"] = "C:\\Users\\{}\\AppData\\Local".format(USUARIO_TESTE)
+        expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\Local/Instaloader".format(USUARIO_TESTE))
+        self.assertEqual(instaloader._get_config_dir(), expected_dir)
+
+    
+    @patch('platform.system')
+    def test_unix_get_config_dir(self, mock_system):
+        mock_system.return_value = UNIX
+        os.environ["XDG_CONFIG_HOME"] = "/home/{}/.config".format(USUARIO_TESTE)
+        expected_dir = "/home/{}/.config/instaloader".format(USUARIO_TESTE)
+        self.assertEqual(instaloader._get_config_dir(), expected_dir)
+    
+    @patch('platform.system')
+    def test_windows_get_default_session_filename(self, mock_system):
+        mock_system.return_value = WINDOS
+        os.environ["LOCALAPPDATA"] = "C:\\Users\\testuser\\AppData\\Local"
+        expected_filename = "C:\\Users\\testuser\\AppData\\Local/Instaloader/session-{}".format(USUARIO_TESTE)
+        self.assertEqual(instaloader.get_default_session_filename(USUARIO_TESTE), expected_filename)
+
+    @patch('platform.system')
+    def test_unix_get_default_session_filename(self, mock_system):
+        mock_system.return_value = UNIX
+        os.environ["XDG_CONFIG_HOME"] = "/home/testuser/.config"
+        expected_filename = "/home/testuser/.config/instaloader/session-{}".format(USUARIO_TESTE)
+        self.assertEqual(instaloader.get_default_session_filename(USUARIO_TESTE), expected_filename)
 
     def test_has_rigth_amount_valid_graphql_types(self):
         len_graphql_types_subject = len(Post.supported_graphql_types())
