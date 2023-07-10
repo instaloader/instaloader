@@ -45,11 +45,11 @@ PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 class PostComment:
     def __init__(self, context: 'InstaloaderContext', node: Dict[str, Any],
-                 answers: Iterator['PostCommentAnswer'], shortcode: str):
+                 answers: Iterator['PostCommentAnswer'], post: 'Post'):
         self._context = context
         self._node = node
         self._answers = answers
-        self._shortcode = shortcode
+        self._post = post
 
     @property
     def id(self) -> int:
@@ -86,7 +86,7 @@ class PostComment:
         """
         Iterate over all likes of a comment. A :class:`Profile` instance of each like is yielded.
 
-        .. versionadded:: 4.10
+        .. versionadded:: 4.11
         """
         if self.likes_count != 0:
             return NodeIterator(
@@ -95,12 +95,12 @@ class PostComment:
                 lambda d: d['data']['comment']['edge_liked_by'],
                 lambda n: Profile(self._context, n),
                 {'comment_id': self.id},
-                'https://www.instagram.com/p/{0}/'.format(self._shortcode),
+                'https://www.instagram.com/p/{0}/'.format(self._post.shortcode),
             )
         return []
 
     def __repr__(self):
-        return f'<PostComment {self.id} of {self._shortcode}>'
+        return f'<PostComment {self.id} of {self._post.shortcode}>'
 
 class PostLocation(NamedTuple):
     id: int
@@ -630,7 +630,7 @@ class Post:
 
         def _postcomment(node):
             return PostComment(context=self._context, node=node,
-                               answers=_postcommentanswers(node), shortcode=self.shortcode)
+                               answers=_postcommentanswers(node), post=self)
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return []
