@@ -124,6 +124,7 @@ Supporters
 .. current-sponsors-start
 
 | Instaloader is proudly sponsored by
+|  `@rocketapi-io <https://github.com/rocketapi-io>`__
 |  `@socialmethod <https://github.com/socialmethod>`__
 
 See `Alex' GitHub Sponsors <https://github.com/sponsors/aandergr>`__ page for
