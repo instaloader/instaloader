@@ -233,29 +233,29 @@ class TestesUnitarios(unittest.TestCase):
     def test_local_date_with_date_key(self):
         print('test_local_date_with_date_key')
         with mock.patch.object(self.data_tests, 'util_datetime', return_value=datetime.now(timezone.utc)):
-            post = Post(self.context, self.data_tests.mockpost)
+            post = Post(self.context, self.mockpost)
             expected_date = datetime.fromtimestamp(self.data_tests.timestamp, timezone.utc)
             self.assertEqual(post.date_local, expected_date)
 
     def test_local_date_without_date_key(self):
         print('test_local_date_without_date_key')
-        copy_date = self.data_tests.mockpost.copy()
+        copy_date = self.mockpost.copy()
         del copy_date['date']
         with mock.patch.object(self.data_tests, 'util_datetime', return_value=datetime.now(timezone.utc)):
-            post = Post(self.context, self.data_tests.mockpost)
+            post = Post(self.context, self.mockpost)
             expected_date = datetime.fromtimestamp(self.data_tests.timestamp, timezone.utc)
             self.assertEqual(post.date_local, expected_date)
 
     def test_with_title_post(self):
         print('test_with_title_post')
         title = 'post da ufs'
-        post = Post(self.context, self.data_tests.mockpost)
+        post = Post(self.context, self.mockpost)
         self.assertEqual(post.title, title)
 
     def test_without_title_post(self):
         print('test_without_title_post')
         title = None
-        copymock = self.data_tests.mockpost.copy()
+        copymock = self.mockpost.copy()
         del copymock['title']
         post = Post(self.context, copymock)
         post._full_metadata_dict = {'teste': 'title'}
@@ -264,19 +264,19 @@ class TestesUnitarios(unittest.TestCase):
     def test_media_id(self):
         print('test_media_id')
         mediaid = 1234
-        post = Post(self.context, self.data_tests.mockpost)
+        post = Post(self.context, self.mockpost)
         self.assertEqual(mediaid, post.mediaid)
 
     def test_shortcode_with_shortcode_key(self):
         print('test_shortcode_with_shortcode_key')
         shortcode = 'shortcode123'
-        post = Post(self.context, self.data_tests.mockpost)
+        post = Post(self.context, self.mockpost)
         self.assertEqual(post.shortcode, shortcode)
 
     def test_shortcode_without_shortcode_key(self):
         print('test_shortcode_without_shortcode_key')
         shortcode = 'shortcode123'
-        copymock = self.data_tests.mockpost.copy()
+        copymock = self.mockpost.copy()
         del copymock['shortcode']
         post = Post(self.context, copymock)
         self.assertEqual(post.shortcode, shortcode)
