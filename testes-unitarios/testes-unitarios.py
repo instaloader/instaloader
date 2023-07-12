@@ -134,7 +134,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertRaises(InvalidArgumentException, lambda: Post.mediaid_to_shortcode(invalid_media_id))
     
-    def test_none_media_id_should_raise_invalid_argument_exception(self):
+    def test_none_media_id_should_raise_attribute_error(self):
         invalid_media_id = None
 
         self.assertRaises(AttributeError, lambda: Post.mediaid_to_shortcode(invalid_media_id))
@@ -159,12 +159,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertEqual(result, 23)
 
-    def test_none_media_id_should_raise_invalid_argument_exception(self):
-        invalid_media_id = None
-
-        self.assertRaises(AttributeError, lambda: Post.mediaid_to_shortcode(invalid_media_id))
-
-    def test_none_shortcode_to_mediaid(self):
+    def test_none_shortcode_to_mediaid_should_raise_type_error(self):
         self.assertRaises(TypeError, lambda: Post.shortcode_to_mediaid(None))
     
 
