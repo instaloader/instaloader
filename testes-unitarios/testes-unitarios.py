@@ -81,7 +81,7 @@ class TestesUnitarios(unittest.TestCase):
     def test_windows_localappdata_get_config_dir(self, mock_system):
         mock_system.return_value = WINDOS
         os.environ["LOCALAPPDATA"] = "C:\\Users\\{}\\AppData\\Local".format(USUARIO_TESTE)
-        expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\Local/Instaloader".format(USUARIO_TESTE))
+        expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\\Local/Instaloader".format(USUARIO_TESTE))
         self.assertEqual(instaloader._get_config_dir(), expected_dir)
 
     
