@@ -111,7 +111,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertEqual(len_graphql_types_subject, 3)
     
-    def test_has_all_valid_graphql_types(self):
+    def test_supported_graphql_types_contains_image_video_sidecar(self):
         expected_graphql_types = ["GraphImage", "GraphVideo", "GraphSidecar"]
         graphql_types = Post.supported_graphql_types()  
         
@@ -121,7 +121,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertTrue(has_all_graphql_types)
     
-    def test_has_valid_user_agent(self):
+    def test_default_user_agent_equals_mozilla(self):
         expected_user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
            '(KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
         
@@ -158,6 +158,11 @@ class TestesUnitarios(unittest.TestCase):
         result = Post.shortcode_to_mediaid("X")
 
         self.assertEqual(result, 23)
+
+    def test_none_media_id_should_raise_invalid_argument_exception(self):
+        invalid_media_id = None
+
+        self.assertRaises(AttributeError, lambda: Post.mediaid_to_shortcode(invalid_media_id))
 
     def test_none_shortcode_to_mediaid(self):
         self.assertRaises(TypeError, lambda: Post.shortcode_to_mediaid(None))
