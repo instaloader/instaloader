@@ -83,7 +83,6 @@ class TestesUnitarios(unittest.TestCase):
         os.environ["LOCALAPPDATA"] = "C:\\Users\\{}\\AppData\\Local".format(USUARIO_TESTE)
         expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\\Local/Instaloader".format(USUARIO_TESTE))
         self.assertEqual(instaloader._get_config_dir(), expected_dir)
-
     
     @patch('platform.system')
     def test_unix_get_config_dir(self, mock_system):
