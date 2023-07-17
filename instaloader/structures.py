@@ -43,19 +43,64 @@ PostCommentAnswer.owner.__doc__ = "Owner :class:`Profile` of the comment."
 PostCommentAnswer.likes_count.__doc__ = "Number of likes on comment."
 
 
-class PostComment(NamedTuple):
-    id: int
-    created_at_utc: datetime
-    text: str
-    owner: 'Profile'
-    likes_count: int
-    answers: Iterator[PostCommentAnswer]
+class PostComment:
+    def __init__(self, context: 'InstaloaderContext', node: Dict[str, Any],
+                 answers: Iterator['PostCommentAnswer'], post: 'Post'):
+        self._context = context
+        self._node = node
+        self._answers = answers
+        self._post = post
 
+    @property
+    def id(self) -> int:
+        """ ID number of comment. """
+        return self._node['id']
 
-for field in PostCommentAnswer._fields:
-    getattr(PostComment, field).__doc__ = getattr(PostCommentAnswer, field).__doc__  # pylint: disable=no-member
-PostComment.answers.__doc__ = r"Iterator which yields all :class:`PostCommentAnswer`\ s for the comment."
+    @property
+    def created_at_utc(self) -> datetime:
+        """ :class:`~datetime.datetime` when comment was created (UTC). """
+        return datetime.utcfromtimestamp(self._node['created_at'])
 
+    @property
+    def text(self):
+        """ Comment text. """
+        return self._node['text']
+
+    @property
+    def owner(self):
+        """ Owner :class:`Profile` of the comment. """
+        return Profile(self._context, self._node['owner'])
+
+    @property
+    def likes_count(self):
+        """ Number of likes on comment. """
+        return self._node.get('edge_liked_by', {}).get('count', 0)
+
+    @property
+    def answers(self) -> Iterator['PostCommentAnswer']:
+        """ Iterator which yields all :class:`PostCommentAnswer` for the comment. """
+        return self._answers
+
+    @property
+    def likes(self) -> Iterable['Profile']:
+        """
+        Iterate over all likes of a comment. A :class:`Profile` instance of each like is yielded.
+
+        .. versionadded:: 4.11
+        """
+        if self.likes_count != 0:
+            return NodeIterator(
+                self._context,
+                '5f0b1f6281e72053cbc07909c8d154ae',
+                lambda d: d['data']['comment']['edge_liked_by'],
+                lambda n: Profile(self._context, n),
+                {'comment_id': self.id},
+                'https://www.instagram.com/p/{0}/'.format(self._post.shortcode),
+            )
+        return []
+
+    def __repr__(self):
+        return f'<PostComment {self.id} of {self._post.shortcode}>'
 
 class PostLocation(NamedTuple):
     id: int
@@ -584,8 +629,8 @@ class Post:
             )
 
         def _postcomment(node):
-            return PostComment(*_postcommentanswer(node),
-                               answers=_postcommentanswers(node))
+            return PostComment(context=self._context, node=node,
+                               answers=_postcommentanswers(node), post=self)
         if self.comments == 0:
             # Avoid doing additional requests if there are no comments
             return []
