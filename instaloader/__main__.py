@@ -14,6 +14,7 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
+import browser_cookie3
 
 
 def usage_string():
@@ -66,6 +67,45 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     return filterfunc
 
+def getCookiesFromDomain(domain, browser, cookieName=''):
+    supported_browsers = {
+        "chrome": browser_cookie3.chrome,
+        "firefox": browser_cookie3.firefox,
+        "edge": browser_cookie3.edge,
+        "brave": browser_cookie3.brave,
+        "opera": browser_cookie3.opera,
+        "safari": browser_cookie3.safari
+    }
+
+    if browser not in supported_browsers:
+        print("Loading cookies from the specified browser failed. Supported browsers are Chrome, Firefox, Edge, Brave, Safari")
+        return {}
+
+    Cookies = {}
+    browserCookies = list(supported_browsers[browser]())
+
+    for cookie in browserCookies:
+        if domain in cookie.domain:
+            Cookies[cookie.name] = cookie.value
+
+    if Cookies:
+        print(f"Cookies loaded successfully from {browser}")
+    else:
+        print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
+
+    if cookieName:
+        return Cookies.get(cookieName, {})
+    else:
+        return Cookies
+
+def import_session(browser, instaloader):
+    cookie = getCookiesFromDomain('instagram', browser)
+    if cookie is not None:
+        instaloader.context._session.cookies.update(cookie)
+        username = instaloader.test_login()
+        if not username:
+            raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
+        instaloader.context.username = username
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
@@ -78,7 +118,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           fast_update: bool = False,
           latest_stamps_file: Optional[str] = None,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
-          storyitem_filter_str: Optional[str] = None) -> None:
+          storyitem_filter_str: Optional[str] = None,
+          browser: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -103,6 +144,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
+        if browser is not None:
+            import_session(browser.lower(), instaloader)
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
                 try:
@@ -356,6 +399,8 @@ def main():
                                         'to login.')
     g_login.add_argument('-l', '--login', metavar='YOUR-USERNAME',
                          help='Login name (profile name) for your Instagram account.')
+    g_login.add_argument('-lc', '--load-cookies', metavar='BROWSER-NAME',
+                         help='Browser name to load cookies from Instagram')
     g_login.add_argument('-f', '--sessionfile',
                          help='Path for loading and storing session key file. '
                               'Defaults to ' + get_default_session_filename("<login_name>"))
@@ -482,7 +527,8 @@ def main():
               latest_stamps_file=args.latest_stamps,
               max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
-              storyitem_filter_str=args.storyitem_filter)
+              storyitem_filter_str=args.storyitem_filter,
+              browser=args.load_cookies)
         loader.close()
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err) from err
