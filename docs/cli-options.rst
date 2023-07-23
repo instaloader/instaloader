@@ -196,6 +196,10 @@ Instaloader to login.
 
    Login name (profile name) for your Instagram account.
 
+.. option:: --load-cookies BROWSER-NAME, -lc BROWSER-NAME
+
+   Use Instagram cookie in your browser to login (works with --login). Supported browsers: Chrome, Firefox, Edge, Opera, Safari, Brave.
+
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
    Path for loading and storing session key file.  Defaults to
