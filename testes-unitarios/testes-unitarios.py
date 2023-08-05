@@ -4,6 +4,9 @@ import datetime
 
 from unittest.mock import patch
 
+from unittest import mock
+from datetime import datetime, timezone
+
 from instaloader import instaloader
 USUARIO_TESTE = 'kaell_andrade'
 WINDOS = 'Windows'
@@ -26,6 +29,19 @@ from instaloader.structures import Post, Profile
 Para executar esse teste, faz-se necessario estar no diretorio instaloader-tests e executar o comando:
 
 python3 -m testes-unitarios.testes-unitarios
+
+para a cobertura 
+
+python -m coverage run -m unittest testes-unitarios/testes-unitarios.py
+
+obter html 
+
+python -m coverage html
+
+
+linha de comando
+
+python -m coverage report --omit="testes-unitarios/*”
 """
 
 
@@ -36,7 +52,6 @@ class MockTestsPost:
         self.user = 'ufsoficial'
         self.timestamp = 1687140049
         
-        # self.__initializeInstaloader()
 
     def __initializeInstaloader(self) -> None:
         # self.instaLoader.login(self.user, '')
@@ -75,15 +90,16 @@ class TestesUnitarios(unittest.TestCase):
     data_tests = MockTestsPost()
     mockpost = data_tests.mockpost
     timestamp = data_tests.timestamp
-    context = data_tests.instaLoader.context
+    # context = data_tests.instaLoader.context
+
+    context = mock.Mock(spec=Instaloader)
 
     @patch('platform.system')
     def test_windows_localappdata_get_config_dir(self, mock_system):
         mock_system.return_value = WINDOS
         os.environ["LOCALAPPDATA"] = "C:\\Users\\{}\\AppData\\Local".format(USUARIO_TESTE)
-        expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\Local/Instaloader".format(USUARIO_TESTE))
+        expected_dir = os.path.normpath("C:\\Users\\{}\\AppData\\Local/Instaloader".format(USUARIO_TESTE))
         self.assertEqual(instaloader._get_config_dir(), expected_dir)
-
     
     @patch('platform.system')
     def test_unix_get_config_dir(self, mock_system):
@@ -111,7 +127,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertEqual(len_graphql_types_subject, 3)
     
-    def test_has_all_valid_graphql_types(self):
+    def test_supported_graphql_types_contains_image_video_sidecar(self):
         expected_graphql_types = ["GraphImage", "GraphVideo", "GraphSidecar"]
         graphql_types = Post.supported_graphql_types()  
         
@@ -121,7 +137,7 @@ class TestesUnitarios(unittest.TestCase):
 
         self.assertTrue(has_all_graphql_types)
     
-    def test_has_valid_user_agent(self):
+    def test_default_user_agent_equals_mozilla(self):
         expected_user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
            '(KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
         
@@ -133,6 +149,11 @@ class TestesUnitarios(unittest.TestCase):
         invalid_media_id = 10 ** 100
 
         self.assertRaises(InvalidArgumentException, lambda: Post.mediaid_to_shortcode(invalid_media_id))
+    
+    def test_none_media_id_should_raise_attribute_error(self):
+        invalid_media_id = None
+
+        self.assertRaises(AttributeError, lambda: Post.mediaid_to_shortcode(invalid_media_id))
     
     def test_negative_media_id_should_raise_invalid_argument_exception(self):
         invalid_media_id = -1
@@ -153,78 +174,64 @@ class TestesUnitarios(unittest.TestCase):
         result = Post.shortcode_to_mediaid("X")
 
         self.assertEqual(result, 23)
+
+    def test_none_shortcode_to_mediaid_should_raise_type_error(self):
+        self.assertRaises(TypeError, lambda: Post.shortcode_to_mediaid(None))
     
 
     # /////// Tests dinamics properties
 
+
     def test_local_date_with_date_key(self):
         print('test_local_date_with_date_key')
-        from_timestamp = self.data_tests.util_datetime().astimezone()
+        with mock.patch.object(self.data_tests, 'util_datetime', return_value=datetime.now(timezone.utc)):
+            post = Post(self.context, self.mockpost)
+            expected_date = datetime.fromtimestamp(self.data_tests.timestamp, timezone.utc)
+            self.assertEqual(post.date_local, expected_date)
 
-        post = Post(self.context, self.mockpost)
-
-        self.assertEqual(post.date_local, from_timestamp)
-    
     def test_local_date_without_date_key(self):
         print('test_local_date_without_date_key')
         copy_date = self.mockpost.copy()
         del copy_date['date']
+        with mock.patch.object(self.data_tests, 'util_datetime', return_value=datetime.now(timezone.utc)):
+            post = Post(self.context, self.mockpost)
+            expected_date = datetime.fromtimestamp(self.data_tests.timestamp, timezone.utc)
+            self.assertEqual(post.date_local, expected_date)
 
-        from_timestamp = self.data_tests.util_datetime().astimezone()
-
-        post = Post(self.context, self.mockpost)
-
-        self.assertEqual(post.date_local, from_timestamp)
-    
     def test_with_title_post(self):
         print('test_with_title_post')
         title = 'post da ufs'
-
-        post = Post(self.context,  self.mockpost)
-        
+        post = Post(self.context, self.mockpost)
         self.assertEqual(post.title, title)
-    
 
     def test_without_title_post(self):
         print('test_without_title_post')
         title = None
         copymock = self.mockpost.copy()
-
         del copymock['title']
         post = Post(self.context, copymock)
         post._full_metadata_dict = {'teste': 'title'}
-
-        self.assertEqual( post.title, title)
-
+        self.assertEqual(post.title, title)
 
     def test_media_id(self):
         print('test_media_id')
         mediaid = 1234
-        post = Post(self.context,  self.mockpost)
-
+        post = Post(self.context, self.mockpost)
         self.assertEqual(mediaid, post.mediaid)
-    
-    
 
     def test_shortcode_with_shortcode_key(self):
         print('test_shortcode_with_shortcode_key')
         shortcode = 'shortcode123'
         post = Post(self.context, self.mockpost)
-
         self.assertEqual(post.shortcode, shortcode)
-    
+
     def test_shortcode_without_shortcode_key(self):
         print('test_shortcode_without_shortcode_key')
         shortcode = 'shortcode123'
-
         copymock = self.mockpost.copy()
         del copymock['shortcode']
-
         post = Post(self.context, copymock)
-
         self.assertEqual(post.shortcode, shortcode)
-
-   
 
 if __name__ == '__main__':
 
