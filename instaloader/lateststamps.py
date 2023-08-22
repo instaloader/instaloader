@@ -27,7 +27,8 @@ class LatestStamps:
         self.data.read(latest_stamps_file)
 
     def _save(self):
-        makedirs(dirname(self.file), exist_ok=True)
+        if dn := dirname(self.file):
+            makedirs(dn, exist_ok=True)
         with open(self.file, 'w') as f:
             self.data.write(f)
 
