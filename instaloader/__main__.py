@@ -78,25 +78,26 @@ def get_cookies_from_instagram(domain, browser, cookiefile="", cookieName=''):
     }
 
     if browser not in supported_browsers:
-        print("Loading cookies from the specified browser failed. Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
+        print("Loading cookies from the specified browser failed")
+        print("Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
         return {}
 
-    Cookies = {}
-    browserCookies = list(supported_browsers[browser](cookie_file=cookiefile))
+    cookies = {}
+    browser_cookies = list(supported_browsers[browser](cookie_file=cookiefile))
 
-    for cookie in browserCookies:
+    for cookie in browser_cookies:
         if domain in cookie.domain:
-            Cookies[cookie.name] = cookie.value
+            cookies[cookie.name] = cookie.value
 
-    if Cookies:
+    if cookies:
         print(f"Cookies loaded successfully from {browser}")
     else:
         print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
 
     if cookieName:
-        return Cookies.get(cookieName, {})
+        return cookies.get(cookieName, {})
     else:
-        return Cookies
+        return cookies
 
 def import_session(browser, instaloader, cookiefile):
     cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
