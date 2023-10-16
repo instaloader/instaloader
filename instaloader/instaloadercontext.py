@@ -405,20 +405,13 @@ class InstaloaderContext:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
             is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
             if is_html_query:
-                match = re.search(r'window\._sharedData = (.*);</script>', resp.text)
+                # Extract JSON from HTML response
+                match = re.search('(?<={"raw":").*?(?<!\\\\)(?=")', resp.text)
                 if match is None:
-                    raise QueryReturnedNotFoundException("Could not find \"window._sharedData\" in html response.")
-                resp_json = json.loads(match.group(1))
-                entry_data = resp_json.get('entry_data')
-                post_or_profile_page = list(entry_data.values())[0] if entry_data is not None else None
-                if post_or_profile_page is None:
-                    raise ConnectionException("\"window._sharedData\" does not contain required keys.")
-                # If GraphQL data is missing in `window._sharedData`, search for it in `__additionalDataLoaded`.
-                if 'graphql' not in post_or_profile_page[0]:
-                    match = re.search(r'window\.__additionalDataLoaded\(.*?({.*"graphql":.*})\);</script>',
-                                      resp.text)
-                    if match is not None:
-                        post_or_profile_page[0]['graphql'] = json.loads(match.group(1))['graphql']
+                    raise QueryReturnedNotFoundException("Could not find JSON data in html response.")
+                # Unescape escaped JSON string
+                unescaped_string = match.group(0).encode("utf-8").decode("unicode_escape")
+                resp_json = json.loads(unescaped_string)
                 return resp_json
             else:
                 resp_json = resp.json()
