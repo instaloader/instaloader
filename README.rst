@@ -31,7 +31,15 @@
 
 ::
 
+    from pip
     $ pip3 install instaloader
+
+    $ instaloader profile [profile ...]
+
+    from source
+    $ python3 -m venv venv
+    $ source venv/bin/activate
+    $ pip3 install requirements.txt
 
     $ instaloader profile [profile ...]
 
