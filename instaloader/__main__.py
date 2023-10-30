@@ -150,10 +150,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
-        if browser is not None and is_library_installed == True:
-            import_session(browser.lower(), instaloader, cookiefile)
-        else:
-            raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
+        if browser is not None:
+            if is_library_installed:
+                import_session(browser.lower(), instaloader, cookiefile)
+            else:
+                raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
                 try:
