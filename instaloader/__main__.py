@@ -16,9 +16,9 @@ from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 try:
     import browser_cookie3
-    is_library_installed = True
+    bc3_library = True
 except ImportError:
-    is_library_installed = False
+    bc3_library = False
 
 
 def usage_string():
@@ -151,7 +151,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
         if browser is not None:
-            if is_library_installed:
+            if bc3_library:
                 import_session(browser.lower(), instaloader, cookiefile)
             else:
                 raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
