@@ -71,7 +71,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     return filterfunc
 
-def get_cookies_from_instagram(domain, browser, cookiefile="", cookieName=''):
+def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     supported_browsers = {
         "chrome": browser_cookie3.chrome,
         "firefox": browser_cookie3.firefox,
@@ -87,7 +87,7 @@ def get_cookies_from_instagram(domain, browser, cookiefile="", cookieName=''):
         return {}
 
     cookies = {}
-    browser_cookies = list(supported_browsers[browser](cookie_file=cookiefile))
+    browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
 
     for cookie in browser_cookies:
         if domain in cookie.domain:
@@ -98,8 +98,8 @@ def get_cookies_from_instagram(domain, browser, cookiefile="", cookieName=''):
     else:
         print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
 
-    if cookieName:
-        return cookies.get(cookieName, {})
+    if cookie_name:
+        return cookies.get(cookie_name, {})
     else:
         return cookies
 
