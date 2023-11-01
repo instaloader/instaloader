@@ -106,7 +106,7 @@ def get_cookies_from_instagram(domain, browser, cookiefile="", cookieName=''):
 def import_session(browser, instaloader, cookiefile):
     cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
     if cookie is not None:
-        instaloader.context.update_cookie(cookie)
+        instaloader.context.update_cookies(cookie)
         username = instaloader.test_login()
         if not username:
             raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")

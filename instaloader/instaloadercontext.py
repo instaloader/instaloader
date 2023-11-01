@@ -211,7 +211,7 @@ class InstaloaderContext:
         """Not meant to be used directly, use :meth:`Instaloader.save_session`."""
         return requests.utils.dict_from_cookiejar(self._session.cookies)
 
-    def update_cookie(self, cookie):
+    def update_cookies(self, cookie):
         self._session.cookies.update(cookie)
 
     def load_session(self, username, sessiondata):
