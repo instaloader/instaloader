@@ -20,3 +20,4 @@ browser_cookie3 = "*"
 
 [packages]
 requests = "*"
+browser-cookie3 = "*"
