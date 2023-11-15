@@ -14,6 +14,11 @@ from . import (AbortDownloadException, BadCredentialsException, Instaloader, Ins
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
+try:
+    import browser_cookie3
+    bc3_library = True
+except ImportError:
+    bc3_library = False
 
 
 def usage_string():
@@ -66,6 +71,46 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     return filterfunc
 
+def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
+    supported_browsers = {
+        "chrome": browser_cookie3.chrome,
+        "firefox": browser_cookie3.firefox,
+        "edge": browser_cookie3.edge,
+        "brave": browser_cookie3.brave,
+        "opera": browser_cookie3.opera,
+        "safari": browser_cookie3.safari
+    }
+
+    if browser not in supported_browsers:
+        print("Loading cookies from the specified browser failed")
+        print("Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
+        return {}
+
+    cookies = {}
+    browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
+
+    for cookie in browser_cookies:
+        if domain in cookie.domain:
+            cookies[cookie.name] = cookie.value
+
+    if cookies:
+        print(f"Cookies loaded successfully from {browser}")
+    else:
+        print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
+
+    if cookie_name:
+        return cookies.get(cookie_name, {})
+    else:
+        return cookies
+
+def import_session(browser, instaloader, cookiefile):
+    cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
+    if cookie is not None:
+        instaloader.context.update_cookies(cookie)
+        username = instaloader.test_login()
+        if not username:
+            raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
+        instaloader.context.username = username
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
@@ -78,7 +123,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           fast_update: bool = False,
           latest_stamps_file: Optional[str] = None,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
-          storyitem_filter_str: Optional[str] = None) -> None:
+          storyitem_filter_str: Optional[str] = None,
+          browser: Optional[str] = None,
+          cookiefile: Optional[str] = None) -> None:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -103,6 +150,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
+        if browser is not None:
+            if bc3_library:
+                import_session(browser.lower(), instaloader, cookiefile)
+            else:
+                raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
                 try:
@@ -356,6 +408,10 @@ def main():
                                         'to login.')
     g_login.add_argument('-l', '--login', metavar='YOUR-USERNAME',
                          help='Login name (profile name) for your Instagram account.')
+    g_login.add_argument('-b', '--load-cookies', metavar='BROWSER-NAME',
+                         help='Browser name to load cookies from Instagram')
+    g_login.add_argument('-B', '--cookiefile', metavar='COOKIE-FILE',
+                         help='Cookie file of a profile to load cookies')
     g_login.add_argument('-f', '--sessionfile',
                          help='Path for loading and storing session key file. '
                               'Defaults to ' + get_default_session_filename("<login_name>"))
@@ -482,7 +538,9 @@ def main():
               latest_stamps_file=args.latest_stamps,
               max_count=int(args.count) if args.count is not None else None,
               post_filter_str=args.post_filter,
-              storyitem_filter_str=args.storyitem_filter)
+              storyitem_filter_str=args.storyitem_filter,
+              browser=args.load_cookies,
+              cookiefile=args.cookiefile)
         loader.close()
     except InstaloaderException as err:
         raise SystemExit("Fatal error: %s" % err) from err

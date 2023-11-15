@@ -19,3 +19,4 @@ pefile = "*"          # Needed for pyinstaller on Windows
 
 [packages]
 requests = "*"
+browser-cookie3 = "*"
