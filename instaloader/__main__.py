@@ -160,6 +160,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 try:
                     instaloader.login(username, password)
                 except TwoFactorAuthRequiredException:
+                    # https://github.com/instaloader/instaloader/issues/1217
+                    instaloader.context.error("Warning: There have been reports of 2FA currently not working. "
+                                              "Consider importing session cookies from your browser with "
+                                              "--load-cookies.")
                     while True:
                         try:
                             code = input("Enter 2FA verification code: ")
