@@ -140,6 +140,12 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     if latest_stamps_file is not None:
         latest_stamps = LatestStamps(latest_stamps_file)
         instaloader.context.log(f"Using latest stamps from {latest_stamps_file}.")
+    # load cookies if browser is not None
+    if browser is not None:
+        if bc3_library:
+            import_session(browser.lower(), instaloader, cookiefile)
+        else:
+            raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
@@ -150,11 +156,6 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
-        if browser is not None:
-            if bc3_library:
-                import_session(browser.lower(), instaloader, cookiefile)
-            else:
-                raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
                 try:
@@ -503,6 +504,9 @@ def main():
 
         if args.no_pictures and args.fast_update:
             raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+
+        if args.login and args.load_cookies:
+            raise SystemExit('--load-cookies and --login cannot be used together.')
 
         # Determine what to download
         download_profile_pic = not args.no_profile_pic or args.profile_pic_only
