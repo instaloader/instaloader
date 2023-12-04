@@ -95,6 +95,8 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
 
     if cookies:
         print(f"Cookies loaded successfully from {browser}")
+        print("Next: Run instaloader --login=USERNAME as it is required to download high quality media \
+            and to make full use of instaloader's features")
     else:
         print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
 
@@ -141,11 +143,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         latest_stamps = LatestStamps(latest_stamps_file)
         instaloader.context.log(f"Using latest stamps from {latest_stamps_file}.")
     # load cookies if browser is not None
-    if browser is not None:
-        if bc3_library:
-            import_session(browser.lower(), instaloader, cookiefile)
-        else:
-            raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
+    if browser and bc3_library:
+        import_session(browser.lower(), instaloader, cookiefile)
+    elif browser and bc3_library is False:
+        raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
