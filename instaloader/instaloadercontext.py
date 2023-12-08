@@ -256,18 +256,25 @@ class InstaloaderContext:
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
-        csrf_json = self.get_json('accounts/login/', {}, session=session)
-        csrf_token = csrf_json['config']['csrf_token']
+
+        self.do_sleep()
+        # Make a request to Instagram's root URL, which will set the session's csrftoken cookie
+        # Not using self.get_json() here, because we need to access the cookie
+        csrf_request = session.get('https://www.instagram.com/')
+        # Add session's csrftoken cookie to session headers
+        csrf_token = session.cookies.get_dict()['csrftoken']
         session.headers.update({'X-CSRFToken': csrf_token})
-        # Not using self.get_json() here, because we need to access csrftoken cookie
+
         self.do_sleep()
         # Workaround credits to pgrimaud.
         # See: https://github.com/pgrimaud/instagram-user-feed/commit/96ad4cf54d1ad331b337f325c73e664999a6d066
         enc_password = '#PWD_INSTAGRAM_BROWSER:0:{}:{}'.format(int(datetime.now().timestamp()), passwd)
-        login = session.post('https://www.instagram.com/accounts/login/ajax/',
+        login = session.post('https://www.instagram.com/api/v1/web/accounts/login/ajax/',
                              data={'enc_password': enc_password, 'username': user}, allow_redirects=True)
         try:
+            print(login.text)
             resp_json = login.json()
+
         except json.decoder.JSONDecodeError as err:
             raise ConnectionException(
                 "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
