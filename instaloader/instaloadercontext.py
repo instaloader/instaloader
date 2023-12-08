@@ -410,16 +410,6 @@ class InstaloaderContext:
                 raise TooManyRequestsException("429 Too Many Requests")
             if resp.status_code != 200:
                 raise ConnectionException("HTTP error code {}.".format(resp.status_code))
-            is_html_query = not is_graphql_query and not "__a" in params and host == "www.instagram.com"
-            if is_html_query:
-                # Extract JSON from HTML response
-                match = re.search('(?<={"raw":").*?(?<!\\\\)(?=")', resp.text)
-                if match is None:
-                    raise QueryReturnedNotFoundException("Could not find JSON data in html response.")
-                # Unescape escaped JSON string
-                unescaped_string = match.group(0).encode("utf-8").decode("unicode_escape")
-                resp_json = json.loads(unescaped_string)
-                return resp_json
             else:
                 resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
