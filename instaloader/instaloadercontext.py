@@ -3,7 +3,6 @@ import json
 import os
 import pickle
 import random
-import re
 import shutil
 import sys
 import textwrap
@@ -260,7 +259,7 @@ class InstaloaderContext:
         self.do_sleep()
         # Make a request to Instagram's root URL, which will set the session's csrftoken cookie
         # Not using self.get_json() here, because we need to access the cookie
-        csrf_request = session.get('https://www.instagram.com/')
+        session.get('https://www.instagram.com/')
         # Add session's csrftoken cookie to session headers
         csrf_token = session.cookies.get_dict()['csrftoken']
         session.headers.update({'X-CSRFToken': csrf_token})
