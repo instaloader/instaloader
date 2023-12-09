@@ -256,7 +256,6 @@ class InstaloaderContext:
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
 
-        self.do_sleep()
         # Make a request to Instagram's root URL, which will set the session's csrftoken cookie
         # Not using self.get_json() here, because we need to access the cookie
         session.get('https://www.instagram.com/')
