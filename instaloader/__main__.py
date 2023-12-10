@@ -5,6 +5,7 @@ import datetime
 import os
 import re
 import sys
+import textwrap
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from typing import List, Optional
 
@@ -95,8 +96,6 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
 
     if cookies:
         print(f"Cookies loaded successfully from {browser}")
-        print("Next: Run instaloader --login=USERNAME as it is required to download high quality media \
-            and to make full use of instaloader's features")
     else:
         print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
 
@@ -113,6 +112,10 @@ def import_session(browser, instaloader, cookiefile):
         if not username:
             raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
         instaloader.context.username = username
+        print(f"{username} has been successfully logged in.")
+        next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
+            "and to make full use of instaloader's features.")
+        print(textwrap.fill(next_step_text, width=80))
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
