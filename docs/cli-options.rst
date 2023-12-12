@@ -207,7 +207,7 @@ Instaloader to login.
    After loading the cookies run the :option:`--login` option as it is required to download high quality media
    and to make full use of Instaloader's features.
 
-   .. versionadded:: 4.1
+   .. versionadded:: 4.11
 
 .. option:: --cookiefile COOKIE-FILE, -B COOKIE-FILE
 
