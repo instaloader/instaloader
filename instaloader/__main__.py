@@ -114,8 +114,8 @@ def import_session(browser, instaloader, cookiefile):
         instaloader.context.username = username
         print(f"{username} has been successfully logged in.")
         next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
-            "and to make full use of instaloader's features.")
-        print(textwrap.fill(next_step_text, width=80))
+                            "and to make full use of instaloader's features.")
+        print(textwrap.fill(next_step_text))
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
@@ -148,7 +148,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     # load cookies if browser is not None
     if browser and bc3_library:
         import_session(browser.lower(), instaloader, cookiefile)
-    elif browser and bc3_library is False:
+    elif browser and not bc3_library:
         raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
     # Login, if desired
     if username is not None:
