@@ -205,7 +205,7 @@ Instaloader to login.
    Supported browsers: Chrome, Firefox, Edge, Opera, Safari, Brave.
 
    After loading the cookies run the :option:`--login` option as it is required to download high quality media
-   and to make full use of instaloader's features.
+   and to make full use of Instaloader's features.
 
    .. versionadded:: 4.1
 
