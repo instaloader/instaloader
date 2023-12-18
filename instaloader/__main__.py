@@ -5,6 +5,7 @@ import datetime
 import os
 import re
 import sys
+import textwrap
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from typing import List, Optional
 
@@ -111,6 +112,10 @@ def import_session(browser, instaloader, cookiefile):
         if not username:
             raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
         instaloader.context.username = username
+        print(f"{username} has been successfully logged in.")
+        next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
+                            "and to make full use of instaloader's features.")
+        print(textwrap.fill(next_step_text))
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
@@ -140,6 +145,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     if latest_stamps_file is not None:
         latest_stamps = LatestStamps(latest_stamps_file)
         instaloader.context.log(f"Using latest stamps from {latest_stamps_file}.")
+    # load cookies if browser is not None
+    if browser and bc3_library:
+        import_session(browser.lower(), instaloader, cookiefile)
+    elif browser and not bc3_library:
+        raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
@@ -150,11 +160,6 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             if sessionfile is not None:
                 print(err, file=sys.stderr)
             instaloader.context.log("Session file does not exist yet - Logging in.")
-        if browser is not None:
-            if bc3_library:
-                import_session(browser.lower(), instaloader, cookiefile)
-            else:
-                raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
         if not instaloader.context.is_logged_in or username != instaloader.test_login():
             if password is not None:
                 try:
@@ -503,6 +508,9 @@ def main():
 
         if args.no_pictures and args.fast_update:
             raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+
+        if args.login and args.load_cookies:
+            raise SystemExit('--load-cookies and --login cannot be used together.')
 
         # Determine what to download
         download_profile_pic = not args.no_profile_pic or args.profile_pic_only
