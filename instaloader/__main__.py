@@ -72,6 +72,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     return filterfunc
 
+
 def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     supported_browsers = {
         "chrome": browser_cookie3.chrome,
@@ -104,6 +105,7 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     else:
         return cookies
 
+
 def import_session(browser, instaloader, cookiefile):
     cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
     if cookie is not None:
@@ -114,8 +116,9 @@ def import_session(browser, instaloader, cookiefile):
         instaloader.context.username = username
         print(f"{username} has been successfully logged in.")
         next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
-                            "and to make full use of instaloader's features.")
+                          "and to make full use of instaloader's features.")
         print(textwrap.fill(next_step_text))
+
 
 def _main(instaloader: Instaloader, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,

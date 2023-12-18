@@ -213,6 +213,8 @@ Instaloader to login.
 
    Cookie file path of a browser profile to load cookies from.
 
+  .. versionadded:: 4.11
+
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
    Path for loading and storing session key file.  Defaults to

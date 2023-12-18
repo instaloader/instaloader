@@ -212,6 +212,7 @@ class InstaloaderContext:
         return requests.utils.dict_from_cookiejar(self._session.cookies)
 
     def update_cookies(self, cookie):
+        """.. versionadded:: 4.11"""
         self._session.cookies.update(cookie)
 
     def load_session(self, username, sessiondata):
