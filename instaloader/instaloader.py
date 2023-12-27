@@ -1032,7 +1032,7 @@ class Instaloader:
         ) as (is_resuming, start_index):
             for number, post in enumerate(posts, start=start_index + 1):
                 should_stop = not takewhile(post)
-                if should_stop and post.is_pinned:
+                if should_stop and start_index < 5:
                     continue
                 if (max_count is not None and number > max_count) or should_stop:
                     break
@@ -1066,7 +1066,7 @@ class Instaloader:
                         except PostChangedException:
                             post_changed = True
                             continue
-                    if fast_update and not downloaded and not post_changed and not post.is_pinned:
+                    if fast_update and not downloaded and not post_changed and not start_index < 5:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break
