@@ -678,7 +678,11 @@ class Post:
 
     @property
     def is_pinned(self) -> bool:
-        """True if this Post has been pinned by at least one user.
+        """
+        .. deprecated: 4.10.3
+           This information is not returned by IG anymore
+
+        Used to return True if this Post has been pinned by at least one user, now likely returns always false.
 
         .. versionadded: 4.9.2"""
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])

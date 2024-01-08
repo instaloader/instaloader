@@ -991,7 +991,8 @@ class Instaloader:
                             max_count: Optional[int] = None,
                             total_count: Optional[int] = None,
                             owner_profile: Optional[Profile] = None,
-                            takewhile: Optional[Callable[[Post], bool]] = None) -> None:
+                            takewhile: Optional[Callable[[Post], bool]] = None,
+                            possibly_pinned: int = 0) -> None:
         """
         Download the Posts returned by given Post Iterator.
 
@@ -1003,6 +1004,9 @@ class Instaloader:
         .. versionchanged:: 4.8
            Add `takewhile` parameter.
 
+        .. versionchanged:: 4.10.3
+           Add `possibly_pinned` parameter.
+
         :param posts: Post Iterator to loop through.
         :param target: Target name.
         :param fast_update: :option:`--fast-update`.
@@ -1011,6 +1015,8 @@ class Instaloader:
         :param total_count: Total number of posts returned by given iterator.
         :param owner_profile: Associated profile, if any.
         :param takewhile: Expression evaluated for each post. Once it returns false, downloading stops.
+        :param possibly_pinned: Number of posts that might be pinned. These posts do not cause download
+               to stop even if they've already been downloaded.
         """
         displayed_count = (max_count if total_count is None or max_count is not None and max_count < total_count
                            else total_count)
@@ -1032,7 +1038,7 @@ class Instaloader:
         ) as (is_resuming, start_index):
             for number, post in enumerate(posts, start=start_index + 1):
                 should_stop = not takewhile(post)
-                if should_stop and post.is_pinned:
+                if should_stop and number <= possibly_pinned:
                     continue
                 if (max_count is not None and number > max_count) or should_stop:
                     break
@@ -1066,7 +1072,7 @@ class Instaloader:
                         except PostChangedException:
                             post_changed = True
                             continue
-                    if fast_update and not downloaded and not post_changed and not post.is_pinned:
+                    if fast_update and not downloaded and not post_changed and number > possibly_pinned:
                         # disengage fast_update for first post when resuming
                         if not is_resuming or number > 0:
                             break
@@ -1488,7 +1494,7 @@ class Instaloader:
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
-                                             takewhile=posts_takewhile)
+                                             takewhile=posts_takewhile, possibly_pinned=3)
                     if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
                                                               posts_to_download.first_item.date_local)
