@@ -184,6 +184,10 @@ class NodeIterator(Iterator[T]):
         """
         return self._node_wrapper(self._first_node) if self._first_node is not None else None
 
+    @staticmethod
+    def page_length() -> int:
+        return NodeIterator._graphql_page_length
+
     def freeze(self) -> FrozenNodeIterator:
         """Freeze the iterator for later resuming."""
         remaining_data = None

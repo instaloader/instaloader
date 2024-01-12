@@ -51,6 +51,29 @@ class PostComment:
         self._answers = answers
         self._post = post
 
+    @classmethod
+    def from_iphone_struct(
+        cls,
+        context: "InstaloaderContext",
+        media: Dict[str, Any],
+        answers: Iterator["PostCommentAnswer"],
+        post: "Post",
+    ):
+        return cls(
+            context=context,
+            node={
+                "id": int(media["pk"]),
+                "created_at": media["created_at"],
+                "text": media["text"],
+                "edge_liked_by": {
+                    "count": media["comment_like_count"],
+                },
+                "iphone_struct": media,
+            },
+            answers=answers,
+            post=post,
+        )
+
     @property
     def id(self) -> int:
         """ ID number of comment. """
@@ -67,9 +90,13 @@ class PostComment:
         return self._node['text']
 
     @property
-    def owner(self):
+    def owner(self) -> "Profile":
         """ Owner :class:`Profile` of the comment. """
-        return Profile(self._context, self._node['owner'])
+        if "iphone_struct" in self._node:
+            return Profile.from_iphone_struct(
+                self._context, self._node["iphone_struct"]["user"]
+            )
+        return Profile(self._context, self._node["owner"])
 
     @property
     def likes_count(self):
@@ -590,11 +617,69 @@ class Post:
         except KeyError:
             return self._field('edge_media_to_comment', 'count')
 
+    def _get_comments_via_iphone_endpoint(self) -> Iterable[PostComment]:
+        """
+        Iterate over all comments of the post via an iPhone endpoint.
+
+        .. versionadded:: 4.10.3
+           fallback for :issue:`2125`.
+        """
+        def _query(min_id=None):
+            pagination_params = {"min_id": min_id} if min_id is not None else {}
+            return self._context.get_iphone_json(
+                f"api/v1/media/{self.mediaid}/comments/",
+                {
+                    "can_support_threading": "true",
+                    "permalink_enabled": "false",
+                    **pagination_params,
+                },
+            )
+
+        def _answers(comment_node):
+            def _answer(child_comment):
+                return PostCommentAnswer(
+                    id=int(child_comment["pk"]),
+                    created_at_utc=datetime.utcfromtimestamp(child_comment["created_at"]),
+                    text=child_comment["text"],
+                    owner=Profile.from_iphone_struct(self._context, child_comment["user"]),
+                    likes_count=child_comment["comment_like_count"],
+                )
+
+            child_comment_count = comment_node["child_comment_count"]
+            if child_comment_count == 0:
+                return
+            preview_child_comments = comment_node["preview_child_comments"]
+            if child_comment_count == len(preview_child_comments):
+                yield from (
+                    _answer(child_comment) for child_comment in preview_child_comments
+                )
+                return
+            pk = comment_node["pk"]
+            answers_json = self._context.get_iphone_json(
+                f"api/v1/media/{self.mediaid}/comments/{pk}/child_comments/",
+                {"max_id": ""},
+            )
+            yield from (
+                _answer(child_comment) for child_comment in answers_json["child_comments"]
+            )
+
+        def _paginated_comments(comments_json):
+            for comment_node in comments_json.get("comments", []):
+                yield PostComment.from_iphone_struct(
+                    self._context, comment_node, _answers(comment_node), self
+                )
+
+            next_min_id = comments_json.get("next_min_id")
+            if next_min_id:
+                yield from _paginated_comments(_query(next_min_id))
+
+        return _paginated_comments(_query())
+
     def get_comments(self) -> Iterable[PostComment]:
-        r"""Iterate over all comments of the post.
+        """Iterate over all comments of the post.
 
         Each comment is represented by a PostComment NamedTuple with fields text (string), created_at (datetime),
-        id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator`\ [:class:`PostCommentAnswer`])
+        id (int), owner (:class:`Profile`) and answers (:class:`~typing.Iterator` [:class:`PostCommentAnswer`])
         if available.
 
         .. versionchanged:: 4.7
@@ -641,6 +726,12 @@ class Post:
         if self.comments == len(comment_edges) + answers_count:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
             return [_postcomment(comment['node']) for comment in comment_edges]
+
+        if self.comments > NodeIterator.page_length():
+            # comments pagination via our graphql query does not work reliably anymore (issue #2125), fallback to an
+            # iphone endpoint if needed.
+            return self._get_comments_via_iphone_endpoint()
+
         return NodeIterator(
             self._context,
             '97b41c52301f77ce508f55e66d17620e',
