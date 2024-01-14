@@ -230,8 +230,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                    latest_stamps=latest_stamps)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
+        sys.exit(1)
     except AbortDownloadException as exc:
         print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
+        sys.exit(1)
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
