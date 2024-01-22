@@ -24,7 +24,7 @@ from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, get_json_structure, PostSidecarNode, TitlePic)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
 
 
 def _get_config_dir() -> str:
@@ -357,9 +357,11 @@ class Instaloader:
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
     
-    def get_json_structure(self, structure: JsonExportable) -> dict:
+    def get_post_json_structure(self, structure: Post) -> dict:
         """Returns a JSON structure of a structure."""
-        return get_json_structure(structure)
+        structure._obtain_iphone_struct()
+        structure._obtain_metadata()
+        return structure._asdict()
 
     def save_metadata_json(self, filename: str, structure: JsonExportable) -> None:
         """Saves metadata JSON file of a structure."""
