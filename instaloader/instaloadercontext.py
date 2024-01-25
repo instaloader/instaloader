@@ -19,7 +19,6 @@ import requests.utils
 
 from .exceptions import *
 
-
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
@@ -373,6 +372,7 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
+            
             resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
@@ -677,7 +677,9 @@ class RateController:
         """Wait given number of seconds."""
         # Not static, to allow for the behavior of this method to depend on context-inherent properties, such as
         # whether we are logged in.
-        time.sleep(secs)
+        wait_time = random.uniform(15, 30)
+        print(wait_time)
+        time.sleep(wait_time)
 
     def _dump_query_timestamps(self, current_time: float, failed_query_type: str):
         windows = [10, 11, 20, 22, 30, 60]
@@ -779,8 +781,7 @@ class RateController:
                                   "{} minutes".format(round(waittime / 60)))
             self._context.log("\nToo many queries in the last time. Need to wait {}, until {:%H:%M}."
                               .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)))
-        if waittime > 0:
-            self.sleep(waittime)
+        self.sleep(waittime)
         if query_type not in self._query_timestamps:
             self._query_timestamps[query_type] = [time.monotonic()]
         else:
@@ -805,5 +806,4 @@ class RateController:
             self._context.error("The request will be retried in {}, at {:%H:%M}."
                                 .format(formatted_waittime, datetime.now() + timedelta(seconds=waittime)),
                                 repeat_at_end=False)
-        if waittime > 0:
-            self.sleep(waittime)
+        self.sleep(waittime)
