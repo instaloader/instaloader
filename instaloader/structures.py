@@ -1,5 +1,4 @@
 import json
-import lzma
 import re
 from base64 import b64decode, b64encode
 from contextlib import suppress
@@ -2053,6 +2052,7 @@ def save_structure_to_file(structure: JsonExportable, filename: str) -> None:
     json_structure = get_json_structure(structure)
     compress = filename.endswith('.xz')
     if compress:
+        import lzma
         with lzma.open(filename, 'wt', check=lzma.CHECK_NONE) as fp:
             json.dump(json_structure, fp=fp, separators=(',', ':'))
     else:
@@ -2099,6 +2099,7 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
     """
     compressed = filename.endswith('.xz')
     if compressed:
+        import lzma
         fp = lzma.open(filename, 'rt')
     else:
         # pylint:disable=consider-using-with

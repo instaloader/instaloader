@@ -4,7 +4,6 @@ import json
 import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
 from .exceptions import AbortDownloadException, InvalidArgumentException, QueryReturnedBadRequestException
@@ -283,6 +282,7 @@ def resumable_iteration(context: InstaloaderContext,
     resume_file_path = format_path(iterator.magic)
     resume_file_exists = os.path.isfile(resume_file_path)
     if resume_file_exists:
+        from lzma import LZMAError
         try:
             fni = load(context, resume_file_path)
             if not isinstance(fni, FrozenNodeIterator):
