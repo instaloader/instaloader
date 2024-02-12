@@ -10,7 +10,7 @@ from unicodedata import normalize
 
 from . import __version__
 from .exceptions import *
-from .instaloadercontext import InstaloaderContext
+from .instaloadercontext import InstaloaderContext, session_factory
 from .nodeiterator import FrozenNodeIterator, NodeIterator
 from .sectioniterator import SectionIterator
 
