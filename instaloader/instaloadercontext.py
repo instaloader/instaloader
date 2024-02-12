@@ -19,7 +19,7 @@ import requests.utils
 
 from .exceptions import *
 
-def session_factory(self):
+def session_factory():
     """Return requests.Session object."""
     return requests.Session()
 
