@@ -937,6 +937,11 @@ class Profile:
         return self._metadata('edge_follow', 'count')
 
     @property
+    def bio_links(self) -> List[str]:
+        """list of external links given in the bio"""
+        return [links['url'] for links in self._metadata('bio_links')] if self._metadata('bio_links') else []
+
+    @property
     def external_url(self) -> Optional[str]:
         return self._metadata('external_url')
 
