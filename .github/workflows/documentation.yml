@@ -17,7 +17,7 @@ jobs:
           python-version: 3.12
       - name: "Install Dependencies"
         run: |
-          python -m pip install pipenv==2023.10.3
+          python -m pip install pipenv==2023.12.1
           pipenv --python `python --version | grep -Eo '3\.[0-9]+'` sync --dev
       - name: "Build Documentation"
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run make -C docs html SPHINXOPTS="-W -n"
