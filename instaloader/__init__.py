@@ -19,4 +19,5 @@ from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, FrozenNodeIterator, resumable_iteration
 from .structures import (Hashtag, Highlight, Post, PostSidecarNode, PostComment, PostCommentAnswer, PostLocation,
                          Profile, Story, StoryItem, TopSearchResults, TitlePic,
-                         load_structure_from_file, save_structure_to_file, load_structure, get_json_structure)
+                         load_structure_from_file, save_structure_to_file,
+                         load_structure, get_json_structure)
