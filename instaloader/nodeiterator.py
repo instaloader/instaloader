@@ -137,17 +137,19 @@ class NodeIterator(Iterator[T]):
                 if self._first_node is None:
                     self._first_node = node
             return item
-        if self._data.get('page_info', {}).get('has_next_page'):
-            query_response = self._query(self._data['page_info']['end_cursor'])
-            if self._data['edges'] != query_response['edges'] and len(query_response['edges']) > 0:
-                page_index, data = self._page_index, self._data
-                try:
-                    self._page_index = 0
-                    self._data = query_response
-                except KeyboardInterrupt:
-                    self._page_index, self._data = page_index, data
-                    raise
-                return self.__next__()
+        # This value seems to be a lie, at least for some location feeds. So we
+        # just keep going until it returns no more.
+        # if self._data.get('page_info', {}).get('has_next_page'):
+        query_response = self._query(self._data['page_info']['end_cursor'])
+        if self._data['edges'] != query_response['edges'] and len(query_response['edges']) > 0:
+            page_index, data = self._page_index, self._data
+            try:
+                self._page_index = 0
+                self._data = query_response
+            except KeyboardInterrupt:
+                self._page_index, self._data = page_index, data
+                raise
+            return self.__next__()
         raise StopIteration()
 
     @property

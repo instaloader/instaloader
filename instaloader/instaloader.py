@@ -1152,11 +1152,13 @@ class Instaloader:
         .. versionchanged:: 4.2.9
            Require being logged in (as required by Instagram)
         """
-        yield from SectionIterator(
+        yield from NodeIterator(
             self.context,
-            lambda d: d["native_location_data"]["recent"],
-            lambda m: Post.from_iphone_struct(self.context, m),
-            f"explore/locations/{location}/",
+            'ac38b90f0f3981c42092016a37c59bf7',
+            lambda d: d['data']['location']['edge_location_to_media'],
+            lambda n: Post(self.context, n),
+            {'id': location},
+            f"https://www.instagram.com/explore/locations/{location}/"
         )
 
     @_requires_login
