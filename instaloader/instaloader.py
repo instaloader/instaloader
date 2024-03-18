@@ -356,6 +356,12 @@ class Instaloader:
         self.context.write_raw(resp, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
         return True
+    
+    def get_post_json_structure(self, structure: Post) -> dict:
+        """Returns a JSON structure of a structure."""
+        structure._obtain_iphone_struct()
+        structure._obtain_metadata()
+        return structure._asdict()
 
     def save_metadata_json(self, filename: str, structure: JsonExportable) -> None:
         """Saves metadata JSON file of a structure."""
