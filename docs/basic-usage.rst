@@ -307,7 +307,7 @@ the post's caption::
 
    instaloader --post-metadata-txt="{likes} likes." <target>
 
-Note that with this feature, it is possible to easily and fastly extract
+Note that with this feature, it is possible to easily and quickly extract
 additional metadata of already-downloaded posts, by reimporting their JSON
 files. Say, you now also want to export the number of comments the Posts had
 when they were downloaded::
