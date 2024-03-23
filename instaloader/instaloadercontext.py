@@ -28,6 +28,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
     new.request = partial(new.request, timeout=request_timeout)  # type: ignore
+    new.verify = session.verify
     return new
 
 
