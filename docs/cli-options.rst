@@ -26,7 +26,7 @@ Targets
 ^^^^^^^
 
 Specify a list of targets. For each of these, Instaloader creates a folder and
-stores all posts along with the pictures's captions there.
+stores all posts along with the pictures' captions there.
 
 .. include:: basic-usage.rst
    :start-after: targets-start
