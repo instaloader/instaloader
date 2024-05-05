@@ -7,6 +7,7 @@ import re
 import sys
 import textwrap
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
+from enum import IntEnum
 from typing import List, Optional
 
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
@@ -21,6 +22,14 @@ try:
 except ImportError:
     bc3_library = False
 
+
+class ErrorCodes(IntEnum):
+    DOWNLOAD_FAILURE = 1
+    INIT_FAILURE = 2
+    LOGIN_FAILURE = 3
+    HTTP_STATUS_ABORT = 4
+    USER_ABORT = 5
+    UNEXPECTED_ERROR = 99
 
 def usage_string():
     # NOTE: duplicated in README.rst and docs/index.rst
@@ -84,9 +93,8 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     }
 
     if browser not in supported_browsers:
-        print("Loading cookies from the specified browser failed")
-        print("Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
-        return {}
+        raise InvalidArgumentException("Loading cookies from the specified browser failed\n"
+                                       "Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
 
     cookies = {}
     browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
@@ -152,7 +160,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     if browser and bc3_library:
         import_session(browser.lower(), instaloader, cookiefile)
     elif browser and not bc3_library:
-        raise SystemExit("browser_cookie3 library is needed to load cookies from browsers")
+        raise InvalidArgumentException("browser_cookie3 library is needed to load cookies from browsers")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):
@@ -488,11 +496,11 @@ def main():
             print("--login=USERNAME required to download stories.", file=sys.stderr)
             args.stories = False
             if args.stories_only:
-                raise SystemExit(1)
+                raise InvalidArgumentException()
 
         if ':feed-all' in args.profile or ':feed-liked' in args.profile:
-            raise SystemExit(":feed-all and :feed-liked were removed. Use :feed as target and "
-                             "eventually --post-filter=viewer_has_liked.")
+            raise InvalidArgumentException(":feed-all and :feed-liked were removed. Use :feed as target and "
+                                           "eventually --post-filter=viewer_has_liked.")
 
         post_metadata_txt_pattern = '\n'.join(args.post_metadata_txt) if args.post_metadata_txt else None
         storyitem_metadata_txt_pattern = '\n'.join(args.storyitem_metadata_txt) if args.storyitem_metadata_txt else None
@@ -502,18 +510,18 @@ def main():
                 post_metadata_txt_pattern = ''
                 storyitem_metadata_txt_pattern = ''
             else:
-                raise SystemExit("--no-captions and --post-metadata-txt or --storyitem-metadata-txt given; "
-                                 "That contradicts.")
+                raise InvalidArgumentException("--no-captions and --post-metadata-txt or --storyitem-metadata-txt "
+                                               "given; That contradicts.")
 
         if args.no_resume and args.resume_prefix:
-            raise SystemExit("--no-resume and --resume-prefix given; That contradicts.")
+            raise InvalidArgumentException("--no-resume and --resume-prefix given; That contradicts.")
         resume_prefix = (args.resume_prefix if args.resume_prefix else 'iterator') if not args.no_resume else None
 
         if args.no_pictures and args.fast_update:
-            raise SystemExit('--no-pictures and --fast-update cannot be used together.')
+            raise InvalidArgumentException('--no-pictures and --fast-update cannot be used together.')
 
         if args.login and args.load_cookies:
-            raise SystemExit('--load-cookies and --login cannot be used together.')
+            raise InvalidArgumentException('--load-cookies and --login cannot be used together.')
 
         # Determine what to download
         download_profile_pic = not args.no_profile_pic or args.profile_pic_only
@@ -557,8 +565,12 @@ def main():
               browser=args.load_cookies,
               cookiefile=args.cookiefile)
         loader.close()
+    except InvalidArgumentException as err:
+        print(err, file=sys.stderr)
+        raise SystemExit(ErrorCodes.INIT_FAILURE)
     except InstaloaderException as err:
-        raise SystemExit("Fatal error: %s" % err) from err
+        print("Fatal error: %s" % err)
+        raise SystemExit(ErrorCodes.UNEXPECTED_ERROR)
 
 
 if __name__ == "__main__":
