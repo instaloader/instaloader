@@ -643,11 +643,16 @@ class Instaloader:
     def login(self, user: str, passwd: str) -> None:
         """Log in to instagram with given username and password and internally store session object.
 
-        :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
-        :raises ConnectionException: If connection to Instagram failed.
         :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
-           :meth:`Instaloader.two_factor_login`."""
+           :meth:`Instaloader.two_factor_login`.
+        :raises LoginException: An error happened during login (for example, and invalid response).
+           Or if the provided username does not exist.
+
+        .. versionchanged:: 4.12
+           Raises LoginException instead of ConnectionException when an error happens.
+           Raises LoginException instead of InvalidArgumentException when the username does not exist.
+        """
         self.context.login(user, passwd)
 
     def two_factor_login(self, two_factor_code) -> None:
@@ -1582,11 +1587,16 @@ class Instaloader:
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.
 
-        :raises LoginRequiredException: when in quiet mode.
-        :raises InvalidArgumentException: If the provided username does not exist.
-        :raises ConnectionException: If connection to Instagram failed."""
+        :raises InvalidArgumentException: when in quiet mode.
+        :raises LoginException: If the provided username does not exist.
+        :raises ConnectionException: If connection to Instagram failed.
+
+        .. versionchanged:: 4.12
+           Raises InvalidArgumentException instead of LoginRequiredException when in quiet mode.
+           Raises LoginException instead of InvalidArgumentException when the username does not exist.
+        """
         if self.context.quiet:
-            raise LoginRequiredException("Quiet mode requires given password or valid session file.")
+            raise InvalidArgumentException("Quiet mode requires given password or valid session file.")
         try:
             password = None
             while password is None:

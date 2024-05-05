@@ -242,11 +242,16 @@ class InstaloaderContext:
     def login(self, user, passwd):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
 
-        :raises InvalidArgumentException: If the provided username does not exist.
         :raises BadCredentialsException: If the provided password is wrong.
-        :raises ConnectionException: If connection to Instagram failed.
         :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
-           :meth:`Instaloader.two_factor_login`."""
+           :meth:`Instaloader.two_factor_login`.
+        :raises LoginException: An error happened during login (for example, and invalid response).
+           Or if the provided username does not exist.
+
+        .. versionchanged:: 4.12
+           Raises LoginException instead of ConnectionException when an error happens.
+           Raises LoginException instead of InvalidArgumentException when the username does not exist.
+        """
         # pylint:disable=import-outside-toplevel
         import http.client
         # pylint:disable=protected-access
@@ -277,7 +282,7 @@ class InstaloaderContext:
             resp_json = login.json()
 
         except json.decoder.JSONDecodeError as err:
-            raise ConnectionException(
+            raise LoginException(
                 "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
             ) from err
         if resp_json.get('two_factor_required'):
@@ -289,31 +294,31 @@ class InstaloaderContext:
                                             resp_json['two_factor_info']['two_factor_identifier'])
             raise TwoFactorAuthRequiredException("Login error: two-factor authentication required.")
         if resp_json.get('checkpoint_url'):
-            raise ConnectionException("Login: Checkpoint required. Point your browser to "
-                                      "https://www.instagram.com{} - "
-                                      "follow the instructions, then retry.".format(resp_json.get('checkpoint_url')))
+            raise LoginException("Login: Checkpoint required. Point your browser to "
+                                 "https://www.instagram.com{} - "
+                                 "follow the instructions, then retry.".format(resp_json.get('checkpoint_url')))
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
-                raise ConnectionException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
-                                                                                               resp_json['message']))
+                raise LoginException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
+                                                                                          resp_json['message']))
             else:
-                raise ConnectionException("Login error: \"{}\" status.".format(resp_json['status']))
+                raise LoginException("Login error: \"{}\" status.".format(resp_json['status']))
         if 'authenticated' not in resp_json:
             # Issue #472
             if 'message' in resp_json:
-                raise ConnectionException("Login error: Unexpected response, \"{}\".".format(resp_json['message']))
+                raise LoginException("Login error: Unexpected response, \"{}\".".format(resp_json['message']))
             else:
-                raise ConnectionException("Login error: Unexpected response, this might indicate a blocked IP.")
+                raise LoginException("Login error: Unexpected response, this might indicate a blocked IP.")
         if not resp_json['authenticated']:
             if resp_json['user']:
                 # '{"authenticated": false, "user": true, "status": "ok"}'
                 raise BadCredentialsException('Login error: Wrong password.')
             else:
                 # '{"authenticated": false, "user": false, "status": "ok"}'
-                # Raise InvalidArgumentException rather than BadCredentialException, because BadCredentialException
+                # Raise LoginException rather than BadCredentialException, because BadCredentialException
                 # triggers re-asking of password in Instaloader.interactive_login(), which makes no sense if the
                 # username is invalid.
-                raise InvalidArgumentException('Login error: User {} does not exist.'.format(user))
+                raise LoginException('Login error: User {} does not exist.'.format(user))
         # '{"authenticated": true, "user": true, "userId": ..., "oneTapPrompt": false, "status": "ok"}'
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session

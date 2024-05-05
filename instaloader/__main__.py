@@ -11,7 +11,7 @@ from enum import IntEnum
 from typing import List, Optional
 
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
-               InvalidArgumentException, Post, Profile, ProfileNotExistsException, StoryItem,
+               InvalidArgumentException, LoginException, Post, Profile, ProfileNotExistsException, StoryItem,
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
 from .instaloader import (get_default_session_filename, get_default_stamps_filename)
 from .instaloadercontext import default_user_agent
@@ -106,7 +106,7 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     if cookies:
         print(f"Cookies loaded successfully from {browser}")
     else:
-        print(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
+        raise LoginException(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
 
     if cookie_name:
         return cookies.get(cookie_name, {})
@@ -120,7 +120,7 @@ def import_session(browser, instaloader, cookiefile):
         instaloader.context.update_cookies(cookie)
         username = instaloader.test_login()
         if not username:
-            raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
+            raise LoginException(f"Not logged in. Are you logged in successfully in {browser}?")
         instaloader.context.username = username
         print(f"{username} has been successfully logged in.")
         next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
@@ -568,6 +568,9 @@ def main():
     except InvalidArgumentException as err:
         print(err, file=sys.stderr)
         raise SystemExit(ErrorCodes.INIT_FAILURE)
+    except LoginException as err:
+        print(err, file=sys.stderr)
+        raise SystemExit(ErrorCodes.LOGIN_FAILURE)
     except InstaloaderException as err:
         print("Fatal error: %s" % err)
         raise SystemExit(ErrorCodes.UNEXPECTED_ERROR)
