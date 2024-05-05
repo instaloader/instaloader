@@ -106,7 +106,8 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     if cookies:
         print(f"Cookies loaded successfully from {browser}")
     else:
-        raise LoginException(f"No cookies found for Instagram in {browser}, Are you logged in succesfully in {browser}?")
+        raise LoginException(f"No cookies found for Instagram in {browser}, "
+                             f"Are you logged in succesfully in {browser}?")
 
     if cookie_name:
         return cookies.get(cookie_name, {})
@@ -567,13 +568,13 @@ def main():
         loader.close()
     except InvalidArgumentException as err:
         print(err, file=sys.stderr)
-        raise SystemExit(ErrorCodes.INIT_FAILURE)
+        sys.exit(ErrorCodes.INIT_FAILURE)
     except LoginException as err:
         print(err, file=sys.stderr)
-        raise SystemExit(ErrorCodes.LOGIN_FAILURE)
+        sys.exit(ErrorCodes.LOGIN_FAILURE)
     except InstaloaderException as err:
         print("Fatal error: %s" % err)
-        raise SystemExit(ErrorCodes.UNEXPECTED_ERROR)
+        sys.exit(ErrorCodes.UNEXPECTED_ERROR)
 
 
 if __name__ == "__main__":
