@@ -23,12 +23,13 @@ except ImportError:
     bc3_library = False
 
 
-class ErrorCodes(IntEnum):
+class ExitCodes(IntEnum):
+    SUCESS = 0
     DOWNLOAD_FAILURE = 1
     INIT_FAILURE = 2
     LOGIN_FAILURE = 3
-    HTTP_STATUS_ABORT = 4
-    USER_ABORT = 5
+    DOWNLOAD_ABORTED = 4
+    USER_ABORTED = 5
     UNEXPECTED_ERROR = 99
 
 def usage_string():
@@ -142,7 +143,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None,
           browser: Optional[str] = None,
-          cookiefile: Optional[str] = None) -> None:
+          cookiefile: Optional[str] = None) -> int:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -198,6 +199,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
     anonymous_retry_profiles = set()
+    exit_code = ExitCodes.SUCESS
     try:
         # Generate set of profiles, already downloading non-profile targets
         for target in targetlist:
@@ -303,8 +305,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                    latest_stamps=latest_stamps)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
+        exit_code = ExitCodes.USER_ABORTED
     except AbortDownloadException as exc:
         print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
+        exit_code = ExitCodes.DOWNLOAD_ABORTED
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
@@ -316,6 +320,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         else:
             # Instaloader did not do anything
             instaloader.context.log("usage:" + usage_string())
+    return exit_code
 
 
 def main():
@@ -547,34 +552,35 @@ def main():
                              iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
                              sanitize_paths=args.sanitize_paths)
-        _main(loader,
-              args.profile,
-              username=args.login.lower() if args.login is not None else None,
-              password=args.password,
-              sessionfile=args.sessionfile,
-              download_profile_pic=download_profile_pic,
-              download_posts=download_posts,
-              download_stories=download_stories,
-              download_highlights=args.highlights,
-              download_tagged=args.tagged,
-              download_igtv=args.igtv,
-              fast_update=args.fast_update,
-              latest_stamps_file=args.latest_stamps,
-              max_count=int(args.count) if args.count is not None else None,
-              post_filter_str=args.post_filter,
-              storyitem_filter_str=args.storyitem_filter,
-              browser=args.load_cookies,
-              cookiefile=args.cookiefile)
+        exit_code = _main(loader,
+                          args.profile,
+                          username=args.login.lower() if args.login is not None else None,
+                          password=args.password,
+                          sessionfile=args.sessionfile,
+                          download_profile_pic=download_profile_pic,
+                          download_posts=download_posts,
+                          download_stories=download_stories,
+                          download_highlights=args.highlights,
+                          download_tagged=args.tagged,
+                          download_igtv=args.igtv,
+                          fast_update=args.fast_update,
+                          latest_stamps_file=args.latest_stamps,
+                          max_count=int(args.count) if args.count is not None else None,
+                          post_filter_str=args.post_filter,
+                          storyitem_filter_str=args.storyitem_filter,
+                          browser=args.load_cookies,
+                          cookiefile=args.cookiefile)
         loader.close()
     except InvalidArgumentException as err:
         print(err, file=sys.stderr)
-        sys.exit(ErrorCodes.INIT_FAILURE)
+        exit_code = ExitCodes.INIT_FAILURE
     except LoginException as err:
         print(err, file=sys.stderr)
-        sys.exit(ErrorCodes.LOGIN_FAILURE)
+        exit_code = ExitCodes.LOGIN_FAILURE
     except InstaloaderException as err:
         print("Fatal error: %s" % err)
-        sys.exit(ErrorCodes.UNEXPECTED_ERROR)
+        exit_code = ExitCodes.UNEXPECTED_ERROR
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
