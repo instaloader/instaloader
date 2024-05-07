@@ -1615,3 +1615,9 @@ class Instaloader:
                 except BadCredentialsException as err:
                     print(err, file=sys.stderr)
                     pass
+
+    def has_stored_errors(self) -> bool:
+        """Returns whether any error has been reported and stored to be repeated at program termination.
+
+        .. versionadded: 4.12"""
+        return self.context.has_stored_errors()

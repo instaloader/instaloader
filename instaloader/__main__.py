@@ -25,7 +25,7 @@ except ImportError:
 
 class ExitCodes(IntEnum):
     SUCESS = 0
-    DOWNLOAD_FAILURE = 1
+    NON_FATAL_ERROR = 1
     INIT_FAILURE = 2
     LOGIN_FAILURE = 3
     DOWNLOAD_ABORTED = 4
@@ -571,6 +571,8 @@ def main():
                           browser=args.load_cookies,
                           cookiefile=args.cookiefile)
         loader.close()
+        if loader.has_stored_errors():
+            exit_code = ExitCodes.NON_FATAL_ERROR
     except InvalidArgumentException as err:
         print(err, file=sys.stderr)
         exit_code = ExitCodes.INIT_FAILURE

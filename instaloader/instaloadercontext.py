@@ -151,6 +151,12 @@ class InstaloaderContext:
         if repeat_at_end:
             self.error_log.append(msg)
 
+    def has_stored_errors(self) -> bool:
+        """Returns whether any error has been reported and stored to be repeated at program termination.
+
+        .. versionadded: 4.12"""
+        return bool(self.error_log)
+
     def close(self):
         """Print error log and close session"""
         if self.error_log and not self.quiet:
