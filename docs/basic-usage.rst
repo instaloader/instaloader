@@ -341,7 +341,7 @@ Different exit codes are used to indicate different kinds of error:
 4
   Fatal download error. Downloads were interrupted and no further
   attempts were made. Happens when a response with one of the status
-  codes in the :option:`abort-on` option were passed, or when
+  codes in the :option:`--abort-on` option were passed, or when
   Instagram logs the user out during downloads.
 
 5
