@@ -67,7 +67,7 @@ What to Download of each Post
 
    Download and update comments for each post. This requires an additional
    request to the Instagram server for each post, which is why it is disabled by
-   default.
+   default. Requires :option:`--login`.
 
 .. option:: --no-captions
 
