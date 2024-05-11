@@ -320,7 +320,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         else:
             # Instaloader did not do anything
             instaloader.context.log("usage:" + usage_string())
-        exit_code = ExitCode.NON_FATAL_ERROR
+            exit_code = ExitCode.INIT_FAILURE
     return exit_code
 
 
