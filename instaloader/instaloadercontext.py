@@ -151,6 +151,7 @@ class InstaloaderContext:
         if repeat_at_end:
             self.error_log.append(msg)
 
+    @property
     def has_stored_errors(self) -> bool:
         """Returns whether any error has been reported and stored to be repeated at program termination.
 

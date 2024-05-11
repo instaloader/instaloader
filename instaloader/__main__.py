@@ -23,8 +23,8 @@ except ImportError:
     bc3_library = False
 
 
-class ExitCodes(IntEnum):
-    SUCESS = 0
+class ExitCode(IntEnum):
+    SUCCESS = 0
     NON_FATAL_ERROR = 1
     INIT_FAILURE = 2
     LOGIN_FAILURE = 3
@@ -143,7 +143,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None,
           browser: Optional[str] = None,
-          cookiefile: Optional[str] = None) -> int:
+          cookiefile: Optional[str] = None) -> ExitCode:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -199,7 +199,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
     anonymous_retry_profiles = set()
-    exit_code = ExitCodes.SUCESS
+    exit_code = ExitCode.SUCCESS
     try:
         # Generate set of profiles, already downloading non-profile targets
         for target in targetlist:
@@ -305,10 +305,10 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                    latest_stamps=latest_stamps)
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
-        exit_code = ExitCodes.USER_ABORTED
+        exit_code = ExitCode.USER_ABORTED
     except AbortDownloadException as exc:
         print("\nDownload aborted: {}.".format(exc), file=sys.stderr)
-        exit_code = ExitCodes.DOWNLOAD_ABORTED
+        exit_code = ExitCode.DOWNLOAD_ABORTED
     # Save session if it is useful
     if instaloader.context.is_logged_in:
         instaloader.save_session_to_file(sessionfile)
@@ -320,7 +320,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         else:
             # Instaloader did not do anything
             instaloader.context.log("usage:" + usage_string())
-        exit_code = ExitCodes.NON_FATAL_ERROR
+        exit_code = ExitCode.NON_FATAL_ERROR
     return exit_code
 
 
@@ -572,17 +572,17 @@ def main():
                           browser=args.load_cookies,
                           cookiefile=args.cookiefile)
         loader.close()
-        if loader.has_stored_errors():
-            exit_code = ExitCodes.NON_FATAL_ERROR
+        if loader.has_stored_errors:
+            exit_code = ExitCode.NON_FATAL_ERROR
     except InvalidArgumentException as err:
         print(err, file=sys.stderr)
-        exit_code = ExitCodes.INIT_FAILURE
+        exit_code = ExitCode.INIT_FAILURE
     except LoginException as err:
         print(err, file=sys.stderr)
-        exit_code = ExitCodes.LOGIN_FAILURE
+        exit_code = ExitCode.LOGIN_FAILURE
     except InstaloaderException as err:
         print("Fatal error: %s" % err)
-        exit_code = ExitCodes.UNEXPECTED_ERROR
+        exit_code = ExitCode.UNEXPECTED_ERROR
     sys.exit(exit_code)
 
 

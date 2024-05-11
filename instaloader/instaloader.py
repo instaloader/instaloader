@@ -646,7 +646,7 @@ class Instaloader:
         :raises BadCredentialsException: If the provided password is wrong.
         :raises TwoFactorAuthRequiredException: First step of 2FA login done, now call
            :meth:`Instaloader.two_factor_login`.
-        :raises LoginException: An error happened during login (for example, and invalid response).
+        :raises LoginException: An error happened during login (for example, an invalid response was received).
            Or if the provided username does not exist.
 
         .. versionchanged:: 4.12
@@ -1616,8 +1616,9 @@ class Instaloader:
                     print(err, file=sys.stderr)
                     pass
 
+    @property
     def has_stored_errors(self) -> bool:
         """Returns whether any error has been reported and stored to be repeated at program termination.
 
         .. versionadded: 4.12"""
-        return self.context.has_stored_errors()
+        return self.context.has_stored_errors
