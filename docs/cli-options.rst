@@ -202,7 +202,7 @@ Instaloader to login.
    This feature requires the browser_cookie3 library.
    Compatible with :option:`--cookiefile` if you want to load cookies from browser profiles.
    Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
-   Supported browsers: Chrome, Firefox, Edge, Opera, Safari, Brave.
+   Supported browsers: Chrome, Chromium, Firefox, Edge, Brave, Opera, Opera GX, Safari, Vivaldi and Librewolf.
 
    After loading the cookies run the :option:`--login` option as it is required to download high quality media
    and to make full use of Instaloader's features.
