@@ -367,7 +367,7 @@ def main():
     g_post.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
-                             'server for each post, which is why it is disabled by default.')
+                             'server for each post, which is why it is disabled by default. Requires --login.')
     g_post.add_argument('--no-captions', action='store_true',
                         help='Do not create txt files.')
     g_post.add_argument('--post-metadata-txt', action='append',
