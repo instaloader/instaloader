@@ -314,6 +314,40 @@ when they were downloaded::
 
    instaloader --post-metadata-txt="{likes} likes, {comments} comments." <target>/*.json.xz
 
+.. _exit_codes:
+
+Exit codes
+^^^^^^^^^^
+
+Different exit codes are used to indicate different kinds of error:
+
+0
+  No error, all downloads were successful.
+
+1
+  A non-fatal error happened. One or more posts, or even one or more
+  profiles could not be downloaded, but execution was not stopped. The
+  errors are repeated at the end of the log for easy access.
+
+2
+  Command-line error. An unrecognized option was passed, or an invalid
+  combination of options, for example. No interaction with Instagram
+  was made.
+
+3
+  Login error. It was not possible to login. Downloads were not
+  attempted.
+
+4
+  Fatal download error. Downloads were interrupted and no further
+  attempts were made. Happens when a response with one of the status
+  codes in the :option:`--abort-on` option were passed, or when
+  Instagram logs the user out during downloads.
+
+5
+  Interrupted by the user. Happens when the user presses Control-C or
+  sends SIGINT to the process.
+
 .. _instaloader-as-cronjob:
 
 Instaloader as Cronjob
