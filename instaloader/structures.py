@@ -1190,7 +1190,7 @@ class Profile:
         :rtype: NodeIterator[Post]"""
 
         if self.username != self._context.username:
-            raise LoginRequiredException("Login required to get that profile's saved posts.".format(self.username))
+            raise LoginRequiredException(f"Login as {self.username} required to get that profile's saved posts.")
 
         return NodeIterator(
             self._context,
