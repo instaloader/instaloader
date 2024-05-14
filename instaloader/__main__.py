@@ -115,9 +115,7 @@ def import_session(browser, instaloader, cookiefile):
             raise SystemExit(f"Not logged in. Are you logged in successfully in {browser}?")
         instaloader.context.username = username
         print(f"{username} has been successfully logged in.")
-        next_step_text = (f"Next: Run instaloader --login={username} as it is required to download high quality media "
-                          "and to make full use of instaloader's features.")
-        print(textwrap.fill(next_step_text))
+        print(f"Next time use --login={username} to reuse the same session.")
 
 
 def _main(instaloader: Instaloader, targetlist: List[str],
@@ -185,7 +183,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.context.log("Logged in as %s." % username)
     # since 4.2.9 login is required for geotags
     if instaloader.download_geotags and not instaloader.context.is_logged_in:
-        instaloader.context.error("Warning: Use --login to download geotags of posts.")
+        instaloader.context.error("Warning: Login is required to download geotags of posts.")
     # Try block for KeyboardInterrupt (save session on ^C)
     profiles = set()
     anonymous_retry_profiles = set()
@@ -279,7 +277,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                                                                          ' '.join([p.username for p in profiles])))
         if instaloader.context.iphone_support and profiles and (download_profile_pic or download_posts) and \
            not instaloader.context.is_logged_in:
-            instaloader.context.log("Hint: Use --login to download higher-quality versions of pictures.")
+            instaloader.context.log("Hint: Login to download higher-quality versions of pictures.")
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
                                       download_highlights, download_stories,
@@ -322,17 +320,17 @@ def main():
                            help="Download profile. If an already-downloaded profile has been renamed, Instaloader "
                                 "automatically finds it by its unique ID and renames the folder likewise.")
     g_targets.add_argument('_at_profile', nargs='*', metavar="@profile",
-                           help="Download all followees of profile. Requires --login. "
+                           help="Download all followees of profile. Requires login. "
                                 "Consider using :feed rather than @yourself.")
     g_targets.add_argument('_hashtag', nargs='*', metavar='"#hashtag"', help="Download #hashtag.")
     g_targets.add_argument('_location', nargs='*', metavar='%location_id',
-                           help="Download %%location_id. Requires --login.")
+                           help="Download %%location_id. Requires login.")
     g_targets.add_argument('_feed', nargs='*', metavar=":feed",
-                           help="Download pictures from your feed. Requires --login.")
+                           help="Download pictures from your feed. Requires login.")
     g_targets.add_argument('_stories', nargs='*', metavar=":stories",
-                           help="Download the stories of your followees. Requires --login.")
+                           help="Download the stories of your followees. Requires login.")
     g_targets.add_argument('_saved', nargs='*', metavar=":saved",
-                           help="Download the posts that you marked as saved. Requires --login.")
+                           help="Download the posts that you marked as saved. Requires login.")
     g_targets.add_argument('_singlepost', nargs='*', metavar="-- -shortcode",
                            help="Download the post with the given shortcode")
     g_targets.add_argument('_json', nargs='*', metavar="filename.json[.xz]",
@@ -363,11 +361,11 @@ def main():
                         help='Download geotags when available. Geotags are stored as a '
                              'text file with the location\'s name and a Google Maps link. '
                              'This requires an additional request to the Instagram '
-                             'server for each picture. Requires --login.')
+                             'server for each picture. Requires login.')
     g_post.add_argument('-C', '--comments', action='store_true',
                         help='Download and update comments for each post. '
                              'This requires an additional request to the Instagram '
-                             'server for each post, which is why it is disabled by default. Requires --login.')
+                             'server for each post, which is why it is disabled by default. Requires login.')
     g_post.add_argument('--no-captions', action='store_true',
                         help='Do not create txt files.')
     g_post.add_argument('--post-metadata-txt', action='append',
@@ -381,11 +379,11 @@ def main():
     g_post.add_argument('--no-compress-json', action='store_true',
                         help='Do not xz compress JSON files, rather create pretty formatted JSONs.')
     g_prof.add_argument('-s', '--stories', action='store_true',
-                        help='Also download stories of each profile that is downloaded. Requires --login.')
+                        help='Also download stories of each profile that is downloaded. Requires login.')
     g_prof.add_argument('--stories-only', action='store_true',
                         help=SUPPRESS)
     g_prof.add_argument('--highlights', action='store_true',
-                        help='Also download highlights of each profile that is downloaded. Requires --login.')
+                        help='Also download highlights of each profile that is downloaded. Requires login.')
     g_prof.add_argument('--tagged', action='store_true',
                         help='Also download posts where each profile is tagged.')
     g_prof.add_argument('--igtv', action='store_true',
@@ -417,7 +415,8 @@ def main():
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
                                         'To login, pass the --login option. Your session cookie (not your password!) '
                                         'will be saved to a local file to be reused next time you want Instaloader '
-                                        'to login.')
+                                        'to login. Instead of --login, the --load-cookies option can be used to '
+                                        'import a session from a browser.')
     g_login.add_argument('-l', '--login', metavar='YOUR-USERNAME',
                          help='Login name (profile name) for your Instagram account.')
     g_login.add_argument('-b', '--load-cookies', metavar='BROWSER-NAME',
@@ -485,7 +484,7 @@ def main():
     args = parser.parse_args()
     try:
         if (args.login is None and args.load_cookies is None) and (args.stories or args.stories_only):
-            print("--login=USERNAME required to download stories.", file=sys.stderr)
+            print("Login is required to download stories.", file=sys.stderr)
             args.stories = False
             if args.stories_only:
                 raise SystemExit(1)

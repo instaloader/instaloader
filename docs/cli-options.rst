@@ -61,13 +61,13 @@ What to Download of each Post
 
    Download geotags when available. Geotags are stored as a text file with
    the location's name and a Google Maps link. This requires an additional
-   request to the Instagram server for each picture. Requires :option:`--login`.
+   request to the Instagram server for each picture. Requires :ref:`login<login>`.
 
 .. option:: --comments, -C
 
    Download and update comments for each post. This requires an additional
    request to the Instagram server for each post, which is why it is disabled by
-   default. Requires :option:`--login`.
+   default. Requires :ref:`login<login>`.
 
 .. option:: --no-captions
 
@@ -116,12 +116,12 @@ What to Download of each Profile
 .. option:: --stories, -s
 
    Also download stories of each profile that is downloaded. Requires
-   :option:`--login`.
+   :ref:`login<login>`.
 
 .. option:: --highlights
 
    Also download highlights of each profile that is downloaded. Requires
-   :option:`--login`.
+   :ref:`login<login>`.
 
    .. versionadded:: 4.1
 
@@ -183,6 +183,7 @@ Which Posts to Download
    Do not attempt to download more than COUNT posts.  Applies to
    ``#hashtag``, ``%location_id``, ``:feed``, and ``:saved``.
 
+.. _login:
 
 Login (Download Private Profiles)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,6 +192,9 @@ Instaloader can login to Instagram. This allows downloading private
 profiles. To login, pass the :option:`--login` option. Your session cookie (not your
 password!) will be saved to a local file to be reused next time you want
 Instaloader to login.
+
+Instead of :option:`--login`, it is possible to use
+:option:`--load-cookies` to import a session from a browser.
 
 .. option:: --login YOUR-USERNAME, -l YOUR-USERNAME
 
@@ -204,8 +208,8 @@ Instaloader to login.
    Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
    Supported browsers: Chrome, Firefox, Edge, Opera, Safari, Brave.
 
-   After loading the cookies run the :option:`--login` option as it is required to download high quality media
-   and to make full use of Instaloader's features.
+   In subsequent runs, you can just use :option:`--login` to reuse the
+   same session, which is saved by Instaloader.
 
    .. versionadded:: 4.11
 
