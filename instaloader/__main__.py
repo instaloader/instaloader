@@ -484,7 +484,7 @@ def main():
 
     args = parser.parse_args()
     try:
-        if args.login is None and (args.stories or args.stories_only):
+        if (args.login is None and args.load_cookies is None) and (args.stories or args.stories_only):
             print("--login=USERNAME required to download stories.", file=sys.stderr)
             args.stories = False
             if args.stories_only:
