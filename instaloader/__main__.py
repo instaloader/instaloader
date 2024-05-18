@@ -85,17 +85,22 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
 def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     supported_browsers = {
-        "chrome": browser_cookie3.chrome,
-        "firefox": browser_cookie3.firefox,
-        "edge": browser_cookie3.edge,
         "brave": browser_cookie3.brave,
+        "chrome": browser_cookie3.chrome,
+        "chromium": browser_cookie3.chromium,
+        "edge": browser_cookie3.edge,
+        "firefox": browser_cookie3.firefox,
+        "librewolf": browser_cookie3.librewolf,
         "opera": browser_cookie3.opera,
-        "safari": browser_cookie3.safari
+        "opera_gx": browser_cookie3.opera_gx,
+        "safari": browser_cookie3.safari,
+        "vivaldi": browser_cookie3.vivaldi,
     }
 
     if browser not in supported_browsers:
         raise InvalidArgumentException("Loading cookies from the specified browser failed\n"
-                                       "Supported browsers are Chrome, Firefox, Edge, Brave, Opera and Safari")
+                                       "Supported browsers are Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, "
+                                       "Opera, Opera_GX, Safari and Vivaldi")
 
     cookies = {}
     browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
