@@ -75,7 +75,7 @@ What to Download
 Instaloader supports the following targets:
 
 - ``profile``
-   Public profile, or private profile with :option:`--login`.
+   Public profile, or private profile with :ref:`login<login>`.
 
    If an already-downloaded profile has been renamed, Instaloader automatically
    finds it by its unique ID and renames the folder accordingly.
@@ -102,23 +102,23 @@ Instaloader supports the following targets:
    Posts tagged with a given location; the location ID is the numerical ID
    Instagram labels a location with (e.g.
    \https://www.instagram.com/explore/locations/**362629379**/plymouth-naval-memorial/).
-   Requires :option:`--login`.
+   Requires :ref:`login<login>`.
 
    .. versionadded:: 4.2
 
 - ``:stories``
    The currently-visible **stories** of your followees (requires
-   :option:`--login`).
+   :ref:`login<login>`).
 
 - ``:feed``
-   Your **feed** (requires :option:`--login`).
+   Your **feed** (requires :ref:`login<login>`).
 
 - ``:saved``
-   Posts which are marked as **saved** (requires :option:`--login`).
+   Posts which are marked as **saved** (requires :ref:`login<login>`).
 
 - ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
-   ``profile`` (requires :option:`--login`).
+   ``profile`` (requires :ref:`login<login>`).
 
 - ``-post``
    Replace **post** with the post's shortcode to download single post. Must be preceded by ``--`` in
@@ -140,7 +140,7 @@ downloads the pictures and videos and their captions. You can specify
 
 - :option:`--geotags`
    **download geotags** of each post and save them as
-   Google Maps link (requires :option:`--login`),
+   Google Maps link (requires :ref:`login<login>`),
 
 For a reference of all supported command line options, see
 :ref:`command-line-options`.
@@ -255,7 +255,7 @@ Id est, the following attributes can be used with both
 As :option:`--post-filter`, the following attributes can be used additionally:
 
 - :attr:`~Post.viewer_has_liked` (bool)
-   Whether user (with :option:`--login`) has liked given post. To download the
+   Whether user (with :ref:`login<login>`) has liked given post. To download the
    pictures from your feed that you have liked::
 
       instaloader --login=your_username --post-filter=viewer_has_liked :feed
