@@ -392,7 +392,7 @@ class InstaloaderContext:
                 if (redirect_url.startswith('https://www.instagram.com/accounts/login') or
                     redirect_url.startswith('https://i.instagram.com/accounts/login')):
                     if not self.is_logged_in:
-                        raise LoginRequiredException("Redirected to login page. Use --login.")
+                        raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
                     raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
                                                  "some time, recreate the session and try again")
                 if redirect_url.startswith('https://{}/'.format(host)):

@@ -77,7 +77,7 @@ def _requires_login(func: Callable) -> Callable:
     @wraps(func)
     def call(instaloader, *args, **kwargs):
         if not instaloader.context.is_logged_in:
-            raise LoginRequiredException("--login=USERNAME required.")
+            raise LoginRequiredException("Login required.")
         return func(instaloader, *args, **kwargs)
     return call
 
@@ -1460,7 +1460,7 @@ class Instaloader:
                 if tagged or igtv or highlights or posts:
                     if (not self.context.is_logged_in and
                             profile.is_private):
-                        raise LoginRequiredException("--login=USERNAME required.")
+                        raise LoginRequiredException("Login required.")
                     if (self.context.username != profile.username and
                             profile.is_private and
                             not profile.followed_by_viewer):
