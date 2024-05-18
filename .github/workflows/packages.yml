@@ -20,7 +20,7 @@ jobs:
         id: get_version
         env:
           GITHUB_REF: ${{ github.ref }}
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_OUTPUT
         shell: bash
       - name: "Install Dependencies"
         run: python -m pip install setuptools
