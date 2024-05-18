@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/stale@v3
+    - uses: actions/stale@v9
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         only-labels: 'question'
@@ -21,7 +21,7 @@ jobs:
         days-before-stale: 21
         days-before-close: -1
         remove-stale-when-updated: false
-    - uses: actions/stale@v1
+    - uses: actions/stale@v9
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-issue-message: 'There has been no activity on this issue for an extended period of time. This issue will be closed after further 14 days of inactivity.'

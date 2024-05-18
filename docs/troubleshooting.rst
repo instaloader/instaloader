@@ -33,7 +33,7 @@ happen under normal conditions, consider adjusting the
 There have been observations that services, that in their nature offer
 promiscuous IP addresses, such as cloud, VPN and public proxy services, might be
 subject to significantly stricter limits for anonymous access. However,
-logged-in accesses (see :option:`--login`) do not seem to be affected.
+:ref:`logged-in accesses<login>` do not seem to be affected.
 
 Instaloader allows to adjust the rate controlling behavior by overriding
 :class:`instaloader.RateController`.

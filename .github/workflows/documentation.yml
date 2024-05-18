@@ -23,7 +23,7 @@ jobs:
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run make -C docs html SPHINXOPTS="-W -n"
       - name: "Deploy Documentation"
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: master
           repository-name: instaloader/instaloader.github.io
