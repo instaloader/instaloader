@@ -243,8 +243,12 @@ class InstaloaderContext:
 
     def test_login(self) -> Optional[str]:
         """Not meant to be used directly, use :meth:`Instaloader.test_login`."""
-        data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
-        return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
+        try:
+            data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
+            return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
+        except (AbortDownloadException, ConnectionException) as err:
+            self.error(f"Error when checking if logged in: {err}")
+            return None
 
     def login(self, user, passwd):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
