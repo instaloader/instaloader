@@ -196,7 +196,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                             print(err, file=sys.stderr)
                             pass
             else:
-                instaloader.interactive_login(username)
+                try:
+                    instaloader.interactive_login(username)
+                except KeyboardInterrupt:
+                    print("\nInterrupted by user.", file=sys.stderr)
+                    return ExitCode.USER_ABORTED
         instaloader.context.log("Logged in as %s." % username)
     # since 4.2.9 login is required for geotags
     if instaloader.download_geotags and not instaloader.context.is_logged_in:
