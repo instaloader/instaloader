@@ -289,9 +289,10 @@ class InstaloaderContext:
                                             resp_json['two_factor_info']['two_factor_identifier'])
             raise TwoFactorAuthRequiredException("Login error: two-factor authentication required.")
         if resp_json.get('checkpoint_url'):
-            raise ConnectionException("Login: Checkpoint required. Point your browser to "
-                                      "https://www.instagram.com{} - "
-                                      "follow the instructions, then retry.".format(resp_json.get('checkpoint_url')))
+            raise ConnectionException(
+                f"Login: Checkpoint required. Point your browser to {resp_json.get('checkpoint_url')} - "
+                f"follow the instructions, then retry."
+            )
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
                 raise ConnectionException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
