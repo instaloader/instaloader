@@ -77,7 +77,7 @@ def _requires_login(func: Callable) -> Callable:
     @wraps(func)
     def call(instaloader, *args, **kwargs):
         if not instaloader.context.is_logged_in:
-            raise LoginRequiredException("--login=USERNAME required.")
+            raise LoginRequiredException("Login required.")
         return func(instaloader, *args, **kwargs)
     return call
 
@@ -1409,7 +1409,8 @@ class Instaloader:
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
                           raise_errors: bool = False,
-                          latest_stamps: Optional[LatestStamps] = None):
+                          latest_stamps: Optional[LatestStamps] = None,
+                          max_count: Optional[int] = None):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
@@ -1426,7 +1427,8 @@ class Instaloader:
            Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
         :param latest_stamps: :option:`--latest-stamps`.
-
+        :param max_count: Maximum count of Posts to download (:option:`--count`).
+        
         .. versionadded:: 4.1
 
         .. versionchanged:: 4.3
@@ -1465,7 +1467,7 @@ class Instaloader:
                 if tagged or igtv or highlights or posts:
                     if (not self.context.is_logged_in and
                             profile.is_private):
-                        raise LoginRequiredException("--login=USERNAME required.")
+                        raise LoginRequiredException("Login required.")
                     if (self.context.username != profile.username and
                             profile.is_private and
                             not profile.followed_by_viewer):
@@ -1499,7 +1501,7 @@ class Instaloader:
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
-                                             takewhile=posts_takewhile, possibly_pinned=3)
+                                             takewhile=posts_takewhile, possibly_pinned=3, max_count=max_count)
                     if latest_stamps is not None and posts_to_download.first_item is not None:
                         latest_stamps.set_last_post_timestamp(profile_name,
                                                               posts_to_download.first_item.date_local)
