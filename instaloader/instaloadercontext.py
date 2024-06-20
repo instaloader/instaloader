@@ -140,7 +140,11 @@ class InstaloaderContext:
     def log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
         if not self.quiet:
-            print(*msg, sep=sep, end=end, flush=flush)
+            try:
+                print(*msg, sep=sep, end=end, flush=flush)
+            except UnicodeEncodeError:
+                message = sep.join(str(m) for m in msg).encode('utf-8', errors='replace').decode('utf-8')
+                print(message, sep=sep, end=end, flush=flush, file=sys.stderr)
 
     def error(self, msg, repeat_at_end=True):
         """Log a non-fatal error message to stderr, which is repeated at program termination.
