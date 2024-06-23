@@ -809,9 +809,12 @@ class Post:
             return None
         location_id = int(loc['id'])
         if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
-            loc.update(self._context.get_iphone_json("api/v1/locations/web_info/,
-                                                params={'location_id': location_id, 'show_nearby': 'false', 'skip_recent_tab': 'false'}
-                                            )['native_location_data']['location_info'])
+            loc.update(self._context.get_iphone_json("api/v1/locations/web_info/",
+                                                params={
+                                                    'location_id': location_id, 
+                                                    'show_nearby': 'false', 
+                                                    'skip_recent_tab': 'false'
+                                                })['native_location_data']['location_info'])
         self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
                                       loc.get('lat'), loc.get('lng'))
         return self._location
