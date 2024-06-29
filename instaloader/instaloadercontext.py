@@ -305,9 +305,10 @@ class InstaloaderContext:
                                             resp_json['two_factor_info']['two_factor_identifier'])
             raise TwoFactorAuthRequiredException("Login error: two-factor authentication required.")
         if resp_json.get('checkpoint_url'):
-            raise LoginException("Login: Checkpoint required. Point your browser to "
-                                 "https://www.instagram.com{} - "
-                                 "follow the instructions, then retry.".format(resp_json.get('checkpoint_url')))
+            raise LoginException(
+                f"Login: Checkpoint required. Point your browser to {resp_json.get('checkpoint_url')} - "
+                f"follow the instructions, then retry."
+            )
         if resp_json['status'] != 'ok':
             if 'message' in resp_json:
                 raise LoginException("Login error: \"{}\" status, message \"{}\".".format(resp_json['status'],
@@ -425,7 +426,7 @@ class InstaloaderContext:
                 if (redirect_url.startswith('https://www.instagram.com/accounts/login') or
                     redirect_url.startswith('https://i.instagram.com/accounts/login')):
                     if not self.is_logged_in:
-                        raise LoginRequiredException("Redirected to login page. Use --login.")
+                        raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
                     raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
                                                  "some time, recreate the session and try again")
                 if redirect_url.startswith('https://{}/'.format(host)):
