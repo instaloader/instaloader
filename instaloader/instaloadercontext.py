@@ -9,7 +9,7 @@ import textwrap
 import time
 import urllib.parse
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 from functools import partial
 from typing import Any, Callable, Dict, Iterator, List, Optional, Union
@@ -367,6 +367,23 @@ class InstaloaderContext:
         if self.sleep:
             time.sleep(min(random.expovariate(0.6), 15.0))
 
+    @staticmethod
+    def _response_error(resp: requests.Response) -> str:
+        extra_from_json: Optional[str] = None
+        with suppress(json.decoder.JSONDecodeError):
+            resp_json = resp.json()
+            if "status" in resp_json:
+                extra_from_json = (
+                    f"\"{resp_json['status']}\" status, message \"{resp_json['message']}\""
+                    if "message" in resp_json
+                    else f"\"{resp_json['status']}\" status"
+                )
+        return (
+            f"{resp.status_code} {resp.reason}"
+            f"{f' - {extra_from_json}' if extra_from_json is not None else ''}"
+            f" when accessing {resp.url}"
+        )
+
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1,
                  response_headers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -420,21 +437,17 @@ class InstaloaderContext:
                 response_headers.clear()
                 response_headers.update(resp.headers)
             if resp.status_code == 400:
-                raise QueryReturnedBadRequestException("400 Bad Request")
+                raise QueryReturnedBadRequestException(self._response_error(resp))
             if resp.status_code == 404:
-                raise QueryReturnedNotFoundException("404 Not Found")
+                raise QueryReturnedNotFoundException(self._response_error(resp))
             if resp.status_code == 429:
-                raise TooManyRequestsException("429 Too Many Requests")
+                raise TooManyRequestsException(self._response_error(resp))
             if resp.status_code != 200:
-                raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise ConnectionException(self._response_error(resp))
             else:
                 resp_json = resp.json()
             if 'status' in resp_json and resp_json['status'] != "ok":
-                if 'message' in resp_json:
-                    raise ConnectionException("Returned \"{}\" status, message \"{}\".".format(resp_json['status'],
-                                                                                               resp_json['message']))
-                else:
-                    raise ConnectionException("Returned \"{}\" status.".format(resp_json['status']))
+                raise ConnectionException(self._response_error(resp))
             return resp_json
         except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
             error_string = "JSON Query to {}: {}".format(path, err)
@@ -623,11 +636,11 @@ class InstaloaderContext:
         else:
             if resp.status_code == 403:
                 # suspected invalid URL signature
-                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+                raise QueryReturnedForbiddenException(self._response_error(resp))
             if resp.status_code == 404:
                 # 404 not worth retrying.
-                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
-            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise QueryReturnedNotFoundException(self._response_error(resp))
+            raise ConnectionException(self._response_error(resp))
 
     def get_and_write_raw(self, url: str, filename: str) -> None:
         """Downloads and writes anonymously-requested raw data into a file.
@@ -653,11 +666,11 @@ class InstaloaderContext:
         else:
             if resp.status_code == 403:
                 # suspected invalid URL signature
-                raise QueryReturnedForbiddenException("403 when accessing {}.".format(url))
+                raise QueryReturnedForbiddenException(self._response_error(resp))
             if resp.status_code == 404:
                 # 404 not worth retrying.
-                raise QueryReturnedNotFoundException("404 when accessing {}.".format(url))
-            raise ConnectionException("HTTP error code {}.".format(resp.status_code))
+                raise QueryReturnedNotFoundException(self._response_error(resp))
+            raise ConnectionException(self._response_error(resp))
 
     @property
     def root_rhx_gis(self) -> Optional[str]:
