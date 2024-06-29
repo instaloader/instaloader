@@ -304,7 +304,7 @@ How to Download
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
-   Chrome/120 on Linux.
+   Chrome/126 on Linux.
 
 .. option:: --max-connection-attempts N
 
