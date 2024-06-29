@@ -1160,7 +1160,7 @@ class Profile:
         """Return URL of lower-quality profile picture.
 
         .. versionadded:: 4.9.3"""
-        return self._metadata("profile_pic_url_hd")
+        return self._metadata("profile_pic_url")
 
     def get_profile_pic_url(self) -> str:
         """.. deprecated:: 4.0.3
