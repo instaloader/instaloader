@@ -140,6 +140,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           download_highlights: bool = False,
           download_tagged: bool = False,
           download_igtv: bool = False,
+          download_reels: bool = False,
           fast_update: bool = False,
           latest_stamps_file: Optional[str] = None,
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
@@ -299,7 +300,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             instaloader.context.log("Hint: Login to download higher-quality versions of pictures.")
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
-                                      download_highlights, download_stories,
+                                      download_highlights, download_stories, download_reels, browser,
                                       fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
@@ -376,6 +377,8 @@ def main():
     g_post.add_argument('--no-pictures', action='store_true',
                         help='Do not download post pictures. Cannot be used together with --fast-update. '
                              'Implies --no-video-thumbnails, does not imply --no-videos.')
+    g_post.add_argument('--reels', action='store_true',
+                        help='Download reels of each profile that is downloaded.')
     g_post.add_argument('-V', '--no-videos', action='store_true',
                         help='Do not download videos.')
     g_post.add_argument('--no-video-thumbnails', action='store_true',
@@ -547,7 +550,9 @@ def main():
                              download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
-                             download_comments=args.comments, save_metadata=not args.no_metadata_json,
+                             download_comments=args.comments, 
+                             download_reels=args.reels,
+                             save_metadata=not args.no_metadata_json,
                              compress_json=not args.no_compress_json,
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
@@ -571,6 +576,7 @@ def main():
                           download_highlights=args.highlights,
                           download_tagged=args.tagged,
                           download_igtv=args.igtv,
+                          download_reels=args.reels,
                           fast_update=args.fast_update,
                           latest_stamps_file=args.latest_stamps,
                           max_count=int(args.count) if args.count is not None else None,
