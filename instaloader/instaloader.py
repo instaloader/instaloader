@@ -171,12 +171,30 @@ class _PostPathFormatter(_ArbitraryItemFormatter):
             ret = root + ext
         return ret
 
+def instaloader_context_factory(no_sleep: bool = False,
+                 quiet: bool = False,
+                 user_agent: Optional[str] = None, 
+                 max_connection_attempts: int = 3,
+                 request_timeout: float = 300.0,
+                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
+                 fatal_status_codes: Optional[List[int]] = None,
+                 iphone_support: bool = True):
+    """
+    :param no_sleep: :option:`--no_sleep`
+    :param quiet: :option:`--quiet`
+    :param user_agent: :option:`--user-agent`
+    :param max_connection_attempts: :option:`--max-connection-attempts`
+    :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
+    :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
+    :param fatal_status_codes: :option:`--abort-on`
+    :param iphone_support: not :option:`--no-iphone`
+    """
+    return InstaloaderContext(not no_sleep, quiet, user_agent, max_connection_attempts,request_timeout, rate_controller, fatal_status_codes, iphone_support)
+
 
 class Instaloader:
     """Instaloader Class.
 
-    :param quiet: :option:`--quiet`
-    :param user_agent: :option:`--user-agent`
     :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
     :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
     :param title_pattern:
@@ -193,14 +211,9 @@ class Instaloader:
        :option:`--post-metadata-txt`, default is ``{caption}``. Set to empty string to avoid creation of post metadata
        txt file.
     :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
-    :param max_connection_attempts: :option:`--max-connection-attempts`
-    :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
-    :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
     :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
     :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
     :param slide: :option:`--slide`
-    :param fatal_status_codes: :option:`--abort-on`
-    :param iphone_support: not :option:`--no-iphone`
     :param sanitize_paths: :option:`--sanitize-paths`
 
     .. attribute:: context
@@ -209,9 +222,6 @@ class Instaloader:
     """
 
     def __init__(self,
-                 sleep: bool = True,
-                 quiet: bool = False,
-                 user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
                  download_pictures=True,
@@ -223,20 +233,15 @@ class Instaloader:
                  compress_json: bool = True,
                  post_metadata_txt_pattern: Optional[str] = None,
                  storyitem_metadata_txt_pattern: Optional[str] = None,
-                 max_connection_attempts: int = 3,
-                 request_timeout: float = 300.0,
-                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
                  resume_prefix: Optional[str] = "iterator",
                  check_resume_bbd: bool = True,
                  slide: Optional[str] = None,
-                 fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True,
                  title_pattern: Optional[str] = None,
-                 sanitize_paths: bool = False):
+                 sanitize_paths: bool = False,
+                 context: Optional[InstaloaderContext] = None
+                 ):
 
-        self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
-                                          request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+        self.context = context or instaloader_context_factory()
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
