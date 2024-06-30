@@ -219,6 +219,7 @@ class Instaloader:
                  download_video_thumbnails: bool = True,
                  download_geotags: bool = False,
                  download_comments: bool = False,
+                 download_reels: bool = False,
                  save_metadata: bool = True,
                  compress_json: bool = True,
                  post_metadata_txt_pattern: Optional[str] = None,
@@ -1405,6 +1406,8 @@ class Instaloader:
                           igtv: bool = False,
                           highlights: bool = False,
                           stories: bool = False,
+                          reels: bool = False,
+                          browser: bool = False,
                           fast_update: bool = False,
                           post_filter: Optional[Callable[[Post], bool]] = None,
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
@@ -1482,6 +1485,23 @@ class Instaloader:
                     with self.context.error_catcher('Download IGTV of {}'.format(profile_name)):
                         self.download_igtv(profile, fast_update=fast_update, post_filter=post_filter,
                                            latest_stamps=latest_stamps)
+                        
+                if reels:
+                    print(browser)
+                    print('that was browser')
+                    self.context.log('....WELCOME TO THE SHOW')
+                    
+                    if os.system('gallery-dl --version') != 0:
+                        print("oh no why dont you try pip install -U gallery-dl")
+                    else:
+                        if browser:
+                            command = f'gallery-dl --dest {profile_name} --cookies-from-browser {browser} https://www.instagram.com/{profile_name}/reels/'
+                            print('#'*90)
+                            print(command)
+                            print('#'*90)
+                            os.system(command)
+                        else:
+                            os.system(f'gallery-dl --dest {profile_name} https://www.instagram.com/{profile_name}/reels/')
 
                 # Download highlights, if requested
                 if highlights:
