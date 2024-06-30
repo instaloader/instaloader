@@ -1437,7 +1437,7 @@ class Instaloader:
         .. versionchanged:: 4.8
            Add `latest_stamps` parameter.
 
-        .. versionchanged:: 4.12
+        .. versionchanged:: 4.13
            Add `max_count` parameter.
         """
 
