@@ -1427,7 +1427,7 @@ class Instaloader:
            Whether :exc:`LoginRequiredException` and :exc:`PrivateProfileNotFollowedException` should be raised or
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
         :param latest_stamps: :option:`--latest-stamps`.
-        :param max_count: Maximum count of posts to download
+        :param max_count: Maximum count of posts to download.
 
         .. versionadded:: 4.1
 
