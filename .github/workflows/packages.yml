@@ -11,17 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: "Setup Python"
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: "Get the tagged version"
         id: get_version
         env:
           GITHUB_REF: ${{ github.ref }}
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_OUTPUT
         shell: bash
+      - name: "Install Dependencies"
+        run: python -m pip install setuptools
       - name: "Generate Python Package"
         run: python setup.py sdist
       - name: "Publish Distribution to PyPI"

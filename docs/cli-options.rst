@@ -26,7 +26,7 @@ Targets
 ^^^^^^^
 
 Specify a list of targets. For each of these, Instaloader creates a folder and
-stores all posts along with the pictures's captions there.
+stores all posts along with the pictures' captions there.
 
 .. include:: basic-usage.rst
    :start-after: targets-start
@@ -61,13 +61,13 @@ What to Download of each Post
 
    Download geotags when available. Geotags are stored as a text file with
    the location's name and a Google Maps link. This requires an additional
-   request to the Instagram server for each picture. Requires :option:`--login`.
+   request to the Instagram server for each picture. Requires :ref:`login<login>`.
 
 .. option:: --comments, -C
 
    Download and update comments for each post. This requires an additional
    request to the Instagram server for each post, which is why it is disabled by
-   default.
+   default. Requires :ref:`login<login>`.
 
 .. option:: --no-captions
 
@@ -116,12 +116,12 @@ What to Download of each Profile
 .. option:: --stories, -s
 
    Also download stories of each profile that is downloaded. Requires
-   :option:`--login`.
+   :ref:`login<login>`.
 
 .. option:: --highlights
 
    Also download highlights of each profile that is downloaded. Requires
-   :option:`--login`.
+   :ref:`login<login>`.
 
    .. versionadded:: 4.1
 
@@ -183,6 +183,7 @@ Which Posts to Download
    Do not attempt to download more than COUNT posts.  Applies to
    ``#hashtag``, ``%location_id``, ``:feed``, and ``:saved``.
 
+.. _login:
 
 Login (Download Private Profiles)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -192,9 +193,31 @@ profiles. To login, pass the :option:`--login` option. Your session cookie (not 
 password!) will be saved to a local file to be reused next time you want
 Instaloader to login.
 
+Instead of :option:`--login`, it is possible to use
+:option:`--load-cookies` to import a session from a browser.
+
 .. option:: --login YOUR-USERNAME, -l YOUR-USERNAME
 
    Login name (profile name) for your Instagram account.
+
+.. option:: --load-cookies BROWSER-NAME, -b BROWSER-NAME
+
+   Use Instagram cookie in your browser to login.
+   This feature requires the browser_cookie3 library.
+   Compatible with :option:`--cookiefile` if you want to load cookies from browser profiles.
+   Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
+   Supported browsers: Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari and Vivaldi.
+
+   In subsequent runs, you can just use :option:`--login` to reuse the
+   same session, which is saved by Instaloader.
+
+   .. versionadded:: 4.11
+
+.. option:: --cookiefile COOKIE-FILE, -B COOKIE-FILE
+
+   Cookie file path of a browser profile to load cookies from.
+
+  .. versionadded:: 4.11
 
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
@@ -281,7 +304,7 @@ How to Download
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
-   Chrome/92 on Linux.
+   Chrome/120 on Linux.
 
 .. option:: --max-connection-attempts N
 

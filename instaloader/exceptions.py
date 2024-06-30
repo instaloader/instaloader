@@ -33,7 +33,11 @@ class LoginRequiredException(InstaloaderException):
     pass
 
 
-class TwoFactorAuthRequiredException(InstaloaderException):
+class LoginException(InstaloaderException):
+    pass
+
+
+class TwoFactorAuthRequiredException(LoginException):
     pass
 
 
@@ -45,7 +49,7 @@ class BadResponseException(InstaloaderException):
     pass
 
 
-class BadCredentialsException(InstaloaderException):
+class BadCredentialsException(LoginException):
     pass
 
 

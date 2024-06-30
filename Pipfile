@@ -6,18 +6,17 @@ verify_ssl = true
 [dev-packages]
 pylint = "*"
 mypy = "*"
-sphinx = "~=2.3"
+sphinx = "*"
 pyinstaller = "*"
-pefile = "*"
-pywin32-ctypes = "*"
 psutil = "*"
-typing-extensions = "*"
 types-requests = "*"
-typed-ast = "*"
-jinja2 = "~=3.0.1"
-wrapt = "*"  # Needed for Python<3.11
-tomli = "*"  # Needed for Python<3.11
-dill = "*"  # Needed for Python<3.11
+sphinx-autodoc-typehints = "*"
+sphinxcontrib-jquery = "*"
+tomli = "*"           # Needed for Pylint for "python_version < '3.11'"
+dill = "*"            # Needed for Pylint for "python_version < '3.11'"
+pywin32-ctypes = "*"  # Needed for pyinstaller on Windows
+pefile = "*"          # Needed for pyinstaller on Windows
 
 [packages]
 requests = "*"
+browser-cookie3 = "*"

@@ -8,22 +8,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout Instaloader Repository"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # needed for building docs
       - name: "Setup Python"
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
+          cache: 'pipenv'
       - name: "Install Dependencies"
         run: |
-          python -m pip install pipenv==2023.2.4
+          python -m pip install pipenv==2023.12.1
           pipenv --python `python --version | grep -Eo '3\.[0-9]+'` sync --dev
       - name: "Build Documentation"
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run make -C docs html SPHINXOPTS="-W -n"
       - name: "Deploy Documentation"
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: master
           repository-name: instaloader/instaloader.github.io
