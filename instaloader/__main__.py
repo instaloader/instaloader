@@ -12,7 +12,7 @@ from typing import List, Optional
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
                InvalidArgumentException, LoginException, Post, Profile, ProfileNotExistsException, StoryItem,
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
-from .instaloader import (get_default_session_filename, get_default_stamps_filename)
+from .instaloader import (get_default_session_filename, get_default_stamps_filename, instaloader_context_factory)
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 try:
@@ -542,8 +542,7 @@ def main():
         download_posts = not (args.no_posts or args.stories_only or args.profile_pic_only)
         download_stories = args.stories or args.stories_only
 
-        loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
-                             dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
+        loader = Instaloader(dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,
@@ -551,15 +550,20 @@ def main():
                              compress_json=not args.no_compress_json,
                              post_metadata_txt_pattern=post_metadata_txt_pattern,
                              storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
-                             max_connection_attempts=args.max_connection_attempts,
-                             request_timeout=args.request_timeout,
                              resume_prefix=resume_prefix,
                              check_resume_bbd=not args.use_aged_resume_files,
                              slide=args.slide,
-                             fatal_status_codes=args.abort_on,
-                             iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
-                             sanitize_paths=args.sanitize_paths)
+                             sanitize_paths=args.sanitize_paths,
+                             context=instaloader_context_factory(
+                                 no_sleep=args.no_sleep, 
+                                 quiet=args.quiet, 
+                                 user_agent=args.user_agent,
+                                 max_connection_attempts=args.max_connection_attempts,
+                                 request_timeout=args.request_timeout,
+                                 fatal_status_codes=args.abort_on,
+                                 iphone_support=not args.no_iphone)
+                            )
         exit_code = _main(loader,
                           args.profile,
                           username=args.login.lower() if args.login is not None else None,
