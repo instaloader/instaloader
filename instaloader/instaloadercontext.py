@@ -19,10 +19,13 @@ import requests.utils
 
 from .exceptions import *
 
+def session_factory():
+    """Return requests.Session object."""
+    return requests.Session()
 
-def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
+def copy_session(session: requests.Session, request_timeout: Optional[float] = None, session_factory: Callable[[], requests.Session] = session_factory) -> requests.Session:
     """Duplicates a requests.Session."""
-    new = requests.Session()
+    new = session_factory()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
@@ -201,9 +204,13 @@ class InstaloaderContext:
             del header['X-Requested-With']
         return header
 
+    def session_factory(self) -> requests.Session:
+        """Return requests.Session object. Override this method to provide a custom session object."""
+        return session_factory()
+
     def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
-        session = requests.Session()
+        session = self.session_factory()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -223,7 +230,7 @@ class InstaloaderContext:
 
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
-        session = requests.Session()
+        session = self.session_factory()
         session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
@@ -267,7 +274,7 @@ class InstaloaderContext:
         import http.client
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
-        session = requests.Session()
+        session = self.session_factory()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -297,7 +304,7 @@ class InstaloaderContext:
                 "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
             ) from err
         if resp_json.get('two_factor_required'):
-            two_factor_session = copy_session(session, self.request_timeout)
+            two_factor_session = copy_session(session, self.request_timeout, self.session_factory)
             two_factor_session.headers.update({'X-CSRFToken': csrf_token})
             two_factor_session.cookies.update({'csrftoken': csrf_token})
             self.two_factor_auth_pending = (two_factor_session,
@@ -483,7 +490,7 @@ class InstaloaderContext:
         :param rhx_gis: 'rhx_gis' variable as somewhere returned by Instagram, needed to 'sign' request
         :return: The server's response dictionary.
         """
-        with copy_session(self._session, self.request_timeout) as tmpsession:
+        with copy_session(self._session, self.request_timeout, self.session_factory) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
             del tmpsession.headers['Content-Length']
@@ -556,7 +563,7 @@ class InstaloaderContext:
         :raises ConnectionException: When query repeatedly failed.
 
         .. versionadded:: 4.2.1"""
-        with copy_session(self._session, self.request_timeout) as tempsession:
+        with copy_session(self._session, self.request_timeout, self.session_factory) as tempsession:
             # Set headers to simulate an API request from iPad
             tempsession.headers['ig-intended-user-id'] = str(self.user_id)
             tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
