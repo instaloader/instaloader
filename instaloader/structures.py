@@ -240,6 +240,7 @@ class Post:
             fake_node["video_url"] = media['video_versions'][-1]['url']
             fake_node["video_duration"] = media["video_duration"]
             fake_node["video_view_count"] = media["view_count"]
+            fake_node["video_play_count"] = media["play_count"]
         with suppress(KeyError):
             fake_node["edge_sidecar_to_children"] = {"edges": [{"node": {
                 "display_url": node['image_versions2']['candidates'][0]['url'],
@@ -579,6 +580,15 @@ class Post:
         .. versionadded:: 4.2.6"""
         if self.is_video:
             return self._field('video_view_count')
+        return None
+
+    @property
+    def video_play_count(self) -> Optional[int]:
+        """Play count of the video, or None.
+
+        .. versionadded:: 4.12"""
+        if self.is_video:
+            return self._field("video_play_count")
         return None
 
     @property
