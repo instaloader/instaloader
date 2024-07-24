@@ -13,7 +13,7 @@ else:
     win_unicode_console.enable()
 
 from .exceptions import *
-from .instaloader import Instaloader
+from .instaloader import Instaloader, InstaloaderBase
 from .instaloadercontext import InstaloaderContext, RateController
 from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, FrozenNodeIterator, resumable_iteration
