@@ -9,7 +9,7 @@ from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from enum import IntEnum
 from typing import List, Optional
 
-from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
+from . import (AbortDownloadException, BadCredentialsException, InstaloaderBase, InstaloaderException,
                InvalidArgumentException, LoginException, Post, Profile, ProfileNotExistsException, StoryItem,
                TwoFactorAuthRequiredException, __version__, load_structure_from_file)
 from .instaloader import (get_default_session_filename, get_default_stamps_filename, instaloader_context_factory)
@@ -132,7 +132,7 @@ def import_session(browser, instaloader, cookiefile):
         print(f"Next time use --login={username} to reuse the same session.")
 
 
-def _main(instaloader: Instaloader, targetlist: List[str],
+def _main(instaloader: InstaloaderBase, targetlist: List[str],
           username: Optional[str] = None, password: Optional[str] = None,
           sessionfile: Optional[str] = None,
           download_profile_pic: bool = True, download_posts=True,
@@ -542,7 +542,7 @@ def main():
         download_posts = not (args.no_posts or args.stories_only or args.profile_pic_only)
         download_stories = args.stories or args.stories_only
 
-        loader = Instaloader(dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
+        loader = InstaloaderBase(dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
                              download_geotags=args.geotags,

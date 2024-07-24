@@ -7,6 +7,7 @@ import shutil
 import string
 import sys
 import tempfile
+import warnings
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import wraps
@@ -192,8 +193,8 @@ def instaloader_context_factory(no_sleep: bool = False,
     return InstaloaderContext(not no_sleep, quiet, user_agent, max_connection_attempts,request_timeout, rate_controller, fatal_status_codes, iphone_support)
 
 
-class Instaloader:
-    """Instaloader Class.
+class InstaloaderBase:
+    """InstaloaderBase Class.
 
     :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
     :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
@@ -297,10 +298,7 @@ class Instaloader:
     @contextmanager
     def anonymous_copy(self):
         """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
-        new_loader = Instaloader(
-            sleep=self.context.sleep,
-            quiet=self.context.quiet,
-            user_agent=self.context.user_agent,
+        new_loader = InstaloaderBase(
             dirname_pattern=self.dirname_pattern,
             filename_pattern=self.filename_pattern,
             download_pictures=self.download_pictures,
@@ -312,14 +310,12 @@ class Instaloader:
             compress_json=self.compress_json,
             post_metadata_txt_pattern=self.post_metadata_txt_pattern,
             storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
-            max_connection_attempts=self.context.max_connection_attempts,
-            request_timeout=self.context.request_timeout,
             resume_prefix=self.resume_prefix,
             check_resume_bbd=self.check_resume_bbd,
             slide=self.slide,
-            fatal_status_codes=self.context.fatal_status_codes,
-            iphone_support=self.context.iphone_support,
-            sanitize_paths=self.sanitize_paths)
+            sanitize_paths=self.sanitize_paths,
+            context=self.context.anonymous_copy()
+            )
         yield new_loader
         self.context.error_log.extend(new_loader.context.error_log)
         new_loader.context.error_log = []  # avoid double-printing of errors
@@ -1628,3 +1624,127 @@ class Instaloader:
 
         .. versionadded: 4.12"""
         return self.context.has_stored_errors
+
+
+class Instaloader(InstaloaderBase):
+    """Instaloader Class.
+
+    .. deprecated:: 4.13
+       Use :class:`InstaloaderBase` instead.
+
+    :param quiet: :option:`--quiet`
+    :param user_agent: :option:`--user-agent`
+    :param dirname_pattern: :option:`--dirname-pattern`, default is ``{target}``
+    :param filename_pattern: :option:`--filename-pattern`, default is ``{date_utc}_UTC``
+    :param title_pattern:
+       :option:`--title-pattern`, default is ``{date_utc}_UTC_{typename}`` if ``dirname_pattern`` contains
+       ``{target}`` or ``{profile}``, ``{target}_{date_utc}_UTC_{typename}`` otherwise.
+    :param download_pictures: not :option:`--no-pictures`
+    :param download_videos: not :option:`--no-videos`
+    :param download_video_thumbnails: not :option:`--no-video-thumbnails`
+    :param download_geotags: :option:`--geotags`
+    :param download_comments: :option:`--comments`
+    :param save_metadata: not :option:`--no-metadata-json`
+    :param compress_json: not :option:`--no-compress-json`
+    :param post_metadata_txt_pattern:
+       :option:`--post-metadata-txt`, default is ``{caption}``. Set to empty string to avoid creation of post metadata
+       txt file.
+    :param storyitem_metadata_txt_pattern: :option:`--storyitem-metadata-txt`, default is empty (=none)
+    :param max_connection_attempts: :option:`--max-connection-attempts`
+    :param request_timeout: :option:`--request-timeout`, set per-request timeout (seconds)
+    :param rate_controller: Generator for a :class:`RateController` to override rate controlling behavior
+    :param resume_prefix: :option:`--resume-prefix`, or None for :option:`--no-resume`.
+    :param check_resume_bbd: Whether to check the date of expiry of resume files and reject them if expired.
+    :param slide: :option:`--slide`
+    :param fatal_status_codes: :option:`--abort-on`
+    :param iphone_support: not :option:`--no-iphone`
+    :param sanitize_paths: :option:`--sanitize-paths`
+
+    .. attribute:: context
+
+       The associated :class:`InstaloaderContext` with low-level communication functions and logging.
+    """
+
+    def __init__(self,
+                 sleep: bool = True,
+                 quiet: bool = False,
+                 user_agent: Optional[str] = None,
+                 dirname_pattern: Optional[str] = None,
+                 filename_pattern: Optional[str] = None,
+                 download_pictures=True,
+                 download_videos: bool = True,
+                 download_video_thumbnails: bool = True,
+                 download_geotags: bool = False,
+                 download_comments: bool = False,
+                 save_metadata: bool = True,
+                 compress_json: bool = True,
+                 post_metadata_txt_pattern: Optional[str] = None,
+                 storyitem_metadata_txt_pattern: Optional[str] = None,
+                 max_connection_attempts: int = 3,
+                 request_timeout: float = 300.0,
+                 rate_controller: Optional[Callable[[InstaloaderContext], RateController]] = None,
+                 resume_prefix: Optional[str] = "iterator",
+                 check_resume_bbd: bool = True,
+                 slide: Optional[str] = None,
+                 fatal_status_codes: Optional[List[int]] = None,
+                 iphone_support: bool = True,
+                 title_pattern: Optional[str] = None,
+                 sanitize_paths: bool = False):
+
+        super().__init__(
+            dirname_pattern=dirname_pattern,
+            filename_pattern=filename_pattern,
+            download_pictures=download_pictures,
+            download_videos=download_videos,
+            download_video_thumbnails=download_video_thumbnails,
+            download_geotags=download_geotags,
+            download_comments=download_comments,
+            save_metadata=save_metadata,
+            compress_json=compress_json,
+            post_metadata_txt_pattern=post_metadata_txt_pattern,
+            storyitem_metadata_txt_pattern=storyitem_metadata_txt_pattern,
+            resume_prefix=resume_prefix,
+            check_resume_bbd=check_resume_bbd,
+            slide=slide,
+            title_pattern=title_pattern,
+            sanitize_paths=sanitize_paths,
+            context=InstaloaderContext(
+                sleep=sleep, quiet=quiet, user_agent=user_agent,
+                max_connection_attempts=max_connection_attempts,
+                request_timeout=request_timeout,
+                rate_controller=rate_controller,
+                fatal_status_codes=fatal_status_codes,
+                iphone_support=iphone_support
+            )
+        )
+
+    @contextmanager
+    def anonymous_copy(self):
+        """Yield an anonymous, otherwise equally-configured copy of an Instaloader instance; Then copy its error log."""
+        new_loader = Instaloader(
+            sleep=self.context.sleep,
+            quiet=self.context.quiet,
+            user_agent=self.context.user_agent,
+            dirname_pattern=self.dirname_pattern,
+            filename_pattern=self.filename_pattern,
+            download_pictures=self.download_pictures,
+            download_videos=self.download_videos,
+            download_video_thumbnails=self.download_video_thumbnails,
+            download_geotags=self.download_geotags,
+            download_comments=self.download_comments,
+            save_metadata=self.save_metadata,
+            compress_json=self.compress_json,
+            post_metadata_txt_pattern=self.post_metadata_txt_pattern,
+            storyitem_metadata_txt_pattern=self.storyitem_metadata_txt_pattern,
+            max_connection_attempts=self.context.max_connection_attempts,
+            request_timeout=self.context.request_timeout,
+            resume_prefix=self.resume_prefix,
+            check_resume_bbd=self.check_resume_bbd,
+            slide=self.slide,
+            fatal_status_codes=self.context.fatal_status_codes,
+            iphone_support=self.context.iphone_support,
+            sanitize_paths=self.sanitize_paths)
+        yield new_loader
+        self.context.error_log.extend(new_loader.context.error_log)
+        new_loader.context.error_log = []  # avoid double-printing of errors
+        new_loader.close()
