@@ -66,7 +66,7 @@ class NodeIterator(Iterator[T]):
     See also :func:`resumable_iteration` for a high-level context manager that handles a resumable iteration.
     """
 
-    _graphql_page_length = 50
+    _graphql_page_length = 12
     _shelf_life = timedelta(days=29)
 
     def __init__(self,
