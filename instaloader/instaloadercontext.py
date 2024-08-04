@@ -400,6 +400,7 @@ class InstaloaderContext:
         :raises ConnectionException: When query repeatedly failed.
         """
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
+        is_doc_id_query = 'doc_id' in params and 'graphql/query' in path
         is_iphone_query = host == 'i.instagram.com'
         is_other_query = not is_graphql_query and host == "www.instagram.com"
         sess = session if session else self._session
@@ -407,6 +408,8 @@ class InstaloaderContext:
             self.do_sleep()
             if is_graphql_query:
                 self._rate_controller.wait_before_query(params['query_hash'])
+            if is_doc_id_query:
+                self._rate_controller.wait_before_query(params['doc_id'])
             if is_iphone_query:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
@@ -462,6 +465,8 @@ class InstaloaderContext:
                 if isinstance(err, TooManyRequestsException):
                     if is_graphql_query:
                         self._rate_controller.handle_429(params['query_hash'])
+                    if is_doc_id_query:
+                        self._rate_controller.handle_429(params['doc_id'])
                     if is_iphone_query:
                         self._rate_controller.handle_429('iphone')
                     if is_other_query:
@@ -504,6 +509,30 @@ class InstaloaderContext:
             resp_json = self.get_json('graphql/query',
                                       params={'query_hash': query_hash,
                                               'variables': variables_json},
+                                      session=tmpsession)
+        if 'status' not in resp_json:
+            self.error("GraphQL response did not contain a \"status\" field.")
+        return resp_json
+
+    def doc_id_graphql_query(self, doc_id: str, variables: Dict[str, Any],
+                             referer: Optional[str] = None) -> Dict[str, Any]:
+        with copy_session(self._session, self.request_timeout) as tmpsession:
+            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
+            del tmpsession.headers['Connection']
+            del tmpsession.headers['Content-Length']
+            tmpsession.headers['authority'] = 'www.instagram.com'
+            tmpsession.headers['scheme'] = 'https'
+            tmpsession.headers['accept'] = '*/*'
+            if referer is not None:
+                tmpsession.headers['referer'] = urllib.parse.quote(referer)
+
+            variables_json = json.dumps(variables, separators=(',', ':'))
+
+            # FIXME: Use POST
+            resp_json = self.get_json('graphql/query',
+                                      params={'variables': variables_json,
+                                              'doc_id': doc_id,
+                                              'server_timestamps': 'true'},
                                       session=tmpsession)
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")

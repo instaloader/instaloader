@@ -19,6 +19,7 @@ class FrozenNodeIterator(NamedTuple):
     best_before: Optional[float]
     remaining_data: Optional[Dict]
     first_node: Optional[Dict]
+    doc_id: Optional[str]
 FrozenNodeIterator.query_hash.__doc__ = """The GraphQL ``query_hash`` parameter."""
 FrozenNodeIterator.query_variables.__doc__ = """The GraphQL ``query_variables`` parameter."""
 FrozenNodeIterator.query_referer.__doc__ = """The HTTP referer used for the GraphQL query."""
@@ -77,9 +78,11 @@ class NodeIterator(Iterator[T]):
                  query_variables: Optional[Dict[str, Any]] = None,
                  query_referer: Optional[str] = None,
                  first_data: Optional[Dict[str, Any]] = None,
-                 is_first: Optional[Callable[[T, Optional[T]], bool]] = None):
+                 is_first: Optional[Callable[[T, Optional[T]], bool]] = None,
+                 doc_id: Optional[str] = None):
         self._context = context
         self._query_hash = query_hash
+        self._doc_id = doc_id
         self._edge_extractor = edge_extractor
         self._node_wrapper = node_wrapper
         self._query_variables = query_variables if query_variables is not None else {}
@@ -95,6 +98,27 @@ class NodeIterator(Iterator[T]):
         self._is_first = is_first
 
     def _query(self, after: Optional[str] = None) -> Dict:
+        if self._doc_id is not None:
+            return self._query_doc_id(after)
+        else:
+            return self._query_query_hash
+
+    def _query_doc_id(self, after: Optional[str] = None) -> Dict:
+        pagination_variables: Dict[str, Any] = {'__relay_internal__pv__PolarisFeedShareMenurelayprovider': False}
+        if after is not None:
+            pagination_variables['after'] = after
+            pagination_variables['before'] = None
+            pagination_variables['first'] = 12
+            pagination_variables['last'] = None
+        data = self._edge_extractor(
+            self._context.doc_id_graphql_query(
+                self._doc_id, {**self._query_variables, **pagination_variables}, self._query_referer
+            )
+        )
+        self._best_before = datetime.now() + NodeIterator._shelf_life
+        return data
+
+    def _query_query_hash(self, after: Optional[str] = None) -> Dict:
         pagination_variables: Dict[str, Any] = {'first': NodeIterator._graphql_page_length}
         if after is not None:
             pagination_variables['after'] = after
@@ -193,6 +217,7 @@ class NodeIterator(Iterator[T]):
             best_before=self._best_before.timestamp() if self._best_before else None,
             remaining_data=remaining_data,
             first_node=self._first_node,
+            doc_id=self._doc_id,
         )
 
     def thaw(self, frozen: FrozenNodeIterator) -> None:
@@ -210,7 +235,8 @@ class NodeIterator(Iterator[T]):
         if (self._query_hash != frozen.query_hash or
                 self._query_variables != frozen.query_variables or
                 self._query_referer != frozen.query_referer or
-                self._context.username != frozen.context_username):
+                self._context.username != frozen.context_username or
+                self._doc_id != frozen.doc_id):
             raise InvalidArgumentException("Mismatching resume information.")
         if not frozen.best_before:
             raise InvalidArgumentException("\"best before\" date missing.")
@@ -221,6 +247,8 @@ class NodeIterator(Iterator[T]):
         self._data = frozen.remaining_data
         if frozen.first_node is not None:
             self._first_node = frozen.first_node
+        if frozen.doc_id is not None:
+            self._doc_id = frozen.doc_id
 
 
 @contextmanager

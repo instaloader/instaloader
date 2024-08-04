@@ -236,11 +236,11 @@ class Post:
         }
         with suppress(KeyError):
             fake_node["display_url"] = media['image_versions2']['candidates'][0]['url']
-        with suppress(KeyError):
+        with suppress(KeyError, TypeError):
             fake_node["video_url"] = media['video_versions'][-1]['url']
             fake_node["video_duration"] = media["video_duration"]
             fake_node["video_view_count"] = media["view_count"]
-        with suppress(KeyError):
+        with suppress(KeyError, TypeError):
             fake_node["edge_sidecar_to_children"] = {"edges": [{"node": {
                 "display_url": node['image_versions2']['candidates'][0]['url'],
                 "is_video": media_types[node["media_type"]] == "GraphVideo",
@@ -1175,13 +1175,17 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             self._context,
-            '003056d32c2554def87228bc3fd9668a',
-            lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-            lambda n: Post(self._context, n, self),
-            {'id': self.userid},
+            '',
+            lambda d: d['data']['xdt_api__v1__feed__user_timeline_graphql_connection'],
+            lambda n: Post.from_iphone_struct(self._context, n),
+            {'data': {
+                'count': 12, 'include_relationship_info': True,
+                'latest_besties_reel_media': True, 'latest_reel_media': True},
+             'username': self.username},
             'https://www.instagram.com/{0}/'.format(self.username),
-            self._metadata('edge_owner_to_timeline_media'),
-            Profile._make_is_newest_checker()
+            None,
+            Profile._make_is_newest_checker(),
+            '7898261790222653'
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
