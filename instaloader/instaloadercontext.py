@@ -387,7 +387,8 @@ class InstaloaderContext:
 
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None, _attempt=1,
-                 response_headers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                 response_headers: Optional[Dict[str, Any]] = None,
+                 use_post: bool = False) -> Dict[str, Any]:
         """JSON request to Instagram.
 
         :param path: URL, relative to the given domain which defaults to www.instagram.com/
@@ -414,7 +415,10 @@ class InstaloaderContext:
                 self._rate_controller.wait_before_query('iphone')
             if is_other_query:
                 self._rate_controller.wait_before_query('other')
-            resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
+            if use_post:
+                resp = sess.post('https://{0}/{1}'.format(host, path), data=params, allow_redirects=False)
+            else:
+                resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
             if resp.status_code in self.fatal_status_codes:
                 redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
                 body = ""
@@ -528,12 +532,12 @@ class InstaloaderContext:
 
             variables_json = json.dumps(variables, separators=(',', ':'))
 
-            # FIXME: Use POST
             resp_json = self.get_json('graphql/query',
                                       params={'variables': variables_json,
                                               'doc_id': doc_id,
                                               'server_timestamps': 'true'},
-                                      session=tmpsession)
+                                      session=tmpsession,
+                                      use_post=True)
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
         return resp_json
