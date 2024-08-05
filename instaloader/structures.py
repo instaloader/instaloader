@@ -241,11 +241,20 @@ class Post:
             fake_node["video_duration"] = media["video_duration"]
             fake_node["video_view_count"] = media["view_count"]
         with suppress(KeyError, TypeError):
-            fake_node["edge_sidecar_to_children"] = {"edges": [{"node": {
-                "display_url": node['image_versions2']['candidates'][0]['url'],
-                "is_video": media_types[node["media_type"]] == "GraphVideo",
-            }} for node in media["carousel_media"]]}
+            fake_node["edge_sidecar_to_children"] = {"edges": [{"node":
+                Post._convert_iphone_carousel(node, media_types)}
+                for node in media["carousel_media"]]}
         return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
+
+    @staticmethod
+    def _convert_iphone_carousel(iphone_node: Dict[str, Any], media_types: Dict[int, str]) -> Dict[str, Any]:
+        fake_node = {
+            "display_url": iphone_node["image_versions2"]["candidates"][0]["url"],
+            "is_video": media_types[iphone_node["media_type"]] == "GraphVideo",
+        }
+        if "video_versions" in iphone_node and iphone_node["video_versions"] is not None:
+            fake_node["video_url"] = iphone_node["video_versions"][0]["url"]
+        return fake_node
 
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
