@@ -232,6 +232,8 @@ class Post:
             "title": media.get("title"),
             "viewer_has_liked": media["has_liked"],
             "edge_media_preview_like": {"count": media["like_count"]},
+            "accessibility_caption": media.get("accessibility_caption"),
+            "comments": media.get("comment_count"),
             "iphone_struct": media,
         }
         with suppress(KeyError):
