@@ -29,6 +29,7 @@ FrozenNodeIterator.best_before.__doc__ = """Date when parts of the stored nodes 
 FrozenNodeIterator.remaining_data.__doc__ = \
     """The already-retrieved, yet-unprocessed ``edges`` and the ``page_info`` at time of freezing."""
 FrozenNodeIterator.first_node.__doc__ = """Node data of the first item, if an item has been produced."""
+FrozenNodeIterator.doc_id.__doc__ = """The GraphQL ``doc_id`` parameter."""
 
 T = TypeVar('T')
 
