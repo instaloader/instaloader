@@ -232,20 +232,31 @@ class Post:
             "title": media.get("title"),
             "viewer_has_liked": media["has_liked"],
             "edge_media_preview_like": {"count": media["like_count"]},
+            "accessibility_caption": media.get("accessibility_caption"),
+            "comments": media.get("comment_count"),
             "iphone_struct": media,
         }
         with suppress(KeyError):
             fake_node["display_url"] = media['image_versions2']['candidates'][0]['url']
-        with suppress(KeyError):
+        with suppress(KeyError, TypeError):
             fake_node["video_url"] = media['video_versions'][-1]['url']
             fake_node["video_duration"] = media["video_duration"]
             fake_node["video_view_count"] = media["view_count"]
-        with suppress(KeyError):
-            fake_node["edge_sidecar_to_children"] = {"edges": [{"node": {
-                "display_url": node['image_versions2']['candidates'][0]['url'],
-                "is_video": media_types[node["media_type"]] == "GraphVideo",
-            }} for node in media["carousel_media"]]}
+        with suppress(KeyError, TypeError):
+            fake_node["edge_sidecar_to_children"] = {"edges": [{"node":
+                Post._convert_iphone_carousel(node, media_types)}
+                for node in media["carousel_media"]]}
         return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
+
+    @staticmethod
+    def _convert_iphone_carousel(iphone_node: Dict[str, Any], media_types: Dict[int, str]) -> Dict[str, Any]:
+        fake_node = {
+            "display_url": iphone_node["image_versions2"]["candidates"][0]["url"],
+            "is_video": media_types[iphone_node["media_type"]] == "GraphVideo",
+        }
+        if "video_versions" in iphone_node and iphone_node["video_versions"] is not None:
+            fake_node["video_url"] = iphone_node["video_versions"][0]["url"]
+        return fake_node
 
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
@@ -1174,14 +1185,17 @@ class Profile:
         :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
         return NodeIterator(
-            self._context,
-            '003056d32c2554def87228bc3fd9668a',
-            lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-            lambda n: Post(self._context, n, self),
-            {'id': self.userid},
-            'https://www.instagram.com/{0}/'.format(self.username),
-            self._metadata('edge_owner_to_timeline_media'),
-            Profile._make_is_newest_checker()
+            context = self._context,
+            edge_extractor = lambda d: d['data']['xdt_api__v1__feed__user_timeline_graphql_connection'],
+            node_wrapper = lambda n: Post.from_iphone_struct(self._context, n),
+            query_variables = {'data': {
+                'count': 12, 'include_relationship_info': True,
+                'latest_besties_reel_media': True, 'latest_reel_media': True},
+             'username': self.username},
+            query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
+            is_first = Profile._make_is_newest_checker(),
+            doc_id = '7898261790222653',
+            query_hash = None,
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
