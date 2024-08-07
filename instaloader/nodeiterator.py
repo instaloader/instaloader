@@ -11,7 +11,7 @@ from .exceptions import AbortDownloadException, InvalidArgumentException
 from .instaloadercontext import InstaloaderContext
 
 class FrozenNodeIterator(NamedTuple):
-    query_hash: str
+    query_hash: Optional[str]
     query_variables: Dict
     query_referer: Optional[str]
     context_username: Optional[str]
@@ -76,7 +76,7 @@ class NodeIterator(Iterator[T]):
 
     def __init__(self,
                  context: InstaloaderContext,
-                 query_hash: str,
+                 query_hash: Optional[str],
                  edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]],
                  node_wrapper: Callable[[Dict], T],
                  query_variables: Optional[Dict[str, Any]] = None,
@@ -105,7 +105,7 @@ class NodeIterator(Iterator[T]):
         if self._doc_id is not None:
             return self._query_doc_id(self._doc_id, after)
         else:
-            return self._query_query_hash(after)
+            return self._query_query_hash(self._query_hash, after)
 
     def _query_doc_id(self, doc_id: str, after: Optional[str] = None) -> Dict:
         pagination_variables: Dict[str, Any] = {'__relay_internal__pv__PolarisFeedShareMenurelayprovider': False}
@@ -122,13 +122,13 @@ class NodeIterator(Iterator[T]):
         self._best_before = datetime.now() + NodeIterator._shelf_life
         return data
 
-    def _query_query_hash(self, after: Optional[str] = None) -> Dict:
+    def _query_query_hash(self, query_hash: str, after: Optional[str] = None) -> Dict:
         pagination_variables: Dict[str, Any] = {'first': NodeIterator._graphql_page_length}
         if after is not None:
             pagination_variables['after'] = after
         data = self._edge_extractor(
             self._context.graphql_query(
-                self._query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
+                query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
             )
         )
         self._best_before = datetime.now() + NodeIterator._shelf_life
