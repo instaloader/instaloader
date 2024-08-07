@@ -1185,18 +1185,17 @@ class Profile:
         :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
         return NodeIterator(
-            self._context,
-            '',
-            lambda d: d['data']['xdt_api__v1__feed__user_timeline_graphql_connection'],
-            lambda n: Post.from_iphone_struct(self._context, n),
-            {'data': {
+            context = self._context,
+            edge_extractor = lambda d: d['data']['xdt_api__v1__feed__user_timeline_graphql_connection'],
+            node_wrapper = lambda n: Post.from_iphone_struct(self._context, n),
+            query_variables = {'data': {
                 'count': 12, 'include_relationship_info': True,
                 'latest_besties_reel_media': True, 'latest_reel_media': True},
              'username': self.username},
-            'https://www.instagram.com/{0}/'.format(self.username),
-            None,
-            Profile._make_is_newest_checker(),
-            '7898261790222653'
+            query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
+            is_first = Profile._make_is_newest_checker(),
+            doc_id = '7898261790222653',
+            query_hash = None,
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
