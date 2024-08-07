@@ -251,8 +251,6 @@ class NodeIterator(Iterator[T]):
         self._data = frozen.remaining_data
         if frozen.first_node is not None:
             self._first_node = frozen.first_node
-        if frozen.doc_id is not None:
-            self._doc_id = frozen.doc_id
 
 
 @contextmanager
