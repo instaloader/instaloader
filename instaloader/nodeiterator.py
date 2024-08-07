@@ -66,6 +66,9 @@ class NodeIterator(Iterator[T]):
     NodeIterators are matching if and only if they have the same magic.
 
     See also :func:`resumable_iteration` for a high-level context manager that handles a resumable iteration.
+
+    .. versionchanged: 4.13
+       Included support for `doc_id`-based queries (using POST method).
     """
 
     _graphql_page_length = 12
