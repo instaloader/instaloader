@@ -105,6 +105,7 @@ class NodeIterator(Iterator[T]):
         if self._doc_id is not None:
             return self._query_doc_id(self._doc_id, after)
         else:
+            assert self._query_hash is not None
             return self._query_query_hash(self._query_hash, after)
 
     def _query_doc_id(self, doc_id: str, after: Optional[str] = None) -> Dict:
