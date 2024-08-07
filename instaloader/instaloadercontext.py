@@ -407,7 +407,7 @@ class InstaloaderContext:
         is_graphql_query = 'query_hash' in params and 'graphql/query' in path
         is_doc_id_query = 'doc_id' in params and 'graphql/query' in path
         is_iphone_query = host == 'i.instagram.com'
-        is_other_query = not is_graphql_query and host == "www.instagram.com"
+        is_other_query = not is_graphql_query and not is_doc_id_query and host == "www.instagram.com"
         sess = session if session else self._session
         try:
             self.do_sleep()
