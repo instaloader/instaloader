@@ -26,7 +26,6 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     new.verify = session.verify
-    new.env_check = session.env_check
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
     new.request = partial(new.request, timeout=request_timeout)  # type: ignore
@@ -86,8 +85,7 @@ class InstaloaderContext:
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
-                 verify: bool = True,
-                 env_check: bool = True):
+                 verify: bool = True):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -103,7 +101,6 @@ class InstaloaderContext:
         self.iphone_support = iphone_support
         self.iphone_headers = default_iphone_headers()
         self.verify = verify
-        self.env_check = env_check
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log: List[str] = []
@@ -275,7 +272,6 @@ class InstaloaderContext:
         http.client._MAXHEADERS = 200
         session = requests.Session()
         session.verify = self.verify
-        session.env_check = self.env_check
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
