@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
-from .exceptions import AbortDownloadException, InvalidArgumentException, QueryReturnedBadRequestException
+from .exceptions import AbortDownloadException, InvalidArgumentException
 from .instaloadercontext import InstaloaderContext
 
 class FrozenNodeIterator(NamedTuple):
@@ -66,7 +66,7 @@ class NodeIterator(Iterator[T]):
     See also :func:`resumable_iteration` for a high-level context manager that handles a resumable iteration.
     """
 
-    _graphql_page_length = 50
+    _graphql_page_length = 12
     _shelf_life = timedelta(days=29)
 
     def __init__(self,
@@ -98,23 +98,13 @@ class NodeIterator(Iterator[T]):
         pagination_variables: Dict[str, Any] = {'first': NodeIterator._graphql_page_length}
         if after is not None:
             pagination_variables['after'] = after
-        try:
-            data = self._edge_extractor(
-                self._context.graphql_query(
-                    self._query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
-                )
+        data = self._edge_extractor(
+            self._context.graphql_query(
+                self._query_hash, {**self._query_variables, **pagination_variables}, self._query_referer
             )
-            self._best_before = datetime.now() + NodeIterator._shelf_life
-            return data
-        except QueryReturnedBadRequestException:
-            new_page_length = int(NodeIterator._graphql_page_length / 2)
-            if new_page_length >= 12:
-                NodeIterator._graphql_page_length = new_page_length
-                self._context.error("HTTP Error 400 (Bad Request) on GraphQL Query. Retrying with shorter page length.",
-                                    repeat_at_end=False)
-                return self._query(after)
-            else:
-                raise
+        )
+        self._best_before = datetime.now() + NodeIterator._shelf_life
+        return data
 
     def __iter__(self):
         return self
