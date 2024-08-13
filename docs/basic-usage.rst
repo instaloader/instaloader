@@ -231,7 +231,7 @@ The filter string must be a
 where the attributes from :class:`Post` or
 :class:`StoryItem` respectively are defined.
 
-Id est, the following attributes can be used with both
+The following attributes can be used with both
 :option:`--post-filter` and :option:`--storyitem-filter`:
 
 - :attr:`~Post.owner_username` (str), :attr:`~Post.owner_id` (int)
