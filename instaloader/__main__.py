@@ -300,7 +300,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         instaloader.download_profiles(profiles,
                                       download_profile_pic, download_posts, download_tagged, download_igtv,
                                       download_highlights, download_stories,
-                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps)
+                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps,
+                                      max_count=max_count)
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
