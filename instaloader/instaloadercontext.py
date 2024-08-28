@@ -493,7 +493,7 @@ class InstaloaderContext:
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
 
-        .. versionchanged:: 4.13
+        .. versionchanged:: 4.13.1
            Removed the `rhx_gis` parameter.
         """
         with copy_session(self._session, self.request_timeout) as tmpsession:
