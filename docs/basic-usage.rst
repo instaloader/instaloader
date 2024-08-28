@@ -122,7 +122,8 @@ Instaloader supports the following targets:
 
 - ``-post``
    Replace **post** with the post's shortcode to download single post. Must be preceded by ``--`` in
-   the argument list to not be mistaken as an option flag::
+   the argument list to not be mistaken as an option flag.  For example, to download the post
+   https://www.instagram.com/p/**B_K4CykAOtf**, run the command::
 
     instaloader -- -B_K4CykAOtf
 
