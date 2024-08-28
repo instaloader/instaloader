@@ -908,8 +908,7 @@ class Profile:
                                       'include_reel': True,
                                       'include_suggested_users': False,
                                       'include_logged_out_extras': False,
-                                      'include_highlight_reels': False},
-                                     rhx_gis=context.root_rhx_gis)['data']['user']
+                                      'include_highlight_reels': False})['data']['user']
         if data:
             profile = cls(context, data['reel']['owner'])
         else:

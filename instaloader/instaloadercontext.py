@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import pickle
@@ -94,7 +93,6 @@ class InstaloaderContext:
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
         self._graphql_page_length = 50
-        self._root_rhx_gis = None
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
         self.iphone_headers = default_iphone_headers()
@@ -486,15 +484,17 @@ class InstaloaderContext:
                 raise ConnectionException(error_string) from err
 
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
-                      referer: Optional[str] = None, rhx_gis: Optional[str] = None) -> Dict[str, Any]:
+                      referer: Optional[str] = None) -> Dict[str, Any]:
         """
         Do a GraphQL Query.
 
         :param query_hash: Query identifying hash.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
-        :param rhx_gis: 'rhx_gis' variable as somewhere returned by Instagram, needed to 'sign' request
         :return: The server's response dictionary.
+
+        .. versionchanged:: 4.13.1
+           Removed the `rhx_gis` parameter.
         """
         with copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
@@ -507,12 +507,6 @@ class InstaloaderContext:
                 tmpsession.headers['referer'] = urllib.parse.quote(referer)
 
             variables_json = json.dumps(variables, separators=(',', ':'))
-
-            if rhx_gis:
-                #self.log("rhx_gis {} query_hash {}".format(rhx_gis, query_hash))
-                values = "{}:{}".format(rhx_gis, variables_json)
-                x_instagram_gis = hashlib.md5(values.encode()).hexdigest()
-                tmpsession.headers['x-instagram-gis'] = x_instagram_gis
 
             resp_json = self.get_json('graphql/query',
                                       params={'query_hash': query_hash,
@@ -559,7 +553,7 @@ class InstaloaderContext:
     def graphql_node_list(self, query_hash: str, query_variables: Dict[str, Any],
                           query_referer: Optional[str],
                           edge_extractor: Callable[[Dict[str, Any]], Dict[str, Any]],
-                          rhx_gis: Optional[str] = None,
+                          _rhx_gis: Optional[str] = None,
                           first_data: Optional[Dict[str, Any]] = None) -> Iterator[Dict[str, Any]]:
         """
         Retrieve a list of GraphQL nodes.
@@ -571,7 +565,7 @@ class InstaloaderContext:
         def _query():
             query_variables['first'] = self._graphql_page_length
             try:
-                return edge_extractor(self.graphql_query(query_hash, query_variables, query_referer, rhx_gis))
+                return edge_extractor(self.graphql_query(query_hash, query_variables, query_referer))
             except QueryReturnedBadRequestException:
                 new_page_length = int(self._graphql_page_length / 2)
                 if new_page_length >= 12:
@@ -719,17 +713,6 @@ class InstaloaderContext:
                 # 404 not worth retrying.
                 raise QueryReturnedNotFoundException(self._response_error(resp))
             raise ConnectionException(self._response_error(resp))
-
-    @property
-    def root_rhx_gis(self) -> Optional[str]:
-        """rhx_gis string returned in the / query."""
-        if self.is_logged_in:
-            # At the moment, rhx_gis seems to be required for anonymous requests only. By returning None when logged
-            # in, we can save the root_rhx_gis lookup query.
-            return None
-        if self._root_rhx_gis is None:
-            self._root_rhx_gis = self.get_json('', {}).get('rhx_gis', '')
-        return self._root_rhx_gis or None
 
 
 class RateController:
