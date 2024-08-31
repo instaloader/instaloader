@@ -1232,6 +1232,30 @@ class Profile:
             is_first=Profile._make_is_newest_checker()
         )
 
+    def get_reels(self) -> NodeIterator[Post]:
+        """Retrieve all reels from a profile.
+
+        :rtype: NodeIterator[Post]
+
+        .. versionadded:: 4.14.0
+
+        """
+        self._obtain_metadata()
+        return NodeIterator(
+            context = self._context,
+            edge_extractor = lambda d: d['data']['xdt_api__v1__clips__user__connection_v2'],
+            # Reels post info is incomplete relative to regular posts so we create a Post from the shortcode
+            # and fetch the additional metadata with an additional API request per Reel
+            node_wrapper = lambda n: Post.from_shortcode(context=self._context, shortcode=n["media"]["code"]),
+            query_variables = {'data': {
+                'page_size': 12, 'include_feed_video': True, "target_user_id": str(self.userid)}},
+            query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
+            is_first = Profile._make_is_newest_checker(),
+            # fb_api_req_friendly_name=PolarisProfileReelsTabContentQuery_connection
+            doc_id = '7845543455542541',
+            query_hash = None,
+        )
+
     def get_igtv_posts(self) -> NodeIterator[Post]:
         """Retrieve all IGTV posts.
 

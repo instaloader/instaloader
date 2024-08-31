@@ -92,6 +92,9 @@ Instaloader supports the following targets:
    - :option:`--tagged`
       to **download posts where the user is tagged**, and
 
+   - :option:`--reels`
+      to **download Reels videos**.
+
    - :option:`--igtv`
       to **download IGTV videos**.
 

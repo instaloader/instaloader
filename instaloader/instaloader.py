@@ -1281,6 +1281,31 @@ class Instaloader:
         if latest_stamps is not None and tagged_posts.first_item is not None:
             latest_stamps.set_last_tagged_timestamp(profile.username, tagged_posts.first_item.date_local)
 
+    def download_reels(self, profile: Profile, fast_update: bool = False,
+                      post_filter: Optional[Callable[[Post], bool]] = None,
+                      latest_stamps: Optional[LatestStamps] = None) -> None:
+        """Download IGTV videos of a profile.
+
+        .. versionadded:: 4.14.0
+
+        """
+        self.context.log("Retrieving reels videos for profile {}.".format(profile.username))
+        posts_takewhile: Optional[Callable[[Post], bool]] = None
+        if latest_stamps is not None:
+            last_scraped = latest_stamps.get_last_reels_timestamp(profile.username)
+            posts_takewhile = lambda p: p.date_local > last_scraped
+        reels = profile.get_reels()
+        self.posts_download_loop(
+            reels,
+            profile.username,
+            fast_update,
+            post_filter,
+            owner_profile=profile,
+            takewhile=posts_takewhile,
+        )
+        if latest_stamps is not None and reels.first_item is not None:
+            latest_stamps.set_last_reels_timestamp(profile.username, reels.first_item.date_local)
+
     def download_igtv(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
                       latest_stamps: Optional[LatestStamps] = None) -> None:
@@ -1403,6 +1428,7 @@ class Instaloader:
     def download_profiles(self, profiles: Set[Profile],
                           profile_pic: bool = True, posts: bool = True,
                           tagged: bool = False,
+                          reels: bool = False,
                           igtv: bool = False,
                           highlights: bool = False,
                           stories: bool = False,
@@ -1418,6 +1444,7 @@ class Instaloader:
         :param profile_pic: not :option:`--no-profile-pic`.
         :param posts: not :option:`--no-posts`.
         :param tagged: :option:`--tagged`.
+        :param reels: :option:`--reels`.
         :param igtv: :option:`--igtv`.
         :param highlights: :option:`--highlights`.
         :param stories: :option:`--stories`.
@@ -1482,6 +1509,12 @@ class Instaloader:
                     with self.context.error_catcher('Download tagged of {}'.format(profile_name)):
                         self.download_tagged(profile, fast_update=fast_update, post_filter=post_filter,
                                              latest_stamps=latest_stamps)
+
+                # Download reels, if requested
+                if reels:
+                    with self.context.error_catcher('Download reels of {}'.format(profile_name)):
+                        self.download_reels(profile, fast_update=fast_update, post_filter=post_filter,
+                                           latest_stamps=latest_stamps)
 
                 # Download IGTV, if requested
                 if igtv:

@@ -131,6 +131,10 @@ What to Download of each Profile
 
    .. versionadded:: 4.1
 
+.. option:: --reels
+
+   Also download Reels videos.
+
 .. option:: --igtv
 
    Also download IGTV videos.
