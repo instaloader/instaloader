@@ -36,7 +36,7 @@
     $ instaloader profile [profile ...]
 
 **Instaloader**
-
+- FTW
 - downloads **public and private profiles, hashtags, user stories,
   feeds and saved media**,
 

@@ -82,7 +82,9 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True,
+                 proxy: Optional[str] = None,
+                 ):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -110,6 +112,9 @@ class InstaloaderContext:
 
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache: Dict[int, Any] = dict()
+
+        # Proxy
+        self.proxy = proxy
 
     @contextmanager
     def anonymous_copy(self):
@@ -407,6 +412,10 @@ class InstaloaderContext:
         is_iphone_query = host == 'i.instagram.com'
         is_other_query = not is_graphql_query and not is_doc_id_query and host == "www.instagram.com"
         sess = session if session else self._session
+        if self.proxy:
+            sess.proxies = {'http': self.proxy, 'https': self.proxy}
+            print(f'using proxy: {self.proxy}')
+
         try:
             self.do_sleep()
             if is_graphql_query:
