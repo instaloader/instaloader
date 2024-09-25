@@ -89,11 +89,11 @@ class LatestStamps:
         self._set_timestamp(profile_name, self.TAGGED_TIMESTAMP, timestamp)
 
     def get_last_reels_timestamp(self, profile_name: str) -> datetime:
-        """Returns timestamp of last download of a profile's igtv posts."""
+        """Returns timestamp of last download of a profile's reels posts."""
         return self._get_timestamp(profile_name, self.REELS_TIMESTAMP)
 
     def set_last_reels_timestamp(self, profile_name: str, timestamp: datetime):
-        """Sets timestamp of last download of a profile's igtv posts."""
+        """Sets timestamp of last download of a profile's reels posts."""
         self._set_timestamp(profile_name, self.REELS_TIMESTAMP, timestamp)
 
     def get_last_igtv_timestamp(self, profile_name: str) -> datetime:

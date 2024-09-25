@@ -1284,7 +1284,7 @@ class Instaloader:
     def download_reels(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
                       latest_stamps: Optional[LatestStamps] = None) -> None:
-        """Download IGTV videos of a profile.
+        """Download reels videos of a profile.
 
         .. versionadded:: 4.14.0
 
@@ -1428,7 +1428,6 @@ class Instaloader:
     def download_profiles(self, profiles: Set[Profile],
                           profile_pic: bool = True, posts: bool = True,
                           tagged: bool = False,
-                          reels: bool = False,
                           igtv: bool = False,
                           highlights: bool = False,
                           stories: bool = False,
@@ -1437,14 +1436,14 @@ class Instaloader:
                           storyitem_filter: Optional[Callable[[Post], bool]] = None,
                           raise_errors: bool = False,
                           latest_stamps: Optional[LatestStamps] = None,
-                          max_count: Optional[int] = None):
+                          max_count: Optional[int] = None,
+                          reels: bool = False):
         """High-level method to download set of profiles.
 
         :param profiles: Set of profiles to download.
         :param profile_pic: not :option:`--no-profile-pic`.
         :param posts: not :option:`--no-posts`.
         :param tagged: :option:`--tagged`.
-        :param reels: :option:`--reels`.
         :param igtv: :option:`--igtv`.
         :param highlights: :option:`--highlights`.
         :param stories: :option:`--stories`.
@@ -1456,6 +1455,7 @@ class Instaloader:
            catched and printed with :meth:`InstaloaderContext.error_catcher`.
         :param latest_stamps: :option:`--latest-stamps`.
         :param max_count: Maximum count of posts to download.
+        :param reels: :option:`--reels`.
 
         .. versionadded:: 4.1
 
@@ -1467,6 +1467,9 @@ class Instaloader:
 
         .. versionchanged:: 4.13
            Add `max_count` parameter.
+
+        .. versionchanged:: 4.14
+           Add `reels` parameter.
         """
 
         @contextmanager

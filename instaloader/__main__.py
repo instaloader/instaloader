@@ -304,7 +304,6 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             download_profile_pic,
             download_posts,
             download_tagged,
-            download_reels,
             download_igtv,
             download_highlights,
             download_stories,
@@ -312,6 +311,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             post_filter,
             storyitem_filter,
             latest_stamps=latest_stamps,
+            reels=download_reels,
         )
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
@@ -322,11 +322,11 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     download_profile_pic,
                     download_posts,
                     download_tagged,
-                    download_reels,
                     download_igtv,
                     fast_update=fast_update,
                     post_filter=post_filter,
                     latest_stamps=latest_stamps,
+                    reels=download_reels
                 )
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
