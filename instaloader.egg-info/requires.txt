@@ -1,0 +1,4 @@
+requests>=2.4
+
+[browser_cookie3]
+browser_cookie3>=0.19.1
