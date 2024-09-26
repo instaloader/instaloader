@@ -78,7 +78,7 @@ class InstaloaderContext:
     class :class:`Instaloader`.
     """
 
-    def __init__(self,proxy:Optional[dict], sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
+    def __init__(self,proxy:Optional[dict] = None, sleep: bool = True, quiet: bool = False, user_agent: Optional[str] = None,
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
@@ -206,7 +206,8 @@ class InstaloaderContext:
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
-        session.proxies.update(proxy)
+        if proxy is not None:
+            session.proxies.update(proxy)
         session.headers.update(self._default_http_header(empty_session_only=True))
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
