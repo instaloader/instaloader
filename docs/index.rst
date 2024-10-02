@@ -48,7 +48,7 @@ See :ref:`install` for more options on how to install Instaloader.
 ::
 
     instaloader [--comments] [--geotags]
-                [--stories] [--highlights] [--tagged] [--igtv]
+                [--stories] [--highlights] [--tagged] [--reels] [--igtv]
                 [--login YOUR-USERNAME] [--fast-update]
                 profile | "#hashtag" | %location_id |
                 :stories | :feed | :saved
