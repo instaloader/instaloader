@@ -1,5 +1,6 @@
 import getpass
 import json
+import logging
 import os
 import platform
 import re
@@ -234,11 +235,12 @@ class Instaloader:
                  title_pattern: Optional[str] = None,
                  sanitize_paths: bool = False,
                  proxy: Optional[str] = None,
+                 logger: Optional[logging.Logger] = None
                  ):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support, proxy)
+                                          iphone_support, proxy, logger)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -266,9 +268,12 @@ class Instaloader:
         self.resume_prefix = resume_prefix
         self.check_resume_bbd = check_resume_bbd
 
+        self.logger = logger
+
         self.slide = slide or ""
         self.slide_start = 0
         self.slide_end = -1
+
         if self.slide != "":
             splitted = self.slide.split('-')
             if len(splitted) == 1:

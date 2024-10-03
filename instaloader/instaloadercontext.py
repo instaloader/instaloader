@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import pickle
 import random
@@ -84,6 +85,7 @@ class InstaloaderContext:
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
                  proxy: Optional[str] = None,
+                 logger: Optional[logging.Logger] = None
                  ):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
@@ -116,6 +118,9 @@ class InstaloaderContext:
         # Proxy
         self.proxy = proxy
 
+        # Logger
+        self.logger = logger
+
     @contextmanager
     def anonymous_copy(self):
         session = self._session
@@ -143,6 +148,9 @@ class InstaloaderContext:
     def log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
         if not self.quiet:
+            if self.logger:
+                self.logger.info(*msg)
+
             print(*msg, sep=sep, end=end, flush=flush)
 
     def error(self, msg, repeat_at_end=True):
@@ -150,9 +158,12 @@ class InstaloaderContext:
 
         :param msg: Message to be printed.
         :param repeat_at_end: Set to false if the message should be printed, but not repeated at program termination."""
-        print(msg, file=sys.stderr)
-        if repeat_at_end:
-            self.error_log.append(msg)
+        if self.logger:
+            self.logger.error(msg)
+        else:
+            print(msg, file=sys.stderr)
+            if repeat_at_end:
+                self.error_log.append(msg)
 
     @property
     def has_stored_errors(self) -> bool:
@@ -414,7 +425,7 @@ class InstaloaderContext:
         sess = session if session else self._session
         if self.proxy:
             sess.proxies = {'http': self.proxy, 'https': self.proxy}
-            print(f'using proxy: {self.proxy}')
+            self.log(f'using proxy: {self.proxy}')
 
         try:
             self.do_sleep()
