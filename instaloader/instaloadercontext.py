@@ -282,9 +282,15 @@ class InstaloaderContext:
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
         session = requests.Session()
+
+        if self.proxy:
+            session.proxies = {'http': self.proxy, 'https': self.proxy}
+            self.log(f'using proxy for login: {self.proxy}')
+
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
+
         session.headers.update(self._default_http_header())
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
