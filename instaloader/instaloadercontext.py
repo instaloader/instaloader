@@ -496,6 +496,7 @@ class InstaloaderContext:
         .. versionchanged:: 4.13.1
            Removed the `rhx_gis` parameter.
         """
+
         with copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
@@ -508,12 +509,21 @@ class InstaloaderContext:
 
             variables_json = json.dumps(variables, separators=(',', ':'))
 
-            resp_json = self.get_json('graphql/query',
-                                      params={'query_hash': query_hash,
-                                              'variables': variables_json},
-                                      session=tmpsession)
+            # XXX Dirty fix here
+            if query_hash == "2b0673e0dc4580674a88d426fe00ea90":
+                resp_json = self.get_json('graphql/query',
+                                          params={'doc_id': '8845758582119845',
+                                                  'variables': variables_json},
+                                          session=tmpsession)
+
+            else:
+                resp_json = self.get_json('graphql/query',
+                                          params={'query_hash': query_hash,
+                                                  'variables': variables_json},
+                                          session=tmpsession)
         if 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
+
         return resp_json
 
     def doc_id_graphql_query(self, doc_id: str, variables: Dict[str, Any],
