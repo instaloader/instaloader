@@ -721,7 +721,7 @@ class Instaloader:
 
         # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
-        if post.typename == 'GraphSidecar':
+        if post.typename == 'XDTGraphSidecar':
             if (self.download_pictures or self.download_videos) and post.mediacount > 0:
                 if not _all_already_downloaded(
                         filename_template, enumerate(
@@ -753,12 +753,12 @@ class Instaloader:
                                                             mtime=post.date_local, filename_suffix=suffix)
                 else:
                     downloaded = False
-        elif post.typename == 'GraphImage':
+        elif post.typename == 'XDTGraphImage':
             # Download picture
             if self.download_pictures:
                 downloaded = (not _already_downloaded(filename + ".jpg") and
                               self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
-        elif post.typename == 'GraphVideo':
+        elif post.typename == 'XDTGraphVideo':
             # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 with self.context.error_catcher("Video thumbnail of {}".format(post)):
