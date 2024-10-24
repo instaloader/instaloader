@@ -18,7 +18,7 @@ jobs:
           cache: 'pipenv'
       - name: "Install Dependencies"
         run: |
-          python -m pip install pipenv==2024.0.1
+          python -m pip install pipenv==2024.2.0
           pipenv --python `python --version | grep -Eo '3\.[0-9]+'` sync --dev
       - name: "Build Documentation"
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run make -C docs html SPHINXOPTS="-W -n"
