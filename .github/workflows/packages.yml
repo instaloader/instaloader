@@ -23,9 +23,9 @@ jobs:
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_OUTPUT
         shell: bash
       - name: "Install Dependencies"
-        run: python -m pip install setuptools
+        run: python -m pip install build
       - name: "Generate Python Package"
-        run: python setup.py sdist
+        run: python -m build
       - name: "Publish Distribution to PyPI"
         uses: pypa/gh-action-pypi-publish@master
         with:
