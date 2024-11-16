@@ -2,7 +2,7 @@ Instagram Structures
 ^^^^^^^^^^^^^^^^^^^^
 
 .. module:: instaloader
-   :noindex:
+   :no-index:
 
 .. highlight:: python
 

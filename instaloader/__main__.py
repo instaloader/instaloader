@@ -37,7 +37,7 @@ def usage_string():
     argv0 = "instaloader" if argv0 == "__main__.py" else argv0
     return """
 {0} [--comments] [--geotags]
-{2:{1}} [--stories] [--highlights] [--tagged] [--igtv]
+{2:{1}} [--stories] [--highlights] [--tagged] [--reels] [--igtv]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
@@ -139,6 +139,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           download_stories: bool = False,
           download_highlights: bool = False,
           download_tagged: bool = False,
+          download_reels: bool = False,
           download_igtv: bool = False,
           fast_update: bool = False,
           latest_stamps_file: Optional[str] = None,
@@ -258,11 +259,13 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
                                                      post_filter=post_filter)
                 elif re.match(r"^[A-Za-z0-9._]+$", target):
+                    download_profile_content = download_posts or download_tagged or download_reels or download_igtv
                     try:
                         profile = instaloader.check_profile_id(target, latest_stamps)
                         if instaloader.context.is_logged_in and profile.has_blocked_viewer:
-                            if download_profile_pic or ((download_posts or download_tagged or download_igtv)
-                                                        and not profile.is_private):
+                            if download_profile_pic or (
+                                download_profile_content and not profile.is_private
+                            ):
                                 raise ProfileNotExistsException("{} blocked you; But we download her anonymously."
                                                                 .format(target))
                             else:
@@ -272,8 +275,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     except ProfileNotExistsException as err:
                         # Not only our profile.has_blocked_viewer condition raises ProfileNotExistsException,
                         # check_profile_id() also does, since access to blocked profile may be responded with 404.
-                        if instaloader.context.is_logged_in and (download_profile_pic or download_posts or
-                                                                 download_tagged or download_igtv):
+                        if instaloader.context.is_logged_in and (download_profile_pic or download_profile_content):
                             instaloader.context.log(err)
                             instaloader.context.log("Trying again anonymously, helps in case you are just blocked.")
                             with instaloader.anonymous_copy() as anonymous_loader:
@@ -297,18 +299,35 @@ def _main(instaloader: Instaloader, targetlist: List[str],
         if instaloader.context.iphone_support and profiles and (download_profile_pic or download_posts) and \
            not instaloader.context.is_logged_in:
             instaloader.context.log("Hint: Login to download higher-quality versions of pictures.")
-        instaloader.download_profiles(profiles,
-                                      download_profile_pic, download_posts, download_tagged, download_igtv,
-                                      download_highlights, download_stories,
-                                      fast_update, post_filter, storyitem_filter, latest_stamps=latest_stamps)
+        instaloader.download_profiles(
+            profiles,
+            download_profile_pic,
+            download_posts,
+            download_tagged,
+            download_igtv,
+            download_highlights,
+            download_stories,
+            fast_update,
+            post_filter,
+            storyitem_filter,
+            latest_stamps=latest_stamps,
+            reels=download_reels,
+        )
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
                                     .format(' '.join([p.username for p in anonymous_retry_profiles])))
             with instaloader.anonymous_copy() as anonymous_loader:
-                anonymous_loader.download_profiles(anonymous_retry_profiles,
-                                                   download_profile_pic, download_posts, download_tagged, download_igtv,
-                                                   fast_update=fast_update, post_filter=post_filter,
-                                                   latest_stamps=latest_stamps)
+                anonymous_loader.download_profiles(
+                    anonymous_retry_profiles,
+                    download_profile_pic,
+                    download_posts,
+                    download_tagged,
+                    download_igtv,
+                    fast_update=fast_update,
+                    post_filter=post_filter,
+                    latest_stamps=latest_stamps,
+                    reels=download_reels
+                )
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
         exit_code = ExitCode.USER_ABORTED
@@ -409,6 +428,8 @@ def main():
                         help='Also download highlights of each profile that is downloaded. Requires login.')
     g_prof.add_argument('--tagged', action='store_true',
                         help='Also download posts where each profile is tagged.')
+    g_prof.add_argument('--reels', action='store_true',
+                        help='Also download Reels videos.')
     g_prof.add_argument('--igtv', action='store_true',
                         help='Also download IGTV videos.')
 
@@ -570,6 +591,7 @@ def main():
                           download_stories=download_stories,
                           download_highlights=args.highlights,
                           download_tagged=args.tagged,
+                          download_reels=args.reels,
                           download_igtv=args.igtv,
                           fast_update=args.fast_update,
                           latest_stamps_file=args.latest_stamps,

@@ -33,7 +33,7 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
 
 def default_user_agent() -> str:
     return ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
+            '(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36')
 
 
 def default_iphone_headers() -> Dict[str, Any]:
