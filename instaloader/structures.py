@@ -1862,7 +1862,7 @@ class Hashtag:
         return self._node["name"].lower()
 
     def _query(self, params):
-        json_response = self._context.get_json("explore/tags/{0}/".format(self.name), params)
+        json_response = self._context.get_json("api/v1/tags/web_info/?tag_name={0}".format(self.name), params)
         return json_response["graphql"]["hashtag"] if "graphql" in json_response else json_response["data"]
 
     def _obtain_metadata(self):
