@@ -82,10 +82,14 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
     return filterfunc
 
-
 def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
-    import json
-    
+
+    def is_simplified_cookies(cookies):
+        """
+        Check if cookies are in simplified format (a list of dictionaries with 'name' and 'value').
+        """
+        return all(isinstance(cookie, dict) and 'name' in cookie and 'value' in cookie for cookie in cookies)
+
     supported_browsers = {
         "brave": browser_cookie3.brave,
         "chrome": browser_cookie3.chrome,
@@ -100,12 +104,14 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     }
 
     cookies = {}
-    
+
     try:
         if browser not in supported_browsers:
-            raise InvalidArgumentException("Loading cookies from the specified browser failed\n"
-                                        "Supported browsers are Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, "
-                                        "Opera, Opera_GX, Safari and Vivaldi")
+            raise ValueError(
+                "Loading cookies from the specified browser failed\n"
+                "Supported browsers are Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, "
+                "Opera, Opera_GX, Safari, and Vivaldi"
+            )
 
         browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
 
@@ -116,32 +122,30 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
     except Exception as e:
         print(f"Failed to load cookies from browser: {str(e)}")
         print("Attempting to load cookies from manual cookie file (instagram.json)...")
-        
+
         try:
             cookie_file = input("Enter cookie file path (default: instagram.json): ").strip() or "instagram.json"
             with open(cookie_file, 'r') as f:
-                cookies = json.load(f)
-                simplified_cookies = {
-                    cookie['name']: cookie['value']
-                    for cookie in cookies
-                }
-                cookies = simplified_cookies
+                raw_cookies = json.load(f)
+                if is_simplified_cookies(raw_cookies):
+                    cookies = {cookie['name']: cookie['value'] for cookie in raw_cookies}
+                else:
+                    cookies = raw_cookies  # Assume it is already in the expected format
         except FileNotFoundError:
-            raise LoginException(f"Cookie file {cookie_file} not found")
+            raise FileNotFoundError(f"Cookie file {cookie_file} not found")
         except json.JSONDecodeError:
-            raise LoginException(f"Invalid JSON format in {cookie_file}")
+            raise ValueError(f"Invalid JSON format in {cookie_file}")
 
     if cookies:
         print(f"Cookies loaded successfully")
     else:
-        raise LoginException("No cookies found. Please ensure you are logged in to Instagram in your browser "
-                           "or provide a valid cookie file")
+        raise ValueError("No cookies found. Please ensure you are logged in to Instagram in your browser "
+                         "or provide a valid cookie file")
 
     if cookie_name:
         return cookies.get(cookie_name, {})
     else:
         return cookies
-
 
 def import_session(browser, instaloader, cookiefile):
     cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
