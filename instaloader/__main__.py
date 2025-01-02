@@ -8,6 +8,7 @@ import sys
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
 from enum import IntEnum
 from typing import List, Optional
+import json
 
 from . import (AbortDownloadException, BadCredentialsException, Instaloader, InstaloaderException,
                InvalidArgumentException, LoginException, Post, Profile, ProfileNotExistsException, StoryItem,
@@ -83,6 +84,8 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
 
 
 def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
+    import json
+    
     supported_browsers = {
         "brave": browser_cookie3.brave,
         "chrome": browser_cookie3.chrome,
@@ -96,23 +99,43 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
         "vivaldi": browser_cookie3.vivaldi,
     }
 
-    if browser not in supported_browsers:
-        raise InvalidArgumentException("Loading cookies from the specified browser failed\n"
-                                       "Supported browsers are Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, "
-                                       "Opera, Opera_GX, Safari and Vivaldi")
-
     cookies = {}
-    browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
+    
+    try:
+        if browser not in supported_browsers:
+            raise InvalidArgumentException("Loading cookies from the specified browser failed\n"
+                                        "Supported browsers are Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, "
+                                        "Opera, Opera_GX, Safari and Vivaldi")
 
-    for cookie in browser_cookies:
-        if domain in cookie.domain:
-            cookies[cookie.name] = cookie.value
+        browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
+
+        for cookie in browser_cookies:
+            if domain in cookie.domain:
+                cookies[cookie.name] = cookie.value
+
+    except Exception as e:
+        print(f"Failed to load cookies from browser: {str(e)}")
+        print("Attempting to load cookies from manual cookie file (instagram.json)...")
+        
+        try:
+            cookie_file = input("Enter cookie file path (default: instagram.json): ").strip() or "instagram.json"
+            with open(cookie_file, 'r') as f:
+                cookies = json.load(f)
+                simplified_cookies = {
+                    cookie['name']: cookie['value']
+                    for cookie in cookies
+                }
+                cookies = simplified_cookies
+        except FileNotFoundError:
+            raise LoginException(f"Cookie file {cookie_file} not found")
+        except json.JSONDecodeError:
+            raise LoginException(f"Invalid JSON format in {cookie_file}")
 
     if cookies:
-        print(f"Cookies loaded successfully from {browser}")
+        print(f"Cookies loaded successfully")
     else:
-        raise LoginException(f"No cookies found for Instagram in {browser}, "
-                             f"Are you logged in succesfully in {browser}?")
+        raise LoginException("No cookies found. Please ensure you are logged in to Instagram in your browser "
+                           "or provide a valid cookie file")
 
     if cookie_name:
         return cookies.get(cookie_name, {})
