@@ -131,6 +131,12 @@ What to Download of each Profile
 
    .. versionadded:: 4.1
 
+.. option:: --reels
+
+   Also download Reels videos.
+
+   .. versionadded:: 4.14
+
 .. option:: --igtv
 
    Also download IGTV videos.
@@ -304,7 +310,7 @@ How to Download
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
-   Chrome/126 on Linux.
+   Chrome/127 on Linux.
 
 .. option:: --max-connection-attempts N
 

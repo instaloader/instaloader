@@ -8,20 +8,30 @@ arch=('any')
 url="https://instaloader.github.io/"
 license=('MIT')
 groups=()
-depends=('python>=3.8' 'python-requests>=2.4')
-makedepends=('python-setuptools')
+depends=(
+  python
+  python-requests
+)
+makedepends=(
+  python-build
+  python-installer
+  python-setuptools
+  python-wheel
+)
+optdepends=(
+  'python-browser-cookie3: Import session cookies from browser'
+)
 options=('!emptydirs')
 source=($pkgname-$pkgver.tar.gz::https://codeload.github.com/instaloader/instaloader/tar.gz/v$pkgver)
 sha512sums=('{{hash}}')
 
 build() {
 	cd "$srcdir/$pkgname-$pkgver"
-	python setup.py clean --all
-	python setup.py build
+	python -m build --wheel --no-isolation
 }
 
 package() {
 	cd "$srcdir/$pkgname-$pkgver"
 	install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE
-	python setup.py install --root "$pkgdir/" --skip-build
+	python -m installer --destdir="$pkgdir" dist/*.whl
 }

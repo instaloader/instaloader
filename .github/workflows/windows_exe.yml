@@ -25,25 +25,15 @@ jobs:
         env:
           VERSION_TAG: v${{ steps.get_version.outputs.VERSION }}
         run: python deploy/windows/create_exe.py
-      - name: Create draft release
+      - name: Create draft release and upload EXE as release asset
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          release_name: Version ${{ steps.get_version.outputs.VERSION }}
+          name: Version ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: contains(steps.get_version.outputs.VERSION, 'a') || contains(steps.get_version.outputs.VERSION, 'b') || contains(steps.get_version.outputs.VERSION, 'c')
-      - name: Upload EXE as release asset
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./instaloader-v${{ steps.get_version.outputs.VERSION }}-windows-standalone.zip
-          asset_name: instaloader-v${{ steps.get_version.outputs.VERSION }}-windows-standalone.zip
-          asset_content_type: application/zip
+          files: ./instaloader-v${{ steps.get_version.outputs.VERSION }}-windows-standalone.zip

@@ -23,11 +23,11 @@ jobs:
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_OUTPUT
         shell: bash
       - name: "Install Dependencies"
-        run: python -m pip install setuptools
+        run: python -m pip install -U setuptools wheel build
       - name: "Generate Python Package"
-        run: python setup.py sdist
+        run: python -m build
       - name: "Publish Distribution to PyPI"
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_PASSWORD }}
       - name: "Publish Distribution to AUR"

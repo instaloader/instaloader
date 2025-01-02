@@ -5,9 +5,13 @@ pkgbase = instaloader
 	url = https://instaloader.github.io/
 	arch = any
 	license = MIT
+	makedepends = python-build
+	makedepends = python-installer
 	makedepends = python-setuptools
-	depends = python>=3.8
-	depends = python-requests>=2.4
+	makedepends = python-wheel
+	depends = python
+	depends = python-requests
+	optdepends = python-browser-cookie3: Import session cookies from browser
 	options = !emptydirs
 	source = instaloader-{{version}}.tar.gz::https://codeload.github.com/instaloader/instaloader/tar.gz/v{{version}}
 	sha512sums = {{hash}}
