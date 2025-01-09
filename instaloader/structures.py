@@ -180,7 +180,7 @@ class Post:
     This class unifies access to the properties associated with a post. It implements == and is
     hashable.
 
-    :param context: :attr:`Instaloader.context` used for additional queries if neccessary..
+    :param context: :attr:`Instaloader.context` used for additional queries if necessary..
     :param node: Node structure, as returned by Instagram.
     :param owner_profile: The Profile of the owner, if already known at creation.
     """
@@ -512,14 +512,14 @@ class Post:
 
     @property
     def caption_hashtags(self) -> List[str]:
-        """List of all lowercased hashtags (without preceeding #) that occur in the Post's caption."""
+        """List of all lowercased hashtags (without preceding #) that occur in the Post's caption."""
         if not self.caption:
             return []
         return _hashtag_regex.findall(self.caption.lower())
 
     @property
     def caption_mentions(self) -> List[str]:
-        """List of all lowercased profiles that are mentioned in the Post's caption, without preceeding @."""
+        """List of all lowercased profiles that are mentioned in the Post's caption, without preceding @."""
         if not self.caption:
             return []
         return _mention_regex.findall(self.caption.lower())
@@ -1079,7 +1079,7 @@ class Profile:
     @property
     def biography_hashtags(self) -> List[str]:
         """
-        List of all lowercased hashtags (without preceeding #) that occur in the Profile's biography.
+        List of all lowercased hashtags (without preceding #) that occur in the Profile's biography.
 
         .. versionadded:: 4.10
         """
@@ -1090,7 +1090,7 @@ class Profile:
     @property
     def biography_mentions(self) -> List[str]:
         """
-        List of all lowercased profiles that are mentioned in the Profile's biography, without preceeding @.
+        List of all lowercased profiles that are mentioned in the Profile's biography, without preceding @.
 
         .. versionadded:: 4.10
         """
@@ -1534,7 +1534,7 @@ class StoryItem:
     @property
     def caption_hashtags(self) -> List[str]:
         """
-        List of all lowercased hashtags (without preceeding #) that occur in the StoryItem's caption.
+        List of all lowercased hashtags (without preceding #) that occur in the StoryItem's caption.
 
         .. versionadded:: 4.10
         """
@@ -1545,7 +1545,7 @@ class StoryItem:
     @property
     def caption_mentions(self) -> List[str]:
         """
-        List of all lowercased profiles that are mentioned in the StoryItem's caption, without preceeding @.
+        List of all lowercased profiles that are mentioned in the StoryItem's caption, without preceding @.
 
         .. versionadded:: 4.10
         """
@@ -1844,11 +1844,11 @@ class Hashtag:
     @classmethod
     def from_name(cls, context: InstaloaderContext, name: str):
         """
-        Create a Hashtag instance from a given hashtag name, without preceeding '#'. Raises an Exception if there is no
+        Create a Hashtag instance from a given hashtag name, without preceding '#'. Raises an Exception if there is no
         hashtag with the given name.
 
         :param context: :attr:`Instaloader.context`
-        :param name: Hashtag, without preceeding '#'
+        :param name: Hashtag, without preceding '#'
         :raises: :class:`QueryReturnedNotFoundException`
         """
         # pylint:disable=protected-access
@@ -1858,7 +1858,7 @@ class Hashtag:
 
     @property
     def name(self):
-        """Hashtag name lowercased, without preceeding '#'"""
+        """Hashtag name lowercased, without preceding '#'"""
         return self._node["name"].lower()
 
     def _query(self, params):
@@ -2185,7 +2185,7 @@ def load_structure(context: InstaloaderContext, json_structure: dict) -> JsonExp
     """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
     a json structure.
 
-    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
+    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if necessary.
     :param json_structure: Instaloader JSON structure
 
     .. versionadded:: 4.8
@@ -2215,7 +2215,7 @@ def load_structure_from_file(context: InstaloaderContext, filename: str) -> Json
     """Loads a :class:`Post`, :class:`Profile`, :class:`StoryItem`, :class:`Hashtag` or :class:`FrozenNodeIterator` from
     a '.json' or '.json.xz' file that has been saved by :func:`save_structure_to_file`.
 
-    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if neccessary.
+    :param context: :attr:`Instaloader.context` linked to the new object, used for additional queries if necessary.
     :param filename: Filename, ends in '.json' or '.json.xz'
     """
     compressed = filename.endswith('.xz')

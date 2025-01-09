@@ -83,7 +83,7 @@ def _requires_login(func: Callable) -> Callable:
 
 
 def _retry_on_connection_error(func: Callable) -> Callable:
-    """Decorator to retry the function max_connection_attemps number of times.
+    """Decorator to retry the function max_connection_attempts number of times.
 
     Herewith-decorated functions need an ``_attempt`` keyword argument.
 
