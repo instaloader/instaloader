@@ -112,7 +112,7 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
         print(f"Cookies loaded successfully from {browser}")
     else:
         raise LoginException(f"No cookies found for Instagram in {browser}, "
-                             f"Are you logged in succesfully in {browser}?")
+                             f"Are you logged in successfully in {browser}?")
 
     if cookie_name:
         return cookies.get(cookie_name, {})

@@ -102,7 +102,7 @@ class InstaloaderContext:
 
         self._rate_controller = rate_controller(self) if rate_controller is not None else RateController(self)
 
-        # Can be set to True for testing, disables supression of InstaloaderContext._error_catcher
+        # Can be set to True for testing, disables suppression of InstaloaderContext._error_catcher
         self.raise_all_errors = False
 
         # HTTP status codes that should cause an AbortDownloadException
