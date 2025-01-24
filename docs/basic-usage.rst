@@ -99,7 +99,7 @@ Instaloader supports the following targets:
       to **download IGTV videos**.
 
 - ``"#hashtag"``
-   Posts with a certain **hashtag** (the quotes are usually necessary).
+   Posts with a certain **hashtag** (the quotes are usually necessary). Requires :ref:`login<login>`.
 
 - ``%location id``
    Posts tagged with a given location; the location ID is the numerical ID

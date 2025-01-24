@@ -1215,6 +1215,7 @@ class Instaloader:
            Use :meth:`Hashtag.get_posts_resumable`."""
         return Hashtag.from_name(self.context, hashtag).get_posts_resumable()
 
+    @_requires_login
     def download_hashtag(self, hashtag: Union[Hashtag, str],
                          max_count: Optional[int] = None,
                          post_filter: Optional[Callable[[Post], bool]] = None,
