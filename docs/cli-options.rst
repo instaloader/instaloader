@@ -209,10 +209,10 @@ Instead of :option:`--login`, it is possible to use
 .. option:: --load-cookies BROWSER-NAME, -b BROWSER-NAME
 
    Use Instagram cookie in your browser to login.
-   This feature requires the browser_cookie3 library.
+   This feature requires the `browser_cookie3 <https://github.com/borisbabic/browser_cookie3>`__ library.
    Compatible with :option:`--cookiefile` if you want to load cookies from browser profiles.
    Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
-   Supported browsers: Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari and Vivaldi.
+   Supported browsers: Arc, Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari and Vivaldi.
 
    In subsequent runs, you can just use :option:`--login` to reuse the
    same session, which is saved by Instaloader.
