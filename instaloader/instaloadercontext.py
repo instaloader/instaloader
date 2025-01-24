@@ -36,11 +36,11 @@ def default_user_agent() -> str:
 
 
 def default_iphone_headers() -> Dict[str, Any]:
-    return {'User-Agent': 'Instagram 273.0.0.16.70 (iPad13,8; iOS 16_3; en_US; en-US; ' \
-                          'scale=2.00; 2048x2732; 452417278) AppleWebKit/420+',
+    return {'User-Agent': 'Instagram 361.0.0.35.82 (iPad13,8; iOS 18_0; en_US; en-US; ' \
+                          'scale=2.00; 2048x2732; 674117118) AppleWebKit/420+',
             'x-ads-opt-out': '1',
             'x-bloks-is-panorama-enabled': 'true',
-            'x-bloks-version-id': '01507c21540f73e2216b6f62a11a5b5e51aa85491b72475c080da35b1228ddd6',
+            'x-bloks-version-id': '16b7bd25c6c06886d57c4d455265669345a2d96625385b8ee30026ac2dc5ed97',
             'x-fb-client-ip': 'True',
             'x-fb-connection-type': 'wifi',
             'x-fb-http-engine': 'Liger',
