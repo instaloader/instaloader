@@ -12,8 +12,6 @@ psutil = "*"
 types-requests = "*"
 sphinx-autodoc-typehints = "*"
 sphinxcontrib-jquery = "*"
-tomli = "*"           # Needed for Pylint for "python_version < '3.11'"
-dill = "*"            # Needed for Pylint for "python_version < '3.11'"
 pywin32-ctypes = "*"  # Needed for pyinstaller on Windows
 pefile = "*"          # Needed for pyinstaller on Windows
 
