@@ -20,7 +20,7 @@ class PostSidecarNode(NamedTuple):
     """Item of a Sidecar Post."""
     is_video: bool
     display_url: str
-    video_url: str
+    video_url: Optional[str]
 
 
 PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
