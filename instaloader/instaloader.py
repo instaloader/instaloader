@@ -1296,14 +1296,8 @@ class Instaloader:
             last_scraped = latest_stamps.get_last_reels_timestamp(profile.username)
             posts_takewhile = lambda p: p.date_local > last_scraped
         reels = profile.get_reels()
-        self.posts_download_loop(
-            reels,
-            profile.username,
-            fast_update,
-            post_filter,
-            owner_profile=profile,
-            takewhile=posts_takewhile,
-        )
+        self.posts_download_loop(reels, profile.username, fast_update, post_filter,
+                                 owner_profile=profile, takewhile=posts_takewhile, possibly_pinned=3)
         if latest_stamps is not None and reels.first_item is not None:
             latest_stamps.set_last_reels_timestamp(profile.username, reels.first_item.date_local)
 
