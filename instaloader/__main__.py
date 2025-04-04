@@ -38,6 +38,7 @@ def usage_string():
     return """
 {0} [--comments] [--geotags]
 {2:{1}} [--stories] [--highlights] [--tagged] [--reels] [--igtv]
+{2:{1}} [--hashtag-top-serp]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
 {2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
 {0} --help""".format(argv0, len(argv0), '')
@@ -146,7 +147,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
           max_count: Optional[int] = None, post_filter_str: Optional[str] = None,
           storyitem_filter_str: Optional[str] = None,
           browser: Optional[str] = None,
-          cookiefile: Optional[str] = None) -> ExitCode:
+          cookiefile: Optional[str] = None,
+          hashtag_top_serp: bool = False) -> ExitCode:
     """Download set of profiles, hashtags etc. and handle logging in and session files if desired."""
     # Parse and generate filter function
     post_filter = None
@@ -242,9 +244,24 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                         instaloader.save_profile_id(followee)
                         profiles.add(followee)
                 elif re.match(r"^#\w+$", target):
-                    instaloader.download_hashtag(hashtag=target[1:], max_count=max_count, fast_update=fast_update,
-                                                 post_filter=post_filter,
-                                                 profile_pic=download_profile_pic, posts=download_posts)
+                    if hashtag_top_serp:
+                        instaloader.download_hashtag_top_serp(
+                            hashtag=target[1:],
+                            max_count=max_count,
+                            fast_update=fast_update,
+                            post_filter=post_filter,
+                            profile_pic=download_profile_pic,
+                            posts=download_posts
+                        )
+                    else:
+                        instaloader.download_hashtag(
+                            hashtag=target[1:],
+                            max_count=max_count,
+                            fast_update=fast_update,
+                            post_filter=post_filter,
+                            profile_pic=download_profile_pic,
+                            posts=download_posts
+                        )
                 elif re.match(r"^-[A-Za-z0-9-_]+$", target):
                     instaloader.download_post(Post.from_shortcode(instaloader.context, target[1:]), target)
                 elif re.match(r"^%[0-9]+$", target):
@@ -390,6 +407,8 @@ def main():
                         help="Do not download regular posts.")
     g_prof.add_argument('--no-profile-pic', action='store_true',
                         help='Do not download profile picture.')
+    g_prof.add_argument('--hashtag-top-serp', dest='hashtag_top_serp', action='store_true',
+                        help='Download top SERP posts for hashtags instead of the usual chronological order.')
     g_post.add_argument('--slide', action='store',
                         help='Set what image/interval of a sidecar you want to download.')
     g_post.add_argument('--no-pictures', action='store_true',
@@ -599,7 +618,8 @@ def main():
                           post_filter_str=args.post_filter,
                           storyitem_filter_str=args.storyitem_filter,
                           browser=args.load_cookies,
-                          cookiefile=args.cookiefile)
+                          cookiefile=args.cookiefile,
+                          hashtag_top_serp=args.hashtag_top_serp)
         loader.close()
         if loader.has_stored_errors:
             exit_code = ExitCode.NON_FATAL_ERROR
