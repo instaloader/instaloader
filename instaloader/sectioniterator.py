@@ -34,13 +34,42 @@ class SectionIterator(Iterator[T]):
 
     def __next__(self) -> T:
         if self._page_index < len(self._data['sections']):
-            media = self._data['sections'][self._page_index]['layout_content']['medias'][self._section_index]['media']
-            self._section_index += 1
-            if self._section_index >= len(self._data['sections'][self._page_index]['layout_content']['medias']):
-                self._section_index = 0
+            section = self._data['sections'][self._page_index]
+            layout = section.get('layout_content', {})
+
+            if "medias" in layout:
+                media_list = layout["medias"]
+            elif "one_by_two_item" in layout:
+                one_by_two = layout["one_by_two_item"]
+                if "clips" in one_by_two and "items" in one_by_two["clips"]:
+                    def process_media(item: Dict[str, Any]) -> Dict[str, Any]:
+                        m = item["media"]
+                        from .structures import Post  
+                        if "code" not in m:
+                            try:
+                                m["code"] = Post.mediaid_to_shortcode(m["pk"])
+                            except Exception:
+                                m["code"] = None
+                        return m
+                    media_list = [process_media(item) for item in one_by_two["clips"]["items"] if "media" in item]
+                else:
+                    media_list = []
+            else:
+                media_list = []
+
+            if not media_list:
                 self._page_index += 1
-            return self._media_wrapper(media)
-        if self._data['more_available']:
-            self._page_index, self._section_index, self._data = 0, 0, self._query(self._data["next_max_id"])
+                self._section_index = 0
+                return self.__next__()
+
+            if self._section_index < len(media_list):
+                media = media_list[self._section_index]
+                self._section_index += 1
+                if self._section_index >= len(media_list):
+                    self._section_index = 0
+                    self._page_index += 1
+                return self._media_wrapper(media)
+        if self._data.get('more_available'):
+            self._page_index, self._section_index, self._data = 0, 0, self._query(self._data.get("next_max_id"))
             return self.__next__()
         raise StopIteration()

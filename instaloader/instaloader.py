@@ -1258,6 +1258,47 @@ class Instaloader:
                                              target)
             self.save_metadata_json(json_filename, hashtag)
 
+    def download_hashtag_top_serp(self, hashtag: Union[Hashtag, str],
+                                   max_count: Optional[int] = None,
+                                   post_filter: Optional[Callable[[Post], bool]] = None,
+                                   fast_update: bool = False,
+                                   profile_pic: bool = True,
+                                   posts: bool = True) -> None:
+        """
+        Download top serp posts of a hashtag.
+
+        To download the top serp posts for hashtag #cat, use:
+            loader = Instaloader()
+            loader.download_hashtag_top_serp('cat', max_count=30)
+
+        :param hashtag: Hashtag to download, either as a Hashtag instance or a string (without the leading '#').
+        :param max_count: Maximum number of posts to download (0 means all).
+        :param post_filter: A function(post) that returns True if a given post should be downloaded.
+        :param fast_update: If True, abort when the first already-downloaded post is encountered.
+        :param profile_pic: Whether to download the hashtag’s profile picture.
+        :param posts: Whether to download posts.
+        """
+        # Convert string to Hashtag instance if needed.
+        if isinstance(hashtag, str):
+            with self.context.error_catcher("Get hashtag #{}".format(hashtag)):
+                hashtag = Hashtag.from_name(self.context, hashtag)
+        if not isinstance(hashtag, Hashtag):
+            return
+        target = "#" + hashtag.name
+
+        if profile_pic:
+            with self.context.error_catcher("Download profile picture of {}".format(target)):
+                self.download_hashtag_profilepic(hashtag)
+
+        if posts:
+            self.context.log("Retrieving top posts with hashtag #{}...".format(hashtag.name))
+            posts_iterator = hashtag.get_posts_top_serp()
+            self.posts_download_loop(posts_iterator, target, fast_update, post_filter, max_count=max_count)
+
+        if self.save_metadata:
+            json_filename = '{0}/{1}'.format(self.dirname_pattern.format(profile=target, target=target), target)
+            self.save_metadata_json(json_filename, hashtag)
+
     def download_tagged(self, profile: Profile, fast_update: bool = False,
                         target: Optional[str] = None,
                         post_filter: Optional[Callable[[Post], bool]] = None,
