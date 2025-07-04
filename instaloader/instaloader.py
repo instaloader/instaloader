@@ -1303,6 +1303,7 @@ class Instaloader:
             post_filter,
             owner_profile=profile,
             takewhile=posts_takewhile,
+            possibly_pinned=3,
         )
         if latest_stamps is not None and reels.first_item is not None:
             latest_stamps.set_last_reels_timestamp(profile.username, reels.first_item.date_local)
