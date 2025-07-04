@@ -1,0 +1,2 @@
+[console_scripts]
+instaloader = instaloader.__main__:main
