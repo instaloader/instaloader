@@ -1265,7 +1265,7 @@ class Profile:
             query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
             is_first = Profile._make_is_newest_checker(),
             # fb_api_req_friendly_name=PolarisProfileReelsTabContentQuery_connection
-            doc_id = '7845543455542541',
+            doc_id = '8471403382962070',
             query_hash = None,
         )
 
