@@ -1,6 +1,7 @@
 import json
 import lzma
 import re
+import uuid
 from base64 import b64decode, b64encode
 from contextlib import suppress
 from datetime import datetime
@@ -214,17 +215,29 @@ class Post:
 
     @classmethod
     def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
-        """Create a post from a given iphone_struct.
+        if "media" in media and isinstance(media["media"], dict):
+            media = media["media"]
+        
+        pk_value = media.get("pk", media.get("id"))
+        if pk_value is None:
+            raise BadResponseException("Media item is missing 'pk' or 'id' value: {}".format(media))
 
-        .. versionadded:: 4.9"""
+        shortcode = media.get("code")
+        if shortcode is None:
+            try:
+                shortcode = Post.mediaid_to_shortcode(pk_value)
+            except Exception as e:
+                raise BadResponseException("Failed to compute shortcode: {}".format(e)) from e
+
         media_types = {
             1: "GraphImage",
             2: "GraphVideo",
             8: "GraphSidecar",
         }
+        
         fake_node = {
-            "shortcode": media["code"],
-            "id": media["pk"],
+            "shortcode": shortcode,
+            "id": pk_value,
             "__typename": media_types[media["media_type"]],
             "is_video": media_types[media["media_type"]] == "GraphVideo",
             "date": media["taken_at"],
@@ -2021,6 +2034,59 @@ class Hashtag:
             f"https://www.instagram.com/explore/tags/{self.name}/"
         )
 
+    def get_posts_top_serp(self) -> Iterator[Post]:
+        import uuid
+        rank_token = getattr(self._context, 'rank_token', None)
+        if not rank_token:
+            rank_token = str(uuid.uuid4())
+            self._context.rank_token = rank_token
+
+        base_url = "api/v1/fbsearch/web/top_serp/"
+        query_vars = {
+            "enable_metadata": "true",
+            "query": f"#{self.name}",
+            "rank_token": rank_token,
+        }
+
+        original_user_agent = self._context.user_agent
+        iphone_headers = self._context.iphone_headers
+        self._context.user_agent = iphone_headers.get("User-Agent", original_user_agent)
+
+        while True:
+            json_response = self._context.get_iphone_json(base_url, params=query_vars)
+
+            if "media_grid" not in json_response:
+                raise BadResponseException(f"[get_relevance_posts] 'media_grid' not found for hashtag: {self.name}")
+            media_grid = json_response["media_grid"]
+            sections = media_grid.get("sections", [])
+            for section in sections:
+                layout = section.get("layout_content", {})
+                medias = layout.get("medias", [])
+                for item in medias:
+                    media_dict = item.get("media")
+                    if media_dict:
+                        if "shortcode" not in media_dict and "code" not in media_dict:
+                            try:
+                                numeric_id = int(media_dict["pk"])
+                                media_dict["shortcode"] = Post.mediaid_to_shortcode(numeric_id)
+                            except Exception as e:
+                                raise AssertionError("Unable to compute shortcode from media pk: " + str(e))
+                        if "is_video" not in media_dict:
+                            media_dict["is_video"] = True if media_dict.get("video_url") else False
+                        if "date" not in media_dict and "taken_at_timestamp" not in media_dict:
+                            media_dict["taken_at_timestamp"] = 0
+                        try:
+                            post = Post.from_iphone_struct(self._context, media_dict)
+                        except Exception as e:
+                            self._context.error(f"Error constructing post from media data: {e}")
+                            continue
+                        yield post
+            next_max_id = media_grid.get("next_max_id")
+            if not next_max_id:
+                break
+            query_vars["next_max_id"] = next_max_id
+
+        self._context.user_agent = original_user_agent
 
 class TopSearchResults:
     """
