@@ -182,6 +182,7 @@ class Instaloader:
     :param title_pattern:
        :option:`--title-pattern`, default is ``{date_utc}_UTC_{typename}`` if ``dirname_pattern`` contains
        ``{target}`` or ``{profile}``, ``{target}_{date_utc}_UTC_{typename}`` otherwise.
+    :param download_captions: :option:
     :param download_pictures: not :option:`--no-pictures`
     :param download_videos: not :option:`--no-videos`
     :param download_video_thumbnails: not :option:`--no-video-thumbnails`
@@ -214,7 +215,8 @@ class Instaloader:
                  user_agent: Optional[str] = None,
                  dirname_pattern: Optional[str] = None,
                  filename_pattern: Optional[str] = None,
-                 download_pictures=True,
+                 download_captions: bool = True,
+                 download_pictures: bool = True,
                  download_videos: bool = True,
                  download_video_thumbnails: bool = True,
                  download_geotags: bool = False,
@@ -250,6 +252,7 @@ class Instaloader:
             else:
                 self.title_pattern = '{target}_{date_utc}_UTC_{typename}'
         self.sanitize_paths = sanitize_paths
+        self.download_captions = download_captions
         self.download_pictures = download_pictures
         self.download_videos = download_videos
         self.download_video_thumbnails = download_video_thumbnails
@@ -769,7 +772,7 @@ class Instaloader:
 
         # Save caption if desired
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
-        if metadata_string:
+        if self.download_captions and metadata_string:
             self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
 
         # Download video if desired
