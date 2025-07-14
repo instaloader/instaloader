@@ -447,6 +447,12 @@ class InstaloaderContext:
                 response_headers.clear()
                 response_headers.update(resp.headers)
             if resp.status_code == 400:
+                #SYSTEMEXIT in case of substantial Instagram requirements (to stop producing requests)
+                if "message" in resp_json:
+                    if "feedback_required" in resp_json['message']:
+                        raise SystemExit("The module execution stopped as Instagram’s anti-bot safety system has been set off. Please try again in several (up to 24) hours.")
+                    elif "challenge_required" in resp_json['message']:
+                        raise SystemExit("The module execution stopped as your Instagram account is either suspended or disabled. Please check your email for further steps (you may be required to go through a verification process).")
                 raise QueryReturnedBadRequestException(self._response_error(resp))
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException(self._response_error(resp))
