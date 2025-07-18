@@ -44,7 +44,7 @@ with open('__main__.py', 'w+') as f:
     f.writelines(lines)
 
 # install dependencies and invoke PyInstaller
-commands = ["pip install pipenv==2024.2.0",
+commands = ["pip install pipenv==2025.0.4",
             f"pipenv --python {sys.version_info.major}.{sys.version_info.minor} sync --dev",
             "pipenv run pyinstaller --log-level=DEBUG instaloader.spec"]
 
