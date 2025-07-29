@@ -873,15 +873,18 @@ class Instaloader:
                     self.context.log("<{} skipped>".format(item), flush=True)
                     continue
                 self.context.log("[%3i/%3i] " % (count, totalcount), end="", flush=True)
+                suffix: Optional[str] = str(count)
+                if '{filename}' in self.filename_pattern:
+                    suffix = None
                 count += 1
                 with self.context.error_catcher('Download story from user {}'.format(name)):
-                    downloaded = self.download_storyitem(item, filename_target if filename_target else name)
+                    downloaded = self.download_storyitem(item, filename_target if filename_target else name, filename_suffix=suffix)
                     if fast_update and not downloaded:
                         break
             if latest_stamps is not None:
                 latest_stamps.set_last_story_timestamp(name, scraped_timestamp)
 
-    def download_storyitem(self, item: StoryItem, target: Union[str, Path]) -> bool:
+    def download_storyitem(self, item: StoryItem, target: Union[str, Path], filename_suffix: Optional[str] = None) -> bool:
         """Download one user story.
 
         :param item: Story item, as in story['items'] for story in :meth:`get_stories`
@@ -900,12 +903,16 @@ class Instaloader:
         dirname = _PostPathFormatter(item, self.sanitize_paths).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(dirname, self.format_filename(item, target=target))
         filename = self.__prepare_filename(filename_template, lambda: item.url)
+        if filename_suffix is not None:
+            filename += '_' + filename_suffix
         downloaded = False
         video_url_fetch_failed = False
         if item.is_video and self.download_videos is True:
             video_url = item.video_url
             if video_url:
                 filename = self.__prepare_filename(filename_template, lambda: str(video_url))
+                if filename_suffix is not None:
+                    filename += '_' + filename_suffix
                 downloaded |= (not _already_downloaded(filename + ".mp4") and
                                self.download_pic(filename=filename, url=video_url, mtime=date_local))
             else:
