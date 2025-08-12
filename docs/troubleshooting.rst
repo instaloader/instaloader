@@ -62,6 +62,25 @@ Two-Factor-Authentication. It also supports handling the *checkpoint challenge*,
 issued when Instagram suspects authentication activity on your account, by
 pointing the user to an URL to be opened in a browser.
 
+**Two-Factor Authentication (2FA) Support:**
+
+Instaloader provides improved support for Two-Factor Authentication with the following features:
+
+- **Retry Logic**: Up to 3 attempts to enter the correct verification code
+- **Clear Instructions**: Step-by-step guidance for users with 2FA enabled
+- **Better Error Messages**: Specific error messages for different failure types
+- **Alternative Methods**: Suggestions to use browser cookies if 2FA fails
+- **Keyboard Interrupt Handling**: Graceful cancellation of 2FA process
+
+When 2FA is required, you'll see messages like:
+- "Two-factor authentication required."
+- "Please enter the verification code from your authenticator app."
+- "If you're having trouble, you can also use browser cookies with --load-cookies."
+
+If you encounter issues with 2FA, consider using browser cookies instead:
+- Log into Instagram in your browser
+- Use the `--load-cookies` option to import your session
+
 Nevertheless, in :issue:`92`, :issue:`615`, :issue:`1150` and :issue:`1217`,
 users reported problems with
 logging in. We recommend to always keep the session file which Instaloader

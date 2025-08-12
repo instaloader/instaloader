@@ -347,19 +347,32 @@ class InstaloaderContext:
             raise InvalidArgumentException("No two-factor authentication pending.")
         (session, user, two_factor_id) = self.two_factor_auth_pending
 
-        login = session.post('https://www.instagram.com/accounts/login/ajax/two_factor/',
-                             data={'username': user, 'verificationCode': two_factor_code, 'identifier': two_factor_id},
-                             allow_redirects=True)
-        resp_json = login.json()
-        if resp_json['status'] != 'ok':
-            if 'message' in resp_json:
-                raise BadCredentialsException("2FA error: {}".format(resp_json['message']))
-            else:
-                raise BadCredentialsException("2FA error: \"{}\" status.".format(resp_json['status']))
-        session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
-        self._session = session
-        self.username = user
-        self.two_factor_auth_pending = None
+        try:
+            login = session.post('https://www.instagram.com/accounts/login/ajax/two_factor/',
+                                 data={'username': user, 'verificationCode': two_factor_code, 'identifier': two_factor_id},
+                                 allow_redirects=True)
+            resp_json = login.json()
+            
+            if resp_json['status'] != 'ok':
+                error_message = resp_json.get('message', 'Unknown error')
+                if 'challenge' in error_message.lower():
+                    raise BadCredentialsException("2FA error: Additional verification required. Please check your email or SMS.")
+                elif 'invalid' in error_message.lower() or 'incorrect' in error_message.lower():
+                    raise BadCredentialsException("2FA error: Invalid verification code. Please check your authenticator app.")
+                else:
+                    raise BadCredentialsException(f"2FA error: {error_message}")
+                    
+            session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
+            self._session = session
+            self.username = user
+            self.two_factor_auth_pending = None
+            
+        except requests.exceptions.RequestException as e:
+            raise BadCredentialsException(f"2FA error: Network error during verification - {e}")
+        except json.JSONDecodeError:
+            raise BadCredentialsException("2FA error: Invalid response from Instagram server")
+        except KeyError as e:
+            raise BadCredentialsException(f"2FA error: Unexpected response format - missing {e}")
 
     def do_sleep(self):
         """Sleep a short time if self.sleep is set. Called before each request to instagram.com."""
