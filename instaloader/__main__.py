@@ -182,17 +182,37 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     instaloader.login(username, password)
                 except TwoFactorAuthRequiredException:
                     # https://github.com/instaloader/instaloader/issues/1217
-                    instaloader.context.error("Warning: There have been reports of 2FA currently not working. "
-                                              "Consider importing session cookies from your browser with "
-                                              "--load-cookies.")
-                    while True:
+                    instaloader.context.log("Two-factor authentication required.")
+                    instaloader.context.log("Please enter the verification code from your authenticator app.")
+                    instaloader.context.log("If you're having trouble, you can also use browser cookies with --load-cookies.")
+                    
+                    max_attempts = 3
+                    for attempt in range(max_attempts):
                         try:
-                            code = input("Enter 2FA verification code: ")
+                            if attempt > 0:
+                                instaloader.context.log(f"Attempt {attempt + 1} of {max_attempts}")
+                            code = input("Enter 2FA verification code: ").strip()
+                            if not code:
+                                instaloader.context.error("Verification code cannot be empty. Please try again.")
+                                continue
                             instaloader.two_factor_login(code)
+                            instaloader.context.log("Two-factor authentication successful!")
                             break
                         except BadCredentialsException as err:
-                            print(err, file=sys.stderr)
-                            pass
+                            remaining_attempts = max_attempts - attempt - 1
+                            if remaining_attempts > 0:
+                                instaloader.context.error(f"Invalid verification code. {remaining_attempts} attempts remaining.")
+                                instaloader.context.error(f"Error: {err}")
+                            else:
+                                instaloader.context.error("Maximum 2FA attempts reached. Please try again later.")
+                                instaloader.context.error("Consider using browser cookies with --load-cookies instead.")
+                                raise
+                        except KeyboardInterrupt:
+                            instaloader.context.error("\n2FA login cancelled by user.")
+                            raise
+                    else:
+                        instaloader.context.error("Failed to complete 2FA login after maximum attempts.")
+                        raise BadCredentialsException("2FA verification failed after maximum attempts.")
             else:
                 try:
                     instaloader.interactive_login(username)

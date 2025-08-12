@@ -1651,14 +1651,35 @@ class Instaloader:
                     print(err, file=sys.stderr)
                     password = None
         except TwoFactorAuthRequiredException:
-            while True:
+            self.context.log("Two-factor authentication required.")
+            self.context.log("Please enter the verification code from your authenticator app.")
+            
+            max_attempts = 3
+            for attempt in range(max_attempts):
                 try:
-                    code = input("Enter 2FA verification code: ")
+                    if attempt > 0:
+                        self.context.log(f"Attempt {attempt + 1} of {max_attempts}")
+                    code = input("Enter 2FA verification code: ").strip()
+                    if not code:
+                        self.context.error("Verification code cannot be empty. Please try again.")
+                        continue
                     self.two_factor_login(code)
+                    self.context.log("Two-factor authentication successful!")
                     break
                 except BadCredentialsException as err:
-                    print(err, file=sys.stderr)
-                    pass
+                    remaining_attempts = max_attempts - attempt - 1
+                    if remaining_attempts > 0:
+                        self.context.error(f"Invalid verification code. {remaining_attempts} attempts remaining.")
+                        self.context.error(f"Error: {err}")
+                    else:
+                        self.context.error("Maximum 2FA attempts reached. Please try again later.")
+                        raise
+                except KeyboardInterrupt:
+                    self.context.error("\n2FA login cancelled by user.")
+                    raise
+            else:
+                self.context.error("Failed to complete 2FA login after maximum attempts.")
+                raise BadCredentialsException("2FA verification failed after maximum attempts.")
 
     @property
     def has_stored_errors(self) -> bool:
