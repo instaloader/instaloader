@@ -217,6 +217,52 @@ class Post:
         """Create a post from a given iphone_struct.
 
         .. versionadded:: 4.9"""
+        media_types = {
+            1: "GraphImage",
+            2: "GraphVideo",
+            8: "GraphSidecar",
+        }
+        fake_node = {
+            "shortcode": media["code"],
+            "id": media["pk"],
+            "__typename": media_types[media["media_type"]],
+            "is_video": media_types[media["media_type"]] == "GraphVideo",
+            "date": media["taken_at"],
+            "caption": media["caption"].get("text") if media.get("caption") is not None else None,
+            "title": media.get("title"),
+            "viewer_has_liked": media["has_liked"],
+            "edge_media_preview_like": {"count": media["like_count"]},
+            "accessibility_caption": media.get("accessibility_caption"),
+            "comments": media.get("comment_count"),
+            "iphone_struct": media,
+        }
+        with suppress(KeyError):
+            fake_node["display_url"] = media['image_versions2']['candidates'][0]['url']
+        with suppress(KeyError, TypeError):
+            fake_node["video_url"] = media['video_versions'][-1]['url']
+            fake_node["video_duration"] = media["video_duration"]
+            fake_node["video_view_count"] = media["view_count"]
+        with suppress(KeyError, TypeError):
+            fake_node["edge_sidecar_to_children"] = {"edges": [{"node":
+                Post._convert_iphone_carousel(node, media_types)}
+                for node in media["carousel_media"]]}
+        return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
+    
+    @staticmethod
+    def _convert_iphone_carousel(iphone_node: Dict[str, Any], media_types: Dict[int, str]) -> Dict[str, Any]:
+        fake_node = {
+            "display_url": iphone_node["image_versions2"]["candidates"][0]["url"],
+            "is_video": media_types[iphone_node["media_type"]] == "GraphVideo",
+        }
+        if "video_versions" in iphone_node and iphone_node["video_versions"] is not None:
+            fake_node["video_url"] = iphone_node["video_versions"][0]["url"]
+        return fake_node
+
+    @classmethod
+    def from_new_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+        """Create a post from a given new_iphone_struct.
+
+        .. versionadded:: 4.15"""
         media_caption = media.get("edge_media_to_caption")
         fake_node = {
             "shortcode": media["shortcode"],
@@ -1184,7 +1230,7 @@ class Profile:
         return NodeIterator(
             context = self._context,
             edge_extractor = lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-            node_wrapper = lambda n: Post.from_iphone_struct(self._context, n),
+            node_wrapper = lambda n: Post.from_new_iphone_struct(self._context, n),
             query_variables = {'data': {
                 'count': 12, 'include_relationship_info': True,
                 'latest_besties_reel_media': True, 'latest_reel_media': True},
@@ -1922,7 +1968,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["top"],
-                lambda m: Post.from_iphone_struct(self._context, m),
+                lambda m: Post.from_new_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("top"),
             )
@@ -1958,7 +2004,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["recent"],
-                lambda m: Post.from_iphone_struct(self._context, m),
+                lambda m: Post.from_new_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("recent"),
             )
