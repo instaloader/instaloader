@@ -1000,8 +1000,8 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
-                                                         params={})
+                metadata = self._context.get_iphone_json('api/v1/users/web_profile_info/',
+                                                         params={'username': self.username})
                 if metadata['data']['user'] is None:
                     raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
                 self._node = metadata['data']['user']
