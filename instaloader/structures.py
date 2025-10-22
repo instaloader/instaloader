@@ -606,7 +606,7 @@ class Post:
     def video_play_count(self) -> Optional[int]:
         """Play count of the video, or None.
 
-        .. versionadded:: 4.2.6"""
+        .. versionadded:: 4.14.3"""
         if self.is_video:
             return self._field('video_play_count')
         return None
