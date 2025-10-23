@@ -20,7 +20,7 @@ class PostSidecarNode(NamedTuple):
     """Item of a Sidecar Post."""
     is_video: bool
     display_url: str
-    video_url: str
+    video_url: Optional[str]
 
 
 PostSidecarNode.is_video.__doc__ = "Whether this node is a video."
@@ -247,7 +247,7 @@ class Post:
                 Post._convert_iphone_carousel(node, media_types)}
                 for node in media["carousel_media"]]}
         return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
-
+    
     @staticmethod
     def _convert_iphone_carousel(iphone_node: Dict[str, Any], media_types: Dict[int, str]) -> Dict[str, Any]:
         fake_node = {
@@ -257,6 +257,36 @@ class Post:
         if "video_versions" in iphone_node and iphone_node["video_versions"] is not None:
             fake_node["video_url"] = iphone_node["video_versions"][0]["url"]
         return fake_node
+
+    @classmethod
+    def from_new_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+        """Create a post from a given new_iphone_struct.
+
+        .. versionadded:: 4.15"""
+        media_caption = media.get("edge_media_to_caption")
+        fake_node = {
+            "shortcode": media["shortcode"],
+            "id": media["id"],
+            "owner": media["owner"],
+            "__typename": media["__typename"],
+            "is_video": media["__typename"] == "GraphVideo",
+            "date": media["taken_at_timestamp"],
+            "caption": media_caption["edges"][0]["node"].get("text") if media_caption and media_caption.get("edges") else None,
+            # "title": media.get("title"),
+            "viewer_has_liked": media.get("viewer_has_liked"),
+            "edge_media_preview_like": media["edge_media_preview_like"],
+            "accessibility_caption": media.get("accessibility_caption"),
+            "comments": media.get("comment_count"),
+            "iphone_struct": media,
+        }
+        with suppress(KeyError):
+            fake_node["display_url"] = media["display_url"]
+        with suppress(KeyError):
+            fake_node["edge_sidecar_to_children"] = media["edge_sidecar_to_children"]
+        with suppress(KeyError, TypeError):
+            fake_node["video_url"] = media['video_url']
+            fake_node["video_view_count"] = media["video_view_count"]
+        return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
 
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
@@ -499,7 +529,7 @@ class Post:
                         except (InstaloaderException, KeyError, IndexError) as err:
                             self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
-                                          video_url=node['video_url'] if is_video else None)
+                                          video_url=str(node['video_url']) if is_video else "")
 
     @property
     def caption(self) -> Optional[str]:
@@ -979,8 +1009,8 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
-                                                         params={})
+                metadata = self._context.get_iphone_json('api/v1/users/web_profile_info/',
+                                                         params={'username': self.username})
                 if metadata['data']['user'] is None:
                     raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
                 self._node = metadata['data']['user']
@@ -1208,16 +1238,17 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             context = self._context,
-            edge_extractor = lambda d: d['data']['xdt_api__v1__feed__user_timeline_graphql_connection'],
-            node_wrapper = lambda n: Post.from_iphone_struct(self._context, n),
+            edge_extractor = lambda d: d['data']['user']['edge_owner_to_timeline_media'],
+            node_wrapper = lambda n: Post.from_new_iphone_struct(self._context, n),
             query_variables = {'data': {
                 'count': 12, 'include_relationship_info': True,
                 'latest_besties_reel_media': True, 'latest_reel_media': True},
-             'username': self.username},
+             'id': self.userid},
             query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
             is_first = Profile._make_is_newest_checker(),
-            doc_id = '7898261790222653',
+            doc_id = '7950326061742207',
             query_hash = None,
+            first_data = self._metadata("edge_owner_to_timeline_media")
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1946,7 +1977,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["top"],
-                lambda m: Post.from_iphone_struct(self._context, m),
+                lambda m: Post.from_new_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("top"),
             )
@@ -1982,7 +2013,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["recent"],
-                lambda m: Post.from_iphone_struct(self._context, m),
+                lambda m: Post.from_new_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("recent"),
             )

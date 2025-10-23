@@ -13,6 +13,7 @@ PROFILE_WITH_HIGHLIGHTS = 325732271
 PUBLIC_PROFILE = "selenagomez"
 PUBLIC_PROFILE_ID = 460563723
 PUBLIC_PROFILE_WITH_IGTV = "natgeo"
+PUBLIC_POST_CODE = "DMyCt-RPhIj"
 HASHTAG = "kitten"
 LOCATION = "362629379"
 OWN_USERNAME = "aandergr"
@@ -104,6 +105,11 @@ class TestInstaloaderAnonymously(unittest.TestCase):
             post2 = instaloader.Post.from_mediaid(self.L.context, post.mediaid)
             self.assertEqual(post, post2)
             break
+
+    def test_post_from_shortcode(self):
+        post = instaloader.Post.from_shortcode(self.L.context, PUBLIC_POST_CODE)
+        self.assertEqual(PUBLIC_PROFILE.lower(), post.owner_username.lower())
+        self.assertEqual(PUBLIC_POST_CODE, post.shortcode)
 
     def test_public_profile_tagged_paging(self):
         for post in islice(instaloader.Profile.from_username(self.L.context, PUBLIC_PROFILE).get_tagged_posts(),
