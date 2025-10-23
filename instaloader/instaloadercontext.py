@@ -395,7 +395,8 @@ class InstaloaderContext:
         :param session: Session to use, or None to use self.session
         :param use_post: Use POST instead of GET to make the request
         :return: Decoded response dictionary
-        :raises QueryReturnedBadRequestException: When the server responds with a 400.
+        :raises AbortDownloadException: When the server responds with 'feedback_required'/'checkpoint_required'/'challenge_required'
+        :raises QueryReturnedBadRequestException: When the server responds with a 400 (and not 'feedback_required'/'checkpoint_required'/'challenge_required').
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
 
@@ -447,6 +448,19 @@ class InstaloaderContext:
                 response_headers.clear()
                 response_headers.update(resp.headers)
             if resp.status_code == 400:
+                # Raise AbortDownloadException in case of substantial Instagram requirements to stop producing more requests
+                content_type = resp.headers.get('Content-Type')
+                if 'application/json' in content_type or not content_type:
+                    try:
+                        resp_json = resp.json()
+                    except ValueError:
+                        pass
+                    if 'feedback_required' in resp_json.get('message'):
+                        raise AbortDownloadException("The module execution stopped as Instagram’s anti-bot safety system has been set off. " +
+                                                     "Please try again in several (up to 24) hours.")
+                    elif 'checkpoint_required' in resp_json.get('message') or 'challenge_required' in resp_json.get('message'):
+                        raise AbortDownloadException("The module execution stopped as your Instagram account is either suspended or disabled. " +
+                                                     "Please check your email for further steps (you may be required to go through a verification process).")
                 raise QueryReturnedBadRequestException(self._response_error(resp))
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException(self._response_error(resp))
