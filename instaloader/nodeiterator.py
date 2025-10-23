@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import os
+from .exceptions import QueryReturnedBadRequestException
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from lzma import LZMAError
@@ -318,12 +319,14 @@ def resumable_iteration(context: InstaloaderContext,
             context.error("Warning: Not resuming from {}: {}".format(resume_file_path, exc))
     try:
         yield is_resuming, start_index
-    except (KeyboardInterrupt, AbortDownloadException):
+    except (KeyboardInterrupt, AbortDownloadException, QueryReturnedBadRequestException):
         if os.path.dirname(resume_file_path):
             os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
         save(iterator.freeze(), resume_file_path)
         context.log("\nSaved resume information to {}.".format(resume_file_path))
         raise
-    if resume_file_exists:
-        os.unlink(resume_file_path)
-        context.log("Iteration complete, deleted resume information file {}.".format(resume_file_path))
+    finally:
+        if resume_file_exists:
+            os.unlink(resume_file_path)
+            context.log("Iteration complete, deleted resume information file {}.".format(resume_file_path))
+
