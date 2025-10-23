@@ -212,7 +212,7 @@ Instead of :option:`--login`, it is possible to use
    This feature requires the browser_cookie3 library.
    Compatible with :option:`--cookiefile` if you want to load cookies from browser profiles.
    Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
-   Supported browsers: Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari and Vivaldi.
+   Supported browsers: Firefox, LibreWolf and Safari.
 
    In subsequent runs, you can just use :option:`--login` to reuse the
    same session, which is saved by Instaloader.
