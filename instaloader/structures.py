@@ -247,7 +247,7 @@ class Post:
                 Post._convert_iphone_carousel(node, media_types)}
                 for node in media["carousel_media"]]}
         return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
-    
+
     @staticmethod
     def _convert_iphone_carousel(iphone_node: Dict[str, Any], media_types: Dict[int, str]) -> Dict[str, Any]:
         fake_node = {
@@ -499,7 +499,7 @@ class Post:
                         except (InstaloaderException, KeyError, IndexError) as err:
                             self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
-                                          video_url=str(node['video_url']) if is_video else "")
+                                          video_url=node['video_url'] if is_video else None)
 
     @property
     def caption(self) -> Optional[str]:
@@ -970,8 +970,8 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_iphone_json('api/v1/users/web_profile_info/',
-                                                         params={'username': self.username})
+                metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
+                                                         params={})
                 if metadata['data']['user'] is None:
                     raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
                 self._node = metadata['data']['user']
