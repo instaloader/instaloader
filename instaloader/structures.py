@@ -1952,7 +1952,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["top"],
-                lambda m: Post(self._context, m),
+                lambda m: Post.from_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("top"),
             )
@@ -1988,7 +1988,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["recent"],
-                lambda m: Post(self._context, m),
+                lambda m: Post.from_iphone_struct(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("recent"),
             )

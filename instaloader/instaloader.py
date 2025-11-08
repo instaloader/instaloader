@@ -1162,7 +1162,7 @@ class Instaloader:
         yield from SectionIterator(
             self.context,
             lambda d: d["native_location_data"]["recent"],
-            lambda m: Post(self.context, m),
+            lambda m: Post.from_iphone_struct(self.context, m),
             f"explore/locations/{location}/",
         )
 
