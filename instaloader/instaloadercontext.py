@@ -395,8 +395,10 @@ class InstaloaderContext:
         :param session: Session to use, or None to use self.session
         :param use_post: Use POST instead of GET to make the request
         :return: Decoded response dictionary
-        :raises AbortDownloadException: When the server responds with 'feedback_required'/'checkpoint_required'/'challenge_required'
-        :raises QueryReturnedBadRequestException: When the server responds with a 400 (and not 'feedback_required'/'checkpoint_required'/'challenge_required').
+        :raises AbortDownloadException: When the server responds with
+            'feedback_required'/'checkpoint_required'/'challenge_required'
+        :raises QueryReturnedBadRequestException: When the server responds with a 400 (and not
+            'feedback_required'/'checkpoint_required'/'challenge_required').
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
 
