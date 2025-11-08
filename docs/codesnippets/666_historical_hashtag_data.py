@@ -3,7 +3,7 @@ import instaloader
 
 L = instaloader.Instaloader()
 
-posts = instaloader.Hashtag.from_name(L.context, "urbanphotography").get_posts()
+posts = instaloader.Hashtag.from_name(L.context, "urbanphotography").get_posts_resumable()
 
 SINCE = datetime(2020, 5, 10)  # further from today, inclusive
 UNTIL = datetime(2020, 5, 11)  # closer to today, not inclusive
