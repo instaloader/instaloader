@@ -395,7 +395,10 @@ class InstaloaderContext:
         :param session: Session to use, or None to use self.session
         :param use_post: Use POST instead of GET to make the request
         :return: Decoded response dictionary
-        :raises QueryReturnedBadRequestException: When the server responds with a 400.
+        :raises AbortDownloadException: When the server responds with
+            'feedback_required'/'checkpoint_required'/'challenge_required'
+        :raises QueryReturnedBadRequestException: When the server responds with a 400 (and not
+            'feedback_required'/'checkpoint_required'/'challenge_required').
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When query repeatedly failed.
 
@@ -447,6 +450,15 @@ class InstaloaderContext:
                 response_headers.clear()
                 response_headers.update(resp.headers)
             if resp.status_code == 400:
+                with suppress(json.decoder.JSONDecodeError):
+                    if resp.json().get("message") in [
+                        "feedback_required",
+                        "checkpoint_required",
+                        "challenge_required",
+                    ]:
+                        # Raise AbortDownloadException in case of substantial Instagram
+                        # requirements to stop producing more requests
+                        raise AbortDownloadException(self._response_error(resp))
                 raise QueryReturnedBadRequestException(self._response_error(resp))
             if resp.status_code == 404:
                 raise QueryReturnedNotFoundException(self._response_error(resp))
