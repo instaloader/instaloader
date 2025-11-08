@@ -258,36 +258,6 @@ class Post:
             fake_node["video_url"] = iphone_node["video_versions"][0]["url"]
         return fake_node
 
-    @classmethod
-    def from_new_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
-        """Create a post from a given new_iphone_struct.
-
-        .. versionadded:: 4.15"""
-        media_caption = media.get("edge_media_to_caption")
-        fake_node = {
-            "shortcode": media["shortcode"],
-            "id": media["id"],
-            "owner": media["owner"],
-            "__typename": media["__typename"],
-            "is_video": media["__typename"] == "GraphVideo",
-            "date": media["taken_at_timestamp"],
-            "caption": media_caption["edges"][0]["node"].get("text") if media_caption and media_caption.get("edges") else None,
-            # "title": media.get("title"),
-            "viewer_has_liked": media.get("viewer_has_liked"),
-            "edge_media_preview_like": media["edge_media_preview_like"],
-            "accessibility_caption": media.get("accessibility_caption"),
-            "comments": media.get("comment_count"),
-            "iphone_struct": media,
-        }
-        with suppress(KeyError):
-            fake_node["display_url"] = media["display_url"]
-        with suppress(KeyError):
-            fake_node["edge_sidecar_to_children"] = media["edge_sidecar_to_children"]
-        with suppress(KeyError, TypeError):
-            fake_node["video_url"] = media['video_url']
-            fake_node["video_view_count"] = media["video_view_count"]
-        return cls(context, fake_node, Profile.from_iphone_struct(context, media["user"]) if "user" in media else None)
-
     @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
         if len(code) > 11:
@@ -1230,7 +1200,7 @@ class Profile:
         return NodeIterator(
             context = self._context,
             edge_extractor = lambda d: d['data']['user']['edge_owner_to_timeline_media'],
-            node_wrapper = lambda n: Post.from_new_iphone_struct(self._context, n),
+            node_wrapper = lambda n: Post(self._context, n, self),
             query_variables = {'data': {
                 'count': 12, 'include_relationship_info': True,
                 'latest_besties_reel_media': True, 'latest_reel_media': True},
@@ -1968,7 +1938,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["top"],
-                lambda m: Post.from_new_iphone_struct(self._context, m),
+                lambda m: Post(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("top"),
             )
@@ -2004,7 +1974,7 @@ class Hashtag:
             yield from SectionIterator(
                 self._context,
                 lambda d: d["data"]["recent"],
-                lambda m: Post.from_new_iphone_struct(self._context, m),
+                lambda m: Post(self._context, m),
                 f"explore/tags/{self.name}/",
                 self._metadata("recent"),
             )
