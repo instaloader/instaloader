@@ -2,7 +2,7 @@ import instaloader
 
 L = instaloader.Instaloader()
 
-posts = instaloader.Hashtag.from_name(L.context, 'urbanphotography').get_posts()
+posts = instaloader.Hashtag.from_name(L.context, 'urbanphotography').get_posts_resumable()
 
 users = set()
 

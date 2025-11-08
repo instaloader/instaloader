@@ -208,22 +208,24 @@ Instead of :option:`--login`, it is possible to use
 
 .. option:: --load-cookies BROWSER-NAME, -b BROWSER-NAME
 
-   Use Instagram cookie in your browser to login.
-   This feature requires the browser_cookie3 library.
-   Compatible with :option:`--cookiefile` if you want to load cookies from browser profiles.
-   Incompatible with :option:`--login` due to potential username mismatch between user input and browser login.
-   Supported browsers: Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari and Vivaldi.
+   Load Instagram session cookies from a browser instead of using Instaloader's own login mechanism.
+   This method requires the `browser_cookie3 <https://github.com/borisbabic/browser_cookie3>`__ library.
+   By default, cookies are loaded from the browser's main profile, but you can specify a custom cookie file using :option:`--cookiefile`.
 
-   In subsequent runs, you can just use :option:`--login` to reuse the
-   same session, which is saved by Instaloader.
+   Since :option:`--load-cookies` and :option:`--login` are alternative ways to acquire a session, they cannot be used together when initially acquiring a session.
+
+   Supported browsers: Arc, Brave, Chrome, Chromium, Edge, Firefox, LibreWolf, Opera, Opera_GX, Safari, and Vivaldi.
+
+   Once logged in via browser cookies, Instaloader saves the session, allowing you to use :option:`--login` in subsequent runs.
 
    .. versionadded:: 4.11
 
 .. option:: --cookiefile COOKIE-FILE, -B COOKIE-FILE
 
-   Cookie file path of a browser profile to load cookies from.
+   Specifies a cookie file path for :option:`--load-cookies` to load cookies from a particular browser profile.
+   This option must be used together with :option:`--load-cookies` and does not work on its own.
 
-  .. versionadded:: 4.11
+   .. versionadded:: 4.11
 
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
@@ -310,7 +312,7 @@ How to Download
 .. option:: --user-agent USER_AGENT
 
    User Agent to use for HTTP requests. Per default, Instaloader pretends being
-   Chrome/127 on Linux.
+   Chrome/142 on Linux.
 
 .. option:: --max-connection-attempts N
 

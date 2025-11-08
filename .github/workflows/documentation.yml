@@ -14,11 +14,11 @@ jobs:
       - name: "Setup Python"
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: 3.14
           cache: 'pipenv'
       - name: "Install Dependencies"
         run: |
-          python -m pip install pipenv==2024.2.0
+          python -m pip install pipenv==2025.0.4
           pipenv --python `python --version | grep -Eo '3\.[0-9]+'` sync --dev
       - name: "Build Documentation"
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run make -C docs html SPHINXOPTS="-W -n"

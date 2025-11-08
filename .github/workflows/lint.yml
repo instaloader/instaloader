@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - name: Checkout Instaloader Repository
         uses: actions/checkout@v4
@@ -20,9 +20,10 @@ jobs:
           cache: 'pipenv'
       - name: Install Dependencies
         run: |
-          python -m pip install pipenv==2024.2.0
+          python -m pip install pipenv==2025.0.4
           pipenv --python `python --version | grep -Eo '3\.[0-9]+'` sync --dev
       - name: PyLint
+        if: matrix.python-version != '3.9'
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run pylint instaloader
       - name: MyPy
         run: pipenv --python `python --version | grep -Eo '3\.[0-9]+'` run mypy -m instaloader
