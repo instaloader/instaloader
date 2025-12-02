@@ -1,0 +1,17 @@
+# Extra dependencies for my_automation module
+# Install with: pip install -r my_automation/requirements-extra.txt
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Image processing for watermarks
+Pillow>=10.0.0
+
+# HTTP requests for Instagram Graph API
+requests>=2.31.0
+
+# CSV handling (included in stdlib, but listed for clarity)
+# csv is part of Python standard library
+
+# Logging (included in stdlib)
+# logging is part of Python standard library
