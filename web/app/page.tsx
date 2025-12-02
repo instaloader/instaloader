@@ -163,7 +163,7 @@ async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
 
     if (html) {
       // Try to find JSON data in the page first
-      const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)\s*;/s)
+      const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{[\s\S]+?\})\s*\)\s*;/)
       if (jsonMatch) {
         try {
           const data = JSON.parse(jsonMatch[1])
@@ -656,7 +656,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.2.0
+          v1.3.0
         </p>
       </footer>
     </div>
