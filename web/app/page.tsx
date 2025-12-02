@@ -27,18 +27,28 @@ async function fetchViaProxy(url: string): Promise<string | null> {
   const proxies = [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   ]
 
   for (const proxyUrl of proxies) {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const response = await fetch(proxyUrl, {
-        headers: { 'Accept': 'text/html,application/xhtml+xml' }
+        headers: { 'Accept': 'text/html,application/xhtml+xml,application/json' },
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
+
       if (response.ok) {
-        return await response.text()
+        const text = await response.text()
+        if (text && text.length > 100) {
+          return text
+        }
       }
     } catch (e) {
-      console.log('Proxy failed:', e)
+      console.log('Proxy failed:', proxyUrl, e)
     }
   }
   return null
@@ -143,104 +153,174 @@ function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse
 }
 
 async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
+  const errors: string[] = []
+
   // Method 1: Try embed page via CORS proxy
-  const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`
-  const html = await fetchViaProxy(embedUrl)
+  try {
+    const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`
+    console.log('Trying embed URL:', embedUrl)
+    const html = await fetchViaProxy(embedUrl)
 
-  if (html) {
-    // Try to find JSON data in the page first
-    const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)\s*;/s)
-    if (jsonMatch) {
-      try {
-        const data = JSON.parse(jsonMatch[1])
-        const mediaData = data?.shortcode_media || data?.graphql?.shortcode_media
-        if (mediaData) {
-          return parseMediaDataClient(mediaData, shortcode)
+    if (html) {
+      // Try to find JSON data in the page first
+      const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)\s*;/s)
+      if (jsonMatch) {
+        try {
+          const data = JSON.parse(jsonMatch[1])
+          const mediaData = data?.shortcode_media || data?.graphql?.shortcode_media
+          if (mediaData) {
+            const result = parseMediaDataClient(mediaData, shortcode)
+            if (result.media.length > 0) return result
+          }
+        } catch (e) {
+          console.log('JSON parse error:', e)
         }
-      } catch {}
-    }
+      }
 
-    // Fallback: parse HTML directly
-    const result = parseEmbedHtmlClient(html, shortcode)
-    if (result && result.media.length > 0) {
-      return result
+      // Fallback: parse HTML directly
+      const result = parseEmbedHtmlClient(html, shortcode)
+      if (result && result.media.length > 0) {
+        return result
+      }
     }
+  } catch (e) {
+    errors.push('embed failed')
+    console.log('Embed method failed:', e)
   }
 
   // Method 2: Try reel embed URL
-  const reelUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`
-  const reelHtml = await fetchViaProxy(reelUrl)
+  try {
+    const reelUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`
+    console.log('Trying reel URL:', reelUrl)
+    const reelHtml = await fetchViaProxy(reelUrl)
 
-  if (reelHtml) {
-    const result = parseEmbedHtmlClient(reelHtml, shortcode)
-    if (result && result.media.length > 0) {
-      return result
+    if (reelHtml) {
+      const result = parseEmbedHtmlClient(reelHtml, shortcode)
+      if (result && result.media.length > 0) {
+        return result
+      }
     }
+  } catch (e) {
+    errors.push('reel failed')
+    console.log('Reel method failed:', e)
   }
 
-  throw new Error('No se pudo obtener el contenido. Verifica que el post sea público.')
+  // Method 3: Try simple embed (non-captioned)
+  try {
+    const simpleUrl = `https://www.instagram.com/p/${shortcode}/embed/`
+    console.log('Trying simple embed:', simpleUrl)
+    const simpleHtml = await fetchViaProxy(simpleUrl)
+
+    if (simpleHtml) {
+      const result = parseEmbedHtmlClient(simpleHtml, shortcode)
+      if (result && result.media.length > 0) {
+        return result
+      }
+    }
+  } catch (e) {
+    errors.push('simple failed')
+    console.log('Simple embed failed:', e)
+  }
+
+  throw new Error('No se pudo obtener el contenido. Verifica que el post sea público y la URL sea correcta.')
 }
 
 function parseMediaDataClient(data: any, shortcode: string): DownloadResponse {
   const media: MediaData[] = []
 
-  const owner = data.owner?.username || data.user?.username || 'unknown'
-  const caption = data.edge_media_to_caption?.edges?.[0]?.node?.text ||
-                  data.caption?.text ||
-                  data.caption ||
-                  ''
+  if (!data) {
+    return { success: false, shortcode, owner: 'unknown', caption: '', media: [], is_carousel: false, is_reel: false }
+  }
 
-  const isVideo = data.is_video || data.media_type === 2
+  const owner = data.owner?.username || data.user?.username || 'unknown'
+
+  // Safely extract caption
+  let caption = ''
+  try {
+    caption = data.edge_media_to_caption?.edges?.[0]?.node?.text ||
+              data.caption?.text ||
+              (typeof data.caption === 'string' ? data.caption : '') ||
+              ''
+  } catch { caption = '' }
+
+  const isVideo = data.is_video === true || data.media_type === 2
   const isCarousel = data.__typename === 'GraphSidecar' ||
                      data.media_type === 8 ||
-                     data.edge_sidecar_to_children?.edges?.length > 0 ||
-                     data.carousel_media?.length > 0
+                     (Array.isArray(data.edge_sidecar_to_children?.edges) && data.edge_sidecar_to_children.edges.length > 0) ||
+                     (Array.isArray(data.carousel_media) && data.carousel_media.length > 0)
 
   if (isCarousel) {
-    const edges = data.edge_sidecar_to_children?.edges || []
-    const carouselMedia = data.carousel_media || []
+    const edges = Array.isArray(data.edge_sidecar_to_children?.edges) ? data.edge_sidecar_to_children.edges : []
+    const carouselMedia = Array.isArray(data.carousel_media) ? data.carousel_media : []
 
     if (edges.length > 0) {
       edges.forEach((edge: any, idx: number) => {
-        const node = edge.node
-        media.push({
-          url: node.display_url || node.display_resources?.pop()?.src,
-          index: idx,
-          is_video: node.is_video,
-          video_url: node.video_url,
-          thumbnail_url: node.display_url
-        })
+        const node = edge?.node
+        if (!node) return
+
+        const displayResources = Array.isArray(node.display_resources) ? node.display_resources : []
+        const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+        const url = node.display_url || lastResource?.src
+
+        if (url) {
+          media.push({
+            url,
+            index: idx,
+            is_video: node.is_video === true,
+            video_url: node.video_url || undefined,
+            thumbnail_url: node.display_url || undefined
+          })
+        }
       })
     } else if (carouselMedia.length > 0) {
       carouselMedia.forEach((item: any, idx: number) => {
-        const imageUrl = item.image_versions2?.candidates?.[0]?.url
-        const videoUrl = item.video_versions?.[0]?.url
-        media.push({
-          url: videoUrl || imageUrl,
-          index: idx,
-          is_video: item.media_type === 2,
-          video_url: videoUrl,
-          thumbnail_url: imageUrl
-        })
+        if (!item) return
+
+        const candidates = Array.isArray(item.image_versions2?.candidates) ? item.image_versions2.candidates : []
+        const videoVersions = Array.isArray(item.video_versions) ? item.video_versions : []
+
+        const imageUrl = candidates.length > 0 ? candidates[0]?.url : undefined
+        const videoUrl = videoVersions.length > 0 ? videoVersions[0]?.url : undefined
+        const url = videoUrl || imageUrl
+
+        if (url) {
+          media.push({
+            url,
+            index: idx,
+            is_video: item.media_type === 2,
+            video_url: videoUrl,
+            thumbnail_url: imageUrl
+          })
+        }
       })
     }
   } else {
-    const imageUrl = data.display_url ||
-                     data.image_versions2?.candidates?.[0]?.url ||
-                     data.display_resources?.pop()?.src
-    const videoUrl = data.video_url || data.video_versions?.[0]?.url
+    // Single media
+    const displayResources = Array.isArray(data.display_resources) ? data.display_resources : []
+    const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+    const candidates = Array.isArray(data.image_versions2?.candidates) ? data.image_versions2.candidates : []
+    const videoVersions = Array.isArray(data.video_versions) ? data.video_versions : []
 
-    media.push({
-      url: isVideo ? (videoUrl || imageUrl) : imageUrl,
-      index: 0,
-      is_video: isVideo,
-      video_url: videoUrl,
-      thumbnail_url: imageUrl
-    })
+    const imageUrl = data.display_url ||
+                     (candidates.length > 0 ? candidates[0]?.url : undefined) ||
+                     lastResource?.src
+    const videoUrl = data.video_url || (videoVersions.length > 0 ? videoVersions[0]?.url : undefined)
+
+    const url = isVideo ? (videoUrl || imageUrl) : imageUrl
+
+    if (url) {
+      media.push({
+        url,
+        index: 0,
+        is_video: isVideo,
+        video_url: videoUrl,
+        thumbnail_url: imageUrl
+      })
+    }
   }
 
   return {
-    success: true,
+    success: media.length > 0,
     shortcode,
     owner,
     caption: typeof caption === 'string' ? caption : '',
