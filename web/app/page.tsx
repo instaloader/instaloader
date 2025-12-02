@@ -655,6 +655,9 @@ export default function Home() {
         <p className="mt-2 text-xs">
           Solo funciona con posts públicos
         </p>
+        <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
+          v1.2.0
+        </p>
       </footer>
     </div>
   )
