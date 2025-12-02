@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-interface ImageData {
+interface MediaData {
   url: string
   index: number
   is_video: boolean
+  video_url?: string
+  thumbnail_url?: string
 }
 
 interface PostData {
@@ -11,8 +13,9 @@ interface PostData {
   shortcode: string
   owner: string
   caption: string
-  images: ImageData[]
+  media: MediaData[]
   is_carousel: boolean
+  is_reel: boolean
   error?: string
 }
 
@@ -45,90 +48,156 @@ async function getPostDataFromEmbed(shortcode: string): Promise<PostData> {
   const captionMatch = html.match(/"caption":"([^"]*)"/) ||
                        html.match(/class="Caption"[^>]*>.*?<span[^>]*>([^<]+)</)
   let caption = captionMatch ? captionMatch[1] : ''
-  // Decode unicode escapes
   caption = caption.replace(/\\u[\dA-F]{4}/gi, (match) =>
     String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
   )
   caption = caption.replace(/\\n/g, '\n').replace(/\\"/g, '"')
 
-  // Extract images - multiple methods
-  const images: ImageData[] = []
+  const media: MediaData[] = []
 
-  // Method 1: Look for display_url in JSON data
+  // Check if it's a video/reel
+  const isVideo = html.includes('"is_video":true') ||
+                  html.includes('EmbeddedMediaVideo') ||
+                  html.includes('video_url')
+
+  const isReel = html.includes('"product_type":"clips"') ||
+                 html.includes('"product_type":"reels"')
+
+  // Extract video URLs
+  const videoUrlMatches = html.matchAll(/"video_url":"([^"]+)"/g)
+  for (const match of videoUrlMatches) {
+    let videoUrl = match[1]
+      .replace(/\\u0026/g, '&')
+      .replace(/\\/g, '')
+
+    // Find corresponding thumbnail
+    const thumbnailMatch = html.match(/"display_url":"([^"]+)"/)
+    const thumbnailUrl = thumbnailMatch
+      ? thumbnailMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+      : undefined
+
+    if (!media.find(m => m.video_url === videoUrl)) {
+      media.push({
+        url: videoUrl,
+        index: media.length,
+        is_video: true,
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl
+      })
+    }
+  }
+
+  // Extract images - Method 1: display_url in JSON
   const displayUrlMatches = html.matchAll(/"display_url":"([^"]+)"/g)
   for (const match of displayUrlMatches) {
     const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
-    if (!images.find(img => img.url === url)) {
-      images.push({
+    // Skip if this is a thumbnail for a video we already have
+    if (!media.find(m => m.url === url || m.thumbnail_url === url)) {
+      media.push({
         url,
-        index: images.length,
+        index: media.length,
         is_video: false
       })
     }
   }
 
-  // Method 2: Look for src in img tags with EmbeddedMedia
+  // Method 2: EmbeddedMediaImage src
   const imgMatches = html.matchAll(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/g)
   for (const match of imgMatches) {
     const url = match[1].replace(/&amp;/g, '&')
-    if (!images.find(img => img.url === url)) {
-      images.push({
+    if (!media.find(m => m.url === url)) {
+      media.push({
         url,
-        index: images.length,
+        index: media.length,
         is_video: false
       })
     }
   }
 
-  // Method 3: Look for srcset in img tags
+  // Method 3: srcset for high-res images
   const srcsetMatches = html.matchAll(/srcset="([^"]+)"/g)
   for (const match of srcsetMatches) {
-    // Get the highest resolution from srcset
     const srcset = match[1].replace(/&amp;/g, '&')
     const urls = srcset.split(',').map(s => s.trim().split(' ')[0])
     const highResUrl = urls[urls.length - 1]
-    if (highResUrl && highResUrl.includes('cdninstagram') && !images.find(img => img.url === highResUrl)) {
-      images.push({
+    if (highResUrl && highResUrl.includes('cdninstagram') && !media.find(m => m.url === highResUrl)) {
+      media.push({
         url: highResUrl,
-        index: images.length,
+        index: media.length,
         is_video: false
       })
     }
   }
 
-  // Method 4: Direct image URLs from content
+  // Method 4: Direct image URLs (1080p)
   const directImgMatches = html.matchAll(/https:\/\/[^"'\s]+(?:cdninstagram|fbcdn)[^"'\s]+\.jpg[^"'\s]*/g)
   for (const match of directImgMatches) {
     let url = match[0].replace(/&amp;/g, '&').replace(/\\u0026/g, '&')
-    // Clean up the URL
     url = url.split('"')[0].split("'")[0]
-    if (!images.find(img => img.url === url) && url.includes('1080')) {
-      images.push({
+    if (!media.find(m => m.url === url) && url.includes('1080')) {
+      media.push({
         url,
-        index: images.length,
+        index: media.length,
         is_video: false
       })
     }
   }
 
-  // Check for videos
-  const isVideo = html.includes('"is_video":true') || html.includes('EmbeddedMediaVideo')
-
-  // Detect carousel
-  const isCarousel = images.length > 1 || html.includes('edge_sidecar_to_children') || html.includes('GraphSidecar')
-
-  if (images.length === 0) {
-    throw new Error('No images found in the post. The post might be private or unavailable.')
+  // Method 5: Direct video URLs (.mp4)
+  const directVideoMatches = html.matchAll(/https:\/\/[^"'\s]+(?:cdninstagram|fbcdn)[^"'\s]+\.mp4[^"'\s]*/g)
+  for (const match of directVideoMatches) {
+    let url = match[0].replace(/&amp;/g, '&').replace(/\\u0026/g, '&')
+    url = url.split('"')[0].split("'")[0]
+    if (!media.find(m => m.url === url || m.video_url === url)) {
+      media.push({
+        url,
+        index: media.length,
+        is_video: true,
+        video_url: url
+      })
+    }
   }
 
-  // Deduplicate and clean images
-  const uniqueImages = images.reduce((acc: ImageData[], img) => {
+  // Detect carousel
+  const isCarousel = media.filter(m => !m.is_video || isReel).length > 1 ||
+                     html.includes('edge_sidecar_to_children') ||
+                     html.includes('GraphSidecar')
+
+  // If no media found but it's a video, try alternative extraction
+  if (media.length === 0 && isVideo) {
+    // Try to get video from script tags
+    const scriptMatch = html.match(/window\.__additionalDataLoaded\([^,]+,\s*({.+?})\s*\);/)
+    if (scriptMatch) {
+      try {
+        const data = JSON.parse(scriptMatch[1])
+        const videoUrl = data?.shortcode_media?.video_url
+        if (videoUrl) {
+          media.push({
+            url: videoUrl,
+            index: 0,
+            is_video: true,
+            video_url: videoUrl,
+            thumbnail_url: data?.shortcode_media?.display_url
+          })
+        }
+      } catch {
+        // JSON parse failed, continue
+      }
+    }
+  }
+
+  if (media.length === 0) {
+    throw new Error('No se encontró contenido. El post puede ser privado o no disponible.')
+  }
+
+  // Deduplicate and clean media
+  const uniqueMedia = media.reduce((acc: MediaData[], item) => {
     // Skip thumbnails and very small images
-    if (img.url.includes('s150x150') || img.url.includes('s320x320')) {
+    if (item.url.includes('s150x150') || item.url.includes('s320x320')) {
       return acc
     }
-    if (!acc.find(i => i.url === img.url)) {
-      acc.push({ ...img, index: acc.length })
+    if (!acc.find(i => i.url === item.url)) {
+      acc.push({ ...item, index: acc.length })
     }
     return acc
   }, [])
@@ -138,12 +207,13 @@ async function getPostDataFromEmbed(shortcode: string): Promise<PostData> {
     shortcode,
     owner,
     caption,
-    images: uniqueImages.length > 0 ? uniqueImages : images,
+    media: uniqueMedia.length > 0 ? uniqueMedia : media,
     is_carousel: isCarousel,
+    is_reel: isReel || (isVideo && !isCarousel),
   }
 }
 
-// Fallback: Use Instagram's oEmbed API for basic info
+// Fallback: Use Instagram's oEmbed API
 async function getPostDataFromOEmbed(shortcode: string): Promise<Partial<PostData>> {
   const oembedUrl = `https://api.instagram.com/oembed/?url=https://www.instagram.com/p/${shortcode}/`
 
@@ -173,7 +243,6 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const shortcode = searchParams.get('shortcode')
 
-  // Validate shortcode
   if (!shortcode) {
     return NextResponse.json(
       { success: false, error: 'Shortcode is required' },
@@ -181,7 +250,6 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Validate shortcode format
   if (!/^[A-Za-z0-9_-]+$/.test(shortcode)) {
     return NextResponse.json(
       { success: false, error: 'Invalid shortcode format' },
@@ -190,10 +258,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Try to get data from embed
     const postData = await getPostDataFromEmbed(shortcode)
 
-    // Optionally enrich with oEmbed data
+    // Enrich with oEmbed data if needed
     if (postData.owner === 'unknown' || !postData.caption) {
       const oembedData = await getPostDataFromOEmbed(shortcode)
       if (oembedData.owner && postData.owner === 'unknown') {
@@ -214,12 +281,13 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error
           ? error.message
-          : 'Failed to fetch post data. The post might be private or unavailable.',
+          : 'Error al obtener el post. Puede ser privado o no disponible.',
         shortcode,
         owner: '',
         caption: '',
-        images: [],
+        media: [],
         is_carousel: false,
+        is_reel: false,
       },
       { status: 500 }
     )
