@@ -22,6 +22,234 @@ interface DownloadResponse {
   error?: string
 }
 
+// Client-side Instagram scraping functions
+async function fetchViaProxy(url: string): Promise<string | null> {
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  ]
+
+  for (const proxyUrl of proxies) {
+    try {
+      const response = await fetch(proxyUrl, {
+        headers: { 'Accept': 'text/html,application/xhtml+xml' }
+      })
+      if (response.ok) {
+        return await response.text()
+      }
+    } catch (e) {
+      console.log('Proxy failed:', e)
+    }
+  }
+  return null
+}
+
+function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse | null {
+  const media: MediaData[] = []
+
+  // Extract username
+  const usernameMatch = html.match(/"username":"([^"]+)"/) ||
+                        html.match(/@([a-zA-Z0-9._]+)/)
+  const owner = usernameMatch ? usernameMatch[1] : 'unknown'
+
+  // Extract caption
+  const captionMatch = html.match(/"caption":"([^"]*)"/)
+  let caption = captionMatch ? captionMatch[1] : ''
+  caption = caption.replace(/\\u[\dA-F]{4}/gi, (match) =>
+    String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
+  ).replace(/\\n/g, '\n').replace(/\\"/g, '"')
+
+  // Check for video
+  const isVideo = html.includes('"is_video":true') || html.includes('video_url')
+  const isReel = html.includes('"product_type":"clips"')
+
+  // Extract video URLs
+  const videoMatches = html.matchAll(/"video_url":"([^"]+)"/g)
+  for (const match of videoMatches) {
+    const videoUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    const thumbMatch = html.match(/"display_url":"([^"]+)"/)
+    const thumbUrl = thumbMatch ? thumbMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '') : undefined
+
+    if (!media.find(m => m.video_url === videoUrl)) {
+      media.push({
+        url: videoUrl,
+        index: media.length,
+        is_video: true,
+        video_url: videoUrl,
+        thumbnail_url: thumbUrl
+      })
+    }
+  }
+
+  // Extract image URLs from display_url
+  const displayMatches = html.matchAll(/"display_url":"([^"]+)"/g)
+  for (const match of displayMatches) {
+    const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    if (!media.find(m => m.url === url || m.thumbnail_url === url)) {
+      media.push({
+        url,
+        index: media.length,
+        is_video: false
+      })
+    }
+  }
+
+  // Try to find images in srcset
+  const srcsetMatches = html.matchAll(/srcset="([^"]+)"/g)
+  for (const match of srcsetMatches) {
+    const srcset = match[1].replace(/&amp;/g, '&')
+    const urls = srcset.split(',').map(s => s.trim().split(' ')[0])
+    const highResUrl = urls[urls.length - 1]
+    if (highResUrl?.includes('cdninstagram') && !media.find(m => m.url === highResUrl)) {
+      media.push({
+        url: highResUrl,
+        index: media.length,
+        is_video: false
+      })
+    }
+  }
+
+  // Also try to extract from EmbeddedMediaImage class
+  const imgMatches = html.matchAll(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/g)
+  for (const match of imgMatches) {
+    const url = match[1].replace(/&amp;/g, '&')
+    if (url.includes('cdninstagram') && !media.find(m => m.url === url)) {
+      media.push({
+        url,
+        index: media.length,
+        is_video: false
+      })
+    }
+  }
+
+  if (media.length === 0) return null
+
+  // Filter out small thumbnails
+  const filtered = media.filter(m =>
+    !m.url.includes('s150x150') &&
+    !m.url.includes('s320x320') &&
+    !m.url.includes('s240x240')
+  )
+
+  return {
+    success: true,
+    shortcode,
+    owner,
+    caption,
+    media: filtered.length > 0 ? filtered.map((m, i) => ({ ...m, index: i })) : media,
+    is_carousel: filtered.length > 1,
+    is_reel: isReel || isVideo
+  }
+}
+
+async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
+  // Method 1: Try embed page via CORS proxy
+  const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`
+  const html = await fetchViaProxy(embedUrl)
+
+  if (html) {
+    // Try to find JSON data in the page first
+    const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)\s*;/s)
+    if (jsonMatch) {
+      try {
+        const data = JSON.parse(jsonMatch[1])
+        const mediaData = data?.shortcode_media || data?.graphql?.shortcode_media
+        if (mediaData) {
+          return parseMediaDataClient(mediaData, shortcode)
+        }
+      } catch {}
+    }
+
+    // Fallback: parse HTML directly
+    const result = parseEmbedHtmlClient(html, shortcode)
+    if (result && result.media.length > 0) {
+      return result
+    }
+  }
+
+  // Method 2: Try reel embed URL
+  const reelUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`
+  const reelHtml = await fetchViaProxy(reelUrl)
+
+  if (reelHtml) {
+    const result = parseEmbedHtmlClient(reelHtml, shortcode)
+    if (result && result.media.length > 0) {
+      return result
+    }
+  }
+
+  throw new Error('No se pudo obtener el contenido. Verifica que el post sea público.')
+}
+
+function parseMediaDataClient(data: any, shortcode: string): DownloadResponse {
+  const media: MediaData[] = []
+
+  const owner = data.owner?.username || data.user?.username || 'unknown'
+  const caption = data.edge_media_to_caption?.edges?.[0]?.node?.text ||
+                  data.caption?.text ||
+                  data.caption ||
+                  ''
+
+  const isVideo = data.is_video || data.media_type === 2
+  const isCarousel = data.__typename === 'GraphSidecar' ||
+                     data.media_type === 8 ||
+                     data.edge_sidecar_to_children?.edges?.length > 0 ||
+                     data.carousel_media?.length > 0
+
+  if (isCarousel) {
+    const edges = data.edge_sidecar_to_children?.edges || []
+    const carouselMedia = data.carousel_media || []
+
+    if (edges.length > 0) {
+      edges.forEach((edge: any, idx: number) => {
+        const node = edge.node
+        media.push({
+          url: node.display_url || node.display_resources?.pop()?.src,
+          index: idx,
+          is_video: node.is_video,
+          video_url: node.video_url,
+          thumbnail_url: node.display_url
+        })
+      })
+    } else if (carouselMedia.length > 0) {
+      carouselMedia.forEach((item: any, idx: number) => {
+        const imageUrl = item.image_versions2?.candidates?.[0]?.url
+        const videoUrl = item.video_versions?.[0]?.url
+        media.push({
+          url: videoUrl || imageUrl,
+          index: idx,
+          is_video: item.media_type === 2,
+          video_url: videoUrl,
+          thumbnail_url: imageUrl
+        })
+      })
+    }
+  } else {
+    const imageUrl = data.display_url ||
+                     data.image_versions2?.candidates?.[0]?.url ||
+                     data.display_resources?.pop()?.src
+    const videoUrl = data.video_url || data.video_versions?.[0]?.url
+
+    media.push({
+      url: isVideo ? (videoUrl || imageUrl) : imageUrl,
+      index: 0,
+      is_video: isVideo,
+      video_url: videoUrl,
+      thumbnail_url: imageUrl
+    })
+  }
+
+  return {
+    success: true,
+    shortcode,
+    owner,
+    caption: typeof caption === 'string' ? caption : '',
+    media,
+    is_carousel: isCarousel,
+    is_reel: data.product_type === 'clips' || data.product_type === 'reels'
+  }
+}
+
 export default function Home() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,16 +286,25 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const response = await fetch(`/api/download?shortcode=${shortcode}`)
-      const data: DownloadResponse = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Error al obtener el contenido')
-      }
-
+      // Try client-side scraping first (bypasses Vercel IP blocking)
+      const data = await getPostDataClient(shortcode)
       setResult(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } catch (clientErr) {
+      console.log('Client-side failed, trying server:', clientErr)
+
+      // Fallback to server-side API
+      try {
+        const response = await fetch(`/api/download?shortcode=${shortcode}`)
+        const data: DownloadResponse = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Error al obtener el contenido')
+        }
+
+        setResult(data)
+      } catch (serverErr) {
+        setError(clientErr instanceof Error ? clientErr.message : 'Error al obtener el contenido. Verifica que el post sea público.')
+      }
     } finally {
       setLoading(false)
     }
