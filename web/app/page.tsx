@@ -33,7 +33,7 @@ async function fetchViaProxy(url: string): Promise<string | null> {
   for (const proxyUrl of proxies) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
 
       const response = await fetch(proxyUrl, {
         headers: { 'Accept': 'text/html,application/xhtml+xml,application/json' },
@@ -52,6 +52,71 @@ async function fetchViaProxy(url: string): Promise<string | null> {
     }
   }
   return null
+}
+
+// Try to get carousel data from Instagram's GraphQL endpoint
+async function fetchGraphQLData(shortcode: string): Promise<any | null> {
+  const graphqlUrl = `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`
+
+  try {
+    const html = await fetchViaProxy(graphqlUrl)
+    if (html) {
+      try {
+        const data = JSON.parse(html)
+        return data?.graphql?.shortcode_media || data?.items?.[0] || null
+      } catch {
+        // Try to extract from HTML if JSON parse fails
+        const jsonMatch = html.match(/"graphql"\s*:\s*(\{.+?"shortcode_media".+?\})\s*,\s*"showQRModal"/)
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[1])
+            return parsed?.shortcode_media
+          } catch {}
+        }
+      }
+    }
+  } catch (e) {
+    console.log('GraphQL fetch failed:', e)
+  }
+  return null
+}
+
+// Extract all images from Instagram page HTML
+function extractAllImagesFromHtml(html: string): string[] {
+  const images: string[] = []
+
+  // Pattern 1: display_url in JSON
+  const displayUrlMatches = html.matchAll(/"display_url"\s*:\s*"([^"]+)"/g)
+  for (const match of displayUrlMatches) {
+    const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    if (url.includes('cdninstagram') && !images.includes(url)) {
+      images.push(url)
+    }
+  }
+
+  // Pattern 2: src in sidecar edges
+  const sidecarMatches = html.matchAll(/"node"\s*:\s*\{[^}]*"display_url"\s*:\s*"([^"]+)"/g)
+  for (const match of sidecarMatches) {
+    const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    if (url.includes('cdninstagram') && !images.includes(url)) {
+      images.push(url)
+    }
+  }
+
+  // Pattern 3: High-res images in display_resources
+  const resourceMatches = html.matchAll(/"display_resources"\s*:\s*\[([^\]]+)\]/g)
+  for (const match of resourceMatches) {
+    const srcMatches = match[1].matchAll(/"src"\s*:\s*"([^"]+)"/g)
+    let lastSrc = ''
+    for (const srcMatch of srcMatches) {
+      lastSrc = srcMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    }
+    if (lastSrc && lastSrc.includes('cdninstagram') && !images.includes(lastSrc)) {
+      images.push(lastSrc)
+    }
+  }
+
+  return images
 }
 
 function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse | null {
@@ -154,8 +219,82 @@ function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse
 
 async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
   const errors: string[] = []
+  console.log('Starting data fetch for:', shortcode)
 
-  // Method 1: Try embed page via CORS proxy
+  // Method 1: Try the main Instagram page (has full carousel data)
+  try {
+    const mainUrl = `https://www.instagram.com/p/${shortcode}/`
+    console.log('Trying main page:', mainUrl)
+    const mainHtml = await fetchViaProxy(mainUrl)
+
+    if (mainHtml) {
+      // Try to extract shared_data JSON
+      const sharedDataMatch = mainHtml.match(/window\._sharedData\s*=\s*(\{.+?\});\s*<\/script>/)
+      if (sharedDataMatch) {
+        try {
+          const sharedData = JSON.parse(sharedDataMatch[1])
+          const mediaData = sharedData?.entry_data?.PostPage?.[0]?.graphql?.shortcode_media
+          if (mediaData) {
+            console.log('Found data in _sharedData')
+            const result = parseMediaDataClient(mediaData, shortcode)
+            if (result.media.length > 0) return result
+          }
+        } catch (e) {
+          console.log('sharedData parse error:', e)
+        }
+      }
+
+      // Try additionalDataLoaded pattern
+      const additionalMatch = mainHtml.match(/window\.__additionalDataLoaded\s*\(['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)/)
+      if (additionalMatch) {
+        try {
+          const data = JSON.parse(additionalMatch[1])
+          const mediaData = data?.graphql?.shortcode_media || data?.shortcode_media
+          if (mediaData) {
+            console.log('Found data in __additionalDataLoaded')
+            const result = parseMediaDataClient(mediaData, shortcode)
+            if (result.media.length > 0) return result
+          }
+        } catch (e) {
+          console.log('additionalData parse error:', e)
+        }
+      }
+
+      // Try extracting all images from HTML as fallback
+      const allImages = extractAllImagesFromHtml(mainHtml)
+      if (allImages.length > 0) {
+        console.log('Found', allImages.length, 'images via HTML extraction')
+        // Filter out duplicates and small thumbnails
+        const filtered = allImages.filter(url =>
+          !url.includes('s150x150') &&
+          !url.includes('s320x320') &&
+          !url.includes('s240x240') &&
+          !url.includes('s640x640')
+        )
+        const unique = [...new Set(filtered)]
+        if (unique.length > 0) {
+          return {
+            success: true,
+            shortcode,
+            owner: 'instagram',
+            caption: '',
+            media: unique.map((url, idx) => ({
+              url,
+              index: idx,
+              is_video: false
+            })),
+            is_carousel: unique.length > 1,
+            is_reel: false
+          }
+        }
+      }
+    }
+  } catch (e) {
+    errors.push('main page failed')
+    console.log('Main page method failed:', e)
+  }
+
+  // Method 2: Try embed page via CORS proxy
   try {
     const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`
     console.log('Trying embed URL:', embedUrl)
@@ -188,7 +327,7 @@ async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
     console.log('Embed method failed:', e)
   }
 
-  // Method 2: Try reel embed URL
+  // Method 3: Try reel embed URL
   try {
     const reelUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`
     console.log('Trying reel URL:', reelUrl)
@@ -205,21 +344,17 @@ async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
     console.log('Reel method failed:', e)
   }
 
-  // Method 3: Try simple embed (non-captioned)
+  // Method 4: Try GraphQL endpoint
   try {
-    const simpleUrl = `https://www.instagram.com/p/${shortcode}/embed/`
-    console.log('Trying simple embed:', simpleUrl)
-    const simpleHtml = await fetchViaProxy(simpleUrl)
-
-    if (simpleHtml) {
-      const result = parseEmbedHtmlClient(simpleHtml, shortcode)
-      if (result && result.media.length > 0) {
-        return result
-      }
+    console.log('Trying GraphQL endpoint')
+    const graphqlData = await fetchGraphQLData(shortcode)
+    if (graphqlData) {
+      const result = parseMediaDataClient(graphqlData, shortcode)
+      if (result.media.length > 0) return result
     }
   } catch (e) {
-    errors.push('simple failed')
-    console.log('Simple embed failed:', e)
+    errors.push('graphql failed')
+    console.log('GraphQL method failed:', e)
   }
 
   throw new Error('No se pudo obtener el contenido. Verifica que el post sea público y la URL sea correcta.')
@@ -395,26 +530,123 @@ export default function Home() {
     try {
       const downloadUrl = mediaItem.is_video ? (mediaItem.video_url || mediaItem.url) : mediaItem.url
       const extension = mediaItem.is_video ? 'mp4' : 'jpg'
+      const filename = `instagram_${result?.shortcode}_${mediaItem.index + 1}.${extension}`
 
-      // For iOS/mobile: open in new tab so user can long-press to save
+      // For iOS/mobile: try to download via proxy, then open in new tab
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
-      if (isMobile) {
-        // Open in new tab for mobile - user can long-press to save
+      if (isIOS) {
+        // On iOS, we need to use a workaround
+        // First try to fetch via CORS proxy and create a blob URL
+        try {
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(downloadUrl)}`
+          const response = await fetch(proxyUrl)
+          if (response.ok) {
+            const blob = await response.blob()
+            const blobUrl = window.URL.createObjectURL(blob)
+
+            // Create a temporary link
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = filename
+
+            // For iOS Safari, we need to actually show the image in a new tab
+            // and let the user long-press to save
+            const newWindow = window.open('', '_blank')
+            if (newWindow) {
+              newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <title>Guardar Imagen - ${filename}</title>
+                  <style>
+                    body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; text-align: center; }
+                    img, video { max-width: 100%; height: auto; border-radius: 12px; }
+                    .instructions { background: #1a1a1a; padding: 16px; border-radius: 12px; margin-bottom: 20px; }
+                    .step { margin: 8px 0; }
+                    .emoji { font-size: 1.5em; }
+                  </style>
+                </head>
+                <body>
+                  <div class="instructions">
+                    <p class="step"><span class="emoji">👆</span> <strong>Mantén presionada la imagen</strong></p>
+                    <p class="step"><span class="emoji">📥</span> <strong>Selecciona "Guardar imagen"</strong></p>
+                  </div>
+                  ${mediaItem.is_video
+                    ? `<video src="${blobUrl}" controls playsinline style="width:100%"></video>`
+                    : `<img src="${blobUrl}" alt="${filename}" />`
+                  }
+                </body>
+                </html>
+              `)
+              newWindow.document.close()
+            } else {
+              // Popup blocked, open directly
+              window.open(downloadUrl, '_blank')
+            }
+            return
+          }
+        } catch (proxyErr) {
+          console.log('Proxy download failed, opening direct URL:', proxyErr)
+        }
+
+        // Fallback: open original URL
         window.open(downloadUrl, '_blank')
-      } else {
-        // Desktop: download directly
-        const response = await fetch(downloadUrl)
-        const blob = await response.blob()
-        const blobUrl = window.URL.createObjectURL(blob)
 
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = `instagram_${result?.shortcode}_${mediaItem.index + 1}.${extension}`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(blobUrl)
+      } else if (isMobile) {
+        // Android: try direct download first
+        try {
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(downloadUrl)}`
+          const response = await fetch(proxyUrl)
+          if (response.ok) {
+            const blob = await response.blob()
+            const blobUrl = window.URL.createObjectURL(blob)
+
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(blobUrl)
+            return
+          }
+        } catch {
+          // Fallback to opening in new tab
+        }
+        window.open(downloadUrl, '_blank')
+
+      } else {
+        // Desktop: download directly via proxy
+        try {
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(downloadUrl)}`
+          const response = await fetch(proxyUrl)
+          const blob = await response.blob()
+          const blobUrl = window.URL.createObjectURL(blob)
+
+          const link = document.createElement('a')
+          link.href = blobUrl
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(blobUrl)
+        } catch {
+          // Fallback to direct URL
+          const response = await fetch(downloadUrl)
+          const blob = await response.blob()
+          const blobUrl = window.URL.createObjectURL(blob)
+
+          const link = document.createElement('a')
+          link.href = blobUrl
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(blobUrl)
+        }
       }
     } catch (err) {
       console.error('Error downloading:', err)
@@ -638,9 +870,9 @@ export default function Home() {
           {/* Mobile tip */}
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-700 dark:text-blue-300 text-sm md:hidden">
             <p className="flex items-start gap-2">
-              <span className="text-lg">💡</span>
+              <span className="text-lg">📱</span>
               <span>
-                <strong>Tip:</strong> Mantén presionada la imagen o video para guardarla en tu galería.
+                <strong>iPhone/iPad:</strong> Se abrirá una ventana. Mantén presionada la imagen y selecciona "Guardar imagen" para guardarla en tu galería.
               </span>
             </p>
           </div>
@@ -656,7 +888,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.3.0
+          v1.4.0
         </p>
       </footer>
     </div>
