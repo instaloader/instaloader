@@ -86,7 +86,7 @@ async function tryEmbedMethod(shortcode: string): Promise<PostData | null> {
   const html = await response.text()
 
   // Try to find JSON data in the page
-  const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{.+?\})\s*\)\s*;/s)
+  const jsonMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]+['"]\s*,\s*(\{[\s\S]+?\})\s*\)\s*;/)
   if (jsonMatch) {
     try {
       const data = JSON.parse(jsonMatch[1])
