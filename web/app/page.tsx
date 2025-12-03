@@ -25,30 +25,39 @@ interface DownloadResponse {
 // Client-side Instagram scraping functions
 async function fetchViaProxy(url: string): Promise<string | null> {
   const proxies = [
+    // Primary proxies
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    // Backup proxies
+    `https://proxy.cors.sh/${url}`,
+    `https://thingproxy.freeboard.io/fetch/${url}`,
   ]
 
   for (const proxyUrl of proxies) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      const timeoutId = setTimeout(() => controller.abort(), 12000)
 
       const response = await fetch(proxyUrl, {
-        headers: { 'Accept': 'text/html,application/xhtml+xml,application/json' },
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/json,*/*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+        },
         signal: controller.signal
       })
       clearTimeout(timeoutId)
 
       if (response.ok) {
         const text = await response.text()
-        if (text && text.length > 100) {
+        // Check if we got a valid Instagram response (not a login page or error)
+        if (text && text.length > 500 && !text.includes('login') && !text.includes('Log in')) {
           return text
         }
       }
     } catch (e) {
-      console.log('Proxy failed:', proxyUrl, e)
+      console.log('Proxy failed:', proxyUrl)
     }
   }
   return null
@@ -1138,7 +1147,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.6.0
+          v1.6.1
         </p>
       </footer>
     </div>
