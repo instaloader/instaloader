@@ -22,42 +22,73 @@ interface DownloadResponse {
   error?: string
 }
 
+// List of known GraphQL doc_ids (Instagram changes these every 2-4 weeks)
+const GRAPHQL_DOC_IDS = [
+  '10015901848480474',  // Current working (Dec 2025)
+  '8845758582119845',   // Alternative
+  '17991233890457762',  // Backup
+]
+
+// User agents for rotation
+const USER_AGENTS = [
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Instagram 317.0.0.24.109 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100)',
+]
+
 // Client-side Instagram scraping functions
-async function fetchViaProxy(url: string): Promise<string | null> {
+async function fetchViaProxy(url: string, userAgent?: string): Promise<string | null> {
   const proxies = [
-    // Primary proxies
+    // Primary proxies (most reliable)
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
     // Backup proxies
     `https://proxy.cors.sh/${url}`,
     `https://thingproxy.freeboard.io/fetch/${url}`,
+    // Additional proxies
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.org/?${encodeURIComponent(url)}`,
   ]
+
+  const randomUA = userAgent || USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 
   for (const proxyUrl of proxies) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 12000)
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
 
       const response = await fetch(proxyUrl, {
         headers: {
           'Accept': 'text/html,application/xhtml+xml,application/json,*/*',
           'Accept-Language': 'en-US,en;q=0.9',
           'Cache-Control': 'no-cache',
+          'User-Agent': randomUA,
         },
         signal: controller.signal
       })
       clearTimeout(timeoutId)
 
       if (response.ok) {
-        const text = await response.text()
+        let text = await response.text()
+
+        // Handle allorigins.win/get response format (returns JSON with contents)
+        if (proxyUrl.includes('allorigins.win/get')) {
+          try {
+            const json = JSON.parse(text)
+            text = json.contents || text
+          } catch {}
+        }
+
         // Check if we got a valid Instagram response (not a login page or error)
         if (text && text.length > 500 && !text.includes('login') && !text.includes('Log in')) {
+          console.log('[DEBUG] Proxy success:', proxyUrl.split('?')[0])
           return text
         }
       }
     } catch (e) {
-      console.log('Proxy failed:', proxyUrl)
+      console.log('[DEBUG] Proxy failed:', proxyUrl.split('?')[0])
     }
   }
   return null
@@ -65,9 +96,12 @@ async function fetchViaProxy(url: string): Promise<string | null> {
 
 // Try to get carousel data from Instagram's GraphQL endpoint (the real method)
 async function fetchGraphQLData(shortcode: string): Promise<any | null> {
-  // Method 1: Try the official GraphQL API endpoint (like SSSInstagram uses)
-  try {
-    const graphqlUrl = 'https://www.instagram.com/api/graphql'
+  const graphqlUrl = 'https://www.instagram.com/api/graphql'
+  const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
+
+  // Try each doc_id until one works
+  for (const docId of GRAPHQL_DOC_IDS) {
+    console.log(`[DEBUG] Trying GraphQL with doc_id: ${docId}`)
 
     const formData = new URLSearchParams({
       av: '0',
@@ -104,67 +138,98 @@ async function fetchGraphQLData(shortcode: string): Promise<any | null> {
         hoisted_reply_id: null
       }),
       server_timestamps: 'true',
-      doc_id: '10015901848480474'
+      doc_id: docId
     })
 
-    // Try via proxy
-    for (const proxyBase of ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=']) {
+    // Try via proxy with each doc_id
+    const proxies = [
+      'https://corsproxy.io/?',
+      'https://api.allorigins.win/raw?url=',
+      'https://corsproxy.org/?',
+    ]
+
+    for (const proxyBase of proxies) {
       try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-        // For corsproxy.io, we need to make a POST request differently
-        if (proxyBase.includes('corsproxy')) {
-          const response = await fetch(proxyBase + encodeURIComponent(graphqlUrl), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-IG-App-ID': '936619743392459',
-              'X-FB-LSD': 'AVqbxe3J_YA',
-              'X-ASBD-ID': '129477',
-              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
-            },
-            body: formData,
-            signal: controller.signal
-          })
-          clearTimeout(timeoutId)
+        const response = await fetch(proxyBase + encodeURIComponent(graphqlUrl), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-IG-App-ID': '936619743392459',
+            'X-FB-LSD': 'AVqbxe3J_YA',
+            'X-ASBD-ID': '129477',
+            'User-Agent': randomUA,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'cors',
+          },
+          body: formData,
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
 
-          if (response.ok) {
-            const data = await response.json()
-            const media = data?.data?.xdt_shortcode_media || data?.data?.shortcode_media
-            if (media) {
-              console.log('GraphQL API success!')
-              return media
-            }
+        if (response.ok) {
+          const data = await response.json()
+          const media = data?.data?.xdt_shortcode_media || data?.data?.shortcode_media
+          if (media) {
+            console.log(`[DEBUG] GraphQL success with doc_id: ${docId}`)
+            return media
           }
         }
       } catch (e) {
-        console.log('GraphQL proxy failed:', e)
+        console.log(`[DEBUG] GraphQL proxy failed: ${proxyBase}`)
       }
     }
-  } catch (e) {
-    console.log('GraphQL API failed:', e)
   }
 
-  // Method 2: Fallback to ?__a=1&__d=dis endpoint
+  // Method 2: Fallback to ?__a=1&__d=dis endpoint (better for carousel data)
+  console.log('[DEBUG] Trying ?__a=1&__d=dis endpoint')
   try {
     const jsonUrl = `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`
-    const html = await fetchViaProxy(jsonUrl)
+    const html = await fetchViaProxy(jsonUrl, USER_AGENTS[3]) // Use Instagram app UA
     if (html) {
       try {
         const data = JSON.parse(html)
-        return data?.graphql?.shortcode_media || data?.items?.[0] || null
+        const mediaData = data?.graphql?.shortcode_media || data?.items?.[0]
+        if (mediaData) {
+          console.log('[DEBUG] __a=1&__d=dis endpoint success')
+          return mediaData
+        }
       } catch {
         const jsonMatch = html.match(/"graphql"\s*:\s*(\{.+?"shortcode_media".+?\})\s*,\s*"showQRModal"/)
         if (jsonMatch) {
           try {
-            return JSON.parse(jsonMatch[1])?.shortcode_media
+            const parsed = JSON.parse(jsonMatch[1])?.shortcode_media
+            if (parsed) {
+              console.log('[DEBUG] Extracted from HTML successfully')
+              return parsed
+            }
           } catch {}
         }
       }
     }
   } catch (e) {
-    console.log('JSON endpoint failed:', e)
+    console.log('[DEBUG] JSON endpoint failed:', e)
+  }
+
+  // Method 3: Try reel endpoint
+  console.log('[DEBUG] Trying reel endpoint')
+  try {
+    const reelUrl = `https://www.instagram.com/reel/${shortcode}/?__a=1&__d=dis`
+    const html = await fetchViaProxy(reelUrl, USER_AGENTS[3])
+    if (html) {
+      try {
+        const data = JSON.parse(html)
+        const mediaData = data?.graphql?.shortcode_media || data?.items?.[0]
+        if (mediaData) {
+          console.log('[DEBUG] Reel endpoint success')
+          return mediaData
+        }
+      } catch {}
+    }
+  } catch (e) {
+    console.log('[DEBUG] Reel endpoint failed:', e)
   }
 
   return null
@@ -205,7 +270,58 @@ function extractAllImagesFromHtml(html: string): string[] {
     }
   }
 
+  // Pattern 4: carousel_media items (from ?__a=1&__d=dis response)
+  const carouselMatches = html.matchAll(/"carousel_media"\s*:\s*\[([\s\S]*?)\]/g)
+  for (const match of carouselMatches) {
+    const urlMatches = match[1].matchAll(/"url"\s*:\s*"([^"]+)"/g)
+    for (const urlMatch of urlMatches) {
+      const url = urlMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+      if (url.includes('cdninstagram') && !images.includes(url)) {
+        images.push(url)
+      }
+    }
+  }
+
+  // Pattern 5: image_versions2 candidates
+  const candidateMatches = html.matchAll(/"candidates"\s*:\s*\[\s*\{\s*"width"\s*:\s*\d+[^}]*"url"\s*:\s*"([^"]+)"/g)
+  for (const match of candidateMatches) {
+    const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    if (url.includes('cdninstagram') && !images.includes(url)) {
+      images.push(url)
+    }
+  }
+
+  console.log(`[DEBUG] extractAllImagesFromHtml found ${images.length} images`)
   return images
+}
+
+// Try to extract carousel data from various JSON structures in HTML
+function extractCarouselFromHtml(html: string): any | null {
+  // Try to find edge_sidecar_to_children data
+  const sidecarMatch = html.match(/"edge_sidecar_to_children"\s*:\s*(\{"edges"\s*:\s*\[[\s\S]*?\]\})/);
+  if (sidecarMatch) {
+    try {
+      const sidecar = JSON.parse(sidecarMatch[1])
+      if (sidecar?.edges?.length > 0) {
+        console.log(`[DEBUG] Found sidecar with ${sidecar.edges.length} edges`)
+        return { edge_sidecar_to_children: sidecar, __typename: 'GraphSidecar' }
+      }
+    } catch {}
+  }
+
+  // Try to find carousel_media array
+  const carouselMatch = html.match(/"carousel_media"\s*:\s*(\[[\s\S]*?\])\s*[,}]/)
+  if (carouselMatch) {
+    try {
+      const carousel = JSON.parse(carouselMatch[1])
+      if (Array.isArray(carousel) && carousel.length > 0) {
+        console.log(`[DEBUG] Found carousel_media with ${carousel.length} items`)
+        return { carousel_media: carousel, product_type: 'carousel_container' }
+      }
+    } catch {}
+  }
+
+  return null
 }
 
 function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse | null {
@@ -354,13 +470,21 @@ async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
           const data = JSON.parse(additionalMatch[1])
           const mediaData = data?.graphql?.shortcode_media || data?.shortcode_media
           if (mediaData) {
-            console.log('Found data in __additionalDataLoaded')
+            console.log('[DEBUG] Found data in __additionalDataLoaded')
             const result = parseMediaDataClient(mediaData, shortcode)
             if (result.media.length > 0) return result
           }
         } catch (e) {
-          console.log('additionalData parse error:', e)
+          console.log('[DEBUG] additionalData parse error:', e)
         }
+      }
+
+      // Try to extract carousel data from HTML using new method
+      const carouselData = extractCarouselFromHtml(mainHtml)
+      if (carouselData) {
+        console.log('[DEBUG] Found carousel data via extractCarouselFromHtml')
+        const result = parseMediaDataClient(carouselData, shortcode)
+        if (result.media.length > 1) return result
       }
 
       // Check if this is a video post first
@@ -1169,7 +1293,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.6.2
+          v1.7.0
         </p>
       </footer>
     </div>

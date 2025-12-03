@@ -1,6 +1,6 @@
 # Problemas del Instagram Downloader
 
-## Estado Actual: v1.6.2
+## Estado Actual: v1.7.0
 
 ---
 
@@ -28,31 +28,65 @@
 
 ---
 
-## Problemas Actuales (Sin Resolver)
+## Mejoras Implementadas en v1.7.0
 
-### 1. Carruseles muestran solo 1-2 fotos en lugar de todas
-- **Problema:** Un carrusel de 6 fotos solo muestra 1 o 2
-- **URLs de prueba que fallan:**
-  - `https://www.instagram.com/p/DRNBNPlDsSc/`
-- **Intentos de solución:**
-  - Agregado `product_type === 'carousel_container'` para detección
-  - Agregados múltiples proxies CORS
-  - Implementado GraphQL API con `doc_id: 10015901848480474`
-  - Mejorado parsing de `edge_sidecar_to_children` y `carousel_media`
-- **Estado:** NO FUNCIONA - Necesita más investigación
+### 1. doc_id rotativos para GraphQL
+- **Problema:** Instagram cambia el `doc_id` cada 2-4 semanas
+- **Solución:** Implementar lista de doc_ids alternativos que se prueban en secuencia
+- **doc_ids actuales:**
+  - `10015901848480474` (Principal - Dic 2025)
+  - `8845758582119845` (Alternativo)
+  - `17991233890457762` (Respaldo)
+
+### 2. User-Agent rotativo
+- **Problema:** Instagram bloqueaba requests con el mismo User-Agent
+- **Solución:** Implementar rotación entre 4 User-Agents diferentes (iPhone, Android, Desktop, Instagram App)
+
+### 3. Más proxies CORS
+- **Problema:** Algunos proxies estaban bloqueados
+- **Solución:** Agregar más proxies alternativos:
+  - `api.allorigins.win/raw` (principal)
+  - `corsproxy.io` (principal)
+  - `api.codetabs.com` (principal)
+  - `proxy.cors.sh` (respaldo)
+  - `thingproxy.freeboard.io` (respaldo)
+  - `api.allorigins.win/get` (nuevo)
+  - `corsproxy.org` (nuevo)
+
+### 4. Mejor extracción de carruseles
+- **Problema:** Carruseles mostraban solo 1-2 fotos
+- **Solución:**
+  - Nueva función `extractCarouselFromHtml()` para extraer datos de `edge_sidecar_to_children` y `carousel_media`
+  - Múltiples patrones de regex para encontrar URLs de imágenes
+  - Mejor manejo de respuestas del endpoint `?__a=1&__d=dis`
+
+### 5. Logging de debug mejorado
+- **Problema:** No había forma de debuggear qué método funcionaba
+- **Solución:** Agregar logs `[DEBUG]` y `[SERVER DEBUG]` para cada paso del proceso
+- **Uso:** Abrir consola del navegador (F12) para ver los logs
+
+---
+
+## Problemas Actuales (Pueden persistir)
+
+### 1. Algunos carruseles siguen mostrando pocas fotos
+- **Estado:** PARCIALMENTE RESUELTO
+- **Causa:** Instagram limita datos en respuestas no autenticadas
+- **Próximos pasos:**
+  - Considerar implementar sesión con cookies
+  - Usar API de terceros como respaldo (Apify, RapidAPI)
 
 ### 2. Algunos posts dan error "No se pudo obtener el contenido"
-- **Problema:** Posts públicos dan error de que no se puede obtener
-- **Causa probable:**
-  - Instagram bloquea las IPs de Vercel
-  - Los proxies CORS están siendo bloqueados
-  - Los parámetros del GraphQL API pueden estar desactualizados
-- **Estado:** NO FUNCIONA
+- **Estado:** MEJORADO pero puede ocurrir
+- **Causa:**
+  - IPs de Vercel están bloqueadas por Instagram
+  - Posts privados o restringidos
+- **Solución parcial:** El cliente ahora intenta múltiples métodos antes de fallar
 
 ### 3. No hay forma de testear en el entorno de desarrollo
 - **Problema:** El sandbox de desarrollo no tiene acceso a Instagram
 - **Error:** `getaddrinfo EAI_AGAIN www.instagram.com`
-- **Impacto:** No se puede debuggear ni probar cambios antes de deploy
+- **Workaround:** Probar directamente en producción (Vercel) usando los logs de debug
 
 ---
 
@@ -60,50 +94,46 @@
 
 ### Cliente (page.tsx)
 1. **Main page parsing** - `window._sharedData` y `__additionalDataLoaded`
-2. **HTML extraction** - Buscar `display_url` en el HTML
-3. **Embed page** - `/p/{shortcode}/embed/captioned/`
-4. **Reel embed** - `/reel/{shortcode}/embed/captioned/`
-5. **GraphQL API** - POST a `/api/graphql` con `doc_id`
+2. **Carousel extraction** - `extractCarouselFromHtml()` para datos de carrusel
+3. **HTML extraction** - Múltiples patrones regex para `display_url`
+4. **Embed page** - `/p/{shortcode}/embed/captioned/`
+5. **Reel embed** - `/reel/{shortcode}/embed/captioned/`
+6. **GraphQL API** - POST con doc_ids rotativos
+7. **Direct API** - `?__a=1&__d=dis` con Instagram App UA
 
 ### Servidor (route.ts)
-1. **GraphQL con doc_id** - `doc_id: 10015901848480474`
+1. **GraphQL con doc_ids rotativos** - Intenta múltiples doc_ids
 2. **GraphQL con query_hash** - `query_hash=b3055c01b4b222b8a47dc12b090e4e64`
 3. **Embed page scraping**
 4. **Direct API** - `?__a=1&__d=dis`
 
-### Proxies CORS usados
-- `api.allorigins.win`
-- `corsproxy.io`
-- `api.codetabs.com`
-- `proxy.cors.sh`
-- `thingproxy.freeboard.io`
-
 ---
 
-## Herramientas de Referencia que SÍ Funcionan
+## Herramientas de Referencia
 
-Estas herramientas funcionan correctamente y podrían usarse como referencia:
+Estas herramientas funcionan correctamente y se usaron como referencia:
 
 1. **FastDL** - https://fastdl.app/carousel
 2. **IQSaved** - https://iqsaved.com/carousel/
-3. **The Social Cat** - https://thesocialcat.com/tools/instagram-photo-downloader
-4. **SSSInstagram** - https://sssinstagram.com/
+3. **SSSInstagram** - https://sssinstagram.com/
 
 ### Repositorio de referencia
 - **instagram-media-scraper** - https://github.com/ahmedrangel/instagram-media-scraper
-  - Usa GraphQL con `doc_id: 10015901848480474`
+  - Usa GraphQL con `doc_id` rotativo
   - Detecta carruseles con `product_type === 'carousel_container'`
   - Extrae media de `carousel_media` array
 
 ---
 
-## Próximos Pasos Sugeridos
+## Cómo Debuggear
 
-1. [ ] Analizar el código exacto de `instagram-media-scraper` y replicarlo
-2. [ ] Probar con un servidor proxy propio en lugar de proxies públicos
-3. [ ] Considerar usar una API de terceros (Apify, RapidAPI)
-4. [ ] Agregar mejor logging para diagnosticar qué datos devuelve Instagram
-5. [ ] Probar desde la consola del navegador (F12) para ver los logs de debug
+1. Abre la consola del navegador (F12)
+2. Ingresa una URL de Instagram
+3. Observa los logs `[DEBUG]` que muestran:
+   - Qué proxy se está usando
+   - Qué doc_id funcionó
+   - Cuántas imágenes se encontraron
+   - Qué método tuvo éxito
 
 ---
 
@@ -115,6 +145,7 @@ Estas herramientas funcionan correctamente y podrían usarse como referencia:
 | v1.6.0 | Fix video duplicado - muestra video en lugar de miniaturas |
 | v1.6.1 | Más proxies CORS + mejor detección de login |
 | v1.6.2 | Fix detección carousel con `product_type: carousel_container` |
+| v1.7.0 | doc_ids rotativos + User-Agent rotativo + más proxies + mejor extracción carrusel + logging debug |
 
 ---
 

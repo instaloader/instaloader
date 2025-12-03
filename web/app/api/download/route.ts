@@ -19,6 +19,21 @@ interface PostData {
   error?: string
 }
 
+// List of known GraphQL doc_ids (Instagram changes these every 2-4 weeks)
+const GRAPHQL_DOC_IDS = [
+  '10015901848480474',  // Current working (Dec 2025)
+  '8845758582119845',   // Alternative
+  '17991233890457762',  // Backup
+]
+
+// User agents for rotation
+const USER_AGENTS = [
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Instagram 317.0.0.24.109 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100)',
+]
+
 // Try multiple methods to get Instagram data
 async function getPostData(shortcode: string): Promise<PostData> {
   // Method 1: Try the graphql endpoint
@@ -49,82 +64,92 @@ async function getPostData(shortcode: string): Promise<PostData> {
 }
 
 async function tryGraphQLMethod(shortcode: string): Promise<PostData | null> {
-  // Method 1: Try the new GraphQL API with doc_id (like professional tools use)
-  try {
-    const graphqlUrl = 'https://www.instagram.com/api/graphql'
+  const graphqlUrl = 'https://www.instagram.com/api/graphql'
+  const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 
-    const formData = new URLSearchParams({
-      av: '0',
-      __d: 'www',
-      __user: '0',
-      __a: '1',
-      __req: '3',
-      __hs: '19624.HYP:instagram_web_pkg.2.1..0.0',
-      dpr: '1',
-      __ccg: 'UNKNOWN',
-      __rev: '1008824440',
-      __s: 'xf44ne:zhh75g:xr51e7',
-      __hsi: '7282217488877343271',
-      __dyn: '7xeUmwlEnwn8K2WnFw9-2i5U4e0yoW3q32360CEbo1nEhw2nVE4W0om78b87C0yE5ufz81s8hwGwQwoEcE7O2l0Fwqo31w9a9x-0z8-U2zxe2GewGwso88cobEaU2eUlwhEe87q7-0iK2S3qazo7u1xwIw8O321LwTwKG1pg661pwr86C1mwraCg',
-      __csr: 'gZ3yFmJkillQvV6ybimnG8AmhqvADgjhClfSDfAHuWLzVo8ppcSoN4qKJKy3a4Cmy8m8nymcDAzo8y4EfwnA0y8x62p2m5AK0Z08nwjs1i0j80r9wDxu3awdo26w3wAw1GE0P83twg62wc8om1qwwobU2cgx05cE',
-      __comet_req: '7',
-      lsd: 'AVqbxe3J_YA',
-      jazoest: '2957',
-      __spin_r: '1008824440',
-      __spin_b: 'trunk',
-      __spin_t: '1695523385',
-      fb_api_caller_class: 'RelayModern',
-      fb_api_req_friendly_name: 'PolarisPostActionLoadPostQueryQuery',
-      variables: JSON.stringify({
-        shortcode: shortcode,
-        fetch_comment_count: 40,
-        parent_comment_count: 24,
-        child_comment_count: 3,
-        fetch_like_count: 10,
-        fetch_tagged_user_count: null,
-        fetch_preview_comment_count: 2,
-        has_threaded_comments: true,
-        hoisted_comment_id: null,
-        hoisted_reply_id: null
-      }),
-      server_timestamps: 'true',
-      doc_id: '10015901848480474'
-    })
+  // Try each doc_id until one works
+  for (const docId of GRAPHQL_DOC_IDS) {
+    console.log(`[SERVER DEBUG] Trying GraphQL with doc_id: ${docId}`)
 
-    const response = await fetch(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-IG-App-ID': '936619743392459',
-        'X-FB-LSD': 'AVqbxe3J_YA',
-        'X-ASBD-ID': '129477',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Origin': 'https://www.instagram.com',
-        'Referer': 'https://www.instagram.com/',
-      },
-      body: formData.toString()
-    })
+    try {
+      const formData = new URLSearchParams({
+        av: '0',
+        __d: 'www',
+        __user: '0',
+        __a: '1',
+        __req: '3',
+        __hs: '19624.HYP:instagram_web_pkg.2.1..0.0',
+        dpr: '1',
+        __ccg: 'UNKNOWN',
+        __rev: '1008824440',
+        __s: 'xf44ne:zhh75g:xr51e7',
+        __hsi: '7282217488877343271',
+        __dyn: '7xeUmwlEnwn8K2WnFw9-2i5U4e0yoW3q32360CEbo1nEhw2nVE4W0om78b87C0yE5ufz81s8hwGwQwoEcE7O2l0Fwqo31w9a9x-0z8-U2zxe2GewGwso88cobEaU2eUlwhEe87q7-0iK2S3qazo7u1xwIw8O321LwTwKG1pg661pwr86C1mwraCg',
+        __csr: 'gZ3yFmJkillQvV6ybimnG8AmhqvADgjhClfSDfAHuWLzVo8ppcSoN4qKJKy3a4Cmy8m8nymcDAzo8y4EfwnA0y8x62p2m5AK0Z08nwjs1i0j80r9wDxu3awdo26w3wAw1GE0P83twg62wc8om1qwwobU2cgx05cE',
+        __comet_req: '7',
+        lsd: 'AVqbxe3J_YA',
+        jazoest: '2957',
+        __spin_r: '1008824440',
+        __spin_b: 'trunk',
+        __spin_t: '1695523385',
+        fb_api_caller_class: 'RelayModern',
+        fb_api_req_friendly_name: 'PolarisPostActionLoadPostQueryQuery',
+        variables: JSON.stringify({
+          shortcode: shortcode,
+          fetch_comment_count: 40,
+          parent_comment_count: 24,
+          child_comment_count: 3,
+          fetch_like_count: 10,
+          fetch_tagged_user_count: null,
+          fetch_preview_comment_count: 2,
+          has_threaded_comments: true,
+          hoisted_comment_id: null,
+          hoisted_reply_id: null
+        }),
+        server_timestamps: 'true',
+        doc_id: docId
+      })
 
-    if (response.ok) {
-      const json = await response.json()
-      const mediaData = json?.data?.xdt_shortcode_media || json?.data?.shortcode_media
-      if (mediaData) {
-        return parseMediaData(mediaData, shortcode)
+      const response = await fetch(graphqlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-IG-App-ID': '936619743392459',
+          'X-FB-LSD': 'AVqbxe3J_YA',
+          'X-ASBD-ID': '129477',
+          'User-Agent': randomUA,
+          'Origin': 'https://www.instagram.com',
+          'Referer': 'https://www.instagram.com/',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+        },
+        body: formData.toString()
+      })
+
+      if (response.ok) {
+        const json = await response.json()
+        const mediaData = json?.data?.xdt_shortcode_media || json?.data?.shortcode_media
+        if (mediaData) {
+          console.log(`[SERVER DEBUG] GraphQL success with doc_id: ${docId}`)
+          return parseMediaData(mediaData, shortcode)
+        }
       }
+    } catch (e) {
+      console.log(`[SERVER DEBUG] GraphQL doc_id ${docId} failed:`, e)
     }
-  } catch (e) {
-    console.log('New GraphQL method failed:', e)
   }
 
   // Method 2: Fallback to old query_hash method
+  console.log('[SERVER DEBUG] Trying query_hash method')
   try {
     const url = `https://www.instagram.com/graphql/query/?query_hash=b3055c01b4b222b8a47dc12b090e4e64&variables=${encodeURIComponent(JSON.stringify({ shortcode }))}`
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': randomUA,
         'Accept': 'application/json',
         'X-IG-App-ID': '936619743392459',
+        'Sec-Fetch-Site': 'same-origin',
       },
     })
 
@@ -132,11 +157,12 @@ async function tryGraphQLMethod(shortcode: string): Promise<PostData | null> {
       const json = await response.json()
       const mediaData = json?.data?.shortcode_media
       if (mediaData) {
+        console.log('[SERVER DEBUG] query_hash method success')
         return parseMediaData(mediaData, shortcode)
       }
     }
   } catch (e) {
-    console.log('Old GraphQL method failed:', e)
+    console.log('[SERVER DEBUG] query_hash method failed:', e)
   }
 
   return null
@@ -144,17 +170,24 @@ async function tryGraphQLMethod(shortcode: string): Promise<PostData | null> {
 
 async function tryEmbedMethod(shortcode: string): Promise<PostData | null> {
   const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`
+  const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
+
+  console.log('[SERVER DEBUG] Trying embed method')
 
   const response = await fetch(embedUrl, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+      'User-Agent': randomUA,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
       'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
     },
   })
 
-  if (!response.ok) return null
+  if (!response.ok) {
+    console.log('[SERVER DEBUG] Embed method failed - response not ok')
+    return null
+  }
 
   const html = await response.text()
 
@@ -165,28 +198,37 @@ async function tryEmbedMethod(shortcode: string): Promise<PostData | null> {
       const data = JSON.parse(jsonMatch[1])
       const mediaData = data?.shortcode_media || data?.graphql?.shortcode_media
       if (mediaData) {
+        console.log('[SERVER DEBUG] Embed method - found JSON data')
         return parseMediaData(mediaData, shortcode)
       }
     } catch {}
   }
 
   // Fallback: parse HTML directly
+  console.log('[SERVER DEBUG] Embed method - parsing HTML')
   return parseEmbedHtml(html, shortcode)
 }
 
 async function tryDirectMethod(shortcode: string): Promise<PostData | null> {
+  console.log('[SERVER DEBUG] Trying direct method (?__a=1&__d=dis)')
+
   // Try the main Instagram page with different approaches
   const urls = [
     `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`,
     `https://www.instagram.com/reel/${shortcode}/?__a=1&__d=dis`,
   ]
 
+  // Use Instagram app user agent for better results
+  const instagramUA = USER_AGENTS[3] // Instagram Android UA
+
   for (const url of urls) {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Instagram 219.0.0.12.117 Android',
+          'User-Agent': instagramUA,
           'Accept': '*/*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'X-IG-App-ID': '936619743392459',
         },
       })
 
@@ -194,10 +236,13 @@ async function tryDirectMethod(shortcode: string): Promise<PostData | null> {
         const json = await response.json()
         const mediaData = json?.items?.[0] || json?.graphql?.shortcode_media
         if (mediaData) {
+          console.log('[SERVER DEBUG] Direct method success')
           return parseMediaData(mediaData, shortcode)
         }
       }
-    } catch {}
+    } catch (e) {
+      console.log(`[SERVER DEBUG] Direct method failed for ${url}:`, e)
+    }
   }
 
   return null
@@ -218,12 +263,13 @@ function parseMediaData(data: any, shortcode: string): PostData {
   const isCarousel = data.__typename === 'GraphSidecar' ||
                      data.product_type === 'carousel_container' ||
                      data.media_type === 8 ||
-                     data.edge_sidecar_to_children?.edges?.length > 0 ||
-                     data.carousel_media?.length > 0
+                     (data.edge_sidecar_to_children?.edges?.length || 0) > 0 ||
+                     (data.carousel_media?.length || 0) > 0
 
-  console.log('Server parsing:', {
+  console.log('[SERVER DEBUG] parseMediaData:', {
     typename: data.__typename,
     product_type: data.product_type,
+    isVideo,
     isCarousel,
     edgesCount: data.edge_sidecar_to_children?.edges?.length || 0,
     carouselCount: data.carousel_media?.length || 0
@@ -291,10 +337,10 @@ function parseMediaData(data: any, shortcode: string): PostData {
     })
   }
 
-  console.log('Server parsed media count:', media.length)
+  console.log(`[SERVER DEBUG] Parsed ${media.length} media items`)
 
   return {
-    success: true,
+    success: media.length > 0,
     shortcode,
     owner,
     caption: typeof caption === 'string' ? caption : '',
