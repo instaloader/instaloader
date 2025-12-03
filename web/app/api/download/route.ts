@@ -49,24 +49,97 @@ async function getPostData(shortcode: string): Promise<PostData> {
 }
 
 async function tryGraphQLMethod(shortcode: string): Promise<PostData | null> {
-  const url = `https://www.instagram.com/graphql/query/?query_hash=b3055c01b4b222b8a47dc12b090e4e64&variables=${encodeURIComponent(JSON.stringify({ shortcode }))}`
+  // Method 1: Try the new GraphQL API with doc_id (like professional tools use)
+  try {
+    const graphqlUrl = 'https://www.instagram.com/api/graphql'
 
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json',
-      'X-IG-App-ID': '936619743392459',
-    },
-  })
+    const formData = new URLSearchParams({
+      av: '0',
+      __d: 'www',
+      __user: '0',
+      __a: '1',
+      __req: '3',
+      __hs: '19624.HYP:instagram_web_pkg.2.1..0.0',
+      dpr: '1',
+      __ccg: 'UNKNOWN',
+      __rev: '1008824440',
+      __s: 'xf44ne:zhh75g:xr51e7',
+      __hsi: '7282217488877343271',
+      __dyn: '7xeUmwlEnwn8K2WnFw9-2i5U4e0yoW3q32360CEbo1nEhw2nVE4W0om78b87C0yE5ufz81s8hwGwQwoEcE7O2l0Fwqo31w9a9x-0z8-U2zxe2GewGwso88cobEaU2eUlwhEe87q7-0iK2S3qazo7u1xwIw8O321LwTwKG1pg661pwr86C1mwraCg',
+      __csr: 'gZ3yFmJkillQvV6ybimnG8AmhqvADgjhClfSDfAHuWLzVo8ppcSoN4qKJKy3a4Cmy8m8nymcDAzo8y4EfwnA0y8x62p2m5AK0Z08nwjs1i0j80r9wDxu3awdo26w3wAw1GE0P83twg62wc8om1qwwobU2cgx05cE',
+      __comet_req: '7',
+      lsd: 'AVqbxe3J_YA',
+      jazoest: '2957',
+      __spin_r: '1008824440',
+      __spin_b: 'trunk',
+      __spin_t: '1695523385',
+      fb_api_caller_class: 'RelayModern',
+      fb_api_req_friendly_name: 'PolarisPostActionLoadPostQueryQuery',
+      variables: JSON.stringify({
+        shortcode: shortcode,
+        fetch_comment_count: 40,
+        parent_comment_count: 24,
+        child_comment_count: 3,
+        fetch_like_count: 10,
+        fetch_tagged_user_count: null,
+        fetch_preview_comment_count: 2,
+        has_threaded_comments: true,
+        hoisted_comment_id: null,
+        hoisted_reply_id: null
+      }),
+      server_timestamps: 'true',
+      doc_id: '10015901848480474'
+    })
 
-  if (!response.ok) return null
+    const response = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-IG-App-ID': '936619743392459',
+        'X-FB-LSD': 'AVqbxe3J_YA',
+        'X-ASBD-ID': '129477',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Origin': 'https://www.instagram.com',
+        'Referer': 'https://www.instagram.com/',
+      },
+      body: formData.toString()
+    })
 
-  const json = await response.json()
-  const mediaData = json?.data?.shortcode_media
+    if (response.ok) {
+      const json = await response.json()
+      const mediaData = json?.data?.xdt_shortcode_media || json?.data?.shortcode_media
+      if (mediaData) {
+        return parseMediaData(mediaData, shortcode)
+      }
+    }
+  } catch (e) {
+    console.log('New GraphQL method failed:', e)
+  }
 
-  if (!mediaData) return null
+  // Method 2: Fallback to old query_hash method
+  try {
+    const url = `https://www.instagram.com/graphql/query/?query_hash=b3055c01b4b222b8a47dc12b090e4e64&variables=${encodeURIComponent(JSON.stringify({ shortcode }))}`
 
-  return parseMediaData(mediaData, shortcode)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'X-IG-App-ID': '936619743392459',
+      },
+    })
+
+    if (response.ok) {
+      const json = await response.json()
+      const mediaData = json?.data?.shortcode_media
+      if (mediaData) {
+        return parseMediaData(mediaData, shortcode)
+      }
+    }
+  } catch (e) {
+    console.log('Old GraphQL method failed:', e)
+  }
+
+  return null
 }
 
 async function tryEmbedMethod(shortcode: string): Promise<PostData | null> {
