@@ -218,62 +218,76 @@ function parseEmbedHtmlClient(html: string, shortcode: string): DownloadResponse
   const isVideo = html.includes('"is_video":true') || html.includes('video_url')
   const isReel = html.includes('"product_type":"clips"')
 
-  // Extract video URLs
+  // Extract video URLs - collect all unique video URLs
+  const videoUrls: string[] = []
   const videoMatches = html.matchAll(/"video_url":"([^"]+)"/g)
   for (const match of videoMatches) {
     const videoUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+    if (!videoUrls.includes(videoUrl)) {
+      videoUrls.push(videoUrl)
+    }
+  }
+
+  // If this is a video post, only add the video (not thumbnails as separate items)
+  if (isVideo && videoUrls.length > 0) {
     const thumbMatch = html.match(/"display_url":"([^"]+)"/)
     const thumbUrl = thumbMatch ? thumbMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '') : undefined
 
-    if (!media.find(m => m.video_url === videoUrl)) {
-      media.push({
-        url: videoUrl,
-        index: media.length,
-        is_video: true,
-        video_url: videoUrl,
-        thumbnail_url: thumbUrl
-      })
+    // Add only unique videos
+    for (const videoUrl of videoUrls) {
+      if (!media.find(m => m.video_url === videoUrl)) {
+        media.push({
+          url: videoUrl,
+          index: media.length,
+          is_video: true,
+          video_url: videoUrl,
+          thumbnail_url: thumbUrl
+        })
+      }
+    }
+  } else {
+    // Not a video - extract image URLs from display_url
+    const displayMatches = html.matchAll(/"display_url":"([^"]+)"/g)
+    for (const match of displayMatches) {
+      const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+      if (!media.find(m => m.url === url || m.thumbnail_url === url)) {
+        media.push({
+          url,
+          index: media.length,
+          is_video: false
+        })
+      }
     }
   }
 
-  // Extract image URLs from display_url
-  const displayMatches = html.matchAll(/"display_url":"([^"]+)"/g)
-  for (const match of displayMatches) {
-    const url = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
-    if (!media.find(m => m.url === url || m.thumbnail_url === url)) {
-      media.push({
-        url,
-        index: media.length,
-        is_video: false
-      })
+  // Only try to find additional images if this is NOT a video post
+  if (!isVideo || videoUrls.length === 0) {
+    // Try to find images in srcset
+    const srcsetMatches = html.matchAll(/srcset="([^"]+)"/g)
+    for (const match of srcsetMatches) {
+      const srcset = match[1].replace(/&amp;/g, '&')
+      const urls = srcset.split(',').map(s => s.trim().split(' ')[0])
+      const highResUrl = urls[urls.length - 1]
+      if (highResUrl?.includes('cdninstagram') && !media.find(m => m.url === highResUrl)) {
+        media.push({
+          url: highResUrl,
+          index: media.length,
+          is_video: false
+        })
+      }
     }
-  }
 
-  // Try to find images in srcset
-  const srcsetMatches = html.matchAll(/srcset="([^"]+)"/g)
-  for (const match of srcsetMatches) {
-    const srcset = match[1].replace(/&amp;/g, '&')
-    const urls = srcset.split(',').map(s => s.trim().split(' ')[0])
-    const highResUrl = urls[urls.length - 1]
-    if (highResUrl?.includes('cdninstagram') && !media.find(m => m.url === highResUrl)) {
-      media.push({
-        url: highResUrl,
-        index: media.length,
-        is_video: false
-      })
-    }
-  }
-
-  // Also try to extract from EmbeddedMediaImage class
-  const imgMatches = html.matchAll(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/g)
-  for (const match of imgMatches) {
-    const url = match[1].replace(/&amp;/g, '&')
-    if (url.includes('cdninstagram') && !media.find(m => m.url === url)) {
-      media.push({
-        url,
-        index: media.length,
-        is_video: false
-      })
+    // Also try to extract from EmbeddedMediaImage class
+    const imgMatches = html.matchAll(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/g)
+    for (const match of imgMatches) {
+      const url = match[1].replace(/&amp;/g, '&')
+      if (url.includes('cdninstagram') && !media.find(m => m.url === url)) {
+        media.push({
+          url,
+          index: media.length,
+          is_video: false
+        })
+      }
     }
   }
 
@@ -340,7 +354,37 @@ async function getPostDataClient(shortcode: string): Promise<DownloadResponse> {
         }
       }
 
-      // Try extracting all images from HTML as fallback
+      // Check if this is a video post first
+      const isVideoPost = mainHtml.includes('"is_video":true') || mainHtml.includes('"video_url"')
+
+      if (isVideoPost) {
+        // Extract video URL
+        const videoUrlMatch = mainHtml.match(/"video_url":"([^"]+)"/)
+        if (videoUrlMatch) {
+          const videoUrl = videoUrlMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '')
+          const thumbMatch = mainHtml.match(/"display_url":"([^"]+)"/)
+          const thumbUrl = thumbMatch ? thumbMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '') : undefined
+
+          console.log('Found video via HTML extraction')
+          return {
+            success: true,
+            shortcode,
+            owner: 'instagram',
+            caption: '',
+            media: [{
+              url: videoUrl,
+              index: 0,
+              is_video: true,
+              video_url: videoUrl,
+              thumbnail_url: thumbUrl
+            }],
+            is_carousel: false,
+            is_reel: true
+          }
+        }
+      }
+
+      // Try extracting all images from HTML as fallback (only for non-video posts)
       const allImages = extractAllImagesFromHtml(mainHtml)
       if (allImages.length > 0) {
         console.log('Found', allImages.length, 'images via HTML extraction')
@@ -1094,7 +1138,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.5.0
+          v1.6.0
         </p>
       </footer>
     </div>
