@@ -54,30 +54,110 @@ async function fetchViaProxy(url: string): Promise<string | null> {
   return null
 }
 
-// Try to get carousel data from Instagram's GraphQL endpoint
+// Try to get carousel data from Instagram's GraphQL endpoint (the real method)
 async function fetchGraphQLData(shortcode: string): Promise<any | null> {
-  const graphqlUrl = `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`
-
+  // Method 1: Try the official GraphQL API endpoint (like SSSInstagram uses)
   try {
-    const html = await fetchViaProxy(graphqlUrl)
+    const graphqlUrl = 'https://www.instagram.com/api/graphql'
+
+    const formData = new URLSearchParams({
+      av: '0',
+      __d: 'www',
+      __user: '0',
+      __a: '1',
+      __req: '3',
+      __hs: '19624.HYP:instagram_web_pkg.2.1..0.0',
+      dpr: '1',
+      __ccg: 'UNKNOWN',
+      __rev: '1008824440',
+      __s: 'xf44ne:zhh75g:xr51e7',
+      __hsi: '7282217488877343271',
+      __dyn: '7xeUmwlEnwn8K2WnFw9-2i5U4e0yoW3q32360CEbo1nEhw2nVE4W0om78b87C0yE5ufz81s8hwGwQwoEcE7O2l0Fwqo31w9a9x-0z8-U2zxe2GewGwso88cobEaU2eUlwhEe87q7-0iK2S3qazo7u1xwIw8O321LwTwKG1pg661pwr86C1mwraCg',
+      __csr: 'gZ3yFmJkillQvV6ybimnG8AmhqvADgjhClfSDfAHuWLzVo8ppcSoN4qKJKy3a4Cmy8m8nymcDAzo8y4EfwnA0y8x62p2m5AK0Z08nwjs1i0j80r9wDxu3awdo26w3wAw1GE0P83twg62wc8om1qwwobU2cgx05cE',
+      __comet_req: '7',
+      lsd: 'AVqbxe3J_YA',
+      jazoest: '2957',
+      __spin_r: '1008824440',
+      __spin_b: 'trunk',
+      __spin_t: '1695523385',
+      fb_api_caller_class: 'RelayModern',
+      fb_api_req_friendly_name: 'PolarisPostActionLoadPostQueryQuery',
+      variables: JSON.stringify({
+        shortcode: shortcode,
+        fetch_comment_count: 40,
+        parent_comment_count: 24,
+        child_comment_count: 3,
+        fetch_like_count: 10,
+        fetch_tagged_user_count: null,
+        fetch_preview_comment_count: 2,
+        has_threaded_comments: true,
+        hoisted_comment_id: null,
+        hoisted_reply_id: null
+      }),
+      server_timestamps: 'true',
+      doc_id: '10015901848480474'
+    })
+
+    // Try via proxy
+    for (const proxyBase of ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=']) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
+
+        // For corsproxy.io, we need to make a POST request differently
+        if (proxyBase.includes('corsproxy')) {
+          const response = await fetch(proxyBase + encodeURIComponent(graphqlUrl), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-IG-App-ID': '936619743392459',
+              'X-FB-LSD': 'AVqbxe3J_YA',
+              'X-ASBD-ID': '129477',
+              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            },
+            body: formData,
+            signal: controller.signal
+          })
+          clearTimeout(timeoutId)
+
+          if (response.ok) {
+            const data = await response.json()
+            const media = data?.data?.xdt_shortcode_media || data?.data?.shortcode_media
+            if (media) {
+              console.log('GraphQL API success!')
+              return media
+            }
+          }
+        }
+      } catch (e) {
+        console.log('GraphQL proxy failed:', e)
+      }
+    }
+  } catch (e) {
+    console.log('GraphQL API failed:', e)
+  }
+
+  // Method 2: Fallback to ?__a=1&__d=dis endpoint
+  try {
+    const jsonUrl = `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`
+    const html = await fetchViaProxy(jsonUrl)
     if (html) {
       try {
         const data = JSON.parse(html)
         return data?.graphql?.shortcode_media || data?.items?.[0] || null
       } catch {
-        // Try to extract from HTML if JSON parse fails
         const jsonMatch = html.match(/"graphql"\s*:\s*(\{.+?"shortcode_media".+?\})\s*,\s*"showQRModal"/)
         if (jsonMatch) {
           try {
-            const parsed = JSON.parse(jsonMatch[1])
-            return parsed?.shortcode_media
+            return JSON.parse(jsonMatch[1])?.shortcode_media
           } catch {}
         }
       }
     }
   } catch (e) {
-    console.log('GraphQL fetch failed:', e)
+    console.log('JSON endpoint failed:', e)
   }
+
   return null
 }
 
@@ -658,12 +738,128 @@ export default function Home() {
     }
   }
 
+  const [downloadingAll, setDownloadingAll] = useState(false)
+
   const downloadAll = async () => {
     if (!result) return
 
-    for (const item of result.media) {
-      await downloadMedia(item)
-      await new Promise(resolve => setTimeout(resolve, 800))
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+    if (isIOS) {
+      // iOS: Open a single page with ALL images for easy saving
+      setDownloadingAll(true)
+      try {
+        // First, fetch all images via proxy and create blob URLs
+        const blobUrls: string[] = []
+        for (const item of result.media) {
+          try {
+            const downloadUrl = item.is_video ? (item.video_url || item.url) : item.url
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(downloadUrl)}`
+            const response = await fetch(proxyUrl)
+            if (response.ok) {
+              const blob = await response.blob()
+              blobUrls.push(window.URL.createObjectURL(blob))
+            } else {
+              blobUrls.push(downloadUrl) // fallback to original URL
+            }
+          } catch {
+            blobUrls.push(item.url) // fallback
+          }
+        }
+
+        // Open a page with all images
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          const imagesHtml = result.media.map((item, idx) => {
+            const blobUrl = blobUrls[idx] || item.url
+            return item.is_video
+              ? `<div class="media-item">
+                  <p class="counter">${idx + 1} de ${result.media.length}</p>
+                  <video src="${blobUrl}" controls playsinline></video>
+                </div>`
+              : `<div class="media-item">
+                  <p class="counter">${idx + 1} de ${result.media.length}</p>
+                  <img src="${blobUrl}" alt="Imagen ${idx + 1}" />
+                </div>`
+          }).join('')
+
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Guardar ${result.media.length} imágenes - @${result.owner}</title>
+              <style>
+                * { box-sizing: border-box; }
+                body {
+                  margin: 0;
+                  padding: 16px;
+                  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                  background: #000;
+                  color: #fff;
+                }
+                .header {
+                  text-align: center;
+                  padding: 20px;
+                  background: linear-gradient(135deg, #833AB4, #FD1D1D, #F77737);
+                  border-radius: 16px;
+                  margin-bottom: 20px;
+                }
+                .header h1 { margin: 0 0 8px 0; font-size: 1.2em; }
+                .header p { margin: 0; opacity: 0.9; font-size: 0.9em; }
+                .instructions {
+                  background: #1a1a1a;
+                  padding: 16px;
+                  border-radius: 12px;
+                  margin-bottom: 20px;
+                  text-align: center;
+                }
+                .instructions p { margin: 8px 0; }
+                .emoji { font-size: 1.3em; margin-right: 8px; }
+                .media-item {
+                  background: #1a1a1a;
+                  border-radius: 12px;
+                  margin-bottom: 16px;
+                  overflow: hidden;
+                }
+                .media-item .counter {
+                  padding: 12px;
+                  margin: 0;
+                  font-weight: bold;
+                  border-bottom: 1px solid #333;
+                }
+                .media-item img, .media-item video {
+                  width: 100%;
+                  display: block;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>📸 ${result.media.length} archivos de @${result.owner}</h1>
+                <p>Carrusel descargado</p>
+              </div>
+              <div class="instructions">
+                <p><span class="emoji">👆</span><strong>Mantén presionada CADA imagen</strong></p>
+                <p><span class="emoji">📥</span><strong>Selecciona "Guardar imagen"</strong></p>
+              </div>
+              ${imagesHtml}
+            </body>
+            </html>
+          `)
+          newWindow.document.close()
+        }
+      } finally {
+        setDownloadingAll(false)
+      }
+    } else {
+      // Desktop/Android: download one by one
+      setDownloadingAll(true)
+      for (const item of result.media) {
+        await downloadMedia(item)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      setDownloadingAll(false)
     }
   }
 
@@ -783,12 +979,22 @@ export default function Home() {
               {result.media.length > 1 && (
                 <button
                   onClick={downloadAll}
-                  className="px-4 md:px-6 py-2.5 md:py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
-                           rounded-xl font-medium text-gray-700 dark:text-gray-200 transition-colors
-                           flex items-center justify-center gap-2 w-full sm:w-auto"
+                  disabled={downloadingAll}
+                  className="px-4 md:px-6 py-2.5 md:py-3 bg-instagram-gradient hover:opacity-90
+                           rounded-xl font-medium text-white transition-colors
+                           flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
                 >
-                  <Download className="w-5 h-5" />
-                  Descargar Todo
+                  {downloadingAll ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Preparando {result.media.length} archivos...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-5 h-5" />
+                      Descargar Todo ({result.media.length})
+                    </>
+                  )}
                 </button>
               )}
             </div>
@@ -888,7 +1094,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.4.0
+          v1.5.0
         </p>
       </footer>
     </div>
