@@ -512,14 +512,28 @@ function parseMediaDataClient(data: any, shortcode: string): DownloadResponse {
   } catch { caption = '' }
 
   const isVideo = data.is_video === true || data.media_type === 2
+
+  // Check for carousel using multiple detection methods
   const isCarousel = data.__typename === 'GraphSidecar' ||
+                     data.product_type === 'carousel_container' ||
                      data.media_type === 8 ||
                      (Array.isArray(data.edge_sidecar_to_children?.edges) && data.edge_sidecar_to_children.edges.length > 0) ||
                      (Array.isArray(data.carousel_media) && data.carousel_media.length > 0)
 
+  console.log('Parsing data:', {
+    typename: data.__typename,
+    product_type: data.product_type,
+    media_type: data.media_type,
+    isCarousel,
+    hasEdges: !!data.edge_sidecar_to_children?.edges?.length,
+    hasCarouselMedia: !!data.carousel_media?.length
+  })
+
   if (isCarousel) {
     const edges = Array.isArray(data.edge_sidecar_to_children?.edges) ? data.edge_sidecar_to_children.edges : []
     const carouselMedia = Array.isArray(data.carousel_media) ? data.carousel_media : []
+
+    console.log('Carousel detected:', { edgesCount: edges.length, carouselMediaCount: carouselMedia.length })
 
     if (edges.length > 0) {
       edges.forEach((edge: any, idx: number) => {
@@ -544,18 +558,24 @@ function parseMediaDataClient(data: any, shortcode: string): DownloadResponse {
       carouselMedia.forEach((item: any, idx: number) => {
         if (!item) return
 
+        // Handle different API response structures
         const candidates = Array.isArray(item.image_versions2?.candidates) ? item.image_versions2.candidates : []
         const videoVersions = Array.isArray(item.video_versions) ? item.video_versions : []
 
-        const imageUrl = candidates.length > 0 ? candidates[0]?.url : undefined
-        const videoUrl = videoVersions.length > 0 ? videoVersions[0]?.url : undefined
+        // Also check for display_url directly on the item
+        const displayUrl = item.display_url
+        const displayResources = Array.isArray(item.display_resources) ? item.display_resources : []
+        const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+
+        const imageUrl = displayUrl || (candidates.length > 0 ? candidates[0]?.url : undefined) || lastResource?.src
+        const videoUrl = item.video_url || (videoVersions.length > 0 ? videoVersions[0]?.url : undefined)
         const url = videoUrl || imageUrl
 
         if (url) {
           media.push({
             url,
             index: idx,
-            is_video: item.media_type === 2,
+            is_video: item.is_video === true || item.media_type === 2,
             video_url: videoUrl,
             thumbnail_url: imageUrl
           })
@@ -586,6 +606,8 @@ function parseMediaDataClient(data: any, shortcode: string): DownloadResponse {
       })
     }
   }
+
+  console.log('Parsed media count:', media.length)
 
   return {
     success: media.length > 0,
@@ -1147,7 +1169,7 @@ export default function Home() {
           Solo funciona con posts públicos
         </p>
         <p className="mt-4 text-xs font-mono bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded">
-          v1.6.1
+          v1.6.2
         </p>
       </footer>
     </div>

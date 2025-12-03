@@ -213,10 +213,21 @@ function parseMediaData(data: any, shortcode: string): PostData {
                   ''
 
   const isVideo = data.is_video || data.media_type === 2
+
+  // Check for carousel using multiple detection methods
   const isCarousel = data.__typename === 'GraphSidecar' ||
+                     data.product_type === 'carousel_container' ||
                      data.media_type === 8 ||
                      data.edge_sidecar_to_children?.edges?.length > 0 ||
                      data.carousel_media?.length > 0
+
+  console.log('Server parsing:', {
+    typename: data.__typename,
+    product_type: data.product_type,
+    isCarousel,
+    edgesCount: data.edge_sidecar_to_children?.edges?.length || 0,
+    carouselCount: data.carousel_media?.length || 0
+  })
 
   if (isCarousel) {
     // Handle carousel
@@ -226,22 +237,36 @@ function parseMediaData(data: any, shortcode: string): PostData {
     if (edges.length > 0) {
       edges.forEach((edge: any, idx: number) => {
         const node = edge.node
+        if (!node) return
+
+        const displayResources = Array.isArray(node.display_resources) ? node.display_resources : []
+        const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+
         media.push({
-          url: node.display_url || node.display_resources?.pop()?.src,
+          url: node.display_url || lastResource?.src,
           index: idx,
-          is_video: node.is_video,
+          is_video: node.is_video === true,
           video_url: node.video_url,
           thumbnail_url: node.display_url
         })
       })
     } else if (carouselMedia.length > 0) {
       carouselMedia.forEach((item: any, idx: number) => {
-        const imageUrl = item.image_versions2?.candidates?.[0]?.url
-        const videoUrl = item.video_versions?.[0]?.url
+        if (!item) return
+
+        // Handle different API response structures
+        const candidates = Array.isArray(item.image_versions2?.candidates) ? item.image_versions2.candidates : []
+        const videoVersions = Array.isArray(item.video_versions) ? item.video_versions : []
+        const displayResources = Array.isArray(item.display_resources) ? item.display_resources : []
+        const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+
+        const imageUrl = item.display_url || (candidates.length > 0 ? candidates[0]?.url : undefined) || lastResource?.src
+        const videoUrl = item.video_url || (videoVersions.length > 0 ? videoVersions[0]?.url : undefined)
+
         media.push({
           url: videoUrl || imageUrl,
           index: idx,
-          is_video: item.media_type === 2,
+          is_video: item.is_video === true || item.media_type === 2,
           video_url: videoUrl,
           thumbnail_url: imageUrl
         })
@@ -249,9 +274,12 @@ function parseMediaData(data: any, shortcode: string): PostData {
     }
   } else {
     // Single media
+    const displayResources = Array.isArray(data.display_resources) ? data.display_resources : []
+    const lastResource = displayResources.length > 0 ? displayResources[displayResources.length - 1] : null
+
     const imageUrl = data.display_url ||
                      data.image_versions2?.candidates?.[0]?.url ||
-                     data.display_resources?.pop()?.src
+                     lastResource?.src
     const videoUrl = data.video_url || data.video_versions?.[0]?.url
 
     media.push({
@@ -262,6 +290,8 @@ function parseMediaData(data: any, shortcode: string): PostData {
       thumbnail_url: imageUrl
     })
   }
+
+  console.log('Server parsed media count:', media.length)
 
   return {
     success: true,
