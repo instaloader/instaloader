@@ -960,6 +960,11 @@ class Instaloader:
         .. versionchanged:: 4.3
            Also downloads and saves the Highlight's cover pictures.
 
+        .. versionchanged:: 4.16
+        Add progress output for highlight retrieval, displaying a counter of the current
+        highlight number and the total number of highlights being processed. This provides
+        feedback similar to the per-item download counter already present in this function.
+
         :param user: ID or Profile of the user whose highlights should get downloaded.
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param filename_target: Replacement for {target} in dirname_pattern and filename_pattern
@@ -967,14 +972,17 @@ class Instaloader:
         :param storyitem_filter: function(storyitem), which returns True if given StoryItem should be downloaded
         :raises LoginRequiredException: If called without being logged in.
         """
-        for user_highlight in self.get_highlights(user):
+        user_highlights = list(self.get_highlights(user))
+        hl_size = len(user_highlights)
+        for hl_number, user_highlight in enumerate(user_highlights, start=1):
             name = user_highlight.owner_username
             highlight_target: Union[str, Path] = (filename_target
                                 if filename_target
                                 else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
                                       _PostPathFormatter.sanitize_path(user_highlight.title,
                                                                        self.sanitize_paths)))
-            self.context.log("Retrieving highlights \"{}\" from profile {}".format(user_highlight.title, name))
+            self.context.log("Retrieving highlights [%3i/%3i] " % (hl_number, hl_size), end="", flush=True)
+            self.context.log("\"{}\" from profile {}".format(user_highlight.title, name), flush=True)
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
             count = 1
