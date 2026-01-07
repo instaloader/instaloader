@@ -981,8 +981,11 @@ class Instaloader:
                                 else (Path(_PostPathFormatter.sanitize_path(name, self.sanitize_paths)) /
                                       _PostPathFormatter.sanitize_path(user_highlight.title,
                                                                        self.sanitize_paths)))
-            self.context.log("Retrieving highlights [%3i/%3i] " % (hl_number, hl_size), end="", flush=True)
-            self.context.log("\"{}\" from profile {}".format(user_highlight.title, name), flush=True)
+            self.context.log(
+                "[{0:{w}d}/{1:{w}d}] Retrieving highlights \"{2}\" from profile {3}".format(
+                    hl_number, hl_size, user_highlight.title, name, w=len(str(hl_size))),
+                flush=True
+            )
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
             count = 1
