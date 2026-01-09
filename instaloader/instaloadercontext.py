@@ -106,10 +106,17 @@ class InstaloaderContext:
             try:
                 from rich.console import Console
                 from rich.theme import Theme
+                # Instagram-inspired theme
                 custom_theme = Theme({
                     "info": "dim cyan",
                     "warning": "magenta",
-                    "error": "bold red"
+                    "error": "bold red",
+                    "json": "bold yellow",
+                    "exists": "bold green",
+                    "skipped": "dim white",
+                    "video": "bold blue",
+                    "image": "bold magenta",
+                    "path": "white"
                 })
                 self.rich_console = Console(theme=custom_theme, force_terminal=True)
             except ImportError:
@@ -135,13 +142,18 @@ class InstaloaderContext:
     def progress_context(self, *args, **kwargs):
         """Context manager for progress tracking. Yields a rich.progress.Progress object or a dummy."""
         if self.better_output and not self.quiet:
-            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+            from rich.progress import (
+                Progress, SpinnerColumn, BarColumn, TextColumn, 
+                TimeRemainingColumn, TransferSpeedColumn, FileSizeColumn
+            )
+            # Fancy spinner (dots12 is nice)
             with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
+                SpinnerColumn(spinner_name="dots12", style="bold magenta"),
+                TextColumn("[bold white]{task.description}"),
+                BarColumn(bar_width=None, style="dim white", complete_style="bold #E1306C", finished_style="bold green"),
                 TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                 TimeRemainingColumn(),
+                # TransferSpeedColumn(), # Speed often requires manual chunk updates which instaloader might not do perfectly in loop, but let's try
                 console=self.rich_console,
                 transient=False # Keep the progress bar after completion
             ) as progress:
@@ -177,6 +189,42 @@ class InstaloaderContext:
         """True, if this Instaloader instance is logged in."""
         return bool(self.username)
 
+    def _style_log_message(self, msg: str) -> str:
+        """Parses standard log messages and returns rich-formatted string."""
+        import re
+        
+        # Styles for common patterns
+        if msg.strip() == "json":
+            return "[json]📄 JSON Metadata saved[/]"
+        
+        # Exists pattern
+        if "exists" in msg:
+            # Extract filename if possible (basic heuristic)
+            parts = msg.split(' exists')
+            path = parts[0].strip()
+            return f"[exists]✅[/] [path]{path}[/] already exists"
+             
+        # Skipped pattern
+        if "skipped" in msg:
+            return f"[skipped]⏭️  {msg}[/]"
+             
+        # Login success
+        if "Logged in as" in msg:
+            return f"[bold green]🔓 {msg}[/]"
+
+        # File extensions
+        if ".jpg" in msg or ".png" in msg:
+            msg = msg.replace(".jpg", "[image].jpg[/]").replace(".png", "[image].png[/]")
+            if "Downloading" not in msg and "Retrieving" not in msg:
+                return f"📸 {msg}"
+        
+        if ".mp4" in msg:
+            msg = msg.replace(".mp4", "[video].mp4[/]")
+            if "Downloading" not in msg and "Retrieving" not in msg:
+                return f"📹 {msg}"
+
+        return msg
+
     def log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
         if not self.quiet:
@@ -185,10 +233,15 @@ class InstaloaderContext:
                 if self.rich_progress:
                     self._log_buffer += text + end
                     if end == '\n':
-                        self.rich_progress.console.print(self._log_buffer.rstrip('\n'))
+                        # Process buffer and print nicely above progress bar
+                        clean_msg = self._log_buffer.rstrip('\n')
+                        styled_msg = self._style_log_message(clean_msg)
+                        self.rich_progress.console.print(styled_msg)
                         self._log_buffer = ""
                 else:
-                    self.rich_console.print(text, end=end)
+                    # Direct print with styling
+                    styled_msg = self._style_log_message(text)
+                    self.rich_console.print(styled_msg, end=end)
             else:
                 print(*msg, sep=sep, end=end, flush=flush)
 

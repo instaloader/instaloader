@@ -1495,8 +1495,42 @@ class Instaloader:
         error_handler = _error_raiser if raise_errors else self.context.error_catcher
 
         for i, profile in enumerate(profiles, start=1):
-            self.context.log("[{0:{w}d}/{1:{w}d}] Downloading profile {2}".format(i, len(profiles), profile.username,
-                                                                                  w=len(str(len(profiles)))))
+            if self.context.better_output and self.context.rich_console:
+                from rich.panel import Panel
+                from rich.table import Table
+                from rich import box
+                 
+                grid = Table.grid(expand=True)
+                grid.add_column(justify="left", ratio=1)
+                grid.add_column(justify="right")
+                 
+                stats_table = Table(box=None, show_header=False, pad_edge=False)
+                stats_table.add_column(justify="center")
+                stats_table.add_column(justify="center")
+                stats_table.add_column(justify="center")
+                 
+                stats_table.add_row(
+                    f"[bold]{profile.mediacount}[/]", 
+                    f"[bold]{profile.followers}[/]", 
+                    f"[bold]{profile.followees}[/]"
+                )
+                stats_table.add_row("Posts", "Followers", "Following")
+                 
+                grid.add_row(f"[bold size=14]{profile.full_name}[/]\n[dim]@{profile.username}[/]", stats_table)
+                 
+                if profile.biography:
+                    grid.add_row(f"\n[italic]{profile.biography}[/]", "")
+
+                self.context.rich_console.print(
+                    Panel(
+                        grid, 
+                        title=f"[bold gradient(purple,orange)]Instaloader Profile[/]",
+                        border_style="magenta",
+                        subtitle=f"[dim]Profile {i}/{len(profiles)}[/]"
+                    )
+                )
+            else:
+                self.context.log("[{0:{w}d}/{1:{w}d}] Downloading profile {2}".format(i, len(profiles), profile.username, w=len(str(len(profiles)))))
             with error_handler(profile.username):  # type: ignore # (ignore type for Python 3.5 support)
                 profile_name = profile.username
 
