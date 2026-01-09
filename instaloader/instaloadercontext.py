@@ -82,7 +82,8 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True,
+                 better_output: bool = False):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -96,6 +97,25 @@ class InstaloaderContext:
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
         self.iphone_headers = default_iphone_headers()
+        self.better_output = better_output
+        self.rich_console = None
+        self.rich_progress = None
+        self._log_buffer = ""
+
+        if self.better_output:
+            try:
+                from rich.console import Console
+                from rich.theme import Theme
+                custom_theme = Theme({
+                    "info": "dim cyan",
+                    "warning": "magenta",
+                    "error": "bold red"
+                })
+                self.rich_console = Console(theme=custom_theme, force_terminal=True)
+            except ImportError:
+                print("Warning: --better-output flag used but 'rich' library is not installed. "
+                      "Install it with 'pip install rich'. Falling back to standard output.", file=sys.stderr)
+                self.better_output = False
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log: List[str] = []
@@ -110,6 +130,28 @@ class InstaloaderContext:
 
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache: Dict[int, Any] = dict()
+
+    @contextmanager
+    def progress_context(self, *args, **kwargs):
+        """Context manager for progress tracking. Yields a rich.progress.Progress object or a dummy."""
+        if self.better_output and not self.quiet:
+            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TimeRemainingColumn(),
+                console=self.rich_console,
+                transient=False # Keep the progress bar after completion
+            ) as progress:
+                self.rich_progress = progress
+                try:
+                    yield progress
+                finally:
+                    self.rich_progress = None
+        else:
+            yield None
 
     @contextmanager
     def anonymous_copy(self):
@@ -138,14 +180,27 @@ class InstaloaderContext:
     def log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
         if not self.quiet:
-            print(*msg, sep=sep, end=end, flush=flush)
+            if self.better_output and self.rich_console:
+                text = sep.join(str(m) for m in msg)
+                if self.rich_progress:
+                    self._log_buffer += text + end
+                    if end == '\n':
+                        self.rich_progress.console.print(self._log_buffer.rstrip('\n'))
+                        self._log_buffer = ""
+                else:
+                    self.rich_console.print(text, end=end)
+            else:
+                print(*msg, sep=sep, end=end, flush=flush)
 
     def error(self, msg, repeat_at_end=True):
         """Log a non-fatal error message to stderr, which is repeated at program termination.
 
         :param msg: Message to be printed.
         :param repeat_at_end: Set to false if the message should be printed, but not repeated at program termination."""
-        print(msg, file=sys.stderr)
+        if self.better_output and self.rich_console:
+            self.rich_console.print(msg, style="error")
+        else:
+            print(msg, file=sys.stderr)
         if repeat_at_end:
             self.error_log.append(msg)
 

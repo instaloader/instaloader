@@ -232,11 +232,12 @@ class Instaloader:
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
                  title_pattern: Optional[str] = None,
-                 sanitize_paths: bool = False):
+                 sanitize_paths: bool = False,
+                 better_output: bool = False):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+                                          iphone_support, better_output)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
@@ -1043,46 +1044,57 @@ class Instaloader:
                 check_bbd=self.check_resume_bbd,
                 enabled=self.resume_prefix is not None
         ) as (is_resuming, start_index):
-            for number, post in enumerate(posts, start=start_index + 1):
-                should_stop = not takewhile(post)
-                if should_stop and number <= possibly_pinned:
-                    continue
-                if (max_count is not None and number > max_count) or should_stop:
-                    break
-                if displayed_count is not None:
-                    self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count,
-                                                                   w=len(str(displayed_count))),
-                                     end="", flush=True)
-                else:
-                    self.context.log("[{:3d}] ".format(number), end="", flush=True)
-                if post_filter is not None:
-                    try:
-                        if not post_filter(post):
-                            self.context.log("{} skipped".format(post))
-                            continue
-                    except (InstaloaderException, KeyError, TypeError) as err:
-                        self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
+            with self.context.progress_context() as progress:
+                task = None
+                if progress:
+                    task = progress.add_task(f"Downloading {target}...", total=displayed_count)
+                    if start_index > 0:
+                        progress.update(task, completed=start_index)
+
+                for number, post in enumerate(posts, start=start_index + 1):
+                    should_stop = not takewhile(post)
+                    if should_stop and number <= possibly_pinned:
                         continue
-                with self.context.error_catcher("Download {} of {}".format(post, target)):
-                    # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
-                    # additional metadata. This is most likely the case if a HTTP redirect takes place while
-                    # resolving the shortcode URL.
-                    # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
-                    # obained after a redirect has probably already been downloaded as a previous Post of the
-                    # same Profile.
-                    # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
-                    post_changed = False
-                    while True:
+                    if (max_count is not None and number > max_count) or should_stop:
+                        break
+                    
+                    if progress:
+                        progress.update(task, completed=number, description=f"Downloading {target}: {post.date_local:%Y-%m-%d %H:%M:%S}")
+
+                    if not self.context.better_output:
+                        if displayed_count is not None:
+                            self.context.log("[{0:{w}d}/{1:{w}d}] ".format(number, displayed_count, w=len(str(displayed_count))), end="", flush=True)
+                        else:
+                            self.context.log("[{:3d}] ".format(number), end="", flush=True)
+                    
+                    if post_filter is not None:
                         try:
-                            downloaded = self.download_post(post, target=target)
-                            break
-                        except PostChangedException:
-                            post_changed = True
+                            if not post_filter(post):
+                                self.context.log("{} skipped".format(post))
+                                continue
+                        except (InstaloaderException, KeyError, TypeError) as err:
+                            self.context.error("{} skipped. Filter evaluation failed: {}".format(post, err))
                             continue
-                    if fast_update and not downloaded and not post_changed and number > possibly_pinned:
-                        # disengage fast_update for first post when resuming
-                        if not is_resuming or number > 0:
-                            break
+                    with self.context.error_catcher("Download {} of {}".format(post, target)):
+                        # The PostChangedException gets raised if the Post's id/shortcode changed while obtaining
+                        # additional metadata. This is most likely the case if a HTTP redirect takes place while
+                        # resolving the shortcode URL.
+                        # The `post_changed` variable keeps the fast-update functionality alive: A Post which is
+                        # obained after a redirect has probably already been downloaded as a previous Post of the
+                        # same Profile.
+                        # Observed in issue #225: https://github.com/instaloader/instaloader/issues/225
+                        post_changed = False
+                        while True:
+                            try:
+                                downloaded = self.download_post(post, target=target)
+                                break
+                            except PostChangedException:
+                                post_changed = True
+                                continue
+                        if fast_update and not downloaded and not post_changed and number > possibly_pinned:
+                            # disengage fast_update for first post when resuming
+                            if not is_resuming or number > 0:
+                                break
 
     @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
