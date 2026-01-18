@@ -961,9 +961,9 @@ class Instaloader:
            Also downloads and saves the Highlight's cover pictures.
 
         .. versionchanged:: 4.16
-        Add progress output for highlight retrieval, displaying a counter of the current
-        highlight number and the total number of highlights being processed. This provides
-        feedback similar to the per-item download counter already present in this function.
+           Add progress output for highlight retrieval, displaying a counter of the current
+           highlight number and the total number of highlights being processed. This provides
+           feedback similar to the per-item download counter already present in this function.
 
         :param user: ID or Profile of the user whose highlights should get downloaded.
         :param fast_update: If true, abort when first already-downloaded picture is encountered
