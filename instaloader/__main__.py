@@ -521,6 +521,8 @@ def main():
                         help='Disable user interaction, i.e. do not print messages (except errors) and fail '
                              'if login credentials are needed but not given. This makes Instaloader suitable as a '
                              'cron job.')
+    g_misc.add_argument('--better-output', action='store_true',
+                        help='Use rich output (colors, progress bars). Requires "rich" library installed.')
     g_misc.add_argument('-h', '--help', action='help', help='Show this help message and exit.')
     g_misc.add_argument('--version', action='version', help='Show version number and exit.',
                         version=__version__)
@@ -580,7 +582,8 @@ def main():
                              fatal_status_codes=args.abort_on,
                              iphone_support=not args.no_iphone,
                              title_pattern=args.title_pattern,
-                             sanitize_paths=args.sanitize_paths)
+                             sanitize_paths=args.sanitize_paths,
+                             better_output=args.better_output)
         exit_code = _main(loader,
                           args.profile,
                           username=args.login.lower() if args.login is not None else None,
