@@ -311,6 +311,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             post_filter,
             storyitem_filter,
             latest_stamps=latest_stamps,
+            max_count=max_count,
             reels=download_reels,
         )
         if anonymous_retry_profiles:
@@ -453,7 +454,7 @@ def main():
 
     g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
-                             'Applies to #hashtag, %%location_id, :feed, and :saved.')
+                             'Applies to #hashtag, %%location_id, :feed, :saved and profile')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '
