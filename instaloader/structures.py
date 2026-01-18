@@ -8,7 +8,7 @@ from itertools import islice
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 from unicodedata import normalize
-
+import requests
 from . import __version__
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext
@@ -160,7 +160,19 @@ def _optional_normalize(string: Optional[str]) -> Optional[str]:
         return normalize("NFC", string)
     else:
         return None
-
+def is_fake_mp4(url: str) -> bool:
+    """
+    Detect if a video URL is actually a 1-frame JPEG.
+    """
+    try:
+        headers = {"Range": "bytes=0-1023"}  # only first KB
+        r = requests.get(url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            # Check for JPEG signature: first bytes 0xFF 0xD8
+            return r.content.startswith(b'\xff\xd8')
+    except Exception:
+        pass
+    return False
 
 class Post:
     """
@@ -560,39 +572,34 @@ class Post:
 
     @property
     def video_url(self) -> Optional[str]:
-        """URL of the video, or None."""
-        if self.is_video:
-            version_urls = []
-            try:
-                version_urls.append(self._field('video_url'))
-            except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error(f"Warning: Unable to fetch video from graphql of {self}: {err}")
-            if self._context.iphone_support and self._context.is_logged_in:
-                try:
-                    version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
-                except (InstaloaderException, KeyError, IndexError) as err:
-                    self._context.error(f"Unable to fetch high-quality video version of {self}: {err}")
-            version_urls = list(dict.fromkeys(version_urls))
-            if len(version_urls) == 0:
-                return None
-            if len(version_urls) == 1:
-                return version_urls[0]
-            url_candidates: List[Tuple[int, str]] = []
-            for idx, version_url in enumerate(version_urls):
-                try:
-                    url_candidates.append((
-                        int(self._context.head(version_url, allow_redirects=True).headers.get('Content-Length', 0)),
-                        version_url
-                    ))
-                except (InstaloaderException, KeyError, IndexError) as err:
-                    self._context.error(f"Video URL candidate {idx+1}/{len(version_urls)} for {self}: {err}")
-            if not url_candidates:
-                # All candidates fail: Fallback to default URL and handle errors later at the actual download attempt
-                return version_urls[0]
-            url_candidates.sort()
-            return url_candidates[-1][1]
-        return None
+        """URL of the video, or None. Detects fake MP4s wrapped as JPEG."""
+        if not self.is_video:
+            return None
 
+        # Original logic to get video URLs
+        version_urls = []
+        try:
+            version_urls.append(self._field('video_url'))
+        except (InstaloaderException, KeyError, IndexError):
+            pass
+
+        if self._context.iphone_support and self._context.is_logged_in:
+            try:
+                version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
+            except (InstaloaderException, KeyError, IndexError):
+                pass
+
+        # Remove duplicates
+        version_urls = list(dict.fromkeys(version_urls))
+        if not version_urls:
+            return None
+
+        # Check for fake MP4s and rename accordingly
+        final_url = version_urls[-1]  # use highest quality by default
+        if is_fake_mp4(final_url):
+            # append _mp4.jpg to filename when downloading
+            final_url = final_url + "?fake_mp4=true"
+        return final_url
     @property
     def video_view_count(self) -> Optional[int]:
         """View count of the video, or None.
@@ -859,6 +866,8 @@ class Post:
 
         .. versionadded: 4.9.2"""
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
+
+
 
 
 class Profile:

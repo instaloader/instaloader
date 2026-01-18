@@ -23,7 +23,7 @@ from .instaloadercontext import InstaloaderContext, RateController
 from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
-from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
+from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem, is_fake_mp4,
                          load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
 
 
@@ -684,14 +684,9 @@ class Instaloader:
 
         .. versionadded:: 4.1"""
         return _PostPathFormatter(item, self.sanitize_paths).format(self.filename_pattern, target=target)
-
     def download_post(self, post: Post, target: Union[str, Path]) -> bool:
         """
         Download everything associated with one instagram post node, i.e. picture, caption and video.
-
-        :param post: Post to download.
-        :param target: Target name, i.e. profile name, #hashtag, :feed; for filename.
-        :return: True if something was downloaded, False otherwise, i.e. file was already there
         """
 
         def _already_downloaded(path: str) -> bool:
@@ -719,14 +714,13 @@ class Instaloader:
         filename_template = os.path.join(dirname, self.format_filename(post, target=target))
         filename = self.__prepare_filename(filename_template, lambda: post.url)
 
-        # Download the image(s) / video thumbnail and videos within sidecars if desired
         downloaded = True
         if post.typename == 'GraphSidecar':
             if (self.download_pictures or self.download_videos) and post.mediacount > 0:
                 if not _all_already_downloaded(
                         filename_template, enumerate(
                             (post.get_is_videos()[i]
-                             for i in range(self.slide_start % post.mediacount, self.slide_end % post.mediacount + 1)),
+                            for i in range(self.slide_start % post.mediacount, self.slide_end % post.mediacount + 1)),
                             start=self.slide_start % post.mediacount + 1
                         )
                 ):
@@ -738,55 +732,68 @@ class Instaloader:
                         if '{filename}' in self.filename_pattern:
                             suffix = None
                         video_url = sidecar_node.video_url
+
+                        # Download picture / video thumbnail
                         if self.download_pictures and (video_url is None or self.download_video_thumbnails):
-                            # pylint:disable=cell-var-from-loop
                             sidecar_filename = self.__prepare_filename(filename_template,
-                                                                       lambda: sidecar_node.display_url)
-                            # Download sidecar picture or video thumbnail (--no-pictures implies --no-video-thumbnails)
-                            downloaded &= self.download_pic(filename=sidecar_filename, url=sidecar_node.display_url,
-                                                            mtime=post.date_local, filename_suffix=suffix)
+                                                                    lambda: sidecar_node.display_url)
+                            downloaded &= self.download_pic(
+                                filename=sidecar_filename,
+                                url=sidecar_node.display_url,
+                                mtime=post.date_local,
+                                filename_suffix=suffix
+                            )
+
+                        # Download video
                         if video_url is not None and self.download_videos:
-                            # pylint:disable=cell-var-from-loop
-                            sidecar_filename = self.__prepare_filename(filename_template,
-                                                                       lambda: video_url)
-                            # Download sidecar video if desired
-                            downloaded &= self.download_pic(filename=sidecar_filename, url=video_url,
-                                                            mtime=post.date_local, filename_suffix=suffix)
+                            sidecar_filename = self.__prepare_filename(filename_template, lambda: video_url)
+                            if is_fake_mp4(video_url):
+                                sidecar_filename += "_mp4.jpg"
+                            downloaded &= self.download_pic(
+                                filename=sidecar_filename,
+                                url=video_url,
+                                mtime=post.date_local,
+                                filename_suffix=suffix
+                            )
                 else:
                     downloaded = False
+
         elif post.typename == 'GraphImage':
-            # Download picture
             if self.download_pictures:
                 downloaded = (not _already_downloaded(filename + ".jpg") and
-                              self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+                            self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+
         elif post.typename == 'GraphVideo':
-            # Download video thumbnail (--no-pictures implies --no-video-thumbnails)
             if self.download_pictures and self.download_video_thumbnails:
                 with self.context.error_catcher("Video thumbnail of {}".format(post)):
                     downloaded = (not _already_downloaded(filename + ".jpg") and
-                                  self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+                                self.download_pic(filename=filename, url=post.url, mtime=post.date_local))
+
         else:
             self.context.error("Warning: {0} has unknown typename: {1}".format(post, post.typename))
 
-        # Save caption if desired
+        # Save caption
         metadata_string = _ArbitraryItemFormatter(post).format(self.post_metadata_txt_pattern).strip()
         if metadata_string:
             self.save_caption(filename=filename, mtime=post.date_local, caption=metadata_string)
 
-        # Download video if desired
+        # Download main video
         if post.is_video and self.download_videos:
-            downloaded &= (not _already_downloaded(filename + ".mp4") and
-                           self.download_pic(filename=filename, url=post.video_url, mtime=post.date_local))
+            final_filename = filename + ".mp4"
+            if is_fake_mp4(post.video_url):
+                final_filename = filename + "_mp4.jpg"
+            downloaded &= (not _already_downloaded(final_filename) and
+                        self.download_pic(filename=final_filename, url=post.video_url, mtime=post.date_local))
 
-        # Download geotags if desired
+        # Download geotags
         if self.download_geotags and post.location:
             self.save_location(filename, post.location, post.date_local)
 
-        # Update comments if desired
+        # Update comments
         if self.download_comments:
             self.update_comments(filename=filename, post=post)
 
-        # Save metadata as JSON if desired.
+        # Save metadata as JSON
         if self.save_metadata:
             self.save_metadata_json(filename, post)
 
