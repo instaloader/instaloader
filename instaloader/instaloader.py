@@ -983,8 +983,8 @@ class Instaloader:
                                                                        self.sanitize_paths)))
             self.context.log(
                 "[{0:{w}d}/{1:{w}d}] Retrieving highlights \"{2}\" from profile {3}".format(
-                    hl_number, hl_size, user_highlight.title, name, w=len(str(hl_size))),
-                flush=True
+                    hl_number, hl_size, user_highlight.title, name, w=len(str(hl_size))
+                )
             )
             self.download_highlight_cover(user_highlight, highlight_target)
             totalcount = user_highlight.itemcount
