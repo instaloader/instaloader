@@ -937,9 +937,21 @@ class Instaloader:
 
         userid = user if isinstance(user, int) else user.userid
         data = self.context.graphql_query("7c16654f22c819fb63d1183034a5162f",
-                                          {"user_id": userid, "include_chaining": False, "include_reel": False,
-                                           "include_suggested_users": False, "include_logged_out_extras": False,
-                                           "include_highlight_reels": True})["data"]["user"]['edge_highlight_reels']
+                                {"user_id": userid, "include_chaining": False, "include_reel": False,
+                                 "include_suggested_users": False, "include_logged_out_extras": False,
+                                  "include_highlight_reels": True})
+
+        if not isinstance(data, dict):
+            raise ValueError("Invalid response format (not a dictionary).")
+
+        if "errors" in data:
+            raise RuntimeError(
+                f"GraphQL Error: {data['errors'][0].get('message', 'Unknown error')} \n"
+                f"(code: {data['errors'][0].get('code', 'N/A')}) \n"
+                f"(summary: {data['errors'][0].get('summary', 'Unknown')}) \n"
+                f"(description: {data['errors'][0].get('description', 'Unknown')}) "
+            )
+        data = data["data"]["user"]['edge_highlight_reels']
         if data is None:
             raise BadResponseException('Bad highlights reel JSON.')
         yield from (Highlight(self.context, edge['node'], user if isinstance(user, Profile) else None)
