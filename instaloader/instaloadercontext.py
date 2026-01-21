@@ -270,6 +270,8 @@ class InstaloaderContext:
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
         session.headers.update(self._default_http_header())
+        #Getting mid cookie value
+        session.get("https://i.instagram.com/api/v1/web/login_page/")
         # Override default timeout behavior.
         # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
         session.request = partial(session.request, timeout=self.request_timeout) # type: ignore
@@ -330,7 +332,8 @@ class InstaloaderContext:
                 # username is invalid.
                 raise LoginException('Login error: User {} does not exist.'.format(user))
         # '{"authenticated": true, "user": true, "userId": ..., "oneTapPrompt": false, "status": "ok"}'
-        session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
+        if 'csrftoken' in login.cookies:
+            session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
         self.user_id = resp_json['userId']
@@ -356,7 +359,8 @@ class InstaloaderContext:
                 raise BadCredentialsException("2FA error: {}".format(resp_json['message']))
             else:
                 raise BadCredentialsException("2FA error: \"{}\" status.".format(resp_json['status']))
-        session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
+        if 'csrftoken' in login.cookies:
+            session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
         self.two_factor_auth_pending = None
