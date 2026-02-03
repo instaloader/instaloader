@@ -922,9 +922,16 @@ class Profile:
             profile = cls(context, user_info)
             profile._obtain_metadata()
             return profile
-        except Exception as e:
-            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                            str(username) + ").") from e
+        except (KeyError, IndexError):
+            pass
+
+        for profile in TopSearchResults(context, username).get_profiles():
+            if profile.username == username:
+                profile._obtain_metadata()
+                return profile
+
+        raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
+                                        str(username) + ").")
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
