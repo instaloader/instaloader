@@ -909,10 +909,22 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        # pylint:disable=protected-access
-        profile = cls(context, {'username': username.lower()})
-        profile._obtain_metadata()  # to raise ProfileNotExistsException now in case username is invalid
-        return profile
+        variables = {
+            "data": {
+                "count": 12
+            },
+            "username": username,
+            "__relay_internal__pv__PolarisFeedShareMenurelayprovider": False,
+        }
+        data = context.doc_id_graphql_query('7898261790222653', variables)
+        try:
+            user_info = data["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["edges"][0]["node"]["user"]
+            profile = cls(context, user_info)
+            profile._obtain_metadata()
+            return profile
+        except Exception as e:
+            raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
+                                            str(username) + ").") from e
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -979,11 +991,23 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                metadata = self._context.get_iphone_json(f'api/v1/users/web_profile_info/?username={self.username}',
-                                                         params={})
-                if metadata['data']['user'] is None:
+                user_id = self._node.get('id') or self._node.get('pk')
+                if not user_id:
+                    raise ProfileNotExistsException('Profile {} has no user ID.'.format(self.username))
+                variables = {
+                    "id": str(user_id),
+                    "render_surface": "PROFILE",
+                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+                }
+                data = self._context.doc_id_graphql_query('25980296051578533', variables)
+                if data is None:
+                    raise QueryReturnedNotFoundException('GraphQL query returned None')
+                user_data = data.get('data', {}).get('user')
+                if user_data is None:
                     raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                self._node = metadata['data']['user']
+                self._node = self._normalize_profile_data(user_data)
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
             top_search_results = TopSearchResults(self._context, self.username)
@@ -997,6 +1021,44 @@ class Profile:
                                                         's are' if len(similar_profiles) > 1 else ' is',
                                                         ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
+
+    def _normalize_profile_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize PolarisProfilePageContentQuery response to match legacy format."""
+        normalized = user_data.copy()
+        if 'id' not in normalized and 'pk' in normalized:
+            normalized['id'] = normalized['pk']
+        if 'edge_owner_to_timeline_media' not in normalized and 'media_count' in normalized:
+            normalized['edge_owner_to_timeline_media'] = {'count': normalized['media_count']}
+        if 'edge_felix_video_timeline' not in normalized:
+            normalized['edge_felix_video_timeline'] = {'count': 0}
+        if 'edge_followed_by' not in normalized and 'follower_count' in normalized:
+            normalized['edge_followed_by'] = {'count': normalized['follower_count']}
+        if 'edge_follow' not in normalized and 'following_count' in normalized:
+            normalized['edge_follow'] = {'count': normalized['following_count']}
+        if 'is_business_account' not in normalized and 'is_business' in normalized:
+            normalized['is_business_account'] = normalized['is_business']
+        if 'business_category_name' not in normalized and 'category' in normalized:
+            normalized['business_category_name'] = normalized['category']
+        friendship = normalized.get('friendship_status', {}) or {}
+        if 'followed_by_viewer' not in normalized:
+            normalized['followed_by_viewer'] = friendship.get('followed_by', False)
+        if 'follows_viewer' not in normalized:
+            normalized['follows_viewer'] = friendship.get('following', False)
+        if 'blocked_by_viewer' not in normalized:
+            normalized['blocked_by_viewer'] = friendship.get('blocking', False)
+        if 'has_blocked_viewer' not in normalized:
+            normalized['has_blocked_viewer'] = False
+        if 'has_requested_viewer' not in normalized:
+            normalized['has_requested_viewer'] = friendship.get('incoming_request', False)
+        if 'requested_by_viewer' not in normalized:
+            normalized['requested_by_viewer'] = friendship.get('outgoing_request', False)
+        if 'profile_pic_url_hd' not in normalized:
+            hd_info = normalized.get('hd_profile_pic_url_info')
+            if hd_info and 'url' in hd_info:
+                normalized['profile_pic_url_hd'] = hd_info['url']
+            elif 'profile_pic_url' in normalized:
+                normalized['profile_pic_url_hd'] = normalized['profile_pic_url']
+        return normalized
 
     def _metadata(self, *keys) -> Any:
         try:
