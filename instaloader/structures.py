@@ -909,22 +909,6 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        variables = {
-            "data": {
-                "count": 12
-            },
-            "username": username,
-            "__relay_internal__pv__PolarisFeedShareMenurelayprovider": False,
-        }
-        data = context.doc_id_graphql_query('7898261790222653', variables)
-        try:
-            user_info = data["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["edges"][0]["node"]["user"]
-            profile = cls(context, user_info)
-            profile._obtain_metadata()
-            return profile
-        except (KeyError, IndexError):
-            pass
-
         for profile in TopSearchResults(context, username).get_profiles():
             if profile.username == username:
                 profile._obtain_metadata()
