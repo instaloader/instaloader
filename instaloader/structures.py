@@ -1048,9 +1048,9 @@ class Profile:
             normalized['business_category_name'] = normalized['category']
         friendship = normalized.get('friendship_status', {}) or {}
         if 'followed_by_viewer' not in normalized:
-            normalized['followed_by_viewer'] = friendship.get('followed_by', False)
+            normalized['followed_by_viewer'] = friendship.get('following', False)
         if 'follows_viewer' not in normalized:
-            normalized['follows_viewer'] = friendship.get('following', False)
+            normalized['follows_viewer'] = friendship.get('followed_by', False)
         if 'blocked_by_viewer' not in normalized:
             normalized['blocked_by_viewer'] = friendship.get('blocking', False)
         if 'has_blocked_viewer' not in normalized:
