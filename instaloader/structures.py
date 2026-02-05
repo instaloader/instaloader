@@ -910,7 +910,7 @@ class Profile:
         :raises: :class:`ProfileNotExistsException`
         """
         for profile in TopSearchResults(context, username).get_profiles():
-            if profile.username == username:
+            if profile.username.lower() == username.lower():
                 profile._obtain_metadata()
                 return profile
 
