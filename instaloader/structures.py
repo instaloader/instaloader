@@ -914,6 +914,26 @@ class Profile:
                 profile._obtain_metadata()
                 return profile
 
+        variables = {
+            "data": {
+                "count":12,
+                "include_reel_media_seen_timestamp": False,
+                "include_relationship_info": True,
+                "latest_besties_reel_media": False,
+                "latest_reel_media": False
+            },
+            "username":username
+        }
+
+        data = context.doc_id_graphql_query('34579740524958711', variables)
+        try:
+            user_info = data["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["edges"][0]["node"]["user"]
+            profile = cls(context, user_info)
+            profile._obtain_metadata()
+            return profile
+        except (KeyError, IndexError):
+            pass
+
         raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                         str(username) + ").")
 
