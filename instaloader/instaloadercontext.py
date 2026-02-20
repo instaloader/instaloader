@@ -651,7 +651,14 @@ class InstaloaderContext:
                 tempsession.cookies.clear()
 
             response_headers = dict()    # type: Dict[str, Any]
-            response = self.get_json(path, params, 'i.instagram.com', tempsession, response_headers=response_headers)
+            try:
+                response = self.get_json(path, params, 'i.instagram.com', tempsession,
+                                         response_headers=response_headers)
+            except (ConnectionException, LoginRequiredException) as err:
+                if '403' in str(err):
+                    self.iphone_support = False
+                    self.error("iPhone API returned 403. Disabling iPhone API for this session.")
+                raise
 
             # Extract the ig-set-* headers and use them in the next request
             for key, value in response_headers.items():
