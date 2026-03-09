@@ -1807,17 +1807,85 @@ class Highlight(Story):
 
     def _fetch_items(self):
         if not self._items:
-            self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
-                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
-                                                       "highlight_reel_ids": [str(self.unique_id)],
-                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
+            try:
+                # Try iphone API first (requires sessionid, most reliable)
+                data = self._context.get_iphone_json(
+                    path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(
+                        self.unique_id
+                    ),
+                    params={},
+                )
+                reel_key = 'highlight:{}'.format(self.unique_id)
+                if reel_key in data.get('reels', {}):
+                    iphone_items = data['reels'][reel_key].get('items', [])
+                    # Convert iphone items to graphql-compatible format
+                    self._items = []
+                    for it in iphone_items:
+                        node = {
+                            'id': str(it['pk']),
+                            '__typename': (
+                                'GraphStoryVideo'
+                                if it.get('media_type') == 2
+                                else 'GraphStoryImage'
+                            ),
+                            'display_url': it.get('image_versions2', {}).get(
+                                'candidates', [{}]
+                            )[0].get('url', ''),
+                            'taken_at_timestamp': it.get('taken_at', 0),
+                            'expiring_at_timestamp': it.get('expiring_at', 0),
+                            'owner': {
+                                'id': str(it.get('user', {}).get('pk', '')),
+                                'username': it.get('user', {}).get('username', ''),
+                            },
+                            'dimensions': {
+                                'width': it.get('original_width', 0),
+                                'height': it.get('original_height', 0),
+                            },
+                            'is_video': it.get('media_type') == 2,
+                            'iphone_struct': it,
+                        }
+                        if it.get('media_type') == 2 and it.get('video_versions'):
+                            node['video_resources'] = [
+                                {
+                                    'src': v.get('url', ''),
+                                    'config_width': v.get('width', 0),
+                                    'config_height': v.get('height', 0),
+                                }
+                                for v in it['video_versions']
+                            ]
+                        self._items = self._items + [node]
+                else:
+                    self._items = []
+            except Exception:
+                # Fallback: try legacy graphql (may not work with newer API)
+                try:
+                    self._items = self._context.graphql_query(
+                        "45246d3fe16ccc6577e0bd297a5db1ab",
+                        {
+                            "reel_ids": [],
+                            "tag_names": [],
+                            "location_ids": [],
+                            "highlight_reel_ids": [str(self.unique_id)],
+                            "precomposed_overlay": False,
+                        },
+                    )['data']['reels_media'][0]['items']
+                except Exception:
+                    self._items = []
 
     def _fetch_iphone_struct(self) -> None:
         if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
-            data = self._context.get_iphone_json(
-                path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
-            )
-            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+            try:
+                data = self._context.get_iphone_json(
+                    path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(
+                        self.unique_id
+                    ),
+                    params={},
+                )
+                reel_key = 'highlight:{}'.format(self.unique_id)
+                if reel_key in data.get('reels', {}):
+                    self._iphone_struct_ = data['reels'][reel_key]
+            except Exception:
+                pass
 
     @property
     def itemcount(self) -> int:
