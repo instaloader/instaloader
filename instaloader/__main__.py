@@ -500,6 +500,8 @@ def main():
                        help='Do not resume a previously-aborted download iteration, and do not save such information '
                             'when interrupted.')
     g_how.add_argument('--use-aged-resume-files', action='store_true', help=SUPPRESS)
+    g_how.add_argument('--impersonate',
+                       help='Impersonate browser TLS fingerprint using curl_cffi. e.g. safari_15_5.')
     g_how.add_argument('--user-agent',
                        help='User Agent to use for HTTP requests. Defaults to \'{}\'.'.format(default_user_agent()))
     g_how.add_argument('-S', '--no-sleep', action='store_true', help=SUPPRESS)
@@ -564,6 +566,7 @@ def main():
         download_stories = args.stories or args.stories_only
 
         loader = Instaloader(sleep=not args.no_sleep, quiet=args.quiet, user_agent=args.user_agent,
+                             impersonate=args.impersonate,
                              dirname_pattern=args.dirname_pattern, filename_pattern=args.filename_pattern,
                              download_pictures=not args.no_pictures,
                              download_videos=not args.no_videos, download_video_thumbnails=not args.no_video_thumbnails,
