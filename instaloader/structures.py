@@ -889,7 +889,8 @@ class Profile:
     Also, this class implements == and is hashable.
     """
     def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
-        assert 'username' in node
+        assert "username" in node
+        assert "id" in node or "pk" in node
         self._context = context
         self._has_public_story: Optional[bool] = None
         self._node = node
@@ -909,33 +910,28 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        for profile in TopSearchResults(context, username).get_profiles():
-            if profile.username.lower() == username.lower():
-                profile._obtain_metadata()
-                return profile
 
-        variables = {
-            "data": {
-                "count":12,
-                "include_reel_media_seen_timestamp": False,
-                "include_relationship_info": True,
-                "latest_besties_reel_media": False,
-                "latest_reel_media": False
+        data = context.doc_id_graphql_query(
+            "34579740524958711",
+            {
+                "data": {
+                    "count": 12,
+                    "include_reel_media_seen_timestamp": False,
+                    "include_relationship_info": True,
+                    "latest_besties_reel_media": False,
+                    "latest_reel_media": False,
+                },
+                "username": username,
             },
-            "username":username
-        }
+        )
 
-        data = context.doc_id_graphql_query('34579740524958711', variables)
         try:
             user_info = data["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["edges"][0]["node"]["user"]
             profile = cls(context, user_info)
-            profile._obtain_metadata()
-            return profile
-        except (KeyError, IndexError):
-            pass
+        except (TypeError, IndexError) as exc:
+            raise ProfileNotExistsException("Profile {} does not exist.".format(username)) from exc
 
-        raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
-                                        str(username) + ").")
+        return profile
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -1003,8 +999,6 @@ class Profile:
         try:
             if not self._has_full_metadata:
                 user_id = self._node.get('id') or self._node.get('pk')
-                if not user_id:
-                    raise ProfileNotExistsException('Profile {} has no user ID.'.format(self.username))
                 variables = {
                     "id": str(user_id),
                     "render_surface": "PROFILE",
