@@ -910,13 +910,13 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
+        data = context.doc_id_graphql_query("26347858941511777", {"hasQuery": True, "query": username})["data"]
+        if data:
+            for user in data["xdt_api__v1__fbsearch__non_profiled_serp"]["users"]:
+                if user["username"].lower() == username.lower():
+                    return cls(context, user)
 
-        data = context.doc_id_graphql_query("26347858941511777", {"hasQuery": True, "query": username})
-        for user in data["data"]["xdt_api__v1__fbsearch__non_profiled_serp"]["users"]:
-            if user["username"].lower() == username.lower():
-                return cls(context, user)
-        else:
-            raise ProfileNotExistsException("Profile {} does not exist.".format(username))
+        raise ProfileNotExistsException("Profile {} does not exist.".format(username))
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
