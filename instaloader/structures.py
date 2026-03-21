@@ -1266,8 +1266,8 @@ class Profile:
                 "data": {
                     "count": 12,
                     "include_relationship_info": True,
-                    "latest_besties_reel_media": False,
-                    "latest_reel_media": False,
+                    "latest_besties_reel_media": True,
+                    "latest_reel_media": True,
                 },
                 "username": self.username,
             },
