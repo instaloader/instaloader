@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from lzma import LZMAError
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple, TypeVar
 
-from .exceptions import AbortDownloadException, InvalidArgumentException
+from .exceptions import InvalidArgumentException
 from .instaloadercontext import InstaloaderContext
 
 class FrozenNodeIterator(NamedTuple):
@@ -318,7 +318,7 @@ def resumable_iteration(context: InstaloaderContext,
             context.error("Warning: Not resuming from {}: {}".format(resume_file_path, exc))
     try:
         yield is_resuming, start_index
-    except (KeyboardInterrupt, AbortDownloadException):
+    except (Exception, KeyboardInterrupt):
         if os.path.dirname(resume_file_path):
             os.makedirs(os.path.dirname(resume_file_path), exist_ok=True)
         save(iterator.freeze(), resume_file_path)
