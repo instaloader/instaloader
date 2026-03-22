@@ -34,7 +34,8 @@ class NetworkController:
                 raise ImportError("curl_cffi is required for impersonate feature.")
 
             _impersonate = self.impersonate
-            class ImpersonateSession(cffi_requests.Session):
+            # Inherits public methods from Session; only __init__ is overridden
+            class ImpersonateSession(cffi_requests.Session): # pylint: disable=too-few-public-methods
                 def __init__(self, *args: Any, **kwargs: Any) -> None:
                     super().__init__(*args, **kwargs, impersonate=_impersonate) # type: ignore
 
@@ -56,11 +57,11 @@ class NetworkController:
         if self.impersonate and new.cookies.__class__.__name__ == 'Cookies':
             new.cookies.update(cookie_dict)
         else:
-            new.cookies = requests.utils.cookiejar_from_dict(cookie_dict)
+            # False positives: setting attributes on the new session object, not on self
+            new.cookies = requests.utils.cookiejar_from_dict(cookie_dict) # pylint: disable=attribute-defined-outside-init
 
-        new.headers = session.headers.copy()
-
-        new.request = partial(new.request, timeout=request_timeout)
+        new.headers = session.headers.copy() # pylint: disable=attribute-defined-outside-init
+        new.request = partial(new.request, timeout=request_timeout) # pylint: disable=attribute-defined-outside-init
         return new
 
     def dict_from_cookiejar(self, cookies: Any) -> Dict[str, str]:
