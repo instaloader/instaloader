@@ -19,15 +19,8 @@ import requests.utils
 from .exceptions import *
 
 
-def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
-    """Duplicates a requests.Session."""
-    new = requests.Session()
-    new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
-    new.headers = session.headers.copy()  # type: ignore
-    # Override default timeout behavior.
-    # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
-    new.request = partial(new.request, timeout=request_timeout)  # type: ignore
-    return new
+from .network import NetworkController, REQUEST_EXCEPTIONS
+
 
 
 def default_user_agent() -> str:
@@ -82,7 +75,10 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True, impersonate: Optional[str] = None):
+
+        self.impersonate = impersonate
+        self.network = NetworkController(impersonate)
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -201,7 +197,7 @@ class InstaloaderContext:
 
     def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
-        session = requests.Session()
+        session = self.network.get_session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -213,7 +209,7 @@ class InstaloaderContext:
 
     def save_session(self):
         """Not meant to be used directly, use :meth:`Instaloader.save_session`."""
-        return requests.utils.dict_from_cookiejar(self._session.cookies)
+        return self.network.dict_from_cookiejar(self._session.cookies)
 
     def update_cookies(self, cookie):
         """.. versionadded:: 4.11"""
@@ -221,8 +217,8 @@ class InstaloaderContext:
 
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
-        session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
+        session = self.network.get_session()
+        session.cookies = self.network.cookiejar_from_dict(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
         # Override default timeout behavior.
@@ -265,7 +261,7 @@ class InstaloaderContext:
         import http.client
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
-        session = requests.Session()
+        session = self.network.get_session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -295,7 +291,7 @@ class InstaloaderContext:
                 "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
             ) from err
         if resp_json.get('two_factor_required'):
-            two_factor_session = copy_session(session, self.request_timeout)
+            two_factor_session = self.network.copy_session(session, self.request_timeout)
             two_factor_session.headers.update({'X-CSRFToken': csrf_token})
             two_factor_session.cookies.update({'csrftoken': csrf_token})
             self.two_factor_auth_pending = (two_factor_session,
@@ -471,7 +467,7 @@ class InstaloaderContext:
             if 'status' in resp_json and resp_json['status'] != "ok":
                 raise ConnectionException(self._response_error(resp))
             return resp_json
-        except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
+        except (ConnectionException, json.decoder.JSONDecodeError) + REQUEST_EXCEPTIONS as err:
             error_string = "JSON Query to {}: {}".format(path, err)
             if _attempt == self.max_connection_attempts:
                 if isinstance(err, QueryReturnedNotFoundException):
@@ -508,7 +504,7 @@ class InstaloaderContext:
         .. versionchanged:: 4.13.1
            Removed the `rhx_gis` parameter.
         """
-        with copy_session(self._session, self.request_timeout) as tmpsession:
+        with self.network.copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
             del tmpsession.headers['Content-Length']
@@ -540,7 +536,7 @@ class InstaloaderContext:
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
         """
-        with copy_session(self._session, self.request_timeout) as tmpsession:
+        with self.network.copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
             del tmpsession.headers['Content-Length']
@@ -609,7 +605,7 @@ class InstaloaderContext:
         :raises ConnectionException: When query repeatedly failed.
 
         .. versionadded:: 4.2.1"""
-        with copy_session(self._session, self.request_timeout) as tempsession:
+        with self.network.copy_session(self._session, self.request_timeout) as tempsession:
             # Set headers to simulate an API request from iPad
             tempsession.headers['ig-intended-user-id'] = str(self.user_id)
             tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
@@ -669,9 +665,9 @@ class InstaloaderContext:
         self.log(filename, end=' ', flush=True)
         with open(filename + '.temp', 'wb') as file:
             if isinstance(resp, requests.Response):
-                shutil.copyfileobj(resp.raw, file)
+                shutil.copyfileobj(resp.raw, file) # type: ignore
             else:
-                file.write(resp)
+                file.write(resp) # type: ignore
         os.replace(filename + '.temp', filename)
 
     def get_raw(self, url: str, _attempt=1) -> requests.Response:
@@ -682,8 +678,12 @@ class InstaloaderContext:
         :raises ConnectionException: When download failed.
 
         .. versionadded:: 4.2.1"""
-        with self.get_anonymous_session() as anonymous_session:
-            resp = anonymous_session.get(url, stream=True)
+        resp = requests.get(
+            url,
+            stream=True,
+            headers=self._default_http_header(empty_session_only=True),
+            timeout=self.request_timeout
+        )
         if resp.status_code == 200:
             resp.raw.decode_content = True
             return resp
