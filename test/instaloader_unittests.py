@@ -8,6 +8,63 @@ from itertools import islice
 from typing import Optional
 
 import instaloader
+from instaloader.instaloadercontext import InstaloaderContext
+
+
+class TestImports(unittest.TestCase):
+    """Verify that all exception classes are importable from instaloadercontext.
+    This catches missing 'from .exceptions import *' in instaloadercontext.py."""
+
+    def test_exceptions_available_in_context(self):
+        from instaloader.instaloadercontext import (
+            AbortDownloadException,
+            ConnectionException,
+            QueryReturnedNotFoundException,
+            TooManyRequestsException,
+            LoginRequiredException,
+        )
+        self.assertTrue(issubclass(ConnectionException, instaloader.InstaloaderException))
+        self.assertTrue(issubclass(AbortDownloadException, Exception))
+
+
+class TestHTTP2(unittest.TestCase):
+    """Verify HTTP/2 support is active on new sessions."""
+
+    def test_session_uses_http2(self):
+        import niquests
+        L = instaloader.Instaloader()
+        self.assertIsInstance(L.context._session, niquests.Session)
+
+    def test_copy_session_uses_http2(self):
+        import niquests
+        from instaloader.instaloadercontext import copy_session
+        L = instaloader.Instaloader()
+        new_session = copy_session(L.context._session)
+        self.assertIsInstance(new_session, niquests.Session)
+
+
+class TestLoginResilience(unittest.TestCase):
+    """Verify test_login() returns stored username on connection error."""
+
+    def test_login_returns_username_on_connection_error(self):
+        from unittest.mock import patch
+        from instaloader.instaloadercontext import ConnectionException
+        L = instaloader.Instaloader()
+        L.context.username = "testuser"
+        with patch.object(L.context, 'graphql_query', side_effect=ConnectionException("rate limited")):
+            result = L.context.test_login()
+        self.assertEqual(result, "testuser")
+
+    def test_login_returns_none_when_no_session_on_connection_error(self):
+        from unittest.mock import patch
+        from instaloader.instaloadercontext import ConnectionException
+        L = instaloader.Instaloader()
+        L.context.username = None
+        with patch.object(L.context, 'graphql_query', side_effect=ConnectionException("rate limited")):
+            result = L.context.test_login()
+        self.assertIsNone(result)
+
+
 
 PROFILE_WITH_HIGHLIGHTS = 325732271
 PUBLIC_PROFILE = "selenagomez"
