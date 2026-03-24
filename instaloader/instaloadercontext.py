@@ -17,6 +17,8 @@ import niquests as requests
 import niquests.cookies as requests_cookies
 import niquests.utils as requests_utils
 
+from .exceptions import *
+
 
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
