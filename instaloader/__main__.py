@@ -82,7 +82,7 @@ def filterstr_to_filterfunc(filter_str: str, item_type: type):
     return filterfunc
 
 
-def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
+def get_cookies_from_instagram(domain: str, browser: str, cookie_file: Optional[str] = None):
     supported_browsers = {
         "brave": browser_cookie3.brave,
         "chrome": browser_cookie3.chrome,
@@ -114,13 +114,10 @@ def get_cookies_from_instagram(domain, browser, cookie_file='', cookie_name=''):
         raise LoginException(f"No cookies found for Instagram in {browser}, "
                              f"Are you logged in successfully in {browser}?")
 
-    if cookie_name:
-        return cookies.get(cookie_name, {})
-    else:
-        return cookies
+    return cookies
 
 
-def import_session(browser, instaloader, cookiefile):
+def import_session(browser: str, instaloader: Instaloader, cookiefile: Optional[str]):
     cookie = get_cookies_from_instagram('instagram', browser, cookiefile)
     if cookie is not None:
         instaloader.context.update_cookies(cookie)
