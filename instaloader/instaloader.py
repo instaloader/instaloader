@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
-import requests
+import niquests as requests
 import urllib3  # type: ignore
 
 from .exceptions import *

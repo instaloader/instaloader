@@ -13,8 +13,9 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
-import requests
-import requests.utils
+import niquests as requests
+import niquests.cookies as requests_cookies
+import niquests.utils as requests_utils
 
 from .exceptions import *
 
@@ -22,7 +23,7 @@ from .exceptions import *
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
-    new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
+    new.cookies = requests_cookies.cookiejar_from_dict(requests_utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
@@ -213,7 +214,7 @@ class InstaloaderContext:
 
     def save_session(self):
         """Not meant to be used directly, use :meth:`Instaloader.save_session`."""
-        return requests.utils.dict_from_cookiejar(self._session.cookies)
+        return requests_utils.dict_from_cookiejar(self._session.cookies)
 
     def update_cookies(self, cookie):
         """.. versionadded:: 4.11"""
@@ -222,7 +223,7 @@ class InstaloaderContext:
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
         session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
+        session.cookies = requests_cookies.cookiejar_from_dict(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
         # Override default timeout behavior.
@@ -246,7 +247,10 @@ class InstaloaderContext:
             return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
         except (AbortDownloadException, ConnectionException) as err:
             self.error(f"Error when checking if logged in: {err}")
-            return None
+            # Return the stored username rather than None so that a transient
+            # connection failure (e.g. rate-limiting) does not trigger an
+            # interactive re-login prompt for a session that is still valid.
+            return self.username if self.username else None
 
     def login(self, user, passwd):
         """Not meant to be used directly, use :meth:`Instaloader.login`.
