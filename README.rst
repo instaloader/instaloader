@@ -124,10 +124,29 @@ Supporters
 .. current-sponsors-start
 
 | Instaloader is proudly sponsored by
-|  `@rocketapi-io <https://github.com/rocketapi-io>`__
+
+.. list-table::
+  :align: center
+
+  * - |socialapis|
+  * - `SocialAPIs <https://socialapis.io/?utm_source=github&utm_medium=sponsor&utm_campaign=instaloader>`__
+
+|
+
+.. list-table::
+  :align: center
+
+  * - `@rocketapi-io <https://github.com/rocketapi-io>`__
+
+|
 
 See `Alex' GitHub Sponsors <https://github.com/sponsors/aandergr>`__ page for
 how you can sponsor the development of Instaloader!
+
+.. |socialapis| image:: ./.sponsor-logos/socialapis.png
+   :alt: SocialAPIs
+   :target: https://socialapis.io/?utm_source=github&utm_medium=sponsor&utm_campaign=instaloader
+   :height: 96px
 
 .. current-sponsors-end
 
