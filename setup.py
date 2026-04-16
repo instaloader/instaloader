@@ -21,7 +21,7 @@ def get_version():
 if sys.version_info < (3, 9):
     sys.exit('Instaloader requires Python >= 3.9.')
 
-requirements = ['requests>=2.25']
+requirements = ['requests>=2.25', 'httpx[http2]>=0.24']
 optional_requirements = {
     'browser_cookie3': ['browser_cookie3>=0.19.1'],
 }
