@@ -764,19 +764,19 @@ class Post:
             # If the Post's metadata already contains all parent comments, don't do GraphQL requests to obtain them
             return [_postcomment(comment['node']) for comment in comment_edges]
 
-        if self.comments > NodeIterator.page_length():
-            # comments pagination via our graphql query does not work reliably anymore (issue #2125), fallback to an
-            # iphone endpoint if needed.
+        # try GraphQL first. Issue in iphone endpoint (issue #2125 fallback) is currently broken and
+        # returns "fail" status for profile posts (issue #2635). If GraphQL fails, fall back to the iphone endpoint.
+        try:
+            return NodeIterator(
+                self._context,
+                '97b41c52301f77ce508f55e66d17620e',
+                lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
+                _postcomment,
+                {'shortcode': self.shortcode},
+                'https://www.instagram.com/p/{0}/'.format(self.shortcode),
+            )
+        except (ConnectionException, QueryReturnedBadRequestException, QueryReturnedForbiddenException):
             return self._get_comments_via_iphone_endpoint()
-
-        return NodeIterator(
-            self._context,
-            '97b41c52301f77ce508f55e66d17620e',
-            lambda d: d['data']['shortcode_media']['edge_media_to_parent_comment'],
-            _postcomment,
-            {'shortcode': self.shortcode},
-            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
-        )
 
     def get_likes(self) -> Iterator['Profile']:
         """
