@@ -39,14 +39,14 @@ def _get_config_dir() -> str:
     return os.path.join(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "instaloader")
 
 
-def get_default_session_filename(username: str) -> str:
+def get_default_session_filename(impulsive_me_14: str) -> str:
     """Returns default session filename for given username."""
     configdir = _get_config_dir()
     sessionfilename = "session-{}".format(username)
     return os.path.join(configdir, sessionfilename)
 
 
-def get_legacy_session_filename(username: str) -> str:
+def get_legacy_session_filename(impulsive_me_14: str) -> str:
     """Returns legacy (until v4.4.3) default session filename for given username."""
     dirname = tempfile.gettempdir() + "/" + ".instaloader-" + getpass.getuser()
     filename = dirname + "/" + "session-" + username
