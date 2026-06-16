@@ -912,11 +912,20 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        data = context.doc_id_graphql_query("26347858941511777", {"hasQuery": True, "query": username})["data"]
-        if data:
-            for user in data["xdt_api__v1__fbsearch__non_profiled_serp"]["users"]:
-                if user["username"].lower() == username.lower():
-                    return cls(context, user)
+        # Resolve the profile through the web_profile_info endpoint, which works both
+        # anonymously and when logged in and returns the complete profile node
+        # (including the first page of posts). The GraphQL fbsearch query previously
+        # used here started responding with HTTP 400.
+        try:
+            data = context.get_json(
+                "api/v1/users/web_profile_info/", params={"username": username.lower()}
+            ).get("data")
+        except QueryReturnedNotFoundException:
+            data = None
+        if data and data.get("user"):
+            profile = cls(context, data["user"])
+            profile._has_full_metadata = True
+            return profile
 
         raise ProfileNotExistsException("Profile {} does not exist.".format(username))
 
@@ -931,15 +940,16 @@ class Profile:
         """
         if profile_id in context.profile_id_cache:
             return context.profile_id_cache[profile_id]
-        data = context.graphql_query('7c16654f22c819fb63d1183034a5162f',
-                                     {'user_id': str(profile_id),
-                                      'include_chaining': False,
-                                      'include_reel': True,
-                                      'include_suggested_users': False,
-                                      'include_logged_out_extras': False,
-                                      'include_highlight_reels': False})['data']['user']
-        if data:
-            profile = cls(context, data['reel']['owner'])
+        # Resolve the current username from the user id, then load the full profile.
+        # The GraphQL user query previously used here started responding with HTTP 400.
+        try:
+            user = context.get_json(
+                "api/v1/users/{0}/info/".format(profile_id), params={}
+            ).get('user')
+        except QueryReturnedNotFoundException:
+            user = None
+        if user and user.get('username'):
+            profile = cls.from_username(context, user['username'])
         else:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
@@ -985,6 +995,24 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
+                if not self._context.is_logged_in:
+                    # Anonymous access: the web_profile_info endpoint returns the full
+                    # node in the legacy format and still works, unlike the GraphQL
+                    # profile query.
+                    try:
+                        data = self._context.get_json(
+                            "api/v1/users/web_profile_info/",
+                            params={"username": self.username},
+                        ).get('data')
+                    except QueryReturnedNotFoundException as err:
+                        raise ProfileNotExistsException(
+                            'Profile {} does not exist.'.format(self.username)) from err
+                    user_data = data.get('user') if data else None
+                    if user_data is None:
+                        raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+                    self._node = user_data
+                    self._has_full_metadata = True
+                    return
                 user_id = self._node.get('id') or self._node.get('pk')
                 variables = {
                     "id": str(user_id),
