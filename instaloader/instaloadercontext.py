@@ -370,7 +370,10 @@ class InstaloaderContext:
     @staticmethod
     def _response_error(resp: requests.Response) -> str:
         extra_from_json: Optional[str] = None
-        with suppress(json.decoder.JSONDecodeError):
+        # resp.json() may raise either the stdlib json.JSONDecodeError or, when simplejson is
+        # installed, requests' own JSONDecodeError, which is not a subclass of the former. Suppress
+        # their common ValueError ancestor so a non-JSON error body does not mask the real status.
+        with suppress(ValueError):
             resp_json = resp.json()
             if "status" in resp_json:
                 extra_from_json = (
