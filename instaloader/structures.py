@@ -319,9 +319,19 @@ class Post:
 
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
-            pic_json = self._context.doc_id_graphql_query(
+            response = self._context.doc_id_graphql_query(
                 "8845758582119845", {"shortcode": self.shortcode}
-            )["data"]["xdt_shortcode_media"]
+            )
+            if response is None:
+                raise BadResponseException(
+                    "Fetching Post metadata failed: empty response from server."
+                )
+            response_data = response.get("data")
+            if response_data is None:
+                raise BadResponseException(
+                    "Fetching Post metadata failed: response contained no 'data' field."
+                )
+            pic_json = response_data.get("xdt_shortcode_media")
             if pic_json is None:
                 raise BadResponseException("Fetching Post metadata failed.")
             try:
