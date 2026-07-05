@@ -259,6 +259,26 @@ class Post:
         return fake_node
 
     @staticmethod
+    def _fetch_play_count_from_clips(context: 'InstaloaderContext', user_id: str,
+                                     shortcode: str) -> Optional[int]:
+        """Fetch play_count for a reel via the clips connection endpoint as a fallback."""
+        try:
+            resp = context.doc_id_graphql_query(
+                "27234427476213202",
+                {"data": {"include_feed_video": True, "page_size": 12,
+                           "target_user_id": str(user_id)}},
+            )
+            edges = ((resp.get("data") or {})
+                     .get("xdt_api__v1__clips__user__connection_v2") or {})
+            for edge in edges.get("edges") or []:
+                media = (edge.get("node") or {}).get("media") or {}
+                if media.get("code") == shortcode:
+                    return media.get("play_count")
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
     def shortcode_to_mediaid(code: str) -> int:
         if len(code) > 11:
             raise InvalidArgumentException("Wrong shortcode \"{0}\", unable to convert to mediaid.".format(code))
@@ -319,22 +339,97 @@ class Post:
 
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
-            pic_json = self._context.doc_id_graphql_query(
-                "8845758582119845", {"shortcode": self.shortcode}
-            )["data"]["xdt_shortcode_media"]
-            if pic_json is None:
+            media_types = {1: "GraphImage", 2: "GraphVideo", 8: "GraphSidecar"}
+            resp = self._context.doc_id_graphql_query(
+                "27128499623469141",
+                {
+                    "shortcode": self.shortcode,
+                    "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
+                },
+            )
+            web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
+            items = web_info.get("items")
+            if not items:
                 raise BadResponseException("Fetching Post metadata failed.")
-            try:
-                xdt_types = {
-                    "XDTGraphImage": "GraphImage",
-                    "XDTGraphVideo": "GraphVideo",
-                    "XDTGraphSidecar": "GraphSidecar",
+            media = items[0]
+            media_type = media.get("media_type")
+            typename = media_types.get(media_type)
+            if not typename:
+                raise BadResponseException(f"Unknown media_type in metadata: {media_type}.")
+            pic_json: Dict[str, Any] = {
+                "shortcode": media["code"],
+                "id": media["pk"],
+                "__typename": typename,
+                "is_video": media_type == 2,
+                "taken_at_timestamp": media["taken_at"],
+                "owner": {
+                    "id": media["user"]["pk"],
+                    "username": media["user"].get("username", ""),
+                    "full_name": media["user"].get("full_name", ""),
+                },
+            }
+            candidates = (media.get("image_versions2") or {}).get("candidates") or []
+            if candidates:
+                pic_json["display_url"] = candidates[0]["url"]
+            video_versions = media.get("video_versions") or []
+            if video_versions:
+                pic_json["video_url"] = video_versions[0]["url"]
+            if media.get("video_duration") is not None:
+                pic_json["video_duration"] = media["video_duration"]
+            if media.get("view_count") is not None:
+                pic_json["video_view_count"] = media["view_count"]
+            if media.get("play_count") is not None:
+                pic_json["video_play_count"] = media["play_count"]
+            if media_type == 2 and pic_json.get("video_view_count") is None:
+                play_count = Post._fetch_play_count_from_clips(
+                    self._context, media["user"]["pk"], media["code"]
+                )
+                if play_count is not None:
+                    pic_json["video_play_count"] = play_count
+            caption = media.get("caption")
+            caption_text = caption.get("text") if isinstance(caption, dict) else None
+            pic_json["edge_media_to_caption"] = (
+                {"edges": [{"node": {"text": caption_text}}]} if caption_text is not None
+                else {"edges": []}
+            )
+            pic_json["edge_media_preview_like"] = {"count": media.get("like_count") or 0}
+            pic_json["edge_media_to_parent_comment"] = {
+                "count": media.get("comment_count") or 0,
+                "edges": [],
+            }
+            if media.get("has_liked") is not None:
+                pic_json["viewer_has_liked"] = media["has_liked"]
+            if media.get("accessibility_caption") is not None:
+                pic_json["accessibility_caption"] = media["accessibility_caption"]
+            if media.get("location"):
+                pic_json["location"] = media["location"]
+            carousel = media.get("carousel_media") or []
+            if carousel:
+                carousel_nodes = []
+                for item in carousel:
+                    item_type = item.get("media_type", 1)
+                    node: Dict[str, Any] = {
+                        "shortcode": item.get("code", ""),
+                        "__typename": media_types.get(item_type, "GraphImage"),
+                        "is_video": item_type == 2,
+                    }
+                    item_candidates = (item.get("image_versions2") or {}).get("candidates") or []
+                    node["display_url"] = item_candidates[0]["url"] if item_candidates else ""
+                    item_videos = item.get("video_versions") or []
+                    node["video_url"] = item_videos[0]["url"] if item_videos else None
+                    if item.get("accessibility_caption") is not None:
+                        node["accessibility_caption"] = item["accessibility_caption"]
+                    carousel_nodes.append({"node": node})
+                pic_json["edge_sidecar_to_children"] = {"edges": carousel_nodes}
+            tagged = (media.get("usertags") or {}).get("in") or []
+            if tagged:
+                pic_json["edge_media_to_tagged_user"] = {
+                    "edges": [
+                        {"node": {"user": {"username": t["user"]["username"].lower()}}}
+                        for t in tagged
+                        if (t.get("user") or {}).get("username")
+                    ]
                 }
-                pic_json["__typename"] = xdt_types[pic_json["__typename"]]
-            except KeyError as exc:
-                raise BadResponseException(
-                    f"Unknown __typename in metadata: {pic_json['__typename']}."
-                ) from exc
             self._full_metadata_dict = pic_json
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
@@ -599,7 +694,10 @@ class Post:
 
         .. versionadded:: 4.2.6"""
         if self.is_video:
-            return self._field('video_view_count')
+            try:
+                return self._field('video_view_count')
+            except KeyError:
+                return None
         return None
 
     @property
@@ -608,7 +706,10 @@ class Post:
 
         .. versionadded:: 4.14.3"""
         if self.is_video:
-            return self._field('video_play_count')
+            try:
+                return self._field('video_play_count')
+            except KeyError:
+                return None
         return None
 
     @property
@@ -929,18 +1030,23 @@ class Profile:
         """
         if profile_id in context.profile_id_cache:
             return context.profile_id_cache[profile_id]
-        data = context.graphql_query('7c16654f22c819fb63d1183034a5162f',
-                                     {'user_id': str(profile_id),
-                                      'include_chaining': False,
-                                      'include_reel': True,
-                                      'include_suggested_users': False,
-                                      'include_logged_out_extras': False,
-                                      'include_highlight_reels': False})['data']['user']
-        if data:
-            profile = cls(context, data['reel']['owner'])
-        else:
+        resp = context.doc_id_graphql_query(
+            '26672929172408668',
+            {
+                "enable_integrity_filters": True,
+                "id": str(profile_id),
+                "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+                "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+            },
+        )
+        user_data = (resp.get('data') or {}).get('user')
+        if not user_data:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
+        node = {'id': user_data.get('pk', str(profile_id)), 'username': user_data.get('username', '')}
+        profile = cls(context, node)
         context.profile_id_cache[profile_id] = profile
         return profile
 
@@ -983,21 +1089,7 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                user_id = self._node.get('id') or self._node.get('pk')
-                variables = {
-                    "id": str(user_id),
-                    "render_surface": "PROFILE",
-                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
-                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
-                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
-                }
-                data = self._context.doc_id_graphql_query('25980296051578533', variables)
-                if data is None:
-                    raise QueryReturnedNotFoundException('GraphQL query returned None')
-                user_data = data.get('data', {}).get('user')
-                if user_data is None:
-                    raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                self._node = self._normalize_profile_data(user_data)
+                self._node = self._fetch_full_metadata()
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
             top_search_results = TopSearchResults(self._context, self.username)
@@ -1011,6 +1103,41 @@ class Profile:
                                                         's are' if len(similar_profiles) > 1 else ' is',
                                                         ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
+
+    def _fetch_full_metadata(self) -> Dict[str, Any]:
+        """Fetch the full profile node.
+
+        Tries the ``web_profile_info`` endpoint first (which returns the node already in the legacy
+        format), and falls back to the ``PolarisProfilePageContentQuery`` ``doc_id`` query. Both of
+        these endpoints are rotated by Instagram from time to time, so having two independent sources
+        makes obtaining the metadata more resilient.
+        """
+        # Primary: i.instagram.com web_profile_info, which returns the node in legacy format.
+        try:
+            metadata = self._context.get_iphone_json(
+                'api/v1/users/web_profile_info/?username={0}'.format(self.username), params={})
+            user_data = metadata.get('data', {}).get('user')
+            if user_data is not None:
+                return user_data
+        except (QueryReturnedBadRequestException, QueryReturnedNotFoundException, KeyError):
+            pass
+        # Fallback: PolarisProfilePageContentQuery doc_id query, which needs normalizing.
+        user_id = self._node.get('id') or self._node.get('pk')
+        variables = {
+            "enable_integrity_filters": True,
+            "id": str(user_id),
+            "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+            "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+            "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+            "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+        }
+        data = self._context.doc_id_graphql_query('26672929172408668', variables)
+        if data is None:
+            raise QueryReturnedNotFoundException('GraphQL query returned None')
+        user_data = data.get('data', {}).get('user')
+        if user_data is None:
+            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+        return self._normalize_profile_data(user_data)
 
     def _normalize_profile_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize PolarisProfilePageContentQuery response to match legacy format."""

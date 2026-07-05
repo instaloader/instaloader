@@ -15,8 +15,10 @@ from pathlib import Path
 from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
-import requests
+
 import urllib3  # type: ignore
+
+from .network import REQUEST_EXCEPTIONS
 
 from .exceptions import *
 from .instaloadercontext import InstaloaderContext, RateController
@@ -95,7 +97,7 @@ def _retry_on_connection_error(func: Callable) -> Callable:
     def call(instaloader, *args, **kwargs):
         try:
             return func(instaloader, *args, **kwargs)
-        except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
+        except (urllib3.exceptions.HTTPError, ConnectionException) + REQUEST_EXCEPTIONS as err:
             error_string = "{}({}): {}".format(func.__name__, ', '.join([repr(arg) for arg in args]), err)
             if (kwargs.get('_attempt') or 1) == instaloader.context.max_connection_attempts:
                 raise ConnectionException(error_string) from None
@@ -232,11 +234,11 @@ class Instaloader:
                  fatal_status_codes: Optional[List[int]] = None,
                  iphone_support: bool = True,
                  title_pattern: Optional[str] = None,
-                 sanitize_paths: bool = False):
+                 sanitize_paths: bool = False, impersonate: Optional[str] = None):
 
         self.context = InstaloaderContext(sleep, quiet, user_agent, max_connection_attempts,
                                           request_timeout, rate_controller, fatal_status_codes,
-                                          iphone_support)
+                                          iphone_support, impersonate)
 
         # configuration parameters
         self.dirname_pattern = dirname_pattern or "{target}"
