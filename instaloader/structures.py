@@ -1082,41 +1082,7 @@ class Profile:
     def _obtain_metadata(self):
         try:
             if not self._has_full_metadata:
-                if not self._context.is_logged_in:
-                    # Anonymous access: the web_profile_info endpoint returns the full
-                    # node in the legacy format and still works, unlike the GraphQL
-                    # profile query.
-                    try:
-                        data = self._context.get_json(
-                            "api/v1/users/web_profile_info/",
-                            params={"username": self.username},
-                        ).get('data')
-                    except QueryReturnedNotFoundException as err:
-                        raise ProfileNotExistsException(
-                            'Profile {} does not exist.'.format(self.username)) from err
-                    user_data = data.get('user') if data else None
-                    if user_data is None:
-                        raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                    self._node = user_data
-                    self._has_full_metadata = True
-                    return
-                user_id = self._node.get('id') or self._node.get('pk')
-                variables = {
-                    "id": str(user_id),
-                    "render_surface": "PROFILE",
-                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
-                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
-                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
-                    "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
-                    "enable_integrity_filters": True,
-                }
-                data = self._context.doc_id_graphql_query('27937681195819736', variables)
-                if data is None:
-                    raise QueryReturnedNotFoundException('GraphQL query returned None')
-                user_data = data.get('data', {}).get('user')
-                if user_data is None:
-                    raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                self._node = self._normalize_profile_data(user_data)
+                self._node = self._fetch_full_metadata()
                 self._has_full_metadata = True
         except (QueryReturnedNotFoundException, KeyError) as err:
             top_search_results = TopSearchResults(self._context, self.username)
@@ -1130,6 +1096,44 @@ class Profile:
                                                         's are' if len(similar_profiles) > 1 else ' is',
                                                         ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
+
+    def _fetch_full_metadata(self) -> Dict[str, Any]:
+        """Fetch the full profile node.
+
+        Tries the ``web_profile_info`` endpoint first (which returns the node already in the legacy
+        format), and falls back to the ``PolarisProfilePageContentQuery`` ``doc_id`` query. Both of
+        these endpoints are rotated by Instagram from time to time, so having two independent sources
+        makes obtaining the metadata more resilient.
+        """
+        # Primary: web_profile_info, which returns the node in legacy format and
+        # works both anonymously and logged in (the endpoint #2701 established).
+        try:
+            metadata = self._context.get_json(
+                "api/v1/users/web_profile_info/",
+                params={"username": self.username})
+            user_data = metadata.get('data', {}).get('user')
+            if user_data is not None:
+                return user_data
+        except (QueryReturnedBadRequestException, QueryReturnedNotFoundException, KeyError):
+            pass
+        # Fallback: PolarisProfilePageContentQuery doc_id query, which needs normalizing.
+        user_id = self._node.get('id') or self._node.get('pk')
+        variables = {
+            "id": str(user_id),
+            "render_surface": "PROFILE",
+            "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+            "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+            "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+            "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+            "enable_integrity_filters": True,
+        }
+        data = self._context.doc_id_graphql_query('27937681195819736', variables)
+        if data is None:
+            raise QueryReturnedNotFoundException('GraphQL query returned None')
+        user_data = data.get('data', {}).get('user')
+        if user_data is None:
+            raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
+        return self._normalize_profile_data(user_data)
 
     def _normalize_profile_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize PolarisProfilePageContentQuery response to match legacy format."""
