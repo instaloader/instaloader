@@ -210,5 +210,28 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
                 break
 
 
+class TestCaptionMentions(unittest.TestCase):
+    """Caption parsing, which requires no network access."""
+
+    @staticmethod
+    def _post_with_caption(caption: str) -> instaloader.Post:
+        return instaloader.Post(None, {"shortcode": "BhrEy4nBFVU", "caption": caption})
+
+    def test_caption_mentions(self):
+        for caption, expected in [
+                ("@alice at the beginning", ["alice"]),
+                ("preceded by a space @bob", ["bob"]),
+                ("preceded by a newline\n@carol", ["carol"]),
+                ("multiple lines\n@dave\n@erin", ["dave", "erin"]),
+                ("no mentions here", []),
+        ]:
+            with self.subTest(caption=caption):
+                self.assertEqual(self._post_with_caption(caption).caption_mentions, expected)
+
+    def test_caption_mentions_ignores_email_addresses(self):
+        post = self._post_with_caption("write to alice@example.com\ncontact @bob instead")
+        self.assertEqual(post.caption_mentions, ["bob"])
+
+
 if __name__ == '__main__':
     unittest.main()

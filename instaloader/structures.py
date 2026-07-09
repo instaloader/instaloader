@@ -152,7 +152,7 @@ _hashtag_regex = re.compile(r"(?:#)((?:\w){1,150})")
 # support Unicode and a word/beginning of string delimiter at the beginning to ensure
 # that no email addresses join the list of mentions.
 # http://blog.jstassen.com/2016/03/code-regex-for-instagram-username-and-hashtags/
-_mention_regex = re.compile(r"(?:^|[^\w\n]|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)", re.ASCII)
+_mention_regex = re.compile(r"(?:^|\W|_)(?:@)(\w(?:(?:\w|(?:\.(?!\.))){0,28}(?:\w))?)", re.ASCII)
 
 
 def _optional_normalize(string: Optional[str]) -> Optional[str]:
