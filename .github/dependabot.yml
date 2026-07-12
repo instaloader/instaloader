@@ -6,10 +6,6 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
-    groups:
-      python-dependencies:
-        patterns:
-          - "*"
 
   - package-ecosystem: pip
     directory: "/docs"
@@ -17,10 +13,6 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
-    groups:
-      docs-python-dependencies:
-        patterns:
-          - "*"
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -28,7 +20,3 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
-    groups:
-      github-actions:
-        patterns:
-          - "*"
