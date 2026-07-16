@@ -1,6 +1,7 @@
 import json
 import lzma
 import re
+import time
 from base64 import b64decode, b64encode
 from contextlib import suppress
 from datetime import datetime
@@ -1107,17 +1108,42 @@ class Profile:
         """
         # Primary: web_profile_info, which returns the node in legacy format and
         # works both anonymously and logged in (the endpoint #2701 established).
-        try:
-            metadata = self._context.get_json(
-                "api/v1/users/web_profile_info/",
-                params={"username": self.username})
-            user_data = metadata.get('data', {}).get('user')
-            if user_data is not None:
-                return user_data
-        except (QueryReturnedBadRequestException, QueryReturnedNotFoundException, KeyError):
-            pass
+        # Retried once with a short pause: under rate limiting the endpoint fails
+        # transiently, and a by-username lookup must not give up on a single hiccup.
+        primary_error = None
+        for attempt in range(2):
+            if attempt:
+                time.sleep(3)
+            try:
+                metadata = self._context.get_json(
+                    "api/v1/users/web_profile_info/",
+                    params={"username": self.username})
+                user_data = metadata.get('data', {}).get('user')
+                if user_data is not None:
+                    return user_data
+                if metadata.get('status') == 'ok':
+                    # healthy answer, no such user — authoritative, skip the fallback
+                    raise ProfileNotExistsException(
+                        'Profile {} does not exist.'.format(self.username))
+                primary_error = None
+            except (QueryReturnedBadRequestException, QueryReturnedNotFoundException,
+                    KeyError) as err:
+                primary_error = err
         # Fallback: PolarisProfilePageContentQuery doc_id query, which needs normalizing.
+        # It requires the numeric user id. A by-username lookup does not know it yet
+        # (self._node only carries the username), so resolve it via top search first —
+        # otherwise the fallback would silently query id "None" and report the profile
+        # as nonexistent.
         user_id = self._node.get('id') or self._node.get('pk')
+        if not user_id:
+            for result in TopSearchResults(self._context, self.username).get_profiles():
+                node = result._node  # pylint:disable=protected-access
+                if node.get('username', '').lower() == self.username.lower():
+                    user_id = node.get('id') or node.get('pk')
+                    break
+            if not user_id:
+                raise ProfileNotExistsException(
+                    'Profile {} does not exist.'.format(self.username)) from primary_error
         variables = {
             "id": str(user_id),
             "render_surface": "PROFILE",
