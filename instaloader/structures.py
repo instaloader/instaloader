@@ -912,6 +912,24 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
+        # Primary: web_profile_info answers a username lookup directly, in legacy node
+        # format. The search below misses many smaller accounts entirely, which would
+        # misreport an existing profile as nonexistent, so it is only the fallback.
+        if context.is_logged_in:
+            try:
+                metadata = context.get_iphone_json(
+                    'api/v1/users/web_profile_info/?username={0}'.format(username), params={})
+                user_data = metadata.get('data', {}).get('user')
+                if user_data is not None:
+                    return cls(context, user_data)
+                if metadata.get('status') == 'ok':
+                    # healthy answer, no such user — authoritative
+                    raise ProfileNotExistsException(
+                        "Profile {} does not exist.".format(username))
+            except (QueryReturnedBadRequestException, QueryReturnedNotFoundException,
+                    KeyError):
+                pass
+        # Fallback: resolve via search.
         data = context.doc_id_graphql_query("26347858941511777", {"hasQuery": True, "query": username})["data"]
         if data:
             for user in data["xdt_api__v1__fbsearch__non_profiled_serp"]["users"]:
