@@ -354,9 +354,27 @@ class Post:
             raise IPhoneSupportDisabledException("iPhone support is disabled.")
         if not self._context.is_logged_in:
             raise LoginRequiredException("Login required to access iPhone media info endpoint.")
-        if not self._iphone_struct_:
-            data = self._context.get_iphone_json(path='api/v1/media/{}/info/'.format(self.mediaid), params={})
-            self._iphone_struct_ = data['items'][0]
+        if self._iphone_struct_ is None:
+            try:
+                data = self._context.get_iphone_json(
+                    path='api/v1/media/{}/info/'.format(self.mediaid), params={})
+                self._iphone_struct_ = data['items'][0]
+            except AbortDownloadException as err:
+                # Instagram answers feedback_required for the info endpoint of SOME
+                # media (e.g. reels with licensed audio or region locks) while the
+                # same call succeeds for neighboring media in the same run — a
+                # media-level refusal, not an account-level flag. This lookup only
+                # upgrades quality, so degrade to the standard version instead of
+                # aborting the whole download pass. Repeated hits across distinct
+                # media DO look account-level, so re-raise then.
+                aborts = getattr(self._context, '_media_info_aborts', 0) + 1
+                setattr(self._context, '_media_info_aborts', aborts)
+                if aborts >= 5:
+                    raise
+                self._context.error(
+                    "iPhone media info unavailable for {} ({}); continuing with "
+                    "standard quality.".format(self, err))
+                self._iphone_struct_ = {}
         return self._iphone_struct_
 
     def _field(self, *keys) -> Any:
