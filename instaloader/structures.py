@@ -283,9 +283,10 @@ class Post:
         """Normalize a Polaris media item to a legacy-compatible node, preserving the source structure."""
         media_types = {1: "GraphImage", 2: "GraphVideo", 8: "GraphSidecar"}
         media_type = media.get("media_type")
-        if not isinstance(media_type, int) or not (
-            typename := media_types.get(media_type)
-        ):
+        typename = None
+        if isinstance(media_type, int):
+            typename = media_types.get(media_type)
+        if not typename:
             raise BadResponseException(f"Unknown media_type in metadata: {media_type}.")
         pic_json: Dict[str, Any] = media.copy()
         pic_json["shortcode"] = media["code"]
