@@ -1418,12 +1418,22 @@ class Profile:
 
         """
         self._obtain_metadata()
+
+        def _reel_post(n: Dict[str, Any]) -> Post:
+            # The clips connection already returns most fields _normalize_post_data() needs
+            # (caption, counts, media urls, ...), so build the Post from it directly instead of
+            # issuing one additional metadata request per Reel. Post._field() still falls back
+            # to a full fetch lazily for any field this payload doesn't cover.
+            media = n["media"]
+            try:
+                return Post(self._context, Post._normalize_post_data(media, self._context))
+            except (KeyError, BadResponseException):
+                return Post.from_shortcode(context=self._context, shortcode=media["code"])
+
         return NodeIterator(
             context = self._context,
             edge_extractor = lambda d: d['data']['xdt_api__v1__clips__user__connection_v2'],
-            # Reels post info is incomplete relative to regular posts so we create a Post from the shortcode
-            # and fetch the additional metadata with an additional API request per Reel
-            node_wrapper = lambda n: Post.from_shortcode(context=self._context, shortcode=n["media"]["code"]),
+            node_wrapper = _reel_post,
             query_variables = {'data': {
                 'page_size': 12, 'include_feed_video': True, "target_user_id": str(self.userid)}},
             query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
