@@ -540,6 +540,13 @@ class InstaloaderContext:
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
         """
+        csrf = next((c.value for c in self._session.cookies
+                     if c.name == 'csrftoken' and c.value), None)
+        if not csrf:
+            self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
+            csrf = next((c.value for c in self._session.cookies
+                         if c.name == 'csrftoken' and c.value), '')
+
         with copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
@@ -547,6 +554,7 @@ class InstaloaderContext:
             tmpsession.headers['authority'] = 'www.instagram.com'
             tmpsession.headers['scheme'] = 'https'
             tmpsession.headers['accept'] = '*/*'
+            tmpsession.headers['x-csrftoken'] = csrf
             if referer is not None:
                 tmpsession.headers['referer'] = urllib.parse.quote(referer)
 

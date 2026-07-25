@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from itertools import islice
 from typing import Optional
+from unittest.mock import Mock, patch
 
 import instaloader
 
@@ -208,6 +209,59 @@ class TestInstaloaderLoggedIn(TestInstaloaderAnonymously):
             print(post)
             if count == PAGING_MAX_COUNT:
                 break
+
+
+class TestReelsFromClipsPayload(unittest.TestCase):
+    """get_reels() must build Posts from the clips connection payload directly,
+    rather than issuing one additional metadata request per Reel."""
+
+    def _reel_node(self, **overrides):
+        media = {
+            "code": "DafxF9DjC0A",
+            "pk": "123",
+            "media_type": 2,
+            "caption": {"text": "An example caption"},
+            "has_liked": False,
+            "like_count": 42,
+            "comment_count": 3,
+            "taken_at": 1783437404,
+            "video_duration": 10,
+            "video_versions": [{"url": "https://example.com/reel.mp4"}],
+            "view_count": 5970,
+            "user": {"pk": "1", "username": "example_account", "full_name": "Example Account"},
+            "image_versions2": {"candidates": [{"url": "https://example.com/reel.jpg"}]},
+        }
+        media.update(overrides)
+        return {"media": media}
+
+    def test_builds_post_without_extra_request(self):
+        context = Mock(is_logged_in=True)
+        profile = Mock()
+        profile._context = context
+
+        with patch.object(instaloader.Post, "from_shortcode") as from_shortcode:
+            post = instaloader.Profile._reel_from_node(profile, self._reel_node())
+
+        from_shortcode.assert_not_called()
+        self.assertEqual(post.shortcode, "DafxF9DjC0A")
+        self.assertEqual(post.caption, "An example caption")
+        self.assertEqual(post.video_view_count, 5970)
+        self.assertEqual(post.likes, 42)
+        self.assertEqual(post.comments, 3)
+
+    def test_falls_back_to_from_shortcode_on_unknown_media_type(self):
+        context = Mock(is_logged_in=True)
+        profile = Mock()
+        profile._context = context
+        fallback_post = Mock()
+
+        with patch.object(instaloader.Post, "from_shortcode", return_value=fallback_post) as from_shortcode:
+            post = instaloader.Profile._reel_from_node(
+                profile, self._reel_node(media_type=99)
+            )
+
+        from_shortcode.assert_called_once_with(context=context, shortcode="DafxF9DjC0A")
+        self.assertIs(post, fallback_post)
 
 
 class TestCaptionMentions(unittest.TestCase):
