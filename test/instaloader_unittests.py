@@ -220,7 +220,7 @@ class TestReelsFromClipsPayload(unittest.TestCase):
             "code": "DafxF9DjC0A",
             "pk": "123",
             "media_type": 2,
-            "caption": {"text": "ITM Paris"},
+            "caption": {"text": "An example caption"},
             "has_liked": False,
             "like_count": 42,
             "comment_count": 3,
@@ -228,7 +228,7 @@ class TestReelsFromClipsPayload(unittest.TestCase):
             "video_duration": 10,
             "video_versions": [{"url": "https://example.com/reel.mp4"}],
             "view_count": 5970,
-            "user": {"pk": "1", "username": "itmparis", "full_name": "ITM Paris"},
+            "user": {"pk": "1", "username": "example_account", "full_name": "Example Account"},
             "image_versions2": {"candidates": [{"url": "https://example.com/reel.jpg"}]},
         }
         media.update(overrides)
@@ -244,7 +244,7 @@ class TestReelsFromClipsPayload(unittest.TestCase):
 
         from_shortcode.assert_not_called()
         self.assertEqual(post.shortcode, "DafxF9DjC0A")
-        self.assertEqual(post.caption, "ITM Paris")
+        self.assertEqual(post.caption, "An example caption")
         self.assertEqual(post.video_view_count, 5970)
         self.assertEqual(post.likes, 42)
         self.assertEqual(post.comments, 3)
@@ -262,6 +262,29 @@ class TestReelsFromClipsPayload(unittest.TestCase):
 
         from_shortcode.assert_called_once_with(context=context, shortcode="DafxF9DjC0A")
         self.assertIs(post, fallback_post)
+
+
+class TestCaptionMentions(unittest.TestCase):
+    """Caption parsing, which requires no network access."""
+
+    @staticmethod
+    def _post_with_caption(caption: str) -> instaloader.Post:
+        return instaloader.Post(None, {"shortcode": "BhrEy4nBFVU", "caption": caption})
+
+    def test_caption_mentions(self):
+        for caption, expected in [
+                ("@alice at the beginning", ["alice"]),
+                ("preceded by a space @bob", ["bob"]),
+                ("preceded by a newline\n@carol", ["carol"]),
+                ("multiple lines\n@dave\n@erin", ["dave", "erin"]),
+                ("no mentions here", []),
+        ]:
+            with self.subTest(caption=caption):
+                self.assertEqual(self._post_with_caption(caption).caption_mentions, expected)
+
+    def test_caption_mentions_ignores_email_addresses(self):
+        post = self._post_with_caption("write to alice@example.com\ncontact @bob instead")
+        self.assertEqual(post.caption_mentions, ["bob"])
 
 
 if __name__ == '__main__':
