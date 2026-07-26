@@ -950,6 +950,55 @@ class Post:
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
+class _FeedPostIterator(Iterator['Post']):
+    """Iterate a user's timeline through the ``api/v1/feed/user/{id}/`` endpoint.
+
+    This mobile endpoint paginates with ``max_id`` (rather than a GraphQL cursor) and
+    still serves posts anonymously, so it is used as a fallback for profiles that the
+    web/GraphQL timeline queries no longer return. It mimics the small part of the
+    :class:`NodeIterator` interface that :meth:`Instaloader.download_profiles` relies
+    on, notably :attr:`first_item` (the newest post seen so far, for ``--latest-stamps``).
+    """
+
+    def __init__(self, context: InstaloaderContext, user_id: Union[int, str],
+                 first_page: Optional[Dict[str, Any]] = None):
+        self._context = context
+        self._user_id = user_id
+        self._data = first_page if first_page is not None else self._query()
+        self._page_index = 0
+        self._first_item: Optional['Post'] = None
+
+    def __iter__(self):
+        return self
+
+    def _query(self, max_id: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {'count': 12}
+        if max_id is not None:
+            params['max_id'] = max_id
+        return self._context.get_json('api/v1/feed/user/{0}/'.format(self._user_id), params=params)
+
+    @property
+    def first_item(self) -> Optional['Post']:
+        """The newest post yielded so far (posts may not be in strict chronological order)."""
+        return self._first_item
+
+    def __next__(self) -> 'Post':
+        items = self._data.get('items', [])
+        if self._page_index >= len(items):
+            if self._data.get('more_available') and self._data.get('next_max_id'):
+                self._data = self._query(self._data['next_max_id'])
+                self._page_index = 0
+                items = self._data.get('items', [])
+            if self._page_index >= len(items):
+                raise StopIteration()
+        item = items[self._page_index]
+        self._page_index += 1
+        post = Post.from_iphone_struct(self._context, item)
+        if self._first_item is None or post.date_local > self._first_item.date_local:
+            self._first_item = post
+        return post
+
+
 class Profile:
     """
     An Instagram Profile.
@@ -985,6 +1034,10 @@ class Profile:
         self._node = node
         self._has_full_metadata = False
         self._iphone_struct_ = None
+        # First page of the api/v1/feed/user/ response, set when the profile was resolved
+        # through the anonymous feed fallback (see Profile._from_feed). Signals get_posts()
+        # to paginate the timeline via that endpoint instead of the GraphQL query.
+        self._feed_first_page: Optional[Dict[str, Any]] = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
             self._iphone_struct_ = node['iphone_struct']
@@ -1009,6 +1062,20 @@ class Profile:
             ).get("data")
         except QueryReturnedNotFoundException:
             data = None
+        except QueryReturnedBadRequestException as err:
+            # Some accounts (e.g. certain professional/business profiles) are not served
+            # by the web_profile_info endpoint: Instagram responds with HTTP 400 rather
+            # than a clean 404. Fall back to the mobile feed endpoint, which still returns
+            # the profile node (and the first page of posts) anonymously.
+            profile = cls._from_feed(context, username=username)
+            if profile is not None:
+                return profile
+            raise ProfileNotExistsException(
+                "Profile {} could not be retrieved (Instagram responded with HTTP 400).{}".format(
+                    username,
+                    "" if context.is_logged_in else " Login (--login) may be required to access it."
+                )
+            ) from err
         if data and data.get("user"):
             profile = cls(context, data["user"])
             profile._has_full_metadata = True
@@ -1058,6 +1125,40 @@ class Profile:
         })
 
     @classmethod
+    def _from_feed(cls, context: InstaloaderContext, *,
+                   username: Optional[str] = None,
+                   user_id: Optional[Union[int, str]] = None) -> Optional["Profile"]:
+        """Resolve a Profile through the ``api/v1/feed/user/`` endpoint.
+
+        Unlike ``web_profile_info`` (which Instagram rejects with HTTP 400 for some
+        accounts) and the GraphQL timeline query (HTTP 403 when anonymous), this mobile
+        endpoint still returns the profile node together with the first page of posts,
+        both anonymously and when logged in. Used as a fallback for profiles that the
+        primary endpoints no longer serve. Returns ``None`` if no usable user is found.
+        """
+        if user_id is not None:
+            path = "api/v1/feed/user/{0}/".format(user_id)
+        elif username is not None:
+            path = "api/v1/feed/user/{0}/username/".format(username.lower())
+        else:
+            raise InvalidArgumentException("Either username or user_id must be given.")
+        try:
+            feed = context.get_json(path, params={"count": 12})
+        except (QueryReturnedNotFoundException, QueryReturnedBadRequestException):
+            return None
+        user = feed.get("user")
+        if not user or not user.get("pk"):
+            return None
+        profile = cls.from_iphone_struct(context, user)
+        # The feed's user node carries no total media count; expose it as unknown so
+        # reading Profile.mediacount does not trigger a (failing) web_profile_info fetch.
+        profile._node.setdefault("edge_owner_to_timeline_media", {"count": None})
+        # There is no richer profile metadata available through this endpoint.
+        profile._has_full_metadata = True
+        profile._feed_first_page = feed
+        return profile
+
+    @classmethod
     def own_profile(cls, context: InstaloaderContext):
         """Return own profile if logged-in.
 
@@ -1094,6 +1195,12 @@ class Profile:
                     except QueryReturnedNotFoundException as err:
                         raise ProfileNotExistsException(
                             'Profile {} does not exist.'.format(self.username)) from err
+                    except QueryReturnedBadRequestException as err:
+                        # See Profile.from_username: some accounts are not served by the
+                        # web_profile_info endpoint without login (HTTP 400 instead of 404).
+                        raise ProfileNotExistsException(
+                            "Profile {} could not be retrieved (Instagram responded with HTTP 400). "
+                            "Login (--login) may be required to access it.".format(self.username)) from err
                     user_data = data.get('user') if data else None
                     if user_data is None:
                         raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
@@ -1372,24 +1479,22 @@ class Profile:
 	   Use :attr:`profile_pic_url`."""
         return self.profile_pic_url
 
-    def get_posts(self) -> NodeIterator[Post]:
+    def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype: NodeIterator[Post]"""
+        :rtype: Iterator[Post]"""
         self._obtain_metadata()
-        logged_in = self._context.is_logged_in
+        if not self._context.is_logged_in:
+            # Instagram no longer serves the anonymous GraphQL timeline query (it responds
+            # with HTTP 403 once paging past the first, bundled page), so paginate the
+            # mobile feed endpoint instead, which still returns a profile's posts
+            # anonymously. A profile resolved through the feed fallback (see _from_feed)
+            # already holds its first page.
+            return _FeedPostIterator(self._context, self.userid, first_page=self._feed_first_page)
         return NodeIterator(
             context=self._context,
-            edge_extractor=(
-                (lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"])
-                if logged_in
-                else (lambda d: d["data"]["user"]["edge_owner_to_timeline_media"])
-            ),
-            node_wrapper=(
-                (lambda n: Post.from_iphone_struct(self._context, n))
-                if logged_in
-                else (lambda n: Post(self._context, n, self))
-            ),
+            edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
+            node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
             query_variables={
                 "data": {
                     "count": 12,
@@ -1397,13 +1502,12 @@ class Profile:
                     "latest_besties_reel_media": True,
                     "latest_reel_media": True,
                 },
-                **({"username": self.username} if logged_in else {"id": self.userid}),
+                "username": self.username,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="7898261790222653" if logged_in else "7950326061742207",
+            doc_id="7898261790222653",
             query_hash=None,
-            first_data=(None if logged_in else self._metadata("edge_owner_to_timeline_media")),
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:

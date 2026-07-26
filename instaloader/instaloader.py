@@ -1545,9 +1545,11 @@ class Instaloader:
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
                                              total_count=profile.mediacount, owner_profile=profile,
                                              takewhile=posts_takewhile, possibly_pinned=3, max_count=max_count)
-                    if latest_stamps is not None and posts_to_download.first_item is not None:
-                        latest_stamps.set_last_post_timestamp(profile_name,
-                                                              posts_to_download.first_item.date_local)
+                    # get_posts() may return a plain iterator (e.g. the anonymous feed
+                    # fallback) rather than a NodeIterator, so access first_item defensively.
+                    newest_post = getattr(posts_to_download, "first_item", None)
+                    if latest_stamps is not None and newest_post is not None:
+                        latest_stamps.set_last_post_timestamp(profile_name, newest_post.date_local)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
