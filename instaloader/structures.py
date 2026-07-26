@@ -1416,6 +1416,7 @@ class Profile:
         # to a full fetch lazily for any field this payload doesn't cover.
         media = n["media"]
         try:
+            # pylint: disable-next=protected-access
             return Post(self._context, Post._normalize_post_data(media, self._context))
         except (KeyError, BadResponseException):
             return Post.from_shortcode(context=self._context, shortcode=media["code"])
