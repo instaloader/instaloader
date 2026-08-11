@@ -14,8 +14,13 @@ def get_cookiefile():
     default_cookiefile = {
         "Windows": "~/AppData/Roaming/Mozilla/Firefox/Profiles/*/cookies.sqlite",
         "Darwin": "~/Library/Application Support/Firefox/Profiles/*/cookies.sqlite",
-    }.get(system(), "~/.mozilla/firefox/*/cookies.sqlite")
-    cookiefiles = glob(expanduser(default_cookiefile))
+    }.get(system(), None)
+    if default_cookiefile:
+        cookiefiles = glob(expanduser(default_cookiefile))
+    else:
+        # Check Firefox 147+ XDG path, then legacy
+        cookiefiles = glob(expanduser("~/.config/mozilla/firefox/*/cookies.sqlite")) or \
+                      glob(expanduser("~/.mozilla/firefox/*/cookies.sqlite"))
     if not cookiefiles:
         raise SystemExit("No Firefox cookies.sqlite file found. Use -c COOKIEFILE.")
     return cookiefiles[0]
