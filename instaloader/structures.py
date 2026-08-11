@@ -1035,7 +1035,7 @@ class Profile:
         self._has_full_metadata = False
         self._iphone_struct_ = None
         # First page of the api/v1/feed/user/ response, set when the profile was resolved
-        # through the anonymous feed fallback (see Profile._from_feed). Signals get_posts()
+        # through the anonymous feed fallback (see Profile._feed_node). Signals get_posts()
         # to paginate the timeline via that endpoint instead of the GraphQL query.
         self._feed_first_page: Optional[Dict[str, Any]] = None
         if 'iphone_struct' in node:
@@ -1052,36 +1052,11 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        # Resolve the profile through the web_profile_info endpoint, which works both
-        # anonymously and when logged in and returns the complete profile node
-        # (including the first page of posts). The GraphQL fbsearch query previously
-        # used here started responding with HTTP 400.
-        try:
-            data = context.get_json(
-                "api/v1/users/web_profile_info/", params={"username": username.lower()}
-            ).get("data")
-        except QueryReturnedNotFoundException:
-            data = None
-        except QueryReturnedBadRequestException as err:
-            # Some accounts (e.g. certain professional/business profiles) are not served
-            # by the web_profile_info endpoint: Instagram responds with HTTP 400 rather
-            # than a clean 404. Fall back to the mobile feed endpoint, which still returns
-            # the profile node (and the first page of posts) anonymously.
-            profile = cls._from_feed(context, username=username)
-            if profile is not None:
-                return profile
-            raise ProfileNotExistsException(
-                "Profile {} could not be retrieved (Instagram responded with HTTP 400).{}".format(
-                    username,
-                    "" if context.is_logged_in else " Login (--login) may be required to access it."
-                )
-            ) from err
-        if data and data.get("user"):
-            profile = cls(context, data["user"])
-            profile._has_full_metadata = True
-            return profile
-
-        raise ProfileNotExistsException("Profile {} does not exist.".format(username))
+        node, feed_first_page = cls._resolve_node(context, username)
+        profile = cls(context, node)
+        profile._has_full_metadata = True
+        profile._feed_first_page = feed_first_page
+        return profile
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -1124,17 +1099,22 @@ class Profile:
             "iphone_struct": media,
         })
 
-    @classmethod
-    def _from_feed(cls, context: InstaloaderContext, *,
+    @staticmethod
+    def _feed_node(context: InstaloaderContext, *,
                    username: Optional[str] = None,
-                   user_id: Optional[Union[int, str]] = None) -> Optional["Profile"]:
-        """Resolve a Profile through the ``api/v1/feed/user/`` endpoint.
+                   user_id: Optional[Union[int, str]] = None
+                   ) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+        """Fetch a profile node through the ``api/v1/feed/user/`` endpoint.
 
         Unlike ``web_profile_info`` (which Instagram rejects with HTTP 400 for some
-        accounts) and the GraphQL timeline query (HTTP 403 when anonymous), this mobile
-        endpoint still returns the profile node together with the first page of posts,
-        both anonymously and when logged in. Used as a fallback for profiles that the
-        primary endpoints no longer serve. Returns ``None`` if no usable user is found.
+        accounts, and rate-limits with HTTP 429 for some sessions) and the GraphQL
+        timeline query (HTTP 403 when anonymous), this mobile endpoint still returns the
+        profile node together with the first page of posts, both anonymously and when
+        logged in. It is used as a fallback for profiles that the primary endpoints no
+        longer serve.
+
+        :return: A tuple of the profile node and the first page of posts, or ``None`` if
+            the endpoint does not return a usable user.
         """
         if user_id is not None:
             path = "api/v1/feed/user/{0}/".format(user_id)
@@ -1144,19 +1124,66 @@ class Profile:
             raise InvalidArgumentException("Either username or user_id must be given.")
         try:
             feed = context.get_json(path, params={"count": 12})
-        except (QueryReturnedNotFoundException, QueryReturnedBadRequestException):
+        except (QueryReturnedBadRequestException, ConnectionException):
+            # Includes QueryReturnedNotFoundException and TooManyRequestsException. The
+            # caller decides how to report the failure of the endpoint it tried first.
             return None
         user = feed.get("user")
         if not user or not user.get("pk"):
             return None
-        profile = cls.from_iphone_struct(context, user)
-        # The feed's user node carries no total media count; expose it as unknown so
-        # reading Profile.mediacount does not trigger a (failing) web_profile_info fetch.
-        profile._node.setdefault("edge_owner_to_timeline_media", {"count": None})
-        # There is no richer profile metadata available through this endpoint.
-        profile._has_full_metadata = True
-        profile._feed_first_page = feed
-        return profile
+        node = {
+            "id": user["pk"],
+            "username": user["username"],
+            "is_private": user["is_private"],
+            "full_name": user["full_name"],
+            "profile_pic_url_hd": user["profile_pic_url"],
+            "iphone_struct": user,
+            # The feed's user node carries no total media count; expose it as unknown so
+            # that reading Profile.mediacount does not trigger a (failing)
+            # web_profile_info request.
+            "edge_owner_to_timeline_media": {"count": None},
+        }
+        return node, feed
+
+    @classmethod
+    def _resolve_node(cls, context: InstaloaderContext,
+                      username: str) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """Fetch the profile node for the given username.
+
+        Queries the ``web_profile_info`` endpoint and falls back to the feed endpoint
+        when Instagram refuses it.
+
+        :return: A tuple of the profile node and, if the feed endpoint was used, the
+            first page of posts.
+        :raises ProfileNotExistsException: If the profile does not exist, or if
+            ``web_profile_info`` answered with HTTP 400 and the fallback found nothing.
+        """
+        try:
+            data = context.get_json(
+                "api/v1/users/web_profile_info/", params={"username": username.lower()}
+            ).get("data")
+        except QueryReturnedNotFoundException:
+            data = None
+        except (QueryReturnedBadRequestException, ConnectionException) as err:
+            # Instagram does not always serve this endpoint: it answers with HTTP 400 for
+            # some professional/business profiles, and rate-limits it with HTTP 429 for
+            # some sessions even when no other query was sent.
+            feed_node = cls._feed_node(context, username=username)
+            if feed_node is not None:
+                return feed_node
+            if isinstance(err, QueryReturnedBadRequestException):
+                raise ProfileNotExistsException(
+                    "Profile {} could not be retrieved (Instagram responded with HTTP 400).{}".format(
+                        username,
+                        "" if context.is_logged_in else " Login (--login) may be required to access it."
+                    )
+                ) from err
+            # A rate limit or a network problem: keep the original error, so that its
+            # cause stays visible instead of being reported as a missing profile.
+            raise
+        if data and data.get("user"):
+            return data["user"], None
+        raise ProfileNotExistsException("Profile {} does not exist.".format(username))
 
     @classmethod
     def own_profile(cls, context: InstaloaderContext):
@@ -1184,27 +1211,10 @@ class Profile:
         try:
             if not self._has_full_metadata:
                 if not self._context.is_logged_in:
-                    # Anonymous access: the web_profile_info endpoint returns the full
-                    # node in the legacy format and still works, unlike the GraphQL
-                    # profile query.
-                    try:
-                        data = self._context.get_json(
-                            "api/v1/users/web_profile_info/",
-                            params={"username": self.username},
-                        ).get('data')
-                    except QueryReturnedNotFoundException as err:
-                        raise ProfileNotExistsException(
-                            'Profile {} does not exist.'.format(self.username)) from err
-                    except QueryReturnedBadRequestException as err:
-                        # See Profile.from_username: some accounts are not served by the
-                        # web_profile_info endpoint without login (HTTP 400 instead of 404).
-                        raise ProfileNotExistsException(
-                            "Profile {} could not be retrieved (Instagram responded with HTTP 400). "
-                            "Login (--login) may be required to access it.".format(self.username)) from err
-                    user_data = data.get('user') if data else None
-                    if user_data is None:
-                        raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                    self._node = user_data
+                    # Anonymous access: the GraphQL profile query below requires a login,
+                    # so resolve the profile by name instead, through the web_profile_info
+                    # endpoint with the feed endpoint as a fallback.
+                    self._node, self._feed_first_page = self._resolve_node(self._context, self.username)
                     self._has_full_metadata = True
                     return
                 user_id = self._node.get('id') or self._node.get('pk')
@@ -1488,7 +1498,7 @@ class Profile:
             # Instagram no longer serves the anonymous GraphQL timeline query (it responds
             # with HTTP 403 once paging past the first, bundled page), so paginate the
             # mobile feed endpoint instead, which still returns a profile's posts
-            # anonymously. A profile resolved through the feed fallback (see _from_feed)
+            # anonymously. A profile resolved through the feed fallback (see _feed_node)
             # already holds its first page.
             return _FeedPostIterator(self._context, self.userid, first_page=self._feed_first_page)
         return NodeIterator(
