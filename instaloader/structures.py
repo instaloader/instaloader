@@ -1054,8 +1054,12 @@ class Profile:
         """
         node, feed_first_page = cls._resolve_node(context, username)
         profile = cls(context, node)
-        profile._has_full_metadata = True
         profile._feed_first_page = feed_first_page
+        # The feed endpoint returns fewer fields than web_profile_info. When logged in,
+        # the GraphQL profile query in _obtain_metadata() can supply the missing ones, so
+        # let it run on demand. Anonymously that query is not available, and the feed node
+        # is all we get.
+        profile._has_full_metadata = feed_first_page is None or not context.is_logged_in
         return profile
 
     @classmethod
@@ -1138,12 +1142,17 @@ class Profile:
             "full_name": user["full_name"],
             "profile_pic_url_hd": user["profile_pic_url"],
             "iphone_struct": user,
-            # The feed's user node carries no total media count; expose it as unknown so
-            # that reading Profile.mediacount does not trigger a (failing)
-            # web_profile_info request.
-            "edge_owner_to_timeline_media": {"count": None},
         }
-        return node, feed
+        if not context.is_logged_in:
+            # The feed's user node carries no total media count. Anonymously there is no
+            # other source for it, so expose it as unknown rather than let
+            # Profile.mediacount trigger a (failing) web_profile_info request. When logged
+            # in the key is left out, so that the GraphQL profile query supplies it.
+            node["edge_owner_to_timeline_media"] = {"count": None}
+        # Normalize, so that the fields which this endpoint does not return (notably the
+        # viewer relationship ones, such as has_blocked_viewer) get their default value
+        # instead of raising a KeyError when they are read.
+        return Profile._normalize_profile_data(node), feed
 
     @classmethod
     def _resolve_node(cls, context: InstaloaderContext,
@@ -1253,7 +1262,8 @@ class Profile:
                                                         ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
 
-    def _normalize_profile_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _normalize_profile_data(user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize PolarisProfilePageContentQuery response to match legacy format."""
         normalized = user_data.copy()
         if 'id' not in normalized and 'pk' in normalized:
