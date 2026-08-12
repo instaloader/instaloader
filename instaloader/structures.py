@@ -1159,8 +1159,13 @@ class Profile:
             ``web_profile_info`` answered with HTTP 400 and the fallback found nothing.
         """
         try:
+            # Only one attempt: when Instagram rate-limits this endpoint, retrying it
+            # makes the whole download wait out the 429 back-off before the fallback
+            # below is reached. The fallback is cheaper than that wait, and it still
+            # applies the back-off if the feed endpoint is rate-limited as well.
             data = context.get_json(
-                "api/v1/users/web_profile_info/", params={"username": username.lower()}
+                "api/v1/users/web_profile_info/", params={"username": username.lower()},
+                _attempt=context.max_connection_attempts
             ).get("data")
         except QueryReturnedNotFoundException:
             data = None
