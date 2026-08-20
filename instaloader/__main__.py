@@ -309,6 +309,7 @@ def _main(instaloader: Instaloader, targetlist: List[str],
             storyitem_filter,
             latest_stamps=latest_stamps,
             reels=download_reels,
+            max_count=max_count,
         )
         if anonymous_retry_profiles:
             instaloader.context.log("Downloading anonymously: {}"
@@ -323,7 +324,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     fast_update=fast_update,
                     post_filter=post_filter,
                     latest_stamps=latest_stamps,
-                    reels=download_reels
+                    reels=download_reels,
+                    max_count=max_count
                 )
     except KeyboardInterrupt:
         print("\nInterrupted by user.", file=sys.stderr)
@@ -450,7 +452,8 @@ def main():
 
     g_cond.add_argument('-c', '--count',
                         help='Do not attempt to download more than COUNT posts. '
-                             'Applies to #hashtag, %%location_id, :feed, and :saved.')
+                             'Applies to profiles (posts and reels), #hashtag, '
+                             '%%location_id, :feed, and :saved.')
 
     g_login = parser.add_argument_group('Login (Download Private Profiles)',
                                         'Instaloader can login to Instagram. This allows downloading private profiles. '

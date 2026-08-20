@@ -1285,10 +1285,14 @@ class Instaloader:
 
     def download_reels(self, profile: Profile, fast_update: bool = False,
                       post_filter: Optional[Callable[[Post], bool]] = None,
-                      latest_stamps: Optional[LatestStamps] = None) -> None:
+                      latest_stamps: Optional[LatestStamps] = None,
+                      max_count: Optional[int] = None) -> None:
         """Download reels videos of a profile.
 
         .. versionadded:: 4.14.0
+
+        .. versionchanged:: 4.15.4
+           Add `max_count` parameter.
 
         """
         self.context.log("Retrieving reels videos for profile {}.".format(profile.username))
@@ -1305,6 +1309,7 @@ class Instaloader:
             owner_profile=profile,
             takewhile=posts_takewhile,
             possibly_pinned=3,
+            max_count=max_count,
         )
         if latest_stamps is not None and reels.first_item is not None:
             latest_stamps.set_last_reels_timestamp(profile.username, reels.first_item.date_local)
@@ -1520,7 +1525,7 @@ class Instaloader:
                 if reels:
                     with self.context.error_catcher('Download reels of {}'.format(profile_name)):
                         self.download_reels(profile, fast_update=fast_update, post_filter=post_filter,
-                                           latest_stamps=latest_stamps)
+                                           latest_stamps=latest_stamps, max_count=max_count)
 
                 # Download IGTV, if requested
                 if igtv:
