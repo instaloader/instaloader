@@ -90,14 +90,18 @@ class HTTP2Adapter(requests.adapters.HTTPAdapter):
         # Instagram's API hosts, whose replies are small JSON documents. Media
         # files are downloaded from the CDN, which the adapter is not mounted on.
         body = response.content
-        headers = urllib3.HTTPHeaderDict()
-        for name, value in response.headers.multi_items():
-            if name.lower() not in _SKIPPED_RESPONSE_HEADERS:
-                headers.add(name, value)
-        headers['Content-Length'] = str(len(body))
+        # Passing the headers as a list of pairs rather than building a
+        # urllib3.HTTPHeaderDict keeps duplicate headers (Set-Cookie) intact
+        # while working on both urllib3 1.x and 2.x, which export the class
+        # from different places.
+        headers = [(name, value) for name, value in response.headers.multi_items()
+                   if name.lower() not in _SKIPPED_RESPONSE_HEADERS]
+        headers.append(('Content-Length', str(len(body))))
         return urllib3.HTTPResponse(
             body=io.BytesIO(body),
-            headers=headers,
+            # urllib3 accepts an iterable of pairs here, but is annotated for
+            # mappings only, which cannot carry a repeated Set-Cookie.
+            headers=headers,  # type: ignore[arg-type]
             status=response.status_code,
             reason=response.reason_phrase,
             version=20 if response.http_version == 'HTTP/2' else 11,

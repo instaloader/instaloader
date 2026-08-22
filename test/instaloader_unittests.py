@@ -7,6 +7,9 @@ import unittest
 from itertools import islice
 from typing import Optional
 
+import httpx
+import requests
+
 import instaloader
 from instaloader.http2 import HTTP2Adapter
 from instaloader.instaloadercontext import default_user_agent, new_session
@@ -246,6 +249,35 @@ class TestHTTP2Transport(unittest.TestCase):
                 self.assertIsInstance(session.get_adapter(url), HTTP2Adapter)
         # Media is downloaded from the CDN, which stays on the default transport.
         self.assertNotIsInstance(session.get_adapter("https://scontent.cdninstagram.com/"), HTTP2Adapter)
+
+    def test_response_is_converted_for_requests(self):
+        """The httpx reply must survive the trip into Requests, on urllib3 1.x as well as 2.x."""
+        class _FakeClient:
+            @staticmethod
+            def request(method, url, headers=None, content=None, timeout=None):
+                return httpx.Response(
+                    200,
+                    headers=[('Content-Type', 'application/json'),
+                             ('Set-Cookie', 'csrftoken=abc; Path=/'),
+                             ('Set-Cookie', 'sessionid=xyz; Path=/')],
+                    content=b'{"status": "ok"}',
+                    request=httpx.Request(method, str(url), headers=headers),
+                    extensions={'http_version': b'HTTP/2'})
+
+            @staticmethod
+            def close():
+                pass
+
+        adapter = HTTP2Adapter()
+        adapter._client = _FakeClient()  # pylint: disable=protected-access
+        session = requests.Session()
+        self.addCleanup(session.close)
+        session.mount("https://www.instagram.com/", adapter)
+        resp = session.get("https://www.instagram.com/api/v1/users/web_profile_info/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "ok"})
+        # Both Set-Cookie headers must make it into the jar, not just the last one.
+        self.assertEqual(session.cookies.get_dict(), {"csrftoken": "abc", "sessionid": "xyz"})
 
     def test_web_profile_info_is_not_rate_limited(self):
         session = new_session()
