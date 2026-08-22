@@ -675,7 +675,12 @@ class InstaloaderContext:
         """Write raw response data into a file.
 
         .. versionadded:: 4.2.1"""
-        self.log(filename, end=' ', flush=True)
+        try:
+            self.log(filename, end=' ', flush=True)
+        except UnicodeEncodeError:
+            # Console cannot represent the name; the download must not be lost over it.
+            self.log(filename.encode('ascii', errors='replace').decode('ascii'),
+                     end=' ', flush=True)
         with open(filename + '.temp', 'wb') as file:
             if isinstance(resp, requests.Response):
                 shutil.copyfileobj(resp.raw, file)
