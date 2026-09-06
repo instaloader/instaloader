@@ -17,11 +17,27 @@ import requests
 import requests.utils
 
 from .exceptions import *
+from .http2 import HTTP2Adapter
+
+# Instagram rejects HTTP/1.1 requests to these hosts with "429 Too Many Requests",
+# so they are served by the HTTP/2 adapter. Media files are downloaded from the
+# CDN, which is left on the default transport.
+INSTAGRAM_HOSTS = ('https://www.instagram.com/', 'https://i.instagram.com/')
+
+
+def new_session() -> requests.Session:
+    """Creates a :class:`requests.Session` that talks to Instagram over HTTP/2.
+
+    .. versionadded:: 4.15.4"""
+    session = requests.Session()
+    for host in INSTAGRAM_HOSTS:
+        session.mount(host, HTTP2Adapter())
+    return session
 
 
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
-    new = requests.Session()
+    new = new_session()
     new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
@@ -202,7 +218,7 @@ class InstaloaderContext:
 
     def get_anonymous_session(self) -> requests.Session:
         """Returns our default anonymous requests.Session object."""
-        session = requests.Session()
+        session = new_session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
@@ -222,7 +238,7 @@ class InstaloaderContext:
 
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
-        session = requests.Session()
+        session = new_session()
         session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
@@ -266,7 +282,7 @@ class InstaloaderContext:
         import http.client
         # pylint:disable=protected-access
         http.client._MAXHEADERS = 200
-        session = requests.Session()
+        session = new_session()
         session.cookies.update({'sessionid': '', 'mid': '', 'ig_pr': '1',
                                 'ig_vw': '1920', 'ig_cb': '1', 'csrftoken': '',
                                 's_network': '', 'ds_user_id': ''})
