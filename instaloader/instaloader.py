@@ -808,7 +808,10 @@ class Instaloader:
                                               {"only_stories": True})["data"]["user"]
             if data is None:
                 raise BadResponseException('Bad stories reel JSON.')
-            userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
+            feed_reels_tray = data["feed_reels_tray"]
+            if feed_reels_tray is None:
+                return
+            userids = list(edge["node"]["id"] for edge in feed_reels_tray["edge_reels_tray_to_reel"]["edges"])
 
         def _userid_chunks():
             assert userids is not None

@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from itertools import islice
 from typing import Optional
+from unittest.mock import Mock
 
 import instaloader
 
@@ -24,6 +25,17 @@ EMPTY_PROFILE = "not_public"
 EMPTY_PROFILE_ID = 1928659031
 
 ratecontroller: Optional[instaloader.RateController] = None
+
+
+class TestInstaloaderStories(unittest.TestCase):
+
+    def test_null_feed_reels_tray(self):
+        loader = instaloader.Instaloader()
+        self.addCleanup(loader.close)
+        loader.context.username = "test"
+        loader.context.graphql_query = Mock(return_value={"data": {"user": {"feed_reels_tray": None}}})
+
+        self.assertEqual(list(loader.get_stories()), [])
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):
