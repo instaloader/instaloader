@@ -1,7 +1,9 @@
 """Unit Tests for Instaloader"""
 
+import io
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from itertools import islice
@@ -231,6 +233,53 @@ class TestCaptionMentions(unittest.TestCase):
     def test_caption_mentions_ignores_email_addresses(self):
         post = self._post_with_caption("write to alice@example.com\ncontact @bob instead")
         self.assertEqual(post.caption_mentions, ["bob"])
+
+
+
+class TestWriteRawLogging(unittest.TestCase):
+    """write_raw logs the filename before writing it (#2553).
+
+    On Windows, sanitize_path rewrites ':' to U+FF1A, so --tagged produces a
+    name the console codepage cannot encode. The log call raised before the
+    write, losing the download.
+    """
+
+    def _write_raw_to(self, filename, encoding):
+        context = instaloader.InstaloaderContext(quiet=False)
+        console = io.TextIOWrapper(io.BytesIO(), encoding=encoding, errors='strict')
+        stdout, sys.stdout = sys.stdout, console
+        try:
+            context.write_raw(b'payload', filename)
+        finally:
+            sys.stdout = stdout
+
+    def test_unprintable_filename_still_downloads(self):
+        directory = tempfile.mkdtemp()
+        try:
+            # The name instaloader itself builds for --tagged on Windows.
+            name = instaloader.instaloader._PostPathFormatter.sanitize_path(
+                ':tagged', force_windows_path=True)
+            self.assertIn('：', name)
+            target = os.path.join(directory, name + '.json')
+
+            self._write_raw_to(target, 'cp1252')
+
+            self.assertTrue(os.path.exists(target))
+            with open(target, 'rb') as file:
+                self.assertEqual(file.read(), b'payload')
+            self.assertFalse(os.path.exists(target + '.temp'))
+        finally:
+            shutil.rmtree(directory)
+
+    def test_printable_filename_is_unaffected(self):
+        directory = tempfile.mkdtemp()
+        try:
+            target = os.path.join(directory, 'plain.json')
+            self._write_raw_to(target, 'cp1252')
+            with open(target, 'rb') as file:
+                self.assertEqual(file.read(), b'payload')
+        finally:
+            shutil.rmtree(directory)
 
 
 if __name__ == '__main__':
