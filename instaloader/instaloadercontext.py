@@ -82,7 +82,8 @@ class InstaloaderContext:
                  max_connection_attempts: int = 3, request_timeout: float = 300.0,
                  rate_controller: Optional[Callable[["InstaloaderContext"], "RateController"]] = None,
                  fatal_status_codes: Optional[List[int]] = None,
-                 iphone_support: bool = True):
+                 iphone_support: bool = True,
+                 better_output: bool = False):
 
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
@@ -96,6 +97,32 @@ class InstaloaderContext:
         self.two_factor_auth_pending = None
         self.iphone_support = iphone_support
         self.iphone_headers = default_iphone_headers()
+        self.better_output = better_output
+        self.rich_console = None
+        self.rich_progress = None
+        self._log_buffer = ""
+
+        if self.better_output:
+            try:
+                from rich.console import Console
+                from rich.theme import Theme
+                # Instagram-inspired theme
+                custom_theme = Theme({
+                    "info": "dim cyan",
+                    "warning": "magenta",
+                    "error": "bold red",
+                    "json": "bold yellow",
+                    "exists": "bold green",
+                    "skipped": "dim white",
+                    "video": "bold blue",
+                    "image": "bold magenta",
+                    "path": "white"
+                })
+                self.rich_console = Console(theme=custom_theme, force_terminal=True)
+            except ImportError:
+                print("Warning: --better-output flag used but 'rich' library is not installed. "
+                      "Install it with 'pip install rich'. Falling back to standard output.", file=sys.stderr)
+                self.better_output = False
 
         # error log, filled with error() and printed at the end of Instaloader.main()
         self.error_log: List[str] = []
@@ -110,6 +137,33 @@ class InstaloaderContext:
 
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache: Dict[int, Any] = dict()
+
+    @contextmanager
+    def progress_context(self, *args, **kwargs):
+        """Context manager for progress tracking. Yields a rich.progress.Progress object or a dummy."""
+        if self.better_output and not self.quiet:
+            from rich.progress import (
+                Progress, SpinnerColumn, BarColumn, TextColumn, 
+                TimeRemainingColumn, TransferSpeedColumn, FileSizeColumn
+            )
+            # Fancy spinner (dots12 is nice)
+            with Progress(
+                SpinnerColumn(spinner_name="dots12", style="bold magenta"),
+                TextColumn("[bold white]{task.description}"),
+                BarColumn(bar_width=None, style="dim white", complete_style="bold #E1306C", finished_style="bold green"),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TimeRemainingColumn(),
+                # TransferSpeedColumn(), # Speed often requires manual chunk updates which instaloader might not do perfectly in loop, but let's try
+                console=self.rich_console,
+                transient=False # Keep the progress bar after completion
+            ) as progress:
+                self.rich_progress = progress
+                try:
+                    yield progress
+                finally:
+                    self.rich_progress = None
+        else:
+            yield None
 
     @contextmanager
     def anonymous_copy(self):
@@ -135,17 +189,71 @@ class InstaloaderContext:
         """True, if this Instaloader instance is logged in."""
         return bool(self.username)
 
+    def _style_log_message(self, msg: str) -> str:
+        """Parses standard log messages and returns rich-formatted string."""
+        import re
+        
+        # Styles for common patterns
+        if msg.strip() == "json":
+            return "[json]📄 JSON Metadata saved[/]"
+        
+        # Exists pattern
+        if "exists" in msg:
+            # Extract filename if possible (basic heuristic)
+            parts = msg.split(' exists')
+            path = parts[0].strip()
+            return f"[exists]✅[/] [path]{path}[/] already exists"
+             
+        # Skipped pattern
+        if "skipped" in msg:
+            return f"[skipped]⏭️  {msg}[/]"
+             
+        # Login success
+        if "Logged in as" in msg:
+            return f"[bold green]🔓 {msg}[/]"
+
+        # File extensions
+        if ".jpg" in msg or ".png" in msg:
+            msg = msg.replace(".jpg", "[image].jpg[/]").replace(".png", "[image].png[/]")
+            if "Downloading" not in msg and "Retrieving" not in msg:
+                return f"📸 {msg}"
+        
+        if ".mp4" in msg:
+            msg = msg.replace(".mp4", "[video].mp4[/]")
+            if "Downloading" not in msg and "Retrieving" not in msg:
+                return f"📹 {msg}"
+
+        return msg
+
     def log(self, *msg, sep='', end='\n', flush=False):
         """Log a message to stdout that can be suppressed with --quiet."""
         if not self.quiet:
-            print(*msg, sep=sep, end=end, flush=flush)
+            if self.better_output and self.rich_console:
+                text = sep.join(str(m) for m in msg)
+                if self.rich_progress:
+                    self._log_buffer += text + end
+                    if end == '\n':
+                        # Process buffer and print nicely above progress bar
+                        clean_msg = self._log_buffer.rstrip('\n')
+                        styled_msg = self._style_log_message(clean_msg)
+                        self.rich_progress.console.print(styled_msg)
+                        self._log_buffer = ""
+                else:
+                    # Direct print with styling
+                    styled_msg = self._style_log_message(text)
+                    self.rich_console.print(styled_msg, end=end)
+            else:
+                print(*msg, sep=sep, end=end, flush=flush)
 
     def error(self, msg, repeat_at_end=True):
         """Log a non-fatal error message to stderr, which is repeated at program termination.
 
         :param msg: Message to be printed.
         :param repeat_at_end: Set to false if the message should be printed, but not repeated at program termination."""
-        print(msg, file=sys.stderr)
+        if self.better_output and self.rich_console:
+            self.rich_console.print(msg, style="error")
+        else:
+            print(msg, file=sys.stderr)
         if repeat_at_end:
             self.error_log.append(msg)
 
