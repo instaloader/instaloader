@@ -936,14 +936,62 @@ class Instaloader:
         """
 
         userid = user if isinstance(user, int) else user.userid
-        data = self.context.graphql_query("7c16654f22c819fb63d1183034a5162f",
-                                          {"user_id": userid, "include_chaining": False, "include_reel": False,
-                                           "include_suggested_users": False, "include_logged_out_extras": False,
-                                           "include_highlight_reels": True})["data"]["user"]['edge_highlight_reels']
-        if data is None:
-            raise BadResponseException('Bad highlights reel JSON.')
-        yield from (Highlight(self.context, edge['node'], user if isinstance(user, Profile) else None)
-                    for edge in data['edges'])
+        try:
+            # Try iphone API first (requires sessionid, most reliable)
+            data = self.context.get_iphone_json(
+                path='api/v1/highlights/{}/highlights_tray/'.format(userid), params={}
+            )
+            tray = data.get('tray', [])
+            for hl in tray:
+                node = {
+                    'id': str(hl['id']).replace('highlight:', ''),
+                    'title': hl.get('title', ''),
+                    'cover_media': {
+                        'thumbnail_src': hl.get('cover_media', {}).get(
+                            'cropped_image_version', {}
+                        ).get('url', '')
+                    },
+                    'cover_media_cropped_thumbnail': {
+                        'url': hl.get('cover_media', {}).get(
+                            'cropped_image_version', {}
+                        ).get('url', '')
+                    },
+                    'owner': {
+                        'id': str(userid),
+                        'username': hl.get('user', {}).get('username', '')
+                    },
+                }
+                yield Highlight(self.context, node, user if isinstance(user, Profile) else None)
+        except Exception:
+            # Fallback: web graphql query_id (works without sessionid for public profiles)
+            resp = self.context._session.get(
+                'https://www.instagram.com/graphql/query/',
+                params={
+                    'query_id': '9957820854288654',
+                    'user_id': str(userid),
+                    'include_chaining': 'false',
+                    'include_reel': 'false',
+                    'include_suggested_users': 'false',
+                    'include_logged_out_extras': 'true',
+                    'include_live_status': 'false',
+                    'include_highlight_reels': 'true',
+                },
+                headers={
+                    'X-IG-App-ID': '936619743392459',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': '*/*',
+                },
+            )
+            resp_data = resp.json()
+            edges = resp_data.get('data', {}).get('user', {}).get(
+                'edge_highlight_reels', {}
+            ).get('edges', [])
+            if not edges:
+                raise BadResponseException('Bad highlights reel JSON.')
+            yield from (
+                Highlight(self.context, edge['node'], user if isinstance(user, Profile) else None)
+                for edge in edges
+            )
 
     @_requires_login
     def download_highlights(self,
