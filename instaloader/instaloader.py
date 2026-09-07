@@ -521,7 +521,11 @@ class Instaloader:
         """Downloads and saves a picture that does not have an association with a Post or StoryItem, such as a
         Profile picture or a Highlight cover picture. Modification time is taken from the HTTP response headers.
 
-        .. versionadded:: 4.3"""
+        .. versionadded:: 4.3
+
+        .. versionchanged:: 4.16
+           The file extension is derived from the response's Content-Type header (falling back to the URL),
+           rather than always being ``.jpg``."""
 
         http_response = self.context.get_raw(url)
         date_object: Optional[datetime] = None
@@ -532,12 +536,19 @@ class Instaloader:
         else:
             pic_bytes = http_response.content
         ig_filename = url.split('/')[-1].split('?')[0]
+        if 'Content-Type' in http_response.headers and http_response.headers['Content-Type']:
+            file_extension = http_response.headers['Content-Type'].split(';')[0].split('/')[-1]
+            file_extension = file_extension.lower().replace('jpeg', 'jpg')
+        elif '.' in ig_filename:
+            file_extension = ig_filename.rsplit('.', 1)[-1].lower()
+        else:
+            file_extension = 'jpg'
         pic_data = TitlePic(owner_profile, target, name_suffix, ig_filename, date_object)
         dirname = _PostPathFormatter(pic_data, self.sanitize_paths).format(self.dirname_pattern, target=target)
         filename_template = os.path.join(
                 dirname,
                 _PostPathFormatter(pic_data, self.sanitize_paths).format(self.title_pattern, target=target))
-        filename = self.__prepare_filename(filename_template, lambda: url) + ".jpg"
+        filename = self.__prepare_filename(filename_template, lambda: url) + "." + file_extension
         content_length = http_response.headers.get('Content-Length', None)
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
