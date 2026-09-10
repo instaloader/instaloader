@@ -82,6 +82,17 @@ Improvements of the Instaloader source or its documentation can be proposed as a
      pylint instaloader
      mypy -m instaloader
 
+- Install optional extras first (``pip install -e .[browser-cookie-import]``)
+  to avoid false import-error lint warnings for vendored code.
+
+- ``instaloader/_vendor/`` contains vendored third-party code. Currently this
+  is ``browser_cookie3``, vendored because upstream has been inactive for
+  over two years, blocking fixes for outdated cookie-path detection (see
+  ``instaloader/_vendor/browser_cookie3/README.md`` for details). If you fix
+  a bug in vendored code, note the change in that package's ``README.md``.
+  If upstream becomes active again, migrating back to a normal dependency
+  should be reconsidered.
+
 - Improvements to the documentation are very welcome. The documentation is
   created with `Sphinx <https://www.sphinx-doc.org/en/2.0/>`__, version 2,
   and can be build locally using::

@@ -23,7 +23,11 @@ if sys.version_info < (3, 9):
 
 requirements = ['requests>=2.25']
 optional_requirements = {
-    'browser_cookie3': ['browser_cookie3>=0.19.1'],
+    'browser-cookie-import': [
+        'lz4',
+        'pycryptodomex',
+        'dbus-python; sys_platform == "linux"',
+    ],
 }
 
 keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-feed', 'downloader', 'videos', 'photos',

@@ -5,7 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pylint = "*"
-mypy = "*"
+mypy = "==1.18.2"
 sphinx = "*"
 pyinstaller = "*"
 psutil = "*"
@@ -19,4 +19,6 @@ pefile = "*"          # Needed for pyinstaller on Windows
 
 [packages]
 requests = "*"
-browser-cookie3 = "*"
+lz4 = "*"
+pycryptodomex = "*"
+dbus-python = {version = "*", sys_platform = "== 'linux'"}
