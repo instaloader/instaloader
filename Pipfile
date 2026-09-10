@@ -5,7 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pylint = "*"
-mypy = "*"
+mypy = "==1.18.2"
 sphinx = "*"
 pyinstaller = "*"
 psutil = "*"
