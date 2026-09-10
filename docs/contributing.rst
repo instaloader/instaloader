@@ -82,6 +82,9 @@ Improvements of the Instaloader source or its documentation can be proposed as a
      pylint instaloader
      mypy -m instaloader
 
+- Install optional extras first (``pip install -e .[browser-cookie-import]``)
+  to avoid false import-error lint warnings for vendored code.
+
 - ``instaloader/_vendor/`` contains vendored third-party code. Currently this
   is ``browser_cookie3``, vendored because upstream has been inactive for
   over two years, blocking fixes for outdated cookie-path detection (see
