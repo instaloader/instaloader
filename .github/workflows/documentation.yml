@@ -17,7 +17,7 @@ jobs:
           python-version: 3.14
           cache: 'pipenv'
       - name: "Install system dependencies for dbus-python"
-        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libglib2.0-dev pkg-config
       - name: "Install Dependencies"
         run: |
           python -m pip install pipenv==2025.0.4
