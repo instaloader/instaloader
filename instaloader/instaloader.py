@@ -1096,6 +1096,28 @@ class Instaloader:
                             break
 
     @_requires_login
+    def get_profile_posts(self, username: str) -> NodeIterator[Post]:
+        """Retrieve a profile's posts without requesting profile metadata
+
+        Requires an authenticated session. An empty timeline does not
+        establish whether the profile exists or is accessible.
+
+        :param username: Profile username, optionally prefixed with @.
+        :return: Resumable iterator over the profile's posts.
+        :raises LoginRequiredException: If called without being logged in.
+        :raises InvalidArgumentException: If the username format is invalid.
+        :raises BadResponseException: If the timeline response is malformed.
+
+        .. versionadded:: 4.16
+        """
+        username = username.strip().removeprefix("@").lower()
+        if not re.fullmatch(r"[a-z0-9._]{1,30}", username):
+            raise InvalidArgumentException("Invalid profile username.")
+
+        # pylint:disable=protected-access
+        return Profile._get_posts_for_username(self.context, username)
+
+    @_requires_login
     def get_feed_posts(self) -> Iterator[Post]:
         """Get Posts of the user's feed.
 
