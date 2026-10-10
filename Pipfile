@@ -19,4 +19,5 @@ pefile = "*"          # Needed for pyinstaller on Windows
 
 [packages]
 requests = "*"
+httpx = {extras = ["http2"], version = "*"}
 browser-cookie3 = "*"
