@@ -294,7 +294,7 @@ class InstaloaderContext:
         try:
             resp_json = login.json()
 
-        except json.decoder.JSONDecodeError as err:
+        except ValueError as err:
             raise LoginException(
                 "Login error: JSON decode fail, {} - {}.".format(login.status_code, login.reason)
             ) from err
@@ -373,7 +373,11 @@ class InstaloaderContext:
     @staticmethod
     def _response_error(resp: requests.Response) -> str:
         extra_from_json: Optional[str] = None
-        with suppress(json.decoder.JSONDecodeError):
+        # requests parses response bodies with simplejson when it is installed, and
+        # raises simplejson's error then, which does not derive from
+        # json.decoder.JSONDecodeError. Those, and the error requests raises
+        # itself, all derive from ValueError.
+        with suppress(ValueError):
             resp_json = resp.json()
             if "status" in resp_json:
                 extra_from_json = (
@@ -454,7 +458,7 @@ class InstaloaderContext:
                 response_headers.clear()
                 response_headers.update(resp.headers)
             if resp.status_code == 400:
-                with suppress(json.decoder.JSONDecodeError):
+                with suppress(ValueError):
                     if resp.json().get("message") in [
                         "feedback_required",
                         "checkpoint_required",
