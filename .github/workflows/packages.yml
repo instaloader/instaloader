@@ -11,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
-      - name: "Setup Python"
-        uses: actions/setup-python@v5
+        uses: actions/checkout@v7
         with:
-          python-version: 3.14
+          persist-credentials: false
+      - name: "Setup Python"
+        uses: actions/setup-python@v7
+        with:
+          python-version: 3.15
       - name: "Get the tagged version"
         id: get_version
         env:

@@ -330,6 +330,9 @@ class Instaloader:
     def __exit__(self, *args):
         self.close()
 
+    def __repr__(self):
+        return f"<Instaloader context={self.context}>"
+
     @_retry_on_connection_error
     def download_pic(self, filename: str, url: str, mtime: datetime,
                      filename_suffix: Optional[str] = None, _attempt: int = 1) -> bool:

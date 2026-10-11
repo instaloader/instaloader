@@ -7,9 +7,10 @@ https://instaloader.github.io/
 
 ## Build
 
-The documentation is created with [Sphinx](http://www.sphinx-doc.org/). To build it, use
+The documentation is created with [Sphinx](http://www.sphinx-doc.org/). To build it, use (in the top-level directory
+of the Instaloader source tree):
 
 ```
-pip3 install -r requirements.txt
-make html
+pipenv sync --dev
+make -C docs html
 ```
