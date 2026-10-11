@@ -418,7 +418,7 @@ class InstaloaderContext:
             return
         redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
         body = ""
-        if resp.headers['Content-Type'].startswith('application/json'):
+        if resp.headers.get('Content-Type', '').startswith('application/json'):
             body = ': ' + resp.text[:500] + ('…' if len(resp.text) > 501 else '')
         raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}{}".format(
             host, path, resp.status_code, resp.reason, redirect, body
