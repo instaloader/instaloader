@@ -999,6 +999,27 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
+        # Avoid web_profile_info rate limits for logged-in sessions.
+        if context.is_logged_in:
+            try:
+                response = context.doc_id_graphql_query(
+                    '7898261790222653',
+                    {
+                        "data": {"count": 12},
+                        "username": username,
+                        "__relay_internal__pv__PolarisFeedShareMenurelayprovider": False,
+                    },
+                )
+                edges = response["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["edges"]
+                for edge in edges:
+                    user = edge.get("node", {}).get("user")
+                    if user and user.get("username", "").casefold() == username.casefold():
+                        profile = cls(context, user)
+                        profile._obtain_metadata()
+                        return profile
+            except (InstaloaderException, KeyError, TypeError):
+                pass
+
         # Resolve the profile through the web_profile_info endpoint, which works both
         # anonymously and when logged in and returns the complete profile node
         # (including the first page of posts). The GraphQL fbsearch query previously
@@ -1009,8 +1030,9 @@ class Profile:
             ).get("data")
         except QueryReturnedNotFoundException:
             data = None
-        if data and data.get("user"):
-            profile = cls(context, data["user"])
+        user = data.get("user") if data else None
+        if user and user.get("username", "").casefold() == username.casefold():
+            profile = cls(context, user)
             profile._has_full_metadata = True
             return profile
 
