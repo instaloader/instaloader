@@ -425,8 +425,11 @@ class InstaloaderContext:
         ))
 
     def _follow_redirects(self, sess: requests.Session, resp: requests.Response,
-                          host: str, path: str, params: Dict[str, Any]) -> requests.Response:
+                          host: str, path: str, params: Dict[str, Any], use_post: bool) -> requests.Response:
         """Follow redirects that stay on *host*, and reject those to the login page."""
+        # Redirects are followed with GET. For a POST request, `params` is the request body and must not be
+        # turned into query arguments.
+        redirect_params = None if use_post else params
         while resp.is_redirect:
             redirect_url = resp.headers['location']
             self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
@@ -439,7 +442,7 @@ class InstaloaderContext:
             if not redirect_url.startswith('https://{}/'.format(host)):
                 break
             resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
-                            params=params, allow_redirects=False)
+                            params=redirect_params, allow_redirects=False)
         return resp
 
     def _raise_for_status(self, resp: requests.Response) -> None:
@@ -509,7 +512,7 @@ class InstaloaderContext:
                     resp = sess.get(url, params=params, allow_redirects=False)
 
                 self._raise_if_fatal_status(resp, host, path)
-                resp = self._follow_redirects(sess, resp, host, path, params)
+                resp = self._follow_redirects(sess, resp, host, path, params, use_post)
 
                 if response_headers is not None:
                     response_headers.clear()
