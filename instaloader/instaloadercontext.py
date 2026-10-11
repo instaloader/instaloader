@@ -424,6 +424,24 @@ class InstaloaderContext:
             host, path, resp.status_code, resp.reason, redirect, body
         ))
 
+    def _raise_if_login_redirect(self, resp: requests.Response) -> None:
+        """Turn a redirect to the login page into a meaningful exception.
+
+        Instagram answers requests it will not serve anonymously with a redirect to the login page
+        rather than with an error status, so this needs to be checked wherever we do not follow
+        redirects automatically.
+        """
+        if not resp.is_redirect:
+            return
+        redirect_url = resp.headers.get('location', '')
+        if not (redirect_url.startswith('https://www.instagram.com/accounts/login') or
+                redirect_url.startswith('https://i.instagram.com/accounts/login')):
+            return
+        if not self.is_logged_in:
+            raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
+        raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
+                                     "some time, recreate the session and try again")
+
     def _follow_redirects(self, sess: requests.Session, resp: requests.Response,
                           host: str, path: str, params: Dict[str, Any], use_post: bool) -> requests.Response:
         """Follow redirects that stay on *host*, and reject those to the login page."""
@@ -433,12 +451,7 @@ class InstaloaderContext:
         while resp.is_redirect:
             redirect_url = resp.headers['location']
             self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
-            if (redirect_url.startswith('https://www.instagram.com/accounts/login') or
-                redirect_url.startswith('https://i.instagram.com/accounts/login')):
-                if not self.is_logged_in:
-                    raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
-                raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
-                                             "some time, recreate the session and try again")
+            self._raise_if_login_redirect(resp)
             if not redirect_url.startswith('https://{}/'.format(host)):
                 break
             resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
@@ -751,6 +764,7 @@ class InstaloaderContext:
                 resp = anonymous_session.get(url, headers=headers, allow_redirects=False)
         except requests.exceptions.RequestException as err:
             raise ConnectionException("Page request to {}: {}".format(url, err)) from err
+        self._raise_if_login_redirect(resp)
         if resp.status_code == 404:
             raise QueryReturnedNotFoundException(self._response_error(resp))
         if resp.status_code != 200:
