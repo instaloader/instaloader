@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 import random
+import re
 import shutil
 import sys
 import textwrap
@@ -28,6 +29,19 @@ def copy_session(session: requests.Session, request_timeout: Optional[float] = N
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
     new.request = partial(new.request, timeout=request_timeout)  # type: ignore
     return new
+
+
+def _embedded_query_data(obj: Any) -> Iterator[Dict[str, Any]]:
+    """Yield the data of each GraphQL query result in JSON that a page of www.instagram.com embeds."""
+    if isinstance(obj, dict):
+        result = obj['__bbox'].get('result') if isinstance(obj.get('__bbox'), dict) else None
+        if isinstance(result, dict) and isinstance(result.get('data'), dict):
+            yield result['data']
+        for value in obj.values():
+            yield from _embedded_query_data(value)
+    elif isinstance(obj, list):
+        for value in obj:
+            yield from _embedded_query_data(value)
 
 
 def default_user_agent() -> str:
@@ -438,6 +452,11 @@ class InstaloaderContext:
                 ))
             while resp.is_redirect:
                 redirect_url = resp.headers['location']
+                if redirect_url == 'https://{}/'.format(host):
+                    # Instagram refuses some requests by redirecting them to its home page, which
+                    # is not JSON. Report the refusal instead of loading the page.
+                    raise ConnectionException("Redirected to the home page when accessing https://{}/{}"
+                                              .format(host, path))
                 self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
                 if (redirect_url.startswith('https://www.instagram.com/accounts/login') or
                     redirect_url.startswith('https://i.instagram.com/accounts/login')):
@@ -673,6 +692,38 @@ class InstaloaderContext:
                     self.iphone_headers[key.replace('x-ig-set-', 'x-ig-')] = value
 
             return response
+
+    def get_page_data(self, path: str) -> List[Dict[str, Any]]:
+        """Load a page of ``www.instagram.com`` as a logged-out visitor and return the data it embeds.
+
+        Instagram renders public profile and post pages with the results of their GraphQL queries
+        embedded in the HTML, even when it refuses anonymous API requests for the same data.
+
+        :param path: URL, relative to ``www.instagram.com/``
+        :return: The ``data`` object of each query result that the page embeds, in page order.
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises ConnectionException: When the request failed.
+        """
+        self.do_sleep()
+        self._rate_controller.wait_before_query('other')
+        url = 'https://www.instagram.com/{0}'.format(path)
+        # Instagram only embeds the data when the request looks like a browser's page navigation.
+        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
+                   'Sec-Fetch-Site': 'none'}
+        try:
+            with self.get_anonymous_session() as anonymous_session:
+                resp = anonymous_session.get(url, headers=headers, allow_redirects=False)
+        except requests.exceptions.RequestException as err:
+            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
+        if resp.status_code == 404:
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.status_code != 200:
+            raise ConnectionException(self._response_error(resp))
+        data: List[Dict[str, Any]] = []
+        for script in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', resp.text, re.DOTALL):
+            with suppress(json.decoder.JSONDecodeError):
+                data.extend(_embedded_query_data(json.loads(script.group(1))))
+        return data
 
     def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
         """Write raw response data into a file.
