@@ -775,14 +775,21 @@ class InstaloaderContext:
                 file.write(resp)
         os.replace(filename + '.temp', filename)
 
-    def get_raw(self, url: str, _attempt=1) -> requests.Response:
+    def get_raw(self, url: str) -> requests.Response:
         """Downloads a file anonymously.
+
+        This does not retry on its own; callers that need retrying are decorated with
+        ``_retry_on_connection_error``.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When download failed.
 
-        .. versionadded:: 4.2.1"""
+        .. versionadded:: 4.2.1
+
+        .. versionchanged:: 4.16
+           Removed the `_attempt` parameter.
+        """
         with self.get_anonymous_session() as anonymous_session:
             resp = anonymous_session.get(url, stream=True)
         self._raise_for_download_status(resp)
