@@ -85,31 +85,36 @@ def _requires_login(func: Callable) -> Callable:
 def _retry_on_connection_error(func: Callable) -> Callable:
     """Decorator to retry the function max_connection_attempts number of times.
 
-    Herewith-decorated functions need an ``_attempt`` keyword argument.
-
     This is to decorate functions that do network requests that may fail. Note that
     :meth:`.get_json`, :meth:`.get_iphone_json`, :meth:`.graphql_query` and :meth:`.graphql_node_list` already have
     their own logic for retrying, hence functions that only use these for network access must not be decorated with this
-    decorator."""
+    decorator.
+
+    .. versionchanged:: 4.16
+       Decorated functions no longer need to accept an ``_attempt`` keyword argument.
+    """
     @wraps(func)
-    def call(instaloader, *args, **kwargs):
-        try:
-            return func(instaloader, *args, **kwargs)
-        except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
-            error_string = "{}({}): {}".format(func.__name__, ', '.join([repr(arg) for arg in args]), err)
-            if (kwargs.get('_attempt') or 1) == instaloader.context.max_connection_attempts:
-                raise ConnectionException(error_string) from None
-            instaloader.context.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+    def call(instaloader, *args, **kwargs) -> Any:
+        # The failure we are currently retrying, if any. It tells us whether a ^C means "skip this
+        # download" rather than "abort everything", and whether to sleep before the next attempt.
+        pending_error_string: Optional[str] = None
+        for attempt in range(1, instaloader.context.max_connection_attempts + 1):
             try:
-                if kwargs.get('_attempt'):
-                    kwargs['_attempt'] += 1
-                else:
-                    kwargs['_attempt'] = 2
-                instaloader.context.do_sleep()
-                return call(instaloader, *args, **kwargs)
+                if pending_error_string is not None:
+                    instaloader.context.do_sleep()
+                return func(instaloader, *args, **kwargs)
+            except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException, ConnectionException) as err:
+                error_string = "{}({}): {}".format(func.__name__, ', '.join([repr(arg) for arg in args]), err)
+                if attempt == instaloader.context.max_connection_attempts:
+                    raise ConnectionException(error_string) from None
+                instaloader.context.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+                pending_error_string = error_string
             except KeyboardInterrupt:
+                if pending_error_string is None:
+                    raise
                 instaloader.context.error("[skipped by user]", repeat_at_end=False)
-                raise ConnectionException(error_string) from None
+                raise ConnectionException(pending_error_string) from None
+        raise AssertionError("_retry_on_connection_error() retry loop exited without result")
     return call
 
 
@@ -335,7 +340,7 @@ class Instaloader:
 
     @_retry_on_connection_error
     def download_pic(self, filename: str, url: str, mtime: datetime,
-                     filename_suffix: Optional[str] = None, _attempt: int = 1) -> bool:
+                     filename_suffix: Optional[str] = None) -> bool:
         """Downloads and saves picture with given url under given directory with given timestamp.
         Returns true, if file was actually downloaded, i.e. updated."""
         if filename_suffix is not None:
@@ -519,8 +524,9 @@ class Instaloader:
                                 '{0}_{1}_{2}.{3}'.format(target, identifier, name_suffix, extension))
 
     @_retry_on_connection_error
-    def download_title_pic(self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile],
-                           _attempt: int = 1) -> None:
+    def download_title_pic(
+            self, url: str, target: Union[str, Path], name_suffix: str, owner_profile: Optional[Profile]
+    ) -> None:
         """Downloads and saves a picture that does not have an association with a Post or StoryItem, such as a
         Profile picture or a Highlight cover picture. Modification time is taken from the HTTP response headers.
 
