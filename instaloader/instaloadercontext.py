@@ -465,6 +465,23 @@ class InstaloaderContext:
         if resp.status_code != 200:
             raise ConnectionException(self._response_error(resp))
 
+    def _raise_for_download_status(self, resp: requests.Response) -> None:
+        """Translate an unsuccessful status code of an anonymous download request into an exception.
+
+        This is deliberately a different policy from :meth:`_raise_for_status`, which applies to the
+        JSON API: a download may be answered with 403 for an invalid URL signature, and is never
+        answered with the 400 or 429 that the API uses.
+        """
+        if resp.status_code == 200:
+            return
+        if resp.status_code == 403:
+            # suspected invalid URL signature
+            raise QueryReturnedForbiddenException(self._response_error(resp))
+        if resp.status_code == 404:
+            # 404 not worth retrying.
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        raise ConnectionException(self._response_error(resp))
+
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
                  session: Optional[requests.Session] = None,
                  response_headers: Optional[Dict[str, Any]] = None,
@@ -768,17 +785,9 @@ class InstaloaderContext:
         .. versionadded:: 4.2.1"""
         with self.get_anonymous_session() as anonymous_session:
             resp = anonymous_session.get(url, stream=True)
-        if resp.status_code == 200:
-            resp.raw.decode_content = True
-            return resp
-        else:
-            if resp.status_code == 403:
-                # suspected invalid URL signature
-                raise QueryReturnedForbiddenException(self._response_error(resp))
-            if resp.status_code == 404:
-                # 404 not worth retrying.
-                raise QueryReturnedNotFoundException(self._response_error(resp))
-            raise ConnectionException(self._response_error(resp))
+        self._raise_for_download_status(resp)
+        resp.raw.decode_content = True
+        return resp
 
     def get_and_write_raw(self, url: str, filename: str) -> None:
         """Downloads and writes anonymously-requested raw data into a file.
@@ -799,16 +808,8 @@ class InstaloaderContext:
         """
         with self.get_anonymous_session() as anonymous_session:
             resp = anonymous_session.head(url, allow_redirects=allow_redirects)
-        if resp.status_code == 200:
-            return resp
-        else:
-            if resp.status_code == 403:
-                # suspected invalid URL signature
-                raise QueryReturnedForbiddenException(self._response_error(resp))
-            if resp.status_code == 404:
-                # 404 not worth retrying.
-                raise QueryReturnedNotFoundException(self._response_error(resp))
-            raise ConnectionException(self._response_error(resp))
+        self._raise_for_download_status(resp)
+        return resp
 
 
 class RateController:
