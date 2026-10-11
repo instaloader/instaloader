@@ -556,6 +556,32 @@ class InstaloaderContext:
 
         raise AssertionError("get_json() retry loop exited without result")
 
+    @contextmanager
+    def _graphql_session(self, referer: Optional[str], csrf: Optional[str] = None) -> Iterator[requests.Session]:
+        """Short-lived session carrying the headers that the GraphQL endpoint expects."""
+        with copy_session(self._session, self.request_timeout) as tmpsession:
+            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
+            del tmpsession.headers['Connection']
+            del tmpsession.headers['Content-Length']
+            tmpsession.headers['authority'] = 'www.instagram.com'
+            tmpsession.headers['scheme'] = 'https'
+            tmpsession.headers['accept'] = '*/*'
+            if csrf is not None:
+                tmpsession.headers['x-csrftoken'] = csrf
+            if referer is not None:
+                tmpsession.headers['referer'] = urllib.parse.quote(referer)
+            yield tmpsession
+
+    def _csrf_token(self) -> str:
+        """The csrftoken cookie value, requesting the start page once if we do not have one yet."""
+        def token_from_cookies() -> Optional[str]:
+            return next((c.value for c in self._session.cookies if c.name == 'csrftoken' and c.value), None)
+        csrf = token_from_cookies()
+        if csrf:
+            return csrf
+        self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
+        return token_from_cookies() or ''
+
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
                       referer: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -569,18 +595,8 @@ class InstaloaderContext:
         .. versionchanged:: 4.13.1
            Removed the `rhx_gis` parameter.
         """
-        with copy_session(self._session, self.request_timeout) as tmpsession:
-            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
-            del tmpsession.headers['Connection']
-            del tmpsession.headers['Content-Length']
-            tmpsession.headers['authority'] = 'www.instagram.com'
-            tmpsession.headers['scheme'] = 'https'
-            tmpsession.headers['accept'] = '*/*'
-            if referer is not None:
-                tmpsession.headers['referer'] = urllib.parse.quote(referer)
-
-            variables_json = json.dumps(variables, separators=(',', ':'))
-
+        variables_json = json.dumps(variables, separators=(',', ':'))
+        with self._graphql_session(referer) as tmpsession:
             resp_json = self.get_json('graphql/query',
                                       params={'query_hash': query_hash,
                                               'variables': variables_json},
@@ -601,26 +617,8 @@ class InstaloaderContext:
         :param referer: HTTP Referer, or None.
         :return: The server's response dictionary.
         """
-        csrf = next((c.value for c in self._session.cookies
-                     if c.name == 'csrftoken' and c.value), None)
-        if not csrf:
-            self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
-            csrf = next((c.value for c in self._session.cookies
-                         if c.name == 'csrftoken' and c.value), '')
-
-        with copy_session(self._session, self.request_timeout) as tmpsession:
-            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
-            del tmpsession.headers['Connection']
-            del tmpsession.headers['Content-Length']
-            tmpsession.headers['authority'] = 'www.instagram.com'
-            tmpsession.headers['scheme'] = 'https'
-            tmpsession.headers['accept'] = '*/*'
-            tmpsession.headers['x-csrftoken'] = csrf
-            if referer is not None:
-                tmpsession.headers['referer'] = urllib.parse.quote(referer)
-
-            variables_json = json.dumps(variables, separators=(',', ':'))
-
+        variables_json = json.dumps(variables, separators=(',', ':'))
+        with self._graphql_session(referer, csrf=self._csrf_token()) as tmpsession:
             resp_json = self.get_json('graphql/query',
                                       params={'variables': variables_json,
                                               'doc_id': doc_id,
