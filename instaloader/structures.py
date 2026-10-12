@@ -999,6 +999,23 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
+        # web_profile_info answers logged-in sessions with 429, so look up the user id
+        # with Instagram's top search instead and load the profile by id. (The
+        # username-based doc_id query previously used here is now redirected to the
+        # front page.)
+        if context.is_logged_in:
+            try:
+                profiles: Optional[List[Profile]] = list(TopSearchResults(context, username).get_profiles())
+            except (InstaloaderException, KeyError, TypeError):
+                profiles = None
+            if profiles is not None:
+                for profile in profiles:
+                    if profile.username.casefold() == username.casefold():
+                        profile._obtain_metadata()
+                        return profile
+                # Falling back to web_profile_info would only end in a 429 and a long wait.
+                raise ProfileNotExistsException("Profile {} does not exist.".format(username))
+
         # Resolve the profile through the web_profile_info endpoint, which works both
         # anonymously and when logged in and returns the complete profile node
         # (including the first page of posts). The GraphQL fbsearch query previously
@@ -1009,8 +1026,9 @@ class Profile:
             ).get("data")
         except QueryReturnedNotFoundException:
             data = None
-        if data and data.get("user"):
-            profile = cls(context, data["user"])
+        user = data.get("user") if data else None
+        if user and user.get("username", "").casefold() == username.casefold():
+            profile = cls(context, user)
             profile._has_full_metadata = True
             return profile
 
@@ -1350,6 +1368,10 @@ class Profile:
 
         .. versionchanged:: 4.2.1
            Require being logged in for HD version (as required by Instagram)."""
+        # The logged-in profile query already returns the HD picture, so there is no need
+        # to ask the iPhone API, which fails for some profiles.
+        with suppress(KeyError, TypeError):
+            return self._node['hd_profile_pic_url_info']['url']
         if self._context.iphone_support and self._context.is_logged_in:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
@@ -1377,19 +1399,12 @@ class Profile:
 
         :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
-        logged_in = self._context.is_logged_in
+        # PolarisProfilePostsQuery serves both logged-in and anonymous sessions; the
+        # id-based query previously used for anonymous sessions now requires a login.
         return NodeIterator(
             context=self._context,
-            edge_extractor=(
-                (lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"])
-                if logged_in
-                else (lambda d: d["data"]["user"]["edge_owner_to_timeline_media"])
-            ),
-            node_wrapper=(
-                (lambda n: Post.from_iphone_struct(self._context, n))
-                if logged_in
-                else (lambda n: Post(self._context, n, self))
-            ),
+            edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
+            node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
             query_variables={
                 "data": {
                     "count": 12,
@@ -1397,13 +1412,15 @@ class Profile:
                     "latest_besties_reel_media": True,
                     "latest_reel_media": True,
                 },
-                **({"username": self.username} if logged_in else {"id": self.userid}),
+                "username": self.username,
+                "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="7898261790222653" if logged_in else "7950326061742207",
+            doc_id="28542612348729311",
             query_hash=None,
-            first_data=(None if logged_in else self._metadata("edge_owner_to_timeline_media")),
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
@@ -1699,7 +1716,7 @@ class StoryItem:
     def url(self) -> str:
         """URL of the picture / video thumbnail of the StoryItem"""
         if self.typename in ["GraphStoryImage", "StoryImage"] and \
-                self._context.iphone_support and self._context.is_logged_in:
+                self._context.iphone_support and self._context.is_logged_in and self._iphone_struct_ != {}:
             try:
                 orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
                 url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
@@ -1774,7 +1791,7 @@ class StoryItem:
                 version_urls.append(self._node['video_resources'][-1]['src'])
             except (InstaloaderException, KeyError, IndexError) as err:
                 self._context.error(f"Warning: Unable to fetch video from graphql of {self}: {err}")
-            if self._context.iphone_support and self._context.is_logged_in:
+            if self._context.iphone_support and self._context.is_logged_in and self._iphone_struct_ != {}:
                 try:
                     version_urls.extend(version['url'] for version in self._iphone_struct['video_versions'])
                 except (InstaloaderException, KeyError, IndexError) as err:
@@ -1903,7 +1920,8 @@ class Story:
             data = self._context.get_iphone_json(
                 path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
             )
-            self._iphone_struct_ = data['reels'][str(self.owner_id)]
+            # The iPhone API sometimes leaves the reel out; the GraphQL items are used then.
+            self._iphone_struct_ = data.get('reels', {}).get(str(self.owner_id))
 
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
@@ -1914,7 +1932,12 @@ class Story:
                     if iphone_struct_item['pk'] == int(item['id']):
                         item['iphone_struct'] = iphone_struct_item
                         break
-            yield StoryItem(self._context, item, self.owner_profile)
+            story_item = StoryItem(self._context, item, self.owner_profile)
+            if story_item._iphone_struct_ is None:
+                # StoryItem would repeat the lookup that just came back without this item; an
+                # empty struct makes it use the GraphQL URLs instead.
+                story_item._iphone_struct_ = {}
+            yield story_item
 
 
 class Highlight(Story):
@@ -1988,7 +2011,8 @@ class Highlight(Story):
             data = self._context.get_iphone_json(
                 path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
             )
-            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+            # The iPhone API sometimes leaves the highlight out; the GraphQL items are used then.
+            self._iphone_struct_ = data.get('reels', {}).get('highlight:{}'.format(self.unique_id))
 
     @property
     def itemcount(self) -> int:
@@ -2008,7 +2032,12 @@ class Highlight(Story):
                     if iphone_struct_item['pk'] == int(item['id']):
                         item['iphone_struct'] = iphone_struct_item
                         break
-            yield StoryItem(self._context, item, self.owner_profile)
+            story_item = StoryItem(self._context, item, self.owner_profile)
+            if story_item._iphone_struct_ is None:
+                # StoryItem would look the item up in the owner's current story, which never
+                # holds highlight items; an empty struct makes it use the GraphQL URLs instead.
+                story_item._iphone_struct_ = {}
+            yield story_item
 
 
 class Hashtag:

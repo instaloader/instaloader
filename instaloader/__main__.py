@@ -105,7 +105,10 @@ def get_cookies_from_instagram(domain: str, browser: str, cookie_file: Optional[
     browser_cookies = list(supported_browsers[browser](cookie_file=cookie_file))
 
     for cookie in browser_cookies:
-        if domain in cookie.domain:
+        # Browsers may keep cleared copies of a cookie (value '""') for a narrower domain such as
+        # www.instagram.com. Letting them override the real value sends an empty CSRF token, which
+        # Instagram answers with 403 on POST requests.
+        if domain in cookie.domain and cookie.value.strip('"'):
             cookies[cookie.name] = cookie.value
 
     if cookies:
