@@ -950,6 +950,53 @@ class Post:
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
+class _NewestTrackingIterator(Iterator['Post']):
+    """Iterate the given posts and keep track of the newest one.
+
+    :meth:`Profile.get_posts` returns the posts of the anonymous feed endpoint through this
+    iterator. It mimics the small part of the :class:`NodeIterator` interface that
+    :meth:`Instaloader.download_profiles` relies on, notably :attr:`first_item` (the newest post
+    seen so far, for ``--latest-stamps``).
+    """
+
+    def __init__(self, posts: Iterator['Post']):
+        self._posts = posts
+        self._first_item: Optional['Post'] = None
+
+    def __iter__(self):
+        return self
+
+    @property
+    def first_item(self) -> Optional['Post']:
+        """The newest post yielded so far (posts may not be in strict chronological order)."""
+        return self._first_item
+
+    def __next__(self) -> 'Post':
+        post = next(self._posts)
+        if self._first_item is None or post.date_local > self._first_item.date_local:
+            self._first_item = post
+        return post
+
+
+def _feed_posts(context: InstaloaderContext, user_id: Union[int, str]) -> Iterator['Post']:
+    """Yield a user's posts from the ``api/v1/feed/user/{id}/`` endpoint.
+
+    This mobile endpoint paginates with ``max_id`` (rather than a GraphQL cursor) and still
+    serves posts anonymously, so it is used for profiles that the web/GraphQL timeline queries
+    no longer return.
+    """
+    path = 'api/v1/feed/user/{0}/'.format(user_id)
+    data = context.get_json(path, params={'count': 12})
+    while True:
+        for item in data.get('items', []):
+            yield Post.from_iphone_struct(context, item)
+        if not (data.get('more_available') and data.get('next_max_id')):
+            return
+        data = context.get_json(path, params={'count': 12, 'max_id': data['next_max_id']})
+        if not data.get('items'):
+            return
+
+
 class Profile:
     """
     An Instagram Profile.
@@ -1022,7 +1069,10 @@ class Profile:
             # fields, notably the viewer's relationship to the profile, such as
             # followed_by_viewer, to the GraphQL profile query in _obtain_metadata().
             return cls(context, node)
-        return cls(context, cls._normalize_profile_data(node))
+        # The page does not show logged-out visitors the total media count. Expose it as
+        # unknown, so that reading Profile.mediacount, as the post download does, does not
+        # query web_profile_info, which Instagram refuses anonymously.
+        return cls(context, cls._normalize_profile_data(dict(node, edge_owner_to_timeline_media={"count": None})))
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -1381,31 +1431,18 @@ class Profile:
 	   Use :attr:`profile_pic_url`."""
         return self.profile_pic_url
 
-    def get_posts(self) -> NodeIterator[Post]:
+    def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype: NodeIterator[Post]"""
-        self._obtain_metadata()
+        :rtype: Iterator[Post]"""
         if not self._context.is_logged_in:
-            return NodeIterator(
-                context=self._context,
-                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
-                node_wrapper=lambda n: Post(self._context, n, self),
-                query_variables={
-                    "data": {
-                        "count": 12,
-                        "include_relationship_info": True,
-                        "latest_besties_reel_media": True,
-                        "latest_reel_media": True,
-                    },
-                    "id": self.userid,
-                },
-                query_referer="https://www.instagram.com/{0}/".format(self.username),
-                is_first=Profile._make_is_newest_checker(),
-                doc_id="7950326061742207",
-                query_hash=None,
-                first_data=self._metadata("edge_owner_to_timeline_media"),
-            )
+            # Instagram no longer serves the anonymous GraphQL timeline query (it responds
+            # with HTTP 403 once paging past the first page, which web_profile_info used to
+            # bundle), so paginate the mobile feed endpoint instead, which still returns a
+            # profile's posts anonymously. It only needs the user ID, so do not load the
+            # profile's metadata, which anonymously takes web_profile_info.
+            return _NewestTrackingIterator(_feed_posts(self._context, self.userid))
+        self._obtain_metadata()
         return NodeIterator(
             context=self._context,
             edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
