@@ -999,22 +999,30 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        # Resolve the profile through the web_profile_info endpoint, which works both
-        # anonymously and when logged in and returns the complete profile node
-        # (including the first page of posts). The GraphQL fbsearch query previously
-        # used here started responding with HTTP 400.
+        # Resolve the profile through its public web page, which Instagram renders with the
+        # profile embedded. The web_profile_info endpoint previously used here is refused
+        # with HTTP 400 for some professional profiles, and with HTTP 401 or 429 for some
+        # sessions, both anonymously and when logged in.
         try:
-            data = context.get_json(
-                "api/v1/users/web_profile_info/", params={"username": username.lower()}
-            ).get("data")
+            page = context.get_page_data("{0}/".format(username.lower()))
         except QueryReturnedNotFoundException:
-            data = None
-        if data and data.get("user"):
-            profile = cls(context, data["user"])
-            profile._has_full_metadata = True
-            return profile
-
-        raise ProfileNotExistsException("Profile {} does not exist.".format(username))
+            page = []
+        # The page embeds two queries for the profile: one for its details and one for its
+        # posts.
+        user: Dict[str, Any] = {}
+        for data in page:
+            user.update(data.get("xig_user_by_username") or {})
+        if not user.get("pk"):
+            raise ProfileNotExistsException("Profile {} does not exist.".format(username))
+        user.pop("polaris_ordered_timeline_connection", None)
+        # The page's "id" is not the user ID, which is "pk".
+        node = dict(user, id=user["pk"])
+        if context.is_logged_in:
+            # The page shows the profile as a logged-out visitor sees it. Leave the missing
+            # fields, notably the viewer's relationship to the profile, such as
+            # followed_by_viewer, to the GraphQL profile query in _obtain_metadata().
+            return cls(context, node)
+        return cls(context, cls._normalize_profile_data(node))
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -1131,7 +1139,8 @@ class Profile:
                                                         ', '.join(similar_profiles[0:5]))) from err
             raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username)) from err
 
-    def _normalize_profile_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _normalize_profile_data(user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize PolarisProfilePageContentQuery response to match legacy format."""
         normalized = user_data.copy()
         if 'id' not in normalized and 'pk' in normalized:
@@ -1377,33 +1386,52 @@ class Profile:
 
         :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
-        logged_in = self._context.is_logged_in
+        if not self._context.is_logged_in:
+            return NodeIterator(
+                context=self._context,
+                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
+                node_wrapper=lambda n: Post(self._context, n, self),
+                query_variables={
+                    "data": {
+                        "count": 12,
+                        "include_relationship_info": True,
+                        "latest_besties_reel_media": True,
+                        "latest_reel_media": True,
+                    },
+                    "id": self.userid,
+                },
+                query_referer="https://www.instagram.com/{0}/".format(self.username),
+                is_first=Profile._make_is_newest_checker(),
+                doc_id="7950326061742207",
+                query_hash=None,
+                first_data=self._metadata("edge_owner_to_timeline_media"),
+            )
         return NodeIterator(
             context=self._context,
-            edge_extractor=(
-                (lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"])
-                if logged_in
-                else (lambda d: d["data"]["user"]["edge_owner_to_timeline_media"])
-            ),
-            node_wrapper=(
-                (lambda n: Post.from_iphone_struct(self._context, n))
-                if logged_in
-                else (lambda n: Post(self._context, n, self))
-            ),
+            edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
+            node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
+            # The query and variables that the web app sends for a profile's posts tab
+            # (PolarisProfilePostsTabContentQuery_connection). Instagram answers the
+            # previous query, 7898261790222653, with "execution error".
             query_variables={
                 "data": {
                     "count": 12,
+                    "include_reel_media_seen_timestamp": True,
                     "include_relationship_info": True,
                     "latest_besties_reel_media": True,
                     "latest_reel_media": True,
                 },
-                **({"username": self.username} if logged_in else {"id": self.userid}),
+                "first": 12,
+                "include_multi_captions": True,
+                "username": self.username,
+                "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
+                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="7898261790222653" if logged_in else "7950326061742207",
+            doc_id="28975909992013618",
             query_hash=None,
-            first_data=(None if logged_in else self._metadata("edge_owner_to_timeline_media")),
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
