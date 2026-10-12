@@ -74,6 +74,14 @@ Improvements of the Instaloader source or its documentation can be proposed as a
     - a bug fix that does require thorough testing before being released to a
       final version.
 
+- Keep Pull Requests focused: address a single problem or feature in a
+  self-contained change. Avoid bundling multiple independent fixes, refactorings,
+  or architectural changes into one pull request, as this makes it hard to
+  review, validate, or selectively merge them.
+
+- Be mindful of backward compatibility: changes should preserve existing intended
+  behavior whenever possible.
+
 - All Pull Requests are analyzed by `Pylint <https://www.pylint.org/>`__ for
   error and syntax checking of the source and
   `Mypy <https://github.com/python/mypy>`__ for type checking. You can run them
