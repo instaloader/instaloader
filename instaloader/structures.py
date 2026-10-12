@@ -1386,33 +1386,52 @@ class Profile:
 
         :rtype: NodeIterator[Post]"""
         self._obtain_metadata()
-        logged_in = self._context.is_logged_in
+        if not self._context.is_logged_in:
+            return NodeIterator(
+                context=self._context,
+                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
+                node_wrapper=lambda n: Post(self._context, n, self),
+                query_variables={
+                    "data": {
+                        "count": 12,
+                        "include_relationship_info": True,
+                        "latest_besties_reel_media": True,
+                        "latest_reel_media": True,
+                    },
+                    "id": self.userid,
+                },
+                query_referer="https://www.instagram.com/{0}/".format(self.username),
+                is_first=Profile._make_is_newest_checker(),
+                doc_id="7950326061742207",
+                query_hash=None,
+                first_data=self._metadata("edge_owner_to_timeline_media"),
+            )
         return NodeIterator(
             context=self._context,
-            edge_extractor=(
-                (lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"])
-                if logged_in
-                else (lambda d: d["data"]["user"]["edge_owner_to_timeline_media"])
-            ),
-            node_wrapper=(
-                (lambda n: Post.from_iphone_struct(self._context, n))
-                if logged_in
-                else (lambda n: Post(self._context, n, self))
-            ),
+            edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
+            node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
+            # The query and variables that the web app sends for a profile's posts tab
+            # (PolarisProfilePostsTabContentQuery_connection). Instagram answers the
+            # previous query, 7898261790222653, with "execution error".
             query_variables={
                 "data": {
                     "count": 12,
+                    "include_reel_media_seen_timestamp": True,
                     "include_relationship_info": True,
                     "latest_besties_reel_media": True,
                     "latest_reel_media": True,
                 },
-                **({"username": self.username} if logged_in else {"id": self.userid}),
+                "first": 12,
+                "include_multi_captions": True,
+                "username": self.username,
+                "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
+                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="7898261790222653" if logged_in else "7950326061742207",
+            doc_id="28975909992013618",
             query_hash=None,
-            first_data=(None if logged_in else self._metadata("edge_owner_to_timeline_media")),
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
