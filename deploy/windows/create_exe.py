@@ -1,9 +1,12 @@
 import hashlib
+import json
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 
 # copy the required files into repo root
 shutil.copy('docs/favicon.ico', '.')
@@ -43,10 +46,18 @@ with open('instaloader/__main__.py', 'r') as f:
 with open('__main__.py', 'w+') as f:
     f.writelines(lines)
 
-# install dependencies and invoke PyInstaller
+# packages bundled into the executable, whose licenses have to be shipped along with it
+with open('Pipfile.lock') as f:
+    locked_packages = json.load(f)['default']
+bundled_packages = ' '.join(list(locked_packages) + ['psutil', 'pyinstaller'])
+os.makedirs('dist/licenses', exist_ok=True)
+
+# install dependencies, invoke PyInstaller and collect licenses
 commands = ["pip install pipenv==2026.8.0",
             f"pipenv --python {sys.version_info.major}.{sys.version_info.minor} sync --dev",
-            "pipenv run pyinstaller --log-level=DEBUG instaloader.spec"]
+            "pipenv run pyinstaller --log-level=DEBUG instaloader.spec",
+            f"pipenv run pip-licenses --packages {bundled_packages} --with-license-file "
+            "--with-notice-file --no-license-path --format=plain-vertical --output-file dist/licenses/third-party.txt"]
 
 for command in commands:
     print()
@@ -66,6 +77,14 @@ with open('dist/instaloader.exe', 'rb') as f:
 
 with open('dist/instaloader.exe.md5', 'w+') as f:
     f.write('{} *instaloader.exe\n'.format(hash_md5.hexdigest()))
+
+# include the remaining license texts
+shutil.copy('LICENSE', 'dist/LICENSE.txt')
+shutil.copy('deploy/windows/NOTICE.txt', 'dist/licenses/NOTICE.txt')
+shutil.copy('deploy/windows/GPL-3.0.txt', 'dist/licenses/GPL-3.0.txt')
+shutil.copy(os.path.join(sys.base_prefix, 'LICENSE.txt'), 'dist/licenses/Python.txt')
+urllib.request.urlretrieve('https://raw.githubusercontent.com/python/cpython/v{}/Doc/license.rst'
+                           .format(platform.python_version()), 'dist/licenses/Python-incorporated-software.txt')
 
 # Create ZIP file
 shutil.make_archive('instaloader-{}-windows-standalone'.format(os.getenv('VERSION_TAG')), 'zip', 'dist')
