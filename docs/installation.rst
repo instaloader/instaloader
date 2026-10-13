@@ -38,7 +38,7 @@ To **upgrade Instaloader** to its current version, do::
 
 - On **Linux**, the third-party `OTinstaller <https://github.com/OSINTVerseHQ/OTinstaller>`__ tool
   manager can install Instaloader into its own virtualenv with
-  ``otinstaller install instaloader``. It is not maintained by the Instaloader
+  ``otinstaller init`` and then ``otinstaller install instaloader``. It is not maintained by the Instaloader
   team, so please report problems with it
   `on the OTinstaller tracker <https://github.com/OSINTVerseHQ/OTinstaller/issues>`__.
 
