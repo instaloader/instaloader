@@ -18,8 +18,8 @@ def get_version():
     raise SystemExit("Could not find version string.")
 
 
-if sys.version_info < (3, 9):
-    sys.exit('Instaloader requires Python >= 3.9.')
+if sys.version_info < (3, 10):
+    sys.exit('Instaloader requires Python >= 3.10.')
 
 requirements = ['requests>=2.25']
 optional_requirements = {
@@ -50,7 +50,7 @@ setup(
                 'from Instagram.',
     long_description=open(os.path.join(SRC, 'README.rst')).read(),
     install_requires=requirements,
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     extras_require=optional_requirements,
     entry_points={'console_scripts': ['instaloader=instaloader.__main__:main']},
     zip_safe=False,
@@ -62,12 +62,12 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',
         'Programming Language :: Python :: 3.14',
+        'Programming Language :: Python :: 3.15',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Internet',
         'Topic :: Multimedia :: Graphics'

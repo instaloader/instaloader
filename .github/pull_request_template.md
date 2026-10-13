@@ -2,17 +2,23 @@
 
 <!--
 Thanks for your willingness to contribute to Instaloader! Please briefly
-describe
+describe:
 
 - A motivation for this change, e.g.
   - Fixes # .
-  - More general: What problem does the pull request solve?
+  - What problem does the pull request solve?
 
 - The changes proposed in this pull request
+  - Keep the PR focused: avoid bundling independent fixes or refactorings.
 
 - The completeness of this change
-  - Is it just a proof of concept?
   - Is the documentation updated (if appropriate)?
-  - Do you consider it ready to be merged or is it a draft?
+  - How has it been tested?
+  - Do you consider it ready to be merged or is it a draft / proof of concept?
   - Can we help you at some point?
+
+- Further considerations
+  - Is it based on master (bugfix), upcoming/v4.X (new feature), or another pull request?
+  - Does it preserve backward compatibility and existing behavior?
+
 -->
