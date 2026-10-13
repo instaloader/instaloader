@@ -16,7 +16,7 @@ from .instaloader import (get_default_session_filename, get_default_stamps_filen
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 try:
-    import browser_cookie3
+    from instaloader._vendor import browser_cookie3
     bc3_library = True
 except ImportError:
     bc3_library = False
