@@ -5,7 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pylint = "*"
-mypy = "==1.18.2"
+mypy = "*"
 sphinx = "*"
 pyinstaller = "*"
 psutil = "*"
@@ -18,7 +18,7 @@ pywin32-ctypes = "*"  # Needed for pyinstaller on Windows
 pefile = "*"          # Needed for pyinstaller on Windows
 
 [packages]
-requests = "==2.32.5"
+requests = "*"
 lz4 = "*"
 pycryptodomex = "*"
 dbus-python = {version = "*", sys_platform = "== 'linux'"}
