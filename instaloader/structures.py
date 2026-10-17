@@ -1545,14 +1545,7 @@ class Profile:
         if not self._context.is_logged_in:
             raise LoginRequiredException("Login required to get a profile's followers.")
         self._obtain_metadata()
-        return NodeIterator(
-            self._context,
-            '37479f2b8209594dde7facb0d904896a',
-            lambda d: d['data']['user']['edge_followed_by'],
-            lambda n: Profile(self._context, n),
-            {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
-        )
+        return _FriendshipsIterator(self._context, self, 'followers', self.followers)
 
     def get_followees(self) -> NodeIterator['Profile']:
         """
@@ -1564,14 +1557,7 @@ class Profile:
         if not self._context.is_logged_in:
             raise LoginRequiredException("Login required to get a profile's followees.")
         self._obtain_metadata()
-        return NodeIterator(
-            self._context,
-            '58712303d941c6855d4e888c5f0cd22f',
-            lambda d: d['data']['user']['edge_follow'],
-            lambda n: Profile(self._context, n),
-            {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
-        )
+        return _FriendshipsIterator(self._context, self, 'following', self.followees)
 
     def get_similar_accounts(self) -> Iterator['Profile']:
         """
@@ -1588,6 +1574,54 @@ class Profile:
                                                 {"user_id": str(self.userid), "include_chaining": True},
                                                 "https://www.instagram.com/{0}/"
                                                 .format(self.username))["data"]["user"]["edge_chaining"]["edges"])
+
+
+
+class _FriendshipsIterator(NodeIterator['Profile']):
+    """:class:`NodeIterator` over ``api/v1/friendships/<id>/followers/`` or ``.../following/``.
+
+    The endpoint pages with ``max_id``/``next_max_id`` instead of GraphQL cursors. Its pages are converted to the
+    ``edges``/``page_info`` shape, with ``next_max_id`` as cursor, so freezing and thawing work as for other
+    iterators."""
+
+    def __init__(self, context: InstaloaderContext, profile: 'Profile', kind: str, count: Optional[int]):
+        self._friendships_path = 'api/v1/friendships/{0}/{1}/'.format(profile.userid, kind)
+        self._friendships_count = count
+        super().__init__(
+            context,
+            None,
+            lambda d: d,
+            lambda n: Profile(context, n),
+            # Only used to tell iterators apart when resuming (see NodeIterator.magic and thaw()).
+            {'friendships': kind, 'id': str(profile.userid)},
+            'https://www.instagram.com/{0}/'.format(profile.username),
+        )
+
+    def _query(self, after: Optional[str] = None) -> Dict:
+        params: Dict[str, Any] = {'count': NodeIterator.page_length()}
+        if after is not None:
+            params['max_id'] = after
+        data = self._context.get_json(self._friendships_path, params)
+        next_max_id = data.get('next_max_id')
+        self._best_before = datetime.now() + NodeIterator._shelf_life
+        return {
+            'count': self._friendships_count,
+            'edges': [{'node': self._user_node(user)} for user in data.get('users', [])],
+            'page_info': {'has_next_page': bool(next_max_id), 'end_cursor': next_max_id},
+        }
+
+    @staticmethod
+    def _user_node(user: Dict[str, Any]) -> Dict[str, Any]:
+        # Same fields as the nodes of the GraphQL query used before.
+        return {
+            'id': str(user['pk']),
+            'username': user['username'],
+            'full_name': user.get('full_name', ''),
+            'is_private': user.get('is_private', False),
+            'is_verified': user.get('is_verified', False),
+            'profile_pic_url': user.get('profile_pic_url'),
+            'profile_pic_url_hd': user.get('profile_pic_url'),
+        }
 
 
 class StoryItem:
