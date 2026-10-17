@@ -1146,20 +1146,42 @@ class Instaloader:
 
     @_requires_login
     def download_saved_posts(self, max_count: Optional[int] = None, fast_update: bool = False,
-                             post_filter: Optional[Callable[[Post], bool]] = None) -> None:
+                             post_filter: Optional[Callable[[Post], bool]] = None,
+                             collection: Optional[str] = None) -> None:
         """Download user's saved pictures.
 
         :param max_count: Maximum count of pictures to download
         :param fast_update: If true, abort when first already-downloaded picture is encountered
         :param post_filter: function(post), which returns True if given picture should be downloaded
+        :param collection: Name or ID of a collection of saved posts to download instead of all saved posts.
+           The target directory is then ``:saved:<collection>``.
         :raises LoginRequiredException: If called without being logged in.
+        :raises InvalidArgumentException: If the collection does not exist.
+
+        .. versionchanged:: 4.16
+           Added parameter *collection*.
         """
-        self.context.log("Retrieving saved posts...")
         assert self.context.username is not None  # safe due to @_requires_login; required by typechecker
-        node_iterator = Profile.own_profile(self.context).get_saved_posts()
-        self.posts_download_loop(node_iterator, ":saved",
-                                 fast_update, post_filter,
-                                 max_count=max_count, total_count=node_iterator.count)
+        own_profile = Profile.own_profile(self.context)
+        if collection is None:
+            self.context.log("Retrieving saved posts...")
+            saved_posts = own_profile.get_saved_posts()
+            self.posts_download_loop(saved_posts, ":saved",
+                                     fast_update, post_filter,
+                                     max_count=max_count, total_count=saved_posts.count)
+        else:
+            collections = list(own_profile.get_saved_collections())
+            # Collection names may have surrounding spaces, which are easy to miss on Instagram.
+            match = (next((c for c in collections if c.id == collection), None) or
+                     next((c for c in collections if c.name == collection), None) or
+                     next((c for c in collections if c.name.strip().lower() == collection.strip().lower()), None))
+            if match is None:
+                raise InvalidArgumentException("Saved collection {} not found. Collections: {}.".format(
+                    collection, ", ".join(c.name for c in collections) or "none"))
+            self.context.log("Retrieving saved posts of collection {}...".format(match.name.strip()))
+            self.posts_download_loop(match.get_posts(), ":saved:{}".format(match.name.strip()),
+                                     fast_update, post_filter,
+                                     max_count=max_count, total_count=match.media_count)
 
     @_requires_login
     def get_location_posts(self, location: str) -> Iterator[Post]:

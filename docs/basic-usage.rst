@@ -119,6 +119,10 @@ Instaloader supports the following targets:
 - ``:saved``
    Posts which are marked as **saved** (requires :ref:`login<login>`).
 
+- ``:saved:collection``
+   The posts of one of your **collections** of saved posts, given by its name
+   or ID, e.g. ``":saved:Recipes"`` (requires :ref:`login<login>`).
+
 - ``@profile``
    All profiles that are followed by ``profile``, i.e. the *followees* of
    ``profile`` (requires :ref:`login<login>`).

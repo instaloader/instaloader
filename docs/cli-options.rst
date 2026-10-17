@@ -9,8 +9,8 @@ Instaloader is invoked with::
 
 where ``target`` is a ``profile``, a ``"#hashtag"``, ``@profile`` (all profiles
 that *profile* is following), ``%location ID``, or if logged in ``:feed`` (pictures from your
-feed), ``:stories`` (stories of your followees) or ``:saved`` (collection of
-posts marked as saved).
+feed), ``:stories`` (stories of your followees), ``:saved`` (collection of
+posts marked as saved) or ``:saved:collection`` (one of your collections of saved posts).
 
 Here we explain the additional options that can be given to Instaloader to
 customize its behavior.  For an

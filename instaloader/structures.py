@@ -1451,6 +1451,26 @@ class Profile:
             'https://www.instagram.com/{0}/'.format(self.username),
         )
 
+    def get_saved_collections(self) -> Iterator['SavedCollection']:
+        """Get the collections of saved posts of the user, e.g. to download one with
+        :meth:`Instaloader.download_saved_posts`.
+
+        Only collections that the user created are returned, not the "All posts" collection, which is
+        :meth:`get_saved_posts`.
+
+        .. versionadded:: 4.16"""
+        if self.username != self._context.username:
+            raise LoginRequiredException(f"Login as {self.username} required to get that profile's saved collections.")
+        params: Dict[str, Any] = {'collection_types': '["MEDIA"]'}
+        while True:
+            data = self._context.get_iphone_json('api/v1/collections/list/', params=params)
+            for item in data.get('items', []):
+                if item.get('collection_id'):
+                    yield SavedCollection(self._context, item)
+            if not (data.get('more_available') and data.get('next_max_id')):
+                break
+            params = {**params, 'max_id': data['next_max_id']}
+
     def get_tagged_posts(self) -> NodeIterator[Post]:
         """Retrieve all posts where a profile is tagged.
 
@@ -2243,6 +2263,58 @@ class Hashtag:
             {'tag_name': self.name},
             f"https://www.instagram.com/explore/tags/{self.name}/"
         )
+
+
+class SavedCollection:
+    """A collection of saved posts of the logged-in user, as returned by :meth:`Profile.get_saved_collections`.
+
+    .. versionadded:: 4.16"""
+
+    def __init__(self, context: InstaloaderContext, node: Dict[str, Any]):
+        self._context = context
+        self._node = node
+
+    @property
+    def id(self) -> str:
+        """Collection ID."""
+        return str(self._node['collection_id'])
+
+    @property
+    def name(self) -> str:
+        """Collection name, as shown on Instagram."""
+        return self._node.get('collection_name') or ''
+
+    @property
+    def media_count(self) -> Optional[int]:
+        """Number of posts in the collection, as reported by Instagram. Posts that are no longer available
+        are counted, but not returned by :meth:`get_posts`."""
+        return self._node.get('collection_media_count')
+
+    def get_posts(self) -> Iterator[Post]:
+        """The posts of the collection, most recently saved first."""
+        params: Dict[str, Any] = {}
+        while True:
+            data = self._context.get_web_api_json('api/v1/feed/collection/{0}/posts/'.format(self.id), params)
+            for item in data.get('items', []):
+                if item.get('media'):
+                    yield Post.from_iphone_struct(self._context, item['media'])
+            if not (data.get('more_available') and data.get('next_max_id')):
+                break
+            params = {'max_id': data['next_max_id']}
+
+    def _asdict(self):
+        return self._node
+
+    def __repr__(self):
+        return '<SavedCollection {} ({})>'.format(self.name, self.id)
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, SavedCollection):
+            return self.id == o.id
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 class TopSearchResults:

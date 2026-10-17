@@ -39,7 +39,7 @@ def usage_string():
 {0} [--comments] [--geotags]
 {2:{1}} [--stories] [--highlights] [--tagged] [--reels] [--igtv]
 {2:{1}} [--login YOUR-USERNAME] [--fast-update]
-{2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved
+{2:{1}} profile | "#hashtag" | %%location_id | :stories | :feed | :saved | :saved:collection
 {0} --help""".format(argv0, len(argv0), '')
 
 
@@ -255,6 +255,9 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                 elif target == ":saved":
                     instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
                                                      post_filter=post_filter)
+                elif target.startswith(":saved:") and len(target) > len(":saved:"):
+                    instaloader.download_saved_posts(fast_update=fast_update, max_count=max_count,
+                                                     post_filter=post_filter, collection=target[len(":saved:"):])
                 elif re.match(r"^[A-Za-z0-9._]+$", target):
                     download_profile_content = download_posts or download_tagged or download_reels or download_igtv
                     try:
@@ -370,6 +373,9 @@ def main():
                            help="Download the stories of your followees. Requires login.")
     g_targets.add_argument('_saved', nargs='*', metavar=":saved",
                            help="Download the posts that you marked as saved. Requires login.")
+    g_targets.add_argument('_saved_collection', nargs='*', metavar=":saved:collection",
+                           help="Download the posts of one of your collections of saved posts, given by its name "
+                                "or ID. Requires login.")
     g_targets.add_argument('_singlepost', nargs='*', metavar="-- -shortcode",
                            help="Download the post with the given shortcode")
     g_targets.add_argument('_json', nargs='*', metavar="filename.json[.xz]",
