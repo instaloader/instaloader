@@ -6,7 +6,7 @@ from contextlib import suppress
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from unicodedata import normalize
 
 from . import __version__
@@ -1535,43 +1535,48 @@ class Profile:
             'https://www.instagram.com/{0}/'.format(self.username),
         )
 
-    def get_followers(self) -> NodeIterator['Profile']:
+    def get_followers(self) -> Iterator['Profile']:
         """
         Retrieve list of followers of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
 
-        :rtype: NodeIterator[Profile]
+        .. versionchanged:: 4.15.5
+           Returns an iterator of :class:`Profile` instead of a :class:`NodeIterator`, so it can no longer be
+           frozen and resumed.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("Login required to get a profile's followers.")
         self._obtain_metadata()
-        return NodeIterator(
-            self._context,
-            '37479f2b8209594dde7facb0d904896a',
-            lambda d: d['data']['user']['edge_followed_by'],
-            lambda n: Profile(self._context, n),
-            {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
-        )
+        return self._get_friendships('followers')
 
-    def get_followees(self) -> NodeIterator['Profile']:
+    def get_followees(self) -> Iterator['Profile']:
         """
         Retrieve list of followees (followings) of given profile.
         To use this, one needs to be logged in and private profiles has to be followed.
 
-        :rtype: NodeIterator[Profile]
+        .. versionchanged:: 4.15.5
+           Returns an iterator of :class:`Profile` instead of a :class:`NodeIterator`, so it can no longer be
+           frozen and resumed.
         """
         if not self._context.is_logged_in:
             raise LoginRequiredException("Login required to get a profile's followees.")
         self._obtain_metadata()
-        return NodeIterator(
-            self._context,
-            '58712303d941c6855d4e888c5f0cd22f',
-            lambda d: d['data']['user']['edge_follow'],
-            lambda n: Profile(self._context, n),
-            {'id': str(self.userid)},
-            'https://www.instagram.com/{0}/'.format(self.username),
-        )
+        return self._get_friendships('following')
+
+    def _get_friendships(self, kind: str) -> Iterator['Profile']:
+        # For other profiles than the own one, the list is ranked anew with each request and max_id is just an
+        # offset, so subsequent pages overlap.
+        seen: Set[str] = set()
+        params: Dict[str, Any] = {'count': NodeIterator.page_length()}
+        while True:
+            data = self._context.get_json('api/v1/friendships/{0}/{1}/'.format(self.userid, kind), params=params)
+            for user in data.get('users', []):
+                if str(user['pk']) not in seen:
+                    seen.add(str(user['pk']))
+                    yield Profile.from_iphone_struct(self._context, user)
+            if not data.get('next_max_id'):
+                break
+            params = {'count': NodeIterator.page_length(), 'max_id': data['next_max_id']}
 
     def get_similar_accounts(self) -> Iterator['Profile']:
         """
