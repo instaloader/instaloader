@@ -517,13 +517,38 @@ class Post:
     def url(self) -> str:
         """URL of the picture / video thumbnail of the post"""
         if self.typename == "GraphImage" and self._context.iphone_support and self._context.is_logged_in:
-            try:
-                orig_url = self._iphone_struct['image_versions2']['candidates'][0]['url']
-                url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
+            url = self._best_image_url(self._node, lambda: self._iphone_struct)
+            if url is not None:
                 return url
-            except (InstaloaderException, KeyError, IndexError) as err:
-                self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
         return self._node["display_url"] if "display_url" in self._node else self._node["display_src"]
+
+    def _best_image_url(self, web_media: Dict[str, Any],
+                        iphone_media: Callable[[], Dict[str, Any]]) -> Optional[str]:
+        """URL of the largest image version, from the web app's media data or the iPhone API's.
+
+        The image versions of the iPhone API are sometimes smaller than those that the web app's queries return
+        for the same media (e.g. 1290x1720 instead of the original 3072x4096). The iPhone API is only queried if
+        the web app's data does not include the original size."""
+        def area(candidate: Dict[str, Any]) -> int:
+            return (candidate.get('width') or 0) * (candidate.get('height') or 0)
+
+        def largest(candidates: Any) -> Optional[Dict[str, Any]]:
+            return max((c for c in candidates or [] if c.get('url')), key=area, default=None)
+
+        best = largest((web_media.get('image_versions2') or {}).get('candidates'))
+        original_width = web_media.get('original_width')
+        if best is None or not original_width or (best.get('width') or 0) < original_width:
+            try:
+                iphone_best = largest(iphone_media()['image_versions2']['candidates'])
+            except (InstaloaderException, KeyError, IndexError, TypeError) as err:
+                if best is None:
+                    self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
+                iphone_best = None
+            if iphone_best is not None and (best is None or area(iphone_best) > area(best)):
+                best = iphone_best
+        if best is None:
+            return None
+        return re.sub(r'([?&])se=\d+&?', r'\1', best['url']).rstrip('&')
 
     @property
     def typename(self) -> str:
@@ -581,12 +606,14 @@ class Post:
                     is_video = node['is_video']
                     display_url = node['display_url']
                     if not is_video and self._context.iphone_support and self._context.is_logged_in:
-                        try:
-                            carousel_media = self._iphone_struct['carousel_media']
-                            orig_url = carousel_media[idx]['image_versions2']['candidates'][0]['url']
-                            display_url = re.sub(r'([?&])se=\d+&?', r'\1', orig_url).rstrip('&')
-                        except (InstaloaderException, KeyError, IndexError) as err:
-                            self._context.error(f"Unable to fetch high quality image version of {self}: {err}")
+                        web_carousel = self._node.get('carousel_media') or []
+
+                        def iphone_item(i: int = idx) -> Dict[str, Any]:
+                            return self._iphone_struct['carousel_media'][i]
+
+                        url = self._best_image_url(web_carousel[idx] if idx < len(web_carousel) else {}, iphone_item)
+                        if url is not None:
+                            display_url = url
                     yield PostSidecarNode(is_video=is_video, display_url=display_url,
                                           video_url=node['video_url'] if is_video else None)
 
