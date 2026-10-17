@@ -9,6 +9,7 @@ import textwrap
 import time
 import urllib.parse
 import uuid
+from base64 import b64encode
 from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 from functools import partial
@@ -637,11 +638,36 @@ class InstaloaderContext:
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
             # Set headers to simulate an API request from iPad
-            tempsession.headers['ig-intended-user-id'] = str(self.user_id)
+            # ig-intended-user-id should name the logged-in user. Only
+            # password login sets self.user_id; sessions loaded from browser
+            # cookies or a session file leave it None, so fall back to the
+            # ds_user_id cookie rather than sending the literal string "None".
+            intended_user_id = self.user_id
+            if intended_user_id is None:
+                intended_user_id = tempsession.cookies.get_dict().get('ds_user_id')
+            if intended_user_id is not None:
+                tempsession.headers['ig-intended-user-id'] = str(intended_user_id)
             tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
 
             # Add headers obtained from previous iPad request
             tempsession.headers.update(self.iphone_headers)
+
+            # The mobile API requires an Authorization bearer token for most
+            # endpoints (reels_media, users/info, ...); without it they answer
+            # with empty data or a "fail" status. A token is handed out via
+            # the ig-set-authorization response header, but only by the few
+            # endpoints that still accept cookie-only requests (e.g.
+            # media/<id>/info/), so relying on having seen one makes success
+            # depend on request order. The token is deterministically derived
+            # from the session cookies, so construct it if none is known yet.
+            if 'authorization' not in tempsession.headers:
+                session_cookies = tempsession.cookies.get_dict()
+                if 'ds_user_id' in session_cookies and 'sessionid' in session_cookies:
+                    token = b64encode(json.dumps(
+                        {'ds_user_id': session_cookies['ds_user_id'],
+                         'sessionid': session_cookies['sessionid']},
+                        separators=(',', ':')).encode()).decode()
+                    tempsession.headers['authorization'] = 'Bearer IGT:2:{}'.format(token)
 
             # Extract key information from cookies if we haven't got it already from a previous request
             header_cookies_mapping = {'x-mid': 'mid',

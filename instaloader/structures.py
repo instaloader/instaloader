@@ -1666,7 +1666,9 @@ class StoryItem:
                 path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
             )
             self._iphone_struct_ = {}
-            for item in data['reels'][str(self.owner_id)]['items']:
+            # The requested reel may be absent from the response (e.g. it has
+            # expired); then there is no iPhone struct for this item.
+            for item in data.get('reels', {}).get(str(self.owner_id), {}).get('items', []):
                 if item['pk'] == self.mediaid:
                     self._iphone_struct_ = item
                     break
@@ -1931,7 +1933,9 @@ class Story:
             data = self._context.get_iphone_json(
                 path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
             )
-            self._iphone_struct_ = data['reels'][str(self.owner_id)]
+            # The requested reel may be absent from the response (e.g. it has
+            # expired); then get_items() falls back to the GraphQL items.
+            self._iphone_struct_ = data.get('reels', {}).get(str(self.owner_id))
 
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
@@ -2016,7 +2020,9 @@ class Highlight(Story):
             data = self._context.get_iphone_json(
                 path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
             )
-            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+            # The requested highlight may be absent from the response; then
+            # get_items() falls back to the GraphQL items.
+            self._iphone_struct_ = data.get('reels', {}).get('highlight:{}'.format(self.unique_id))
 
     @property
     def itemcount(self) -> int:
