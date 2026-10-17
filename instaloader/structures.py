@@ -1359,6 +1359,14 @@ class Profile:
 
         .. versionchanged:: 4.2.1
            Require being logged in for HD version (as required by Instagram)."""
+        if self._context.is_logged_in:
+            # The GraphQL profile query, used for logged-in sessions, returns the full-size picture.
+            try:
+                hd_info = self._metadata('hd_profile_pic_url_info')
+                if hd_info and hd_info.get('url'):
+                    return hd_info['url']
+            except (InstaloaderException, KeyError):
+                pass
         if self._context.iphone_support and self._context.is_logged_in:
             try:
                 return self._iphone_struct['hd_profile_pic_url_info']['url']
