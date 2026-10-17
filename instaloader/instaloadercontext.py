@@ -720,6 +720,30 @@ class InstaloaderContext:
                 data.extend(_embedded_query_data(json.loads(script.group(1))))
         return data
 
+    def get_profile_id_from_page(self, path: str) -> Optional[str]:
+        """Load a profile page of ``www.instagram.com`` with the session and return the profile's ID, or None.
+
+        Logged in, Instagram does not embed the profile in its page, but names the profile's ID in the page's
+        logging parameters. This also works for profiles that are not shown to logged-out visitors.
+
+        :param path: URL of the profile page, relative to ``www.instagram.com/``
+        :raises ConnectionException: When the request failed.
+        """
+        self.do_sleep()
+        self._rate_controller.wait_before_query('other')
+        url = 'https://www.instagram.com/{0}'.format(path)
+        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
+                   'Sec-Fetch-Site': 'none'}
+        try:
+            resp = self._session.get(url, headers=headers, allow_redirects=False, timeout=self.request_timeout)
+        except requests.exceptions.RequestException as err:
+            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
+        if resp.status_code != 200:
+            return None
+        ids = set(re.findall(r'"page_logging":\{"name":"profilePage","params":\{[^}]*?"profile_id":"(\d+)"',
+                             resp.text))
+        return ids.pop() if len(ids) == 1 else None
+
     def write_raw(self, resp: Union[bytes, requests.Response], filename: str) -> None:
         """Write raw response data into a file.
 

@@ -1012,6 +1012,15 @@ class Profile:
         user: Dict[str, Any] = {}
         for data in page:
             user.update(data.get("xig_user_by_username") or {})
+        if not user.get("pk") and context.is_logged_in:
+            # Restricted profiles (e.g. age-restricted ones) are not shown to logged-out visitors. The page loaded
+            # with the session does not embed the profile either, but names its ID. Load the profile by ID.
+            profile_id = context.get_profile_id_from_page("{0}/".format(username.lower()))
+            if profile_id is not None:
+                profile = cls(context, {"id": profile_id, "username": username.lower()})
+                profile._obtain_metadata()  # raises ProfileNotExistsException if it cannot be loaded
+                if profile.username == username.lower():
+                    return profile
         if not user.get("pk"):
             raise ProfileNotExistsException("Profile {} does not exist.".format(username))
         user.pop("polaris_ordered_timeline_connection", None)
