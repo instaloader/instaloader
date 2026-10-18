@@ -16,7 +16,7 @@ from .instaloader import (get_default_session_filename, get_default_stamps_filen
 from .instaloadercontext import default_user_agent
 from .lateststamps import LatestStamps
 try:
-    import browser_cookie3
+    from instaloader._vendor import browser_cookie3
     bc3_library = True
 except ImportError:
     bc3_library = False
@@ -162,7 +162,8 @@ def _main(instaloader: Instaloader, targetlist: List[str],
     if browser and bc3_library:
         import_session(browser.lower(), instaloader, cookiefile)
     elif browser and not bc3_library:
-        raise InvalidArgumentException("browser_cookie3 library is needed to load cookies from browsers")
+        raise InvalidArgumentException("Loading cookies from browsers requires additional dependencies. "
+                                       "Install them with: pip install instaloader[browser-cookie-import]")
     # Login, if desired
     if username is not None:
         if not re.match(r"^[A-Za-z0-9._]+$", username):

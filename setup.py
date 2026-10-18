@@ -22,8 +22,16 @@ if sys.version_info < (3, 10):
     sys.exit('Instaloader requires Python >= 3.10.')
 
 requirements = ['requests>=2.25']
+
+_browser_cookie_deps = [
+    'lz4',
+    'pycryptodomex',
+    'dbus-python; sys_platform == "linux"',
+]
+
 optional_requirements = {
-    'browser_cookie3': ['browser_cookie3>=0.19.1'],
+    'browser-cookie-import': _browser_cookie_deps,
+    'browser_cookie3': _browser_cookie_deps,  # kept for backward compatibility
 }
 
 keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-feed', 'downloader', 'videos', 'photos',
