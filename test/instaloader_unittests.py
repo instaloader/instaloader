@@ -29,13 +29,38 @@ ratecontroller: Optional[instaloader.RateController] = None
 
 class TestInstaloaderStories(unittest.TestCase):
 
-    def test_null_feed_reels_tray(self):
+    def test_get_stories_from_web_tray_endpoint(self):
+        # The GraphQL feed_reels_tray query returns null, so get_stories()
+        # fetches the tray from the web app's api/v1/feed/reels_tray/ endpoint.
         loader = instaloader.Instaloader()
         self.addCleanup(loader.close)
         loader.context.username = "test"
-        loader.context.graphql_query = Mock(return_value={"data": {"user": {"feed_reels_tray": None}}})
+        loader.context.get_json = Mock(return_value={
+            "tray": [
+                {"reel_type": "user_reel", "user": {"pk": "123"}},
+                {"reel_type": "user_reel", "user": {"pk": "456"}},
+            ],
+            "status": "ok",
+        })
+        loader.context.graphql_query = Mock(return_value={
+            "data": {"reels_media": [{"id": "s1"}, {"id": "s2"}]}
+        })
 
-        self.assertEqual(list(loader.get_stories()), [])
+        stories = list(loader.get_stories())
+
+        loader.context.get_json.assert_called_once()
+        args, kwargs = loader.context.get_json.call_args
+        self.assertEqual(args[0], 'api/v1/feed/reels_tray/')
+        self.assertEqual(len(stories), 2)
+
+    def test_get_stories_bad_tray_json(self):
+        loader = instaloader.Instaloader()
+        self.addCleanup(loader.close)
+        loader.context.username = "test"
+        loader.context.get_json = Mock(return_value={"status": "ok"})
+
+        with self.assertRaises(instaloader.BadResponseException):
+            list(loader.get_stories())
 
 
 class TestInstaloaderAnonymously(unittest.TestCase):

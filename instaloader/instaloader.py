@@ -19,7 +19,7 @@ import requests
 import urllib3  # type: ignore
 
 from .exceptions import *
-from .instaloadercontext import InstaloaderContext, RateController
+from .instaloadercontext import InstaloaderContext, RateController, copy_session
 from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
@@ -804,14 +804,17 @@ class Instaloader:
         """
 
         if not userids:
-            data = self.context.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704",
-                                              {"only_stories": True})["data"]["user"]
-            if data is None:
-                raise BadResponseException('Bad stories reel JSON.')
-            feed_reels_tray = data["feed_reels_tray"]
-            if feed_reels_tray is None:
-                return
-            userids = list(edge["node"]["id"] for edge in feed_reels_tray["edge_reels_tray_to_reel"]["edges"])
+            # The GraphQL query d15efd8c0c5b23f0ef71f18bf363c704 used before returns "feed_reels_tray": null.
+            # Use the endpoint of the web app's story tray instead. Like the web app's request, it needs the
+            # Sec-Fetch headers of a script request, otherwise Instagram answers with an HTML page.
+            with copy_session(self.context._session, self.context.request_timeout) as tmpsession:
+                tmpsession.headers.update({'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors',
+                                           'Sec-Fetch-Site': 'same-origin'})
+                tray = self.context.get_json('api/v1/feed/reels_tray/', params={}, session=tmpsession)
+            if not isinstance(tray.get('tray'), list):
+                raise BadResponseException('Bad stories tray JSON.')
+            userids = [int(reel['user']['pk']) for reel in tray['tray']
+                       if reel.get('reel_type', 'user_reel') == 'user_reel' and reel.get('user')]
 
         def _userid_chunks():
             assert userids is not None
