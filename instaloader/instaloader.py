@@ -993,6 +993,11 @@ class Instaloader:
                     if fast_update and not downloaded:
                         break
 
+    def _profile_mediacount(self, profile: Profile) -> Optional[int]:
+        # The profile page does not show logged-out visitors the media count, and Instagram
+        # refuses the web_profile_info endpoint that Profile.mediacount would query then.
+        return profile.mediacount if self.context.is_logged_in else None
+
     def posts_download_loop(self,
                             posts: Iterator[Post],
                             target: Union[str, Path],
@@ -1540,11 +1545,13 @@ class Instaloader:
                         posts_takewhile = lambda p: p.date_local > last_scraped
                     posts_to_download = profile.get_posts()
                     self.posts_download_loop(posts_to_download, profile_name, fast_update, post_filter,
-                                             total_count=profile.mediacount, owner_profile=profile,
+                                             total_count=self._profile_mediacount(profile), owner_profile=profile,
                                              takewhile=posts_takewhile, possibly_pinned=3, max_count=max_count)
-                    if latest_stamps is not None and posts_to_download.first_item is not None:
-                        latest_stamps.set_last_post_timestamp(profile_name,
-                                                              posts_to_download.first_item.date_local)
+                    # Anonymously, get_posts() returns a plain iterator rather than a
+                    # NodeIterator, so access first_item defensively.
+                    newest_post = getattr(posts_to_download, "first_item", None)
+                    if latest_stamps is not None and newest_post is not None:
+                        latest_stamps.set_last_post_timestamp(profile_name, newest_post.date_local)
 
         if stories and profiles:
             with self.context.error_catcher("Download stories"):
@@ -1624,7 +1631,7 @@ class Instaloader:
         # Iterate over pictures and download them
         self.context.log("Retrieving posts from profile {}.".format(profile_name))
         self.posts_download_loop(profile.get_posts(), profile_name, fast_update, post_filter,
-                                 total_count=profile.mediacount, owner_profile=profile)
+                                 total_count=self._profile_mediacount(profile), owner_profile=profile)
 
     def interactive_login(self, username: str) -> None:
         """Logs in and internally stores session, asking user for password interactively.

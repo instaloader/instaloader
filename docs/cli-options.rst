@@ -286,7 +286,7 @@ How to Download
    prefix is ``iterator``.
 
    Resuming an interrupted download is supported for the following targets:
-    - Profile posts,
+    - Profile posts (when logged in),
     - Profile IGTV posts (:option:`--igtv`),
     - Profile tagged posts (:option:`--tagged`),
     - Saved posts (``:saved``),

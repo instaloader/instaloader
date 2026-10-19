@@ -950,6 +950,34 @@ class Post:
         return 'pinned_for_users' in self._node and bool(self._node['pinned_for_users'])
 
 
+class _NewestTrackingIterator(Iterator['Post']):
+    """Iterate the given posts and keep track of the newest one.
+
+    :meth:`Profile.get_posts` returns the posts of the anonymous profile page through this
+    iterator. It mimics the small part of the :class:`NodeIterator` interface that
+    :meth:`Instaloader.download_profiles` relies on, notably :attr:`first_item` (the newest post
+    seen so far, for ``--latest-stamps``).
+    """
+
+    def __init__(self, posts: Iterator['Post']):
+        self._posts = posts
+        self._first_item: Optional['Post'] = None
+
+    def __iter__(self):
+        return self
+
+    @property
+    def first_item(self) -> Optional['Post']:
+        """The newest post yielded so far (pinned posts come first, out of chronological order)."""
+        return self._first_item
+
+    def __next__(self) -> 'Post':
+        post = next(self._posts)
+        if self._first_item is None or post.date_local > self._first_item.date_local:
+            self._first_item = post
+        return post
+
+
 class Profile:
     """
     An Instagram Profile.
@@ -988,6 +1016,27 @@ class Profile:
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
             self._iphone_struct_ = node['iphone_struct']
+        # The posts that the profile page lists, see _page_posts().
+        self._page_timeline: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def _page_user(context: InstaloaderContext, username: str) -> Dict[str, Any]:
+        """Return the profile that the public web page of the given username embeds, or an
+        empty dict if the page does not show a profile."""
+        try:
+            page = context.get_page_data("{0}/".format(username.lower()))
+        except QueryReturnedNotFoundException:
+            page = []
+        # The page embeds two queries for the profile: one for its details and one for its
+        # posts.
+        user: Dict[str, Any] = {}
+        for data in page:
+            user.update(data.get("xig_user_by_username") or {})
+        return user
+
+    @staticmethod
+    def _timeline_of(user: Dict[str, Any]) -> Dict[str, Any]:
+        return user.pop("polaris_ordered_timeline_connection", None) or {}
 
     @classmethod
     def from_username(cls, context: InstaloaderContext, username: str):
@@ -1003,18 +1052,10 @@ class Profile:
         # profile embedded. The web_profile_info endpoint previously used here is refused
         # with HTTP 400 for some professional profiles, and with HTTP 401 or 429 for some
         # sessions, both anonymously and when logged in.
-        try:
-            page = context.get_page_data("{0}/".format(username.lower()))
-        except QueryReturnedNotFoundException:
-            page = []
-        # The page embeds two queries for the profile: one for its details and one for its
-        # posts.
-        user: Dict[str, Any] = {}
-        for data in page:
-            user.update(data.get("xig_user_by_username") or {})
+        user = cls._page_user(context, username)
         if not user.get("pk"):
             raise ProfileNotExistsException("Profile {} does not exist.".format(username))
-        user.pop("polaris_ordered_timeline_connection", None)
+        timeline = cls._timeline_of(user)
         # The page's "id" is not the user ID, which is "pk".
         node = dict(user, id=user["pk"])
         if context.is_logged_in:
@@ -1022,7 +1063,9 @@ class Profile:
             # fields, notably the viewer's relationship to the profile, such as
             # followed_by_viewer, to the GraphQL profile query in _obtain_metadata().
             return cls(context, node)
-        return cls(context, cls._normalize_profile_data(node))
+        profile = cls(context, cls._normalize_profile_data(node))
+        profile._page_timeline = timeline
+        return profile
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int):
@@ -1381,31 +1424,34 @@ class Profile:
 	   Use :attr:`profile_pic_url`."""
         return self.profile_pic_url
 
-    def get_posts(self) -> NodeIterator[Post]:
+    def _page_posts(self) -> Iterator[Post]:
+        """Yield the posts that the profile page lists to logged-out visitors."""
+        if self._page_timeline is None:
+            self._page_timeline = self._timeline_of(self._page_user(self._context, self.username))
+        for edge in self._page_timeline.get("edges", []):
+            yield Post.from_shortcode(self._context, edge["node"]["code"])
+        # Only reached if the caller did not stop early, for example at the timestamp of
+        # --latest-stamps, so older posts may not have been downloaded.
+        if self._page_timeline.get("page_info", {}).get("has_next_page"):
+            self._context.error("Profile {}: only its newest posts can be retrieved without login. "
+                                "Login (--login) to retrieve older posts.".format(self.username))
+
+    def get_posts(self) -> Iterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype: NodeIterator[Post]"""
-        self._obtain_metadata()
+        When not logged in, only the newest 12 posts, pinned ones included, are retrieved,
+        and the returned iterator is not a :class:`NodeIterator`.
+
+        :rtype: Iterator[Post]"""
         if not self._context.is_logged_in:
-            return NodeIterator(
-                context=self._context,
-                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
-                node_wrapper=lambda n: Post(self._context, n, self),
-                query_variables={
-                    "data": {
-                        "count": 12,
-                        "include_relationship_info": True,
-                        "latest_besties_reel_media": True,
-                        "latest_reel_media": True,
-                    },
-                    "id": self.userid,
-                },
-                query_referer="https://www.instagram.com/{0}/".format(self.username),
-                is_first=Profile._make_is_newest_checker(),
-                doc_id="7950326061742207",
-                query_hash=None,
-                first_data=self._metadata("edge_owner_to_timeline_media"),
-            )
+            # Instagram refuses anonymous requests to the profile posts queries and to the
+            # api/v1/feed/user/ endpoint with HTTP 401 ("Please wait a few minutes before you
+            # try again."), and answers the logged-out web app's own posts query with a null
+            # user when it is requested directly. Only the profile page still lists posts to
+            # logged-out visitors, the newest 12. The post query of Post.from_shortcode()
+            # still works anonymously, so read each post with it.
+            return _NewestTrackingIterator(self._page_posts())
+        self._obtain_metadata()
         return NodeIterator(
             context=self._context,
             edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
