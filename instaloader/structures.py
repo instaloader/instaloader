@@ -1384,7 +1384,8 @@ class Profile:
     def get_posts(self) -> NodeIterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype: NodeIterator[Post]"""
+        :rtype: NodeIterator[Post]
+        :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed."""
         self._obtain_metadata()
         if not self._context.is_logged_in:
             return NodeIterator(
@@ -1406,6 +1407,11 @@ class Profile:
                 query_hash=None,
                 first_data=self._metadata("edge_owner_to_timeline_media"),
             )
+        # Instagram answers with an empty timeline rather than an error in that case. Unlike followed_by_viewer,
+        # which defaults to False, friendship_status tells whether the follow state is actually known.
+        if (self.is_private and self.username != (self._context.username or '').lower() and
+                (self._node.get('friendship_status') or {}).get('following') is False):
+            raise PrivateProfileNotFollowedException("Profile {} is private but not followed.".format(self.username))
         return NodeIterator(
             context=self._context,
             edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
