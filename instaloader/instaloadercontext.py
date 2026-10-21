@@ -742,6 +742,25 @@ class InstaloaderContext:
 
             return response
 
+    def _get_page(self, session: requests.Session, path: str) -> str:
+        """Load a page of ``www.instagram.com`` and return its HTML."""
+        self.do_sleep()
+        self._rate_controller.wait_before_query('other')
+        url = 'https://www.instagram.com/{0}'.format(path)
+        # Instagram only embeds the data when the request looks like a browser's page navigation.
+        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
+                   'Sec-Fetch-Site': 'none'}
+        try:
+            resp = session.get(url, headers=headers, allow_redirects=False)
+        except requests.exceptions.RequestException as err:
+            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
+        self._raise_if_login_redirect(resp)
+        if resp.status_code == 404:
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.status_code != 200:
+            raise ConnectionException(self._response_error(resp))
+        return resp.text
+
     def get_page_data(self, path: str) -> List[Dict[str, Any]]:
         """Load a page of ``www.instagram.com`` as a logged-out visitor and return the data it embeds.
 
@@ -753,24 +772,10 @@ class InstaloaderContext:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When the request failed.
         """
-        self.do_sleep()
-        self._rate_controller.wait_before_query('other')
-        url = 'https://www.instagram.com/{0}'.format(path)
-        # Instagram only embeds the data when the request looks like a browser's page navigation.
-        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
-                   'Sec-Fetch-Site': 'none'}
-        try:
-            with self.get_anonymous_session() as anonymous_session:
-                resp = anonymous_session.get(url, headers=headers, allow_redirects=False)
-        except requests.exceptions.RequestException as err:
-            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
-        self._raise_if_login_redirect(resp)
-        if resp.status_code == 404:
-            raise QueryReturnedNotFoundException(self._response_error(resp))
-        if resp.status_code != 200:
-            raise ConnectionException(self._response_error(resp))
+        with self.get_anonymous_session() as anonymous_session:
+            html = self._get_page(anonymous_session, path)
         data: List[Dict[str, Any]] = []
-        for script in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', resp.text, re.DOTALL):
+        for script in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', html, re.DOTALL):
             with suppress(json.decoder.JSONDecodeError):
                 data.extend(_embedded_query_data(json.loads(script.group(1))))
         return data
