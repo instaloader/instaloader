@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, IO, Iterator, List, Optional, Set, Union, cast
+from typing import Any, Callable, Dict, IO, Iterator, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -1112,22 +1112,16 @@ class Instaloader:
         :raises LoginRequiredException: If called without being logged in.
         """
 
-        data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
-
+        params: Dict[str, Any] = {}
         while True:
-            feed = data["user"]["edge_web_feed_timeline"]
-            for edge in feed["edges"]:
-                node = edge["node"]
-                if node.get("__typename") in Post.supported_graphql_types() and node.get("shortcode") is not None:
-                    yield Post(self.context, node)
-            if not feed["page_info"]["has_next_page"]:
+            data = self.context.get_json("api/v1/feed/timeline/", params=params)
+            for item in data.get("feed_items", []):
+                media = item.get("media_or_ad")
+                if media and media.get("code") and media.get("ad_id") is None:
+                    yield Post.from_iphone_struct(self.context, media)
+            if not (data.get("more_available") and data.get("next_max_id")):
                 break
-            data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3",
-                                              {'fetch_media_item_count': 12,
-                                               'fetch_media_item_cursor': feed["page_info"]["end_cursor"],
-                                               'fetch_comment_count': 4,
-                                               'fetch_like': 10,
-                                               'has_stories': False})["data"]
+            params = {"max_id": data["next_max_id"]}
 
     @_requires_login
     def download_feed_posts(self, max_count: Optional[int] = None, fast_update: bool = False,
