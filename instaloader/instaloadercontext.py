@@ -101,7 +101,7 @@ class InstaloaderContext:
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
-        self.username = None
+        self.username: Optional[str] = None
         self.user_id = None
         self.sleep = sleep
         self.quiet = quiet
