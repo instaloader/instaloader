@@ -1414,6 +1414,7 @@ class Profile:
             # (PolarisProfilePostsTabContentQuery_connection). Instagram answers the
             # previous queries, 7898261790222653 ("execution error") and 28975909992013618
             # (400 "feedback_required"), with errors.
+            # It must be sent to the web app's api/graphql endpoint.
             query_variables={
                 "data": {
                     "count": 12,
@@ -1435,6 +1436,7 @@ class Profile:
             is_first=Profile._make_is_newest_checker(),
             doc_id="29104886249145907",
             query_hash=None,
+            web_api=True,
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:

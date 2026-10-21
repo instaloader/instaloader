@@ -125,6 +125,9 @@ class InstaloaderContext:
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache: Dict[int, Any] = dict()
 
+        # Tokens of the logged-in web page for api/graphql queries, by sessionid cookie
+        self._web_api_tokens_cache: Dict[str, Dict[str, str]] = dict()
+
     @contextmanager
     def anonymous_copy(self):
         session = self._session
@@ -404,7 +407,7 @@ class InstaloaderContext:
     @staticmethod
     def _rate_limit_key(path: str, params: Dict[str, Any], host: str) -> str:
         """Determine the :class:`RateController` bucket that a request is accounted to."""
-        if 'graphql/query' in path:
+        if 'graphql/query' in path or path == 'api/graphql':
             if 'query_hash' in params:
                 return params['query_hash']
             if 'doc_id' in params:
@@ -570,8 +573,11 @@ class InstaloaderContext:
         raise AssertionError("get_json() retry loop exited without result")
 
     @contextmanager
-    def _graphql_session(self, referer: Optional[str], csrf: Optional[str] = None) -> Iterator[requests.Session]:
-        """Short-lived session carrying the headers that the GraphQL endpoint expects."""
+    def _graphql_session(self, referer: Optional[str], csrf: Optional[str] = None,
+                         lsd: Optional[str] = None) -> Iterator[requests.Session]:
+        """Short-lived session carrying the headers that the GraphQL endpoint expects.
+
+        Pass the page's `lsd` token for the web app's ``api/graphql`` endpoint."""
         with copy_session(self._session, self.request_timeout) as tmpsession:
             tmpsession.headers.update(self._default_http_header(empty_session_only=True))
             del tmpsession.headers['Connection']
@@ -583,6 +589,9 @@ class InstaloaderContext:
                 tmpsession.headers['x-csrftoken'] = csrf
             if referer is not None:
                 tmpsession.headers['referer'] = urllib.parse.quote(referer)
+            if lsd is not None:
+                tmpsession.headers.update({'x-fb-lsd': lsd, 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors',
+                                           'sec-fetch-site': 'same-origin'})
             yield tmpsession
 
     def _csrf_token(self) -> str:
@@ -594,6 +603,26 @@ class InstaloaderContext:
             return csrf
         self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
         return token_from_cookies() or ''
+
+    def _web_api_tokens(self) -> Dict[str, str]:
+        """The tokens that the web app sends along with its api/graphql queries, from the logged-in start page."""
+        sessionid = self._session.cookies.get_dict().get("sessionid", "")
+        if sessionid not in self._web_api_tokens_cache:
+            html = self._get_page(self._session, "")
+            tokens = {}
+            for name, pattern in [
+                ("fb_dtsg", r'"DTSGInitialData",\[\],\{[^{}]*"token":"([^"]+)"'),
+                ("lsd", r'"LSD",\[\],\{[^{}]*"token":"([^"]+)"'),
+                ("av", r'"IG_USER_EIMU":"?(\d+)'),
+            ]:
+                match = re.search(pattern, html)
+                if match is None:
+                    raise BadResponseException(
+                        "The start page did not contain the token {}.".format(name)
+                    )
+                tokens[name] = match.group(1)
+            self._web_api_tokens_cache[sessionid] = tokens
+        return self._web_api_tokens_cache[sessionid]
 
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
                       referer: Optional[str] = None) -> Dict[str, Any]:
@@ -619,7 +648,7 @@ class InstaloaderContext:
         return resp_json
 
     def doc_id_graphql_query(self, doc_id: str, variables: Dict[str, Any],
-                             referer: Optional[str] = None) -> Dict[str, Any]:
+                             referer: Optional[str] = None, web_api: bool = False) -> Dict[str, Any]:
         """
         Do a doc_id-based GraphQL Query using method POST.
 
@@ -628,17 +657,23 @@ class InstaloaderContext:
         :param doc_id: doc_id for the query.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
+        :param web_api: Query the web app's ``api/graphql`` endpoint, as the web app does, rather than
+           ``graphql/query``. Requires login.
         :return: The server's response dictionary.
+
+        .. versionchanged:: 4.16
+           Added `web_api` parameter.
         """
         variables_json = json.dumps(variables, separators=(',', ':'))
-        with self._graphql_session(referer, csrf=self._csrf_token()) as tmpsession:
-            resp_json = self.get_json('graphql/query',
-                                      params={'variables': variables_json,
-                                              'doc_id': doc_id,
-                                              'server_timestamps': 'true'},
-                                      session=tmpsession,
-                                      use_post=True)
-        if 'status' not in resp_json:
+        params = {'variables': variables_json,
+                  'doc_id': doc_id,
+                  'server_timestamps': 'true',
+                  **(self._web_api_tokens() if web_api else {})}
+        with self._graphql_session(referer, csrf=self._csrf_token(), lsd=params.get('lsd')) as tmpsession:
+            resp_json = self.get_json('api/graphql' if web_api else 'graphql/query', params=params,
+                                      session=tmpsession, use_post=True)
+        # api/graphql does not respond with a "status" field.
+        if not web_api and 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
         return resp_json
 

@@ -69,6 +69,9 @@ class NodeIterator(Iterator[T]):
 
     .. versionchanged: 4.13
        Included support for `doc_id`-based queries (using POST method).
+
+    .. versionchanged: 4.16
+       Added `web_api` parameter, see :meth:`InstaloaderContext.doc_id_graphql_query`.
     """
 
     _graphql_page_length = 12
@@ -83,10 +86,12 @@ class NodeIterator(Iterator[T]):
                  query_referer: Optional[str] = None,
                  first_data: Optional[Dict[str, Any]] = None,
                  is_first: Optional[Callable[[T, Optional[T]], bool]] = None,
-                 doc_id: Optional[str] = None):
+                 doc_id: Optional[str] = None,
+                 web_api: bool = False):
         self._context = context
         self._query_hash = query_hash
         self._doc_id = doc_id
+        self._web_api = web_api
         self._edge_extractor = edge_extractor
         self._node_wrapper = node_wrapper
         self._query_variables = query_variables if query_variables is not None else {}
@@ -117,7 +122,7 @@ class NodeIterator(Iterator[T]):
             pagination_variables['last'] = None
         data = self._edge_extractor(
             self._context.doc_id_graphql_query(
-                doc_id, {**self._query_variables, **pagination_variables}, self._query_referer
+                doc_id, {**self._query_variables, **pagination_variables}, self._query_referer, self._web_api
             )
         )
         self._best_before = datetime.now() + NodeIterator._shelf_life
