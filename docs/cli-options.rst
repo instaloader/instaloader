@@ -229,8 +229,9 @@ Instead of :option:`--login`, it is possible to use
 
 .. option:: --sessionfile SESSIONFILE, -f SESSIONFILE
 
-   Path for loading and storing session key file.  Defaults to
-   ``~/.config/instaloader/session-YOUR-USERNAME``.
+   Path for loading and storing session key file.  If given without
+   :option:`--login` and the file exists, the session is loaded from it.
+   Defaults to ``~/.config/instaloader/session-YOUR-USERNAME``.
 
 .. option:: --password YOUR-PASSWORD, -p YOUR-PASSWORD
 
