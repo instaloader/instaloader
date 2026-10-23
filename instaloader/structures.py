@@ -279,7 +279,7 @@ class Post:
         return None
 
     @staticmethod
-    def _normalize_post_data(media: Dict[str, Any], context: 'InstaloaderContext') -> Dict[str, Any]:
+    def _normalize_post_data(media: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize a Polaris media item to a legacy-compatible node, preserving the source structure."""
         media_types = {1: "GraphImage", 2: "GraphVideo", 8: "GraphSidecar"}
         media_type = media.get("media_type")
@@ -306,10 +306,6 @@ class Post:
         pic_json["video_duration"] = media.get("video_duration")
         pic_json["video_view_count"] = media.get("view_count")
         pic_json["video_play_count"] = media.get("play_count")
-        if media_type == 2 and pic_json["video_view_count"] is None:
-            pic_json["video_play_count"] = Post._fetch_play_count_from_clips(
-                context, media["user"]["pk"], media["code"]
-            )
         caption = media.get("caption")
         caption_text = caption.get("text") if isinstance(caption, dict) else None
         pic_json["edge_media_to_caption"] = (
@@ -424,7 +420,7 @@ class Post:
             items = web_info.get("items")
             if not items:
                 raise BadResponseException("Fetching Post metadata failed.")
-            self._full_metadata_dict = Post._normalize_post_data(items[0], self._context)
+            self._full_metadata_dict = Post._normalize_post_data(items[0])
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
                 raise PostChangedException
@@ -697,7 +693,11 @@ class Post:
 
         .. versionadded:: 4.14.3"""
         if self.is_video:
-            return self._field('video_play_count')
+            play_count = self._field('video_play_count')
+            # Not logged in, the clips connection is null.
+            if play_count is None and self.video_view_count is None and self._context.is_logged_in:
+                play_count = Post._fetch_play_count_from_clips(self._context, str(self.owner_id), self.shortcode)
+            return play_count
         return None
 
     @property
