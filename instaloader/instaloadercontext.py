@@ -605,7 +605,7 @@ class InstaloaderContext:
         return token_from_cookies() or ''
 
     def _web_api_tokens(self) -> Dict[str, str]:
-        """The tokens that the web app sends along with its api/graphql queries, from the logged-in start page."""
+        """The tokens that the web app sends along with its api/graphql queries, from the start page."""
         sessionid = self._session.cookies.get_dict().get("sessionid", "")
         if sessionid not in self._web_api_tokens_cache:
             html = self._get_page(self._session, "")
@@ -616,11 +616,13 @@ class InstaloaderContext:
                 ("av", r'"IG_USER_EIMU":"?(\d+)'),
             ]:
                 match = re.search(pattern, html)
-                if match is None:
+                if match is not None:
+                    tokens[name] = match.group(1)
+                # Logged out, the start page has no fb_dtsg, and the web app sends its queries without.
+                elif name != "fb_dtsg" or self.is_logged_in:
                     raise BadResponseException(
                         "The start page did not contain the token {}.".format(name)
                     )
-                tokens[name] = match.group(1)
             self._web_api_tokens_cache[sessionid] = tokens
         return self._web_api_tokens_cache[sessionid]
 
@@ -658,7 +660,7 @@ class InstaloaderContext:
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
         :param web_api: Query the web app's ``api/graphql`` endpoint, as the web app does, rather than
-           ``graphql/query``. Requires login.
+           ``graphql/query``.
         :return: The server's response dictionary.
 
         .. versionchanged:: 4.16
