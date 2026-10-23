@@ -21,4 +21,6 @@ describe:
   - Is it based on master (bugfix), upcoming/v4.X (new feature), or another pull request?
   - Does it preserve backward compatibility and existing behavior?
 
+(also see https://instaloader.github.io/contributing.html)
+
 -->

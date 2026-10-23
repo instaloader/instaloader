@@ -80,7 +80,7 @@ Improvements of the Instaloader source or its documentation can be proposed as a
   review, validate, or selectively merge them.
 
 - Be mindful of backward compatibility: changes should preserve existing intended
-  behavior whenever possible.
+  behavior whenever feasible.
 
 - All Pull Requests are analyzed by `Pylint <https://www.pylint.org/>`__ for
   error and syntax checking of the source and
