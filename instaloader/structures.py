@@ -1386,27 +1386,33 @@ class Profile:
 
         :rtype: NodeIterator[Post]
         :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed."""
-        self._obtain_metadata()
         if not self._context.is_logged_in:
+            # As the logged-out web app, take the first posts from the profile page, and query further ones
+            # (PolarisLoggedOutDesktopWWWProfilePostsTabContentQuery_connection) by the page's "id" of the
+            # profile, which is not its user ID.
+            page = self._context.get_page_data(f"{self.username}/")
+            user = next((data["xig_user_by_username"] for data in page
+                         if "polaris_ordered_timeline_connection" in (data.get("xig_user_by_username") or {})),
+                        None)
+            if user is None:
+                raise BadResponseException(f"The page of profile {self.username} did not contain its posts.")
             return NodeIterator(
                 context=self._context,
-                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
-                node_wrapper=lambda n: Post(self._context, n, self),
+                edge_extractor=lambda d: d["data"]["node"]["polaris_ordered_timeline_connection"],
+                # The nodes lack most of the post's metadata, as in get_reels().
+                node_wrapper=lambda n: Post.from_shortcode(self._context, n["code"]),
                 query_variables={
-                    "data": {
-                        "count": 12,
-                        "include_relationship_info": True,
-                        "latest_besties_reel_media": True,
-                        "latest_reel_media": True,
-                    },
-                    "id": self.userid,
+                    "id": user["id"],
+                    "__relay_internal__pv__PolarisSEOIsCrawlerrelayprovider": False,
                 },
                 query_referer="https://www.instagram.com/{0}/".format(self.username),
                 is_first=Profile._make_is_newest_checker(),
-                doc_id="7950326061742207",
+                doc_id="28904005159232689",
                 query_hash=None,
-                first_data=self._metadata("edge_owner_to_timeline_media"),
+                first_data=user["polaris_ordered_timeline_connection"],
+                web_api=True,
             )
+        self._obtain_metadata()
         # Instagram answers with an empty timeline rather than an error in that case. Unlike followed_by_viewer,
         # which defaults to False, friendship_status tells whether the follow state is actually known.
         if (self.is_private and self.username != (self._context.username or '').lower() and
