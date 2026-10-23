@@ -1385,12 +1385,16 @@ class Profile:
         """Retrieve all posts from a profile.
 
         :rtype: NodeIterator[Post]
-        :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed."""
+        :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed.
+        :raises LoginRequiredException: When not logged in and the profile is private."""
         if not self._context.is_logged_in:
             # As the logged-out web app, take the first posts from the profile page, and query further ones
             # (PolarisLoggedOutDesktopWWWProfilePostsTabContentQuery_connection) by the page's "id" of the
             # profile, which is not its user ID.
             page = self._context.get_page_data(f"{self.username}/")
+            # The page shows no posts of a private profile, rather than an error.
+            if any((data.get("xig_user_by_username") or {}).get("is_private") for data in page):
+                raise LoginRequiredException(f"Login required to access the posts of private profile {self.username}.")
             user = next((data["xig_user_by_username"] for data in page
                          if "polaris_ordered_timeline_connection" in (data.get("xig_user_by_username") or {})),
                         None)
