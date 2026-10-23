@@ -1237,7 +1237,8 @@ class Profile:
         return self._metadata('followed_by_viewer')
 
     @property
-    def mediacount(self) -> int:
+    def mediacount(self) -> Optional[int]:
+        """Number of posts, or None if unavailable (e.g. when not logged in)."""
         return self._metadata('edge_owner_to_timeline_media', 'count')
 
     @property
