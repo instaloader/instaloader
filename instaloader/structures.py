@@ -881,19 +881,9 @@ class Post:
         if self.likes == 0:
             # Avoid doing additional requests if there are no comments
             return
-        likes_edges = self._field('edge_media_preview_like', 'edges')
-        if self.likes == len(likes_edges):
-            # If the Post's metadata already contains all likes, don't do GraphQL requests to obtain them
-            yield from (Profile(self._context, like['node']) for like in likes_edges)
-            return
-        yield from NodeIterator(
-            self._context,
-            '1cb6ec562846122743b61e492c85999f',
-            lambda d: d['data']['shortcode_media']['edge_liked_by'],
-            lambda n: Profile(self._context, n),
-            {'shortcode': self.shortcode},
-            'https://www.instagram.com/p/{0}/'.format(self.shortcode),
-        )
+        data = self._context.get_json(f"api/v1/media/{self.mediaid}/likers/", {})
+        for user in data["users"]:
+            yield Profile(self._context, user)
 
     @property
     def is_sponsored(self) -> bool:

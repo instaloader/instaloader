@@ -80,7 +80,7 @@ Improvements of the Instaloader source or its documentation can be proposed as a
   review, validate, or selectively merge them.
 
 - Be mindful of backward compatibility: changes should preserve existing intended
-  behavior whenever possible.
+  behavior whenever feasible.
 
 - All Pull Requests are analyzed by `Pylint <https://www.pylint.org/>`__ for
   error and syntax checking of the source and
@@ -99,6 +99,19 @@ Improvements of the Instaloader source or its documentation can be proposed as a
 - Feel free to create an issue to make sure someone from the Instaloader team
   agrees that the change might be an improvement, or if you want to discuss
   your basic proposal, before working on a pull request.
+
+AI Policy
+---------
+
+- If generative AI was used to create notable portions of a contribution, the
+  author must disclose which parts were AI-assisted (e.g. research, testing,
+  coding, or documentation).
+
+- The author must carefully review and understand the contribution before
+  submitting it.
+
+- If the maintainers need more effort to review the contribution than it took
+  to create it, please do not submit it.
 
 Proposing Features
 ------------------
