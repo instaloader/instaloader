@@ -1238,7 +1238,10 @@ class Profile:
 
     @property
     def mediacount(self) -> Optional[int]:
-        """Number of posts, or None if unavailable (e.g. when not logged in)."""
+        """Number of posts, or None if unavailable (e.g. when not logged in).
+
+        .. versionchanged:: 4.16
+           Returns None if unavailable (e.g. when not logged in)."""
         return self._metadata('edge_owner_to_timeline_media', 'count')
 
     @property
