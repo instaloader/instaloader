@@ -114,11 +114,11 @@ class NodeIterator(Iterator[T]):
             return self._query_query_hash(self._query_hash, after)
 
     def _query_doc_id(self, doc_id: str, after: Optional[str] = None) -> Dict:
-        pagination_variables: Dict[str, Any] = {'__relay_internal__pv__PolarisFeedShareMenurelayprovider': False}
+        pagination_variables: Dict[str, Any] = {}
         if after is not None:
             pagination_variables['after'] = after
             pagination_variables['before'] = None
-            pagination_variables['first'] = 12
+            pagination_variables['first'] = NodeIterator._graphql_page_length
             pagination_variables['last'] = None
         data = self._edge_extractor(
             self._context.doc_id_graphql_query(
