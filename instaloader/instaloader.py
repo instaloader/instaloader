@@ -344,7 +344,7 @@ class Instaloader:
         file_extension = url[-3:] if urlmatch is None else urlmatch.group(0)[1:-1]
         nominal_filename = filename + '.' + file_extension
         if os.path.isfile(nominal_filename):
-            self.context.log(nominal_filename + ' exists', end=' ', flush=True)
+            self.context.log(self.context.printable(nominal_filename) + ' exists', end=' ', flush=True)
             return False
         resp = self.context.get_raw(url)
         if 'Content-Type' in resp.headers and resp.headers['Content-Type']:
@@ -354,7 +354,7 @@ class Instaloader:
         else:
             filename = nominal_filename
         if filename != nominal_filename and os.path.isfile(filename):
-            self.context.log(filename + ' exists', end=' ', flush=True)
+            self.context.log(self.context.printable(filename) + ' exists', end=' ', flush=True)
             return False
         self.context.write_raw(resp, filename)
         os.utime(filename, (datetime.now().timestamp(), mtime.timestamp()))
@@ -545,7 +545,7 @@ class Instaloader:
         if os.path.isfile(filename) and (not self.context.is_logged_in or
                                          (content_length is not None and
                                           os.path.getsize(filename) >= int(content_length))):
-            self.context.log(filename + ' already exists')
+            self.context.log(self.context.printable(filename) + ' already exists')
             return
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         self.context.write_raw(pic_bytes if pic_bytes else http_response, filename)
@@ -701,7 +701,7 @@ class Instaloader:
             if not os.path.isfile(path):
                 return False
             else:
-                self.context.log(path + ' exists', end=' ', flush=True)
+                self.context.log(self.context.printable(path) + ' exists', end=' ', flush=True)
                 return True
 
         def _all_already_downloaded(path_base, is_videos_enumerated) -> bool:
@@ -897,7 +897,7 @@ class Instaloader:
             if not os.path.isfile(path):
                 return False
             else:
-                self.context.log(path + ' exists', end=' ', flush=True)
+                self.context.log(self.context.printable(path) + ' exists', end=' ', flush=True)
                 return True
 
         date_local = item.date_local
