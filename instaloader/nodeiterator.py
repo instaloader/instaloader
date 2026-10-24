@@ -99,6 +99,7 @@ class NodeIterator(Iterator[T]):
         else:
             self._data = self._query()
         self._first_node: Optional[Dict] = None
+        self._first_item: Optional[T] = None
         self._is_first = is_first
 
     def _query(self, after: Optional[str] = None) -> Dict:
@@ -151,10 +152,10 @@ class NodeIterator(Iterator[T]):
             item = self._node_wrapper(node)
             if self._is_first is not None:
                 if self._is_first(item, self.first_item):
-                    self._first_node = node
+                    self._first_node, self._first_item = node, item
             else:
                 if self._first_node is None:
-                    self._first_node = node
+                    self._first_node, self._first_item = node, item
             return item
         if self._data.get('page_info', {}).get('has_next_page'):
             query_response = self._query(self._data['page_info']['end_cursor'])
@@ -201,7 +202,15 @@ class NodeIterator(Iterator[T]):
         .. versionchanged:: 4.9.2
            What is considered the first item can be overridden.
         """
-        return self._node_wrapper(self._first_node) if self._first_node is not None else None
+        if self._first_item is None:
+            # Restore _first_item from _first_node. Needed after thawing, since
+            # FrozenNodeIterator stores the node, not the item.
+            self._first_item = (
+                self._node_wrapper(self._first_node)
+                if self._first_node is not None
+                else None
+            )
+        return self._first_item
 
     @staticmethod
     def page_length() -> int:
