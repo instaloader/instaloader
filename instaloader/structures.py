@@ -1402,7 +1402,8 @@ class Profile:
             node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
             # The query and variables that the web app sends for a profile's posts tab
             # (PolarisProfilePostsTabContentQuery_connection). Instagram answers the
-            # previous query, 7898261790222653, with "execution error".
+            # previous queries, 7898261790222653 ("execution error") and 28975909992013618
+            # (400 "feedback_required"), with errors.
             query_variables={
                 "data": {
                     "count": 12,
@@ -1415,12 +1416,14 @@ class Profile:
                 "include_multi_captions": True,
                 "username": self.username,
                 "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
-                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": True,
+                "__relay_internal__pv__PolarisSEOIsCrawlerrelayprovider": False,
+                "__relay_internal__pv__PolarisThreadsStyleCommentsEnabledrelayprovider": False,
                 "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="28975909992013618",
+            doc_id="29104886249145907",
             query_hash=None,
         )
 
