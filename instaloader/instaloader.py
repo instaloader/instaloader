@@ -807,11 +807,13 @@ class Instaloader:
         """
 
         if not userids:
-            data = self.context.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704",
-                                              {"only_stories": True})["data"]["user"]
-            if data is None:
-                raise BadResponseException('Bad stories reel JSON.')
-            userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
+            # The GraphQL query d15efd8c0c5b23f0ef71f18bf363c704 used before returns "feed_reels_tray": null.
+            # Use the endpoint of the web app's story tray instead.
+            tray = self.context.get_web_api_json('api/v1/feed/reels_tray/', params={})
+            if not isinstance(tray.get('tray'), list):
+                raise BadResponseException('Bad stories tray JSON.')
+            userids = [int(reel['user']['pk']) for reel in tray['tray']
+                       if reel.get('reel_type', 'user_reel') == 'user_reel' and reel.get('user')]
 
         def _userid_chunks():
             assert userids is not None
