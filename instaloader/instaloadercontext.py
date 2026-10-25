@@ -494,6 +494,8 @@ class InstaloaderContext:
             if _attempt == self.max_connection_attempts:
                 if isinstance(err, QueryReturnedNotFoundException):
                     raise QueryReturnedNotFoundException(error_string) from err
+                elif isinstance(err, TooManyRequestsException):
+                    raise TooManyRequestsException(error_string) from err
                 else:
                     raise ConnectionException(error_string) from err
             self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
