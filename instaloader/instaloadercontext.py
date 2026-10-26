@@ -798,6 +798,21 @@ class InstaloaderContext:
             raise ConnectionException(self._response_error(resp))
         return resp.text
 
+    def get_profile_id_from_page(self, path: str) -> Optional[str]:
+        """Load a profile page of ``www.instagram.com`` with the session and return the profile's ID, or None.
+
+        Logged in, Instagram does not embed the profile in its page, but names the profile's ID in the page's
+        logging parameters. This also works for profiles that are not shown to logged-out visitors.
+
+        :param path: URL of the profile page, relative to ``www.instagram.com/``
+        :raises QueryReturnedNotFoundException: When the server responds with a 404.
+        :raises ConnectionException: When the request failed.
+
+        .. versionadded:: 4.16"""
+        html = self._get_page(self._session, path)
+        ids = set(re.findall(r'"page_logging":\{"name":"profilePage","params":\{[^}]*?"profile_id":"(\d+)"', html))
+        return ids.pop() if len(ids) == 1 else None
+
     def get_page_data(self, path: str) -> List[Dict[str, Any]]:
         """Load a page of ``www.instagram.com`` as a logged-out visitor and return the data it embeds.
 
