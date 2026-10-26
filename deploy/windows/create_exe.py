@@ -53,7 +53,7 @@ bundled_packages = ' '.join(list(locked_packages) + ['psutil', 'pyinstaller'])
 os.makedirs('dist/licenses', exist_ok=True)
 
 # install dependencies, invoke PyInstaller and collect licenses
-commands = ["pip install pipenv==2026.8.0",
+commands = ["pip install pipenv==2026.10.3",
             f"pipenv --python {sys.version_info.major}.{sys.version_info.minor} sync --dev",
             "pipenv run pyinstaller --log-level=DEBUG instaloader.spec",
             f"pipenv run pip-licenses --packages {bundled_packages} --with-license-file "
