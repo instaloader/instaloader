@@ -102,7 +102,7 @@ class InstaloaderContext:
         self.user_agent = user_agent if user_agent is not None else default_user_agent()
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
-        self.username = None
+        self.username: Optional[str] = None
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
@@ -124,6 +124,9 @@ class InstaloaderContext:
 
         # Cache profile from id (mapping from id to Profile)
         self.profile_id_cache: Dict[int, Any] = dict()
+
+        # Tokens of the logged-in web page for api/graphql queries, by sessionid cookie
+        self._web_api_tokens_cache: Dict[str, Dict[str, str]] = dict()
 
     @contextmanager
     def anonymous_copy(self):
@@ -411,8 +414,102 @@ class InstaloaderContext:
             f" when accessing {resp.url}"
         )
 
+    @staticmethod
+    def _rate_limit_key(path: str, params: Dict[str, Any], host: str) -> str:
+        """Determine the :class:`RateController` bucket that a request is accounted to."""
+        if 'graphql/query' in path or path == 'api/graphql':
+            if 'query_hash' in params:
+                return params['query_hash']
+            if 'doc_id' in params:
+                return params['doc_id']
+        if host == 'i.instagram.com':
+            return 'iphone'
+        return 'other'
+
+    def _raise_if_fatal_status(self, resp: requests.Response, host: str, path: str) -> None:
+        if resp.status_code not in self.fatal_status_codes:
+            return
+        redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
+        body = ""
+        if resp.headers.get('Content-Type', '').startswith('application/json'):
+            body = ': ' + resp.text[:500] + ('…' if len(resp.text) > 501 else '')
+        raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}{}".format(
+            host, path, resp.status_code, resp.reason, redirect, body
+        ))
+
+    def _raise_if_login_redirect(self, resp: requests.Response) -> None:
+        """Turn a redirect to the login page into a meaningful exception.
+
+        Instagram answers requests it will not serve anonymously with a redirect to the login page
+        rather than with an error status, so this needs to be checked wherever we do not follow
+        redirects automatically.
+        """
+        if not resp.is_redirect:
+            return
+        redirect_url = resp.headers.get('location', '')
+        if not (redirect_url.startswith('https://www.instagram.com/accounts/login') or
+                redirect_url.startswith('https://i.instagram.com/accounts/login')):
+            return
+        if not self.is_logged_in:
+            raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
+        raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
+                                     "some time, recreate the session and try again")
+
+    def _follow_redirects(self, sess: requests.Session, resp: requests.Response,
+                          host: str, path: str, params: Dict[str, Any], use_post: bool) -> requests.Response:
+        """Follow redirects that stay on *host*, and reject those to the login page."""
+        # Redirects are followed with GET. For a POST request, `params` is the request body and must not be
+        # turned into query arguments.
+        redirect_params = None if use_post else params
+        while resp.is_redirect:
+            redirect_url = resp.headers['location']
+            self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
+            self._raise_if_login_redirect(resp)
+            if not redirect_url.startswith('https://{}/'.format(host)):
+                break
+            resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
+                            params=redirect_params, allow_redirects=False)
+        return resp
+
+    def _raise_for_status(self, resp: requests.Response) -> None:
+        """Translate an unsuccessful HTTP status code into the corresponding exception."""
+        if resp.status_code == 400:
+            with suppress(json.decoder.JSONDecodeError):
+                if resp.json().get("message") in [
+                    "feedback_required",
+                    "checkpoint_required",
+                    "challenge_required",
+                ]:
+                    # Raise AbortDownloadException in case of substantial Instagram
+                    # requirements to stop producing more requests
+                    raise AbortDownloadException(self._response_error(resp))
+            raise QueryReturnedBadRequestException(self._response_error(resp))
+        if resp.status_code == 404:
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.status_code == 429:
+            raise TooManyRequestsException(self._response_error(resp))
+        if resp.status_code != 200:
+            raise ConnectionException(self._response_error(resp))
+
+    def _raise_for_download_status(self, resp: requests.Response) -> None:
+        """Translate an unsuccessful status code of an anonymous download request into an exception.
+
+        This is deliberately a different policy from :meth:`_raise_for_status`, which applies to the
+        JSON API: a download may be answered with 403 for an invalid URL signature, and is never
+        answered with the 400 or 429 that the API uses.
+        """
+        if resp.status_code == 200:
+            return
+        if resp.status_code == 403:
+            # suspected invalid URL signature
+            raise QueryReturnedForbiddenException(self._response_error(resp))
+        if resp.status_code == 404:
+            # 404 not worth retrying.
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        raise ConnectionException(self._response_error(resp))
+
     def get_json(self, path: str, params: Dict[str, Any], host: str = 'www.instagram.com',
-                 session: Optional[requests.Session] = None, _attempt=1,
+                 session: Optional[requests.Session] = None,
                  response_headers: Optional[Dict[str, Any]] = None,
                  use_post: bool = False) -> Dict[str, Any]:
         """JSON request to Instagram.
@@ -432,96 +529,112 @@ class InstaloaderContext:
 
         .. versionchanged:: 4.13
            Added `use_post` parameter.
+
+        .. versionchanged:: 4.16
+           Removed the internal `_attempt` parameter; retries are no longer implemented by recursion.
         """
-        is_graphql_query = 'query_hash' in params and 'graphql/query' in path
-        is_doc_id_query = 'doc_id' in params and 'graphql/query' in path
-        is_iphone_query = host == 'i.instagram.com'
-        is_other_query = not is_graphql_query and not is_doc_id_query and host == "www.instagram.com"
-        sess = session if session else self._session
-        try:
-            self.do_sleep()
-            if is_graphql_query:
-                self._rate_controller.wait_before_query(params['query_hash'])
-            if is_doc_id_query:
-                self._rate_controller.wait_before_query(params['doc_id'])
-            if is_iphone_query:
-                self._rate_controller.wait_before_query('iphone')
-            if is_other_query:
-                self._rate_controller.wait_before_query('other')
-            if use_post:
-                resp = sess.post('https://{0}/{1}'.format(host, path), data=params, allow_redirects=False)
-            else:
-                resp = sess.get('https://{0}/{1}'.format(host, path), params=params, allow_redirects=False)
-            if resp.status_code in self.fatal_status_codes:
-                redirect = " redirect to {}".format(resp.headers['location']) if 'location' in resp.headers else ""
-                body = ""
-                if resp.headers['Content-Type'].startswith('application/json'):
-                    body = ': ' + resp.text[:500] + ('…' if len(resp.text) > 501 else '')
-                raise AbortDownloadException("Query to https://{}/{} responded with \"{} {}\"{}{}".format(
-                    host, path, resp.status_code, resp.reason, redirect, body
-                ))
-            while resp.is_redirect:
-                redirect_url = resp.headers['location']
-                self.log('\nHTTP redirect from https://{0}/{1} to {2}'.format(host, path, redirect_url))
-                if (redirect_url.startswith('https://www.instagram.com/accounts/login') or
-                    redirect_url.startswith('https://i.instagram.com/accounts/login')):
-                    if not self.is_logged_in:
-                        raise LoginRequiredException("Redirected to login page. Use --login or --load-cookies.")
-                    raise AbortDownloadException("Redirected to login page. You've been logged out, please wait " +
-                                                 "some time, recreate the session and try again")
-                if redirect_url.startswith('https://{}/'.format(host)):
-                    resp = sess.get(redirect_url if redirect_url.endswith('/') else redirect_url + '/',
-                                    params=params, allow_redirects=False)
-                else:
-                    break
-            if response_headers is not None:
-                response_headers.clear()
-                response_headers.update(resp.headers)
-            if resp.status_code == 400:
-                with suppress(json.decoder.JSONDecodeError):
-                    if resp.json().get("message") in [
-                        "feedback_required",
-                        "checkpoint_required",
-                        "challenge_required",
-                    ]:
-                        # Raise AbortDownloadException in case of substantial Instagram
-                        # requirements to stop producing more requests
-                        raise AbortDownloadException(self._response_error(resp))
-                raise QueryReturnedBadRequestException(self._response_error(resp))
-            if resp.status_code == 404:
-                raise QueryReturnedNotFoundException(self._response_error(resp))
-            if resp.status_code == 429:
-                raise TooManyRequestsException(self._response_error(resp))
-            if resp.status_code != 200:
-                raise ConnectionException(self._response_error(resp))
-            else:
-                resp_json = resp.json()
-            if 'status' in resp_json and resp_json['status'] != "ok":
-                raise ConnectionException(self._response_error(resp))
-            return resp_json
-        except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
-            error_string = "JSON Query to {}: {}".format(path, err)
-            if _attempt == self.max_connection_attempts:
-                if isinstance(err, QueryReturnedNotFoundException):
-                    raise QueryReturnedNotFoundException(error_string) from err
-                else:
-                    raise ConnectionException(error_string) from err
-            self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+        sess = session or self._session
+        rate_limit_key = self._rate_limit_key(path, params, host)
+        url = 'https://{0}/{1}'.format(host, path)
+
+        # The failure we are currently retrying, if any. It drives the 429 backoff performed before the
+        # next attempt, and tells us whether a ^C means "skip this query" rather than "abort everything".
+        pending_error: Optional[BaseException] = None
+        pending_error_string = ""
+
+        for attempt in range(1, self.max_connection_attempts + 1):
             try:
-                if isinstance(err, TooManyRequestsException):
-                    if is_graphql_query:
-                        self._rate_controller.handle_429(params['query_hash'])
-                    if is_doc_id_query:
-                        self._rate_controller.handle_429(params['doc_id'])
-                    if is_iphone_query:
-                        self._rate_controller.handle_429('iphone')
-                    if is_other_query:
-                        self._rate_controller.handle_429('other')
-                return self.get_json(path=path, params=params, host=host, session=sess, _attempt=_attempt + 1,
-                                     response_headers=response_headers)
+                if isinstance(pending_error, TooManyRequestsException):
+                    self._rate_controller.handle_429(rate_limit_key)
+                self.do_sleep()
+                self._rate_controller.wait_before_query(rate_limit_key)
+
+                if use_post:
+                    resp = sess.post(url, data=params, allow_redirects=False)
+                else:
+                    resp = sess.get(url, params=params, allow_redirects=False)
+
+                self._raise_if_fatal_status(resp, host, path)
+                resp = self._follow_redirects(sess, resp, host, path, params, use_post)
+
+                if response_headers is not None:
+                    response_headers.clear()
+                    response_headers.update(resp.headers)
+
+                self._raise_for_status(resp)
+                resp_json = resp.json()
+                if 'status' in resp_json and resp_json['status'] != "ok":
+                    raise ConnectionException(self._response_error(resp))
+                return resp_json
+            except (ConnectionException, json.decoder.JSONDecodeError, requests.exceptions.RequestException) as err:
+                error_string = "JSON Query to {}: {}".format(path, err)
+                if attempt == self.max_connection_attempts:
+                    if isinstance(err, QueryReturnedNotFoundException):
+                        raise QueryReturnedNotFoundException(error_string) from err
+                    raise ConnectionException(error_string) from err
+                self.error(error_string + " [retrying; skip with ^C]", repeat_at_end=False)
+                pending_error, pending_error_string = err, error_string
             except KeyboardInterrupt:
+                if pending_error is None:
+                    raise
                 self.error("[skipped by user]", repeat_at_end=False)
-                raise ConnectionException(error_string) from err
+                raise ConnectionException(pending_error_string) from pending_error
+
+        raise AssertionError("get_json() retry loop exited without result")
+
+    @contextmanager
+    def _graphql_session(self, referer: Optional[str], csrf: Optional[str] = None,
+                         lsd: Optional[str] = None) -> Iterator[requests.Session]:
+        """Short-lived session carrying the headers that the GraphQL endpoint expects.
+
+        Pass the page's `lsd` token for the web app's ``api/graphql`` endpoint."""
+        with copy_session(self._session, self.request_timeout) as tmpsession:
+            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
+            del tmpsession.headers['Connection']
+            del tmpsession.headers['Content-Length']
+            tmpsession.headers['authority'] = 'www.instagram.com'
+            tmpsession.headers['scheme'] = 'https'
+            tmpsession.headers['accept'] = '*/*'
+            if csrf is not None:
+                tmpsession.headers['x-csrftoken'] = csrf
+            if referer is not None:
+                tmpsession.headers['referer'] = urllib.parse.quote(referer)
+            if lsd is not None:
+                tmpsession.headers.update({'x-fb-lsd': lsd, 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors',
+                                           'sec-fetch-site': 'same-origin'})
+            yield tmpsession
+
+    def _csrf_token(self) -> str:
+        """The csrftoken cookie value, requesting the start page once if we do not have one yet."""
+        def token_from_cookies() -> Optional[str]:
+            return next((c.value for c in self._session.cookies if c.name == 'csrftoken' and c.value), None)
+        csrf = token_from_cookies()
+        if csrf:
+            return csrf
+        self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
+        return token_from_cookies() or ''
+
+    def _web_api_tokens(self) -> Dict[str, str]:
+        """The tokens that the web app sends along with its api/graphql queries, from the start page."""
+        sessionid = self._session.cookies.get_dict().get("sessionid", "")
+        if sessionid not in self._web_api_tokens_cache:
+            html = self._get_page(self._session, "")
+            tokens = {}
+            for name, pattern in [
+                ("fb_dtsg", r'"DTSGInitialData",\[\],\{[^{}]*"token":"([^"]+)"'),
+                ("lsd", r'"LSD",\[\],\{[^{}]*"token":"([^"]+)"'),
+                ("av", r'"IG_USER_EIMU":"?(\d+)'),
+            ]:
+                match = re.search(pattern, html)
+                if match is not None:
+                    tokens[name] = match.group(1)
+                # Logged out, the start page has no fb_dtsg, and the web app sends its queries without.
+                elif name != "fb_dtsg" or self.is_logged_in:
+                    raise BadResponseException(
+                        "The start page did not contain the token {}.".format(name)
+                    )
+            self._web_api_tokens_cache[sessionid] = tokens
+        return self._web_api_tokens_cache[sessionid]
 
     def graphql_query(self, query_hash: str, variables: Dict[str, Any],
                       referer: Optional[str] = None) -> Dict[str, Any]:
@@ -536,18 +649,8 @@ class InstaloaderContext:
         .. versionchanged:: 4.13.1
            Removed the `rhx_gis` parameter.
         """
-        with copy_session(self._session, self.request_timeout) as tmpsession:
-            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
-            del tmpsession.headers['Connection']
-            del tmpsession.headers['Content-Length']
-            tmpsession.headers['authority'] = 'www.instagram.com'
-            tmpsession.headers['scheme'] = 'https'
-            tmpsession.headers['accept'] = '*/*'
-            if referer is not None:
-                tmpsession.headers['referer'] = urllib.parse.quote(referer)
-
-            variables_json = json.dumps(variables, separators=(',', ':'))
-
+        variables_json = json.dumps(variables, separators=(',', ':'))
+        with self._graphql_session(referer) as tmpsession:
             resp_json = self.get_json('graphql/query',
                                       params={'query_hash': query_hash,
                                               'variables': variables_json},
@@ -557,7 +660,7 @@ class InstaloaderContext:
         return resp_json
 
     def doc_id_graphql_query(self, doc_id: str, variables: Dict[str, Any],
-                             referer: Optional[str] = None) -> Dict[str, Any]:
+                             referer: Optional[str] = None, web_api: bool = False) -> Dict[str, Any]:
         """
         Do a doc_id-based GraphQL Query using method POST.
 
@@ -566,35 +669,23 @@ class InstaloaderContext:
         :param doc_id: doc_id for the query.
         :param variables: Variables for the Query.
         :param referer: HTTP Referer, or None.
+        :param web_api: Query the web app's ``api/graphql`` endpoint, as the web app does, rather than
+           ``graphql/query``.
         :return: The server's response dictionary.
+
+        .. versionchanged:: 4.16
+           Added `web_api` parameter.
         """
-        csrf = next((c.value for c in self._session.cookies
-                     if c.name == 'csrftoken' and c.value), None)
-        if not csrf:
-            self._session.get('https://www.instagram.com/', timeout=self.request_timeout)
-            csrf = next((c.value for c in self._session.cookies
-                         if c.name == 'csrftoken' and c.value), '')
-
-        with copy_session(self._session, self.request_timeout) as tmpsession:
-            tmpsession.headers.update(self._default_http_header(empty_session_only=True))
-            del tmpsession.headers['Connection']
-            del tmpsession.headers['Content-Length']
-            tmpsession.headers['authority'] = 'www.instagram.com'
-            tmpsession.headers['scheme'] = 'https'
-            tmpsession.headers['accept'] = '*/*'
-            tmpsession.headers['x-csrftoken'] = csrf
-            if referer is not None:
-                tmpsession.headers['referer'] = urllib.parse.quote(referer)
-
-            variables_json = json.dumps(variables, separators=(',', ':'))
-
-            resp_json = self.get_json('graphql/query',
-                                      params={'variables': variables_json,
-                                              'doc_id': doc_id,
-                                              'server_timestamps': 'true'},
-                                      session=tmpsession,
-                                      use_post=True)
-        if 'status' not in resp_json:
+        variables_json = json.dumps(variables, separators=(',', ':'))
+        params = {'variables': variables_json,
+                  'doc_id': doc_id,
+                  'server_timestamps': 'true',
+                  **(self._web_api_tokens() if web_api else {})}
+        with self._graphql_session(referer, csrf=self._csrf_token(), lsd=params.get('lsd')) as tmpsession:
+            resp_json = self.get_json('api/graphql' if web_api else 'graphql/query', params=params,
+                                      session=tmpsession, use_post=True)
+        # api/graphql does not respond with a "status" field.
+        if not web_api and 'status' not in resp_json:
             self.error("GraphQL response did not contain a \"status\" field.")
         return resp_json
 
@@ -719,6 +810,25 @@ class InstaloaderContext:
 
             return response
 
+    def _get_page(self, session: requests.Session, path: str) -> str:
+        """Load a page of ``www.instagram.com`` and return its HTML."""
+        self.do_sleep()
+        self._rate_controller.wait_before_query('other')
+        url = 'https://www.instagram.com/{0}'.format(path)
+        # Instagram only embeds the data when the request looks like a browser's page navigation.
+        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
+                   'Sec-Fetch-Site': 'none'}
+        try:
+            resp = session.get(url, headers=headers, allow_redirects=False)
+        except requests.exceptions.RequestException as err:
+            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
+        self._raise_if_login_redirect(resp)
+        if resp.status_code == 404:
+            raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.status_code != 200:
+            raise ConnectionException(self._response_error(resp))
+        return resp.text
+
     def get_page_data(self, path: str) -> List[Dict[str, Any]]:
         """Load a page of ``www.instagram.com`` as a logged-out visitor and return the data it embeds.
 
@@ -730,23 +840,10 @@ class InstaloaderContext:
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises ConnectionException: When the request failed.
         """
-        self.do_sleep()
-        self._rate_controller.wait_before_query('other')
-        url = 'https://www.instagram.com/{0}'.format(path)
-        # Instagram only embeds the data when the request looks like a browser's page navigation.
-        headers = {'Accept': 'text/html', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
-                   'Sec-Fetch-Site': 'none'}
-        try:
-            with self.get_anonymous_session() as anonymous_session:
-                resp = anonymous_session.get(url, headers=headers, allow_redirects=False)
-        except requests.exceptions.RequestException as err:
-            raise ConnectionException("Page request to {}: {}".format(url, err)) from err
-        if resp.status_code == 404:
-            raise QueryReturnedNotFoundException(self._response_error(resp))
-        if resp.status_code != 200:
-            raise ConnectionException(self._response_error(resp))
+        with self.get_anonymous_session() as anonymous_session:
+            html = self._get_page(anonymous_session, path)
         data: List[Dict[str, Any]] = []
-        for script in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', resp.text, re.DOTALL):
+        for script in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', html, re.DOTALL):
             with suppress(json.decoder.JSONDecodeError):
                 data.extend(_embedded_query_data(json.loads(script.group(1))))
         return data
@@ -763,27 +860,26 @@ class InstaloaderContext:
                 file.write(resp)
         os.replace(filename + '.temp', filename)
 
-    def get_raw(self, url: str, _attempt=1) -> requests.Response:
+    def get_raw(self, url: str) -> requests.Response:
         """Downloads a file anonymously.
+
+        This does not retry on its own; callers that need retrying are decorated with
+        ``_retry_on_connection_error``.
 
         :raises QueryReturnedNotFoundException: When the server responds with a 404.
         :raises QueryReturnedForbiddenException: When the server responds with a 403.
         :raises ConnectionException: When download failed.
 
-        .. versionadded:: 4.2.1"""
+        .. versionadded:: 4.2.1
+
+        .. versionchanged:: 4.16
+           Removed the `_attempt` parameter.
+        """
         with self.get_anonymous_session() as anonymous_session:
             resp = anonymous_session.get(url, stream=True)
-        if resp.status_code == 200:
-            resp.raw.decode_content = True
-            return resp
-        else:
-            if resp.status_code == 403:
-                # suspected invalid URL signature
-                raise QueryReturnedForbiddenException(self._response_error(resp))
-            if resp.status_code == 404:
-                # 404 not worth retrying.
-                raise QueryReturnedNotFoundException(self._response_error(resp))
-            raise ConnectionException(self._response_error(resp))
+        self._raise_for_download_status(resp)
+        resp.raw.decode_content = True
+        return resp
 
     def get_and_write_raw(self, url: str, filename: str) -> None:
         """Downloads and writes anonymously-requested raw data into a file.
@@ -804,16 +900,8 @@ class InstaloaderContext:
         """
         with self.get_anonymous_session() as anonymous_session:
             resp = anonymous_session.head(url, allow_redirects=allow_redirects)
-        if resp.status_code == 200:
-            return resp
-        else:
-            if resp.status_code == 403:
-                # suspected invalid URL signature
-                raise QueryReturnedForbiddenException(self._response_error(resp))
-            if resp.status_code == 404:
-                # 404 not worth retrying.
-                raise QueryReturnedNotFoundException(self._response_error(resp))
-            raise ConnectionException(self._response_error(resp))
+        self._raise_for_download_status(resp)
+        return resp
 
 
 class RateController:

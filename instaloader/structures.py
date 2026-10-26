@@ -279,7 +279,7 @@ class Post:
         return None
 
     @staticmethod
-    def _normalize_post_data(media: Dict[str, Any], context: 'InstaloaderContext') -> Dict[str, Any]:
+    def _normalize_post_data(media: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize a Polaris media item to a legacy-compatible node, preserving the source structure."""
         media_types = {1: "GraphImage", 2: "GraphVideo", 8: "GraphSidecar"}
         media_type = media.get("media_type")
@@ -306,10 +306,6 @@ class Post:
         pic_json["video_duration"] = media.get("video_duration")
         pic_json["video_view_count"] = media.get("view_count")
         pic_json["video_play_count"] = media.get("play_count")
-        if media_type == 2 and pic_json["video_view_count"] is None:
-            pic_json["video_play_count"] = Post._fetch_play_count_from_clips(
-                context, media["user"]["pk"], media["code"]
-            )
         caption = media.get("caption")
         caption_text = caption.get("text") if isinstance(caption, dict) else None
         pic_json["edge_media_to_caption"] = (
@@ -419,12 +415,14 @@ class Post:
                     "shortcode": self.shortcode,
                     "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
                 },
+                # As the logged-out web app does.
+                web_api=not self._context.is_logged_in,
             )
             web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
             items = web_info.get("items")
             if not items:
                 raise BadResponseException("Fetching Post metadata failed.")
-            self._full_metadata_dict = Post._normalize_post_data(items[0], self._context)
+            self._full_metadata_dict = Post._normalize_post_data(items[0])
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
                 raise PostChangedException
@@ -697,7 +695,11 @@ class Post:
 
         .. versionadded:: 4.14.3"""
         if self.is_video:
-            return self._field('video_play_count')
+            play_count = self._field('video_play_count')
+            # Not logged in, the clips connection is null.
+            if play_count is None and self.video_view_count is None and self._context.is_logged_in:
+                play_count = Post._fetch_play_count_from_clips(self._context, str(self.owner_id), self.shortcode)
+            return play_count
         return None
 
     @property
@@ -1025,16 +1027,24 @@ class Profile:
         """
         if profile_id in context.profile_id_cache:
             return context.profile_id_cache[profile_id]
-        # Resolve the current username from the user id, then load the full profile.
-        # The GraphQL user query previously used here started responding with HTTP 400.
         try:
-            user = context.get_json(
-                "api/v1/users/{0}/info/".format(profile_id), params={}
-            ).get('user')
+            user = context.doc_id_graphql_query(
+                '27937681195819736',
+                {
+                    "id": str(profile_id),
+                    "render_surface": "PROFILE",
+                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+                    "enable_integrity_filters": True,
+                },
+                web_api=True,
+            ).get('data', {}).get('user')
         except QueryReturnedNotFoundException:
             user = None
         if user and user.get('username'):
-            profile = cls.from_username(context, user['username'])
+            profile = cls(context, cls._normalize_profile_data(user))
         else:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
@@ -1137,6 +1147,9 @@ class Profile:
             normalized['id'] = normalized['pk']
         if 'edge_owner_to_timeline_media' not in normalized and 'media_count' in normalized:
             normalized['edge_owner_to_timeline_media'] = {'count': normalized['media_count']}
+        # The logged-out profile page has all_media_count instead.
+        if 'edge_owner_to_timeline_media' not in normalized and 'all_media_count' in normalized:
+            normalized['edge_owner_to_timeline_media'] = {'count': normalized['all_media_count']}
         if 'edge_felix_video_timeline' not in normalized:
             normalized['edge_felix_video_timeline'] = {'count': 0}
         if 'edge_followed_by' not in normalized and 'follower_count' in normalized:
@@ -1222,7 +1235,11 @@ class Profile:
         return self._metadata('followed_by_viewer')
 
     @property
-    def mediacount(self) -> int:
+    def mediacount(self) -> Optional[int]:
+        """Number of posts, or None if unavailable (e.g. when not logged in).
+
+        .. versionchanged:: 4.16
+           Returns None if unavailable (e.g. when not logged in)."""
         return self._metadata('edge_owner_to_timeline_media', 'count')
 
     @property
@@ -1374,35 +1391,53 @@ class Profile:
     def get_posts(self) -> NodeIterator[Post]:
         """Retrieve all posts from a profile.
 
-        :rtype: NodeIterator[Post]"""
-        self._obtain_metadata()
+        :rtype: NodeIterator[Post]
+        :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed.
+        :raises LoginRequiredException: When not logged in and the profile is private."""
         if not self._context.is_logged_in:
+            # As the logged-out web app, take the first posts from the profile page, and query further ones
+            # (PolarisLoggedOutDesktopWWWProfilePostsTabContentQuery_connection) by the page's "id" of the
+            # profile, which is not its user ID.
+            page = self._context.get_page_data(f"{self.username}/")
+            # The page shows no posts of a private profile, rather than an error.
+            if any((data.get("xig_user_by_username") or {}).get("is_private") for data in page):
+                raise LoginRequiredException(f"Login required to access the posts of private profile {self.username}.")
+            user = next((data["xig_user_by_username"] for data in page
+                         if "polaris_ordered_timeline_connection" in (data.get("xig_user_by_username") or {})),
+                        None)
+            if user is None:
+                raise BadResponseException(f"The page of profile {self.username} did not contain its posts.")
             return NodeIterator(
                 context=self._context,
-                edge_extractor=lambda d: d["data"]["user"]["edge_owner_to_timeline_media"],
-                node_wrapper=lambda n: Post(self._context, n, self),
+                edge_extractor=lambda d: d["data"]["node"]["polaris_ordered_timeline_connection"],
+                # The nodes lack most of the post's metadata, as in get_reels().
+                node_wrapper=lambda n: Post.from_shortcode(self._context, n["code"]),
                 query_variables={
-                    "data": {
-                        "count": 12,
-                        "include_relationship_info": True,
-                        "latest_besties_reel_media": True,
-                        "latest_reel_media": True,
-                    },
-                    "id": self.userid,
+                    "id": user["id"],
+                    "__relay_internal__pv__PolarisSEOIsCrawlerrelayprovider": False,
                 },
                 query_referer="https://www.instagram.com/{0}/".format(self.username),
                 is_first=Profile._make_is_newest_checker(),
-                doc_id="7950326061742207",
+                doc_id="28904005159232689",
                 query_hash=None,
-                first_data=self._metadata("edge_owner_to_timeline_media"),
+                first_data=user["polaris_ordered_timeline_connection"],
+                web_api=True,
             )
+        self._obtain_metadata()
+        # Instagram answers with an empty timeline rather than an error in that case. Unlike followed_by_viewer,
+        # which defaults to False, friendship_status tells whether the follow state is actually known.
+        if (self.is_private and self.username != (self._context.username or '').lower() and
+                (self._node.get('friendship_status') or {}).get('following') is False):
+            raise PrivateProfileNotFollowedException("Profile {} is private but not followed.".format(self.username))
         return NodeIterator(
             context=self._context,
             edge_extractor=lambda d: d["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"],
             node_wrapper=lambda n: Post.from_iphone_struct(self._context, n),
             # The query and variables that the web app sends for a profile's posts tab
             # (PolarisProfilePostsTabContentQuery_connection). Instagram answers the
-            # previous query, 7898261790222653, with "execution error".
+            # previous queries, 7898261790222653 ("execution error") and 28975909992013618
+            # (400 "feedback_required"), with errors.
+            # It must be sent to the web app's api/graphql endpoint.
             query_variables={
                 "data": {
                     "count": 12,
@@ -1415,13 +1450,16 @@ class Profile:
                 "include_multi_captions": True,
                 "username": self.username,
                 "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
-                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+                "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": True,
+                "__relay_internal__pv__PolarisSEOIsCrawlerrelayprovider": False,
+                "__relay_internal__pv__PolarisThreadsStyleCommentsEnabledrelayprovider": False,
                 "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
             },
             query_referer="https://www.instagram.com/{0}/".format(self.username),
             is_first=Profile._make_is_newest_checker(),
-            doc_id="28975909992013618",
+            doc_id="29104886249145907",
             query_hash=None,
+            web_api=True,
         )
 
     def get_saved_posts(self) -> NodeIterator[Post]:
