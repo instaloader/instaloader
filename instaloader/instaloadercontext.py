@@ -146,14 +146,14 @@ class InstaloaderContext:
         """ID of the user this session is logged in as.
 
         Derived from the ``ds_user_id`` cookie of the current session, so it is set for every
-        logged-in session -- whether it was established with :meth:`login`, loaded from a session
-        file or imported from browser cookies -- and ``None`` if not logged in. Assigning to it
-        updates the ``ds_user_id`` cookie accordingly."""
+        logged-in session, and ``None`` if not logged in."""
         return self._session.cookies.get_dict().get('ds_user_id') or None
 
     @user_id.setter
     def user_id(self, user_id: Optional[str]) -> None:
-        self._session.cookies.update({'ds_user_id': user_id or ''})
+        # The setter is only provided for backwards-compatibility with pre-4.16.
+        if user_id != self.user_id:
+            raise AttributeError("user_id cannot be set to a different value.")
 
     @property
     def is_logged_in(self) -> bool:
