@@ -55,6 +55,12 @@ Profiles
 .. autoclass:: Profile
    :no-show-inheritance:
 
+Saved Collections
+"""""""""""""""""
+
+.. autoclass:: SavedCollection
+   :no-show-inheritance:
+
 Hashtags
 """"""""
 
