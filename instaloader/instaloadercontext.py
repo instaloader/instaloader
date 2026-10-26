@@ -9,6 +9,7 @@ import textwrap
 import time
 import urllib.parse
 import uuid
+from base64 import b64encode
 from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 from functools import partial
@@ -102,7 +103,6 @@ class InstaloaderContext:
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
         self.username = None
-        self.user_id = None
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
@@ -129,11 +129,9 @@ class InstaloaderContext:
     def anonymous_copy(self):
         session = self._session
         username = self.username
-        user_id = self.user_id
         iphone_headers = self.iphone_headers
         self._session = self.get_anonymous_session()
         self.username = None
-        self.user_id = None
         self.iphone_headers = default_iphone_headers()
         try:
             yield self
@@ -141,8 +139,21 @@ class InstaloaderContext:
             self._session.close()
             self.username = username
             self._session = session
-            self.user_id = user_id
             self.iphone_headers = iphone_headers
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """ID of the user this session is logged in as.
+
+        Derived from the ``ds_user_id`` cookie of the current session, so it is set for every
+        logged-in session -- whether it was established with :meth:`login`, loaded from a session
+        file or imported from browser cookies -- and ``None`` if not logged in. Assigning to it
+        updates the ``ds_user_id`` cookie accordingly."""
+        return self._session.cookies.get_dict().get('ds_user_id') or None
+
+    @user_id.setter
+    def user_id(self, user_id: Optional[str]) -> None:
+        self._session.cookies.update({'ds_user_id': user_id or ''})
 
     @property
     def is_logged_in(self) -> bool:
@@ -351,7 +362,6 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
-        self.user_id = resp_json['userId']
 
     def two_factor_login(self, two_factor_code):
         """Second step of login if 2FA is enabled.
@@ -637,11 +647,32 @@ class InstaloaderContext:
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
             # Set headers to simulate an API request from iPad
-            tempsession.headers['ig-intended-user-id'] = str(self.user_id)
+            # ig-intended-user-id should name the logged-in user; self.user_id is derived
+            # from the ds_user_id cookie, so it is set for any logged-in session. Without a
+            # logged-in user, omit the header rather than sending the literal string "None".
+            if self.user_id is not None:
+                tempsession.headers['ig-intended-user-id'] = self.user_id
             tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
 
             # Add headers obtained from previous iPad request
             tempsession.headers.update(self.iphone_headers)
+
+            # The mobile API requires an Authorization bearer token for most
+            # endpoints (reels_media, users/info, ...); without it they answer
+            # with empty data or a "fail" status. A token is handed out via
+            # the ig-set-authorization response header, but only by the few
+            # endpoints that still accept cookie-only requests (e.g.
+            # media/<id>/info/), so relying on having seen one makes success
+            # depend on request order. The token is deterministically derived
+            # from the session cookies, so construct it if none is known yet.
+            if 'authorization' not in tempsession.headers and self.user_id is not None:
+                sessionid = tempsession.cookies.get_dict().get('sessionid')
+                if sessionid:
+                    token = b64encode(json.dumps(
+                        {'ds_user_id': self.user_id,
+                         'sessionid': sessionid},
+                        separators=(',', ':')).encode()).decode()
+                    tempsession.headers['authorization'] = 'Bearer IGT:2:{}'.format(token)
 
             # Extract key information from cookies if we haven't got it already from a previous request
             header_cookies_mapping = {'x-mid': 'mid',
