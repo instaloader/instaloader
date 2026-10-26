@@ -1027,16 +1027,24 @@ class Profile:
         """
         if profile_id in context.profile_id_cache:
             return context.profile_id_cache[profile_id]
-        # Resolve the current username from the user id, then load the full profile.
-        # The GraphQL user query previously used here started responding with HTTP 400.
         try:
-            user = context.get_json(
-                "api/v1/users/{0}/info/".format(profile_id), params={}
-            ).get('user')
+            user = context.doc_id_graphql_query(
+                '27937681195819736',
+                {
+                    "id": str(profile_id),
+                    "render_surface": "PROFILE",
+                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+                    "enable_integrity_filters": True,
+                },
+                web_api=True,
+            ).get('data', {}).get('user')
         except QueryReturnedNotFoundException:
             user = None
         if user and user.get('username'):
-            profile = cls.from_username(context, user['username'])
+            profile = cls(context, cls._normalize_profile_data(user))
         else:
             raise ProfileNotExistsException("No profile found, the user may have blocked you (ID: " +
                                             str(profile_id) + ").")
