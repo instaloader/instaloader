@@ -103,7 +103,6 @@ class InstaloaderContext:
         self.request_timeout = request_timeout
         self._session = self.get_anonymous_session()
         self.username = None
-        self.user_id = None
         self.sleep = sleep
         self.quiet = quiet
         self.max_connection_attempts = max_connection_attempts
@@ -130,11 +129,9 @@ class InstaloaderContext:
     def anonymous_copy(self):
         session = self._session
         username = self.username
-        user_id = self.user_id
         iphone_headers = self.iphone_headers
         self._session = self.get_anonymous_session()
         self.username = None
-        self.user_id = None
         self.iphone_headers = default_iphone_headers()
         try:
             yield self
@@ -142,8 +139,21 @@ class InstaloaderContext:
             self._session.close()
             self.username = username
             self._session = session
-            self.user_id = user_id
             self.iphone_headers = iphone_headers
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """ID of the user this session is logged in as.
+
+        Derived from the ``ds_user_id`` cookie of the current session, so it is set for every
+        logged-in session -- whether it was established with :meth:`login`, loaded from a session
+        file or imported from browser cookies -- and ``None`` if not logged in. Assigning to it
+        updates the ``ds_user_id`` cookie accordingly."""
+        return self._session.cookies.get_dict().get('ds_user_id') or None
+
+    @user_id.setter
+    def user_id(self, user_id: Optional[str]) -> None:
+        self._session.cookies.update({'ds_user_id': user_id or ''})
 
     @property
     def is_logged_in(self) -> bool:
@@ -352,7 +362,6 @@ class InstaloaderContext:
         session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
         self._session = session
         self.username = user
-        self.user_id = resp_json['userId']
 
     def two_factor_login(self, two_factor_code):
         """Second step of login if 2FA is enabled.
@@ -638,15 +647,11 @@ class InstaloaderContext:
         .. versionadded:: 4.2.1"""
         with copy_session(self._session, self.request_timeout) as tempsession:
             # Set headers to simulate an API request from iPad
-            # ig-intended-user-id should name the logged-in user. Only
-            # password login sets self.user_id; sessions loaded from browser
-            # cookies or a session file leave it None, so fall back to the
-            # ds_user_id cookie rather than sending the literal string "None".
-            intended_user_id = self.user_id
-            if intended_user_id is None:
-                intended_user_id = tempsession.cookies.get_dict().get('ds_user_id')
-            if intended_user_id is not None:
-                tempsession.headers['ig-intended-user-id'] = str(intended_user_id)
+            # ig-intended-user-id should name the logged-in user; self.user_id is derived
+            # from the ds_user_id cookie, so it is set for any logged-in session. Without a
+            # logged-in user, omit the header rather than sending the literal string "None".
+            if self.user_id is not None:
+                tempsession.headers['ig-intended-user-id'] = self.user_id
             tempsession.headers['x-pigeon-rawclienttime'] = '{:.6f}'.format(time.time())
 
             # Add headers obtained from previous iPad request
@@ -660,12 +665,12 @@ class InstaloaderContext:
             # media/<id>/info/), so relying on having seen one makes success
             # depend on request order. The token is deterministically derived
             # from the session cookies, so construct it if none is known yet.
-            if 'authorization' not in tempsession.headers:
-                session_cookies = tempsession.cookies.get_dict()
-                if 'ds_user_id' in session_cookies and 'sessionid' in session_cookies:
+            if 'authorization' not in tempsession.headers and self.user_id is not None:
+                sessionid = tempsession.cookies.get_dict().get('sessionid')
+                if sessionid:
                     token = b64encode(json.dumps(
-                        {'ds_user_id': session_cookies['ds_user_id'],
-                         'sessionid': session_cookies['sessionid']},
+                        {'ds_user_id': self.user_id,
+                         'sessionid': sessionid},
                         separators=(',', ':')).encode()).decode()
                     tempsession.headers['authorization'] = 'Bearer IGT:2:{}'.format(token)
 
