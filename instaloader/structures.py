@@ -8,6 +8,7 @@ from itertools import islice
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 from unicodedata import normalize
+from urllib.parse import urlsplit
 
 from . import __version__
 from .exceptions import *
@@ -1973,6 +1974,27 @@ class Story:
             yield StoryItem(self._context, item, self.owner_profile)
 
 
+# Path segments that only choose a rendition, such as s640x640, s150x150, p150x150, and e35.
+_highlight_cover_size_segment = re.compile(r'^(?:[sp]\d+x\d+|e35)$')
+
+
+def _same_highlight_cover_media(url_a: str, url_b: str) -> bool:
+    """Return whether two CDN URLs are the same highlight-cover media.
+
+    The host and query string are ignored. Size and crop segments are dropped before the remaining paths are
+    compared. URLs longer than 8192 characters are treated as different media to bound parsing and normalization.
+    """
+    if len(url_a) > 8192 or len(url_b) > 8192:
+        return False
+
+    def media_path(url: str) -> str:
+        parts = [part for part in urlsplit(url).path.split('/')
+                 if part and not _highlight_cover_size_segment.fullmatch(part)]
+        return '/'.join(parts)
+
+    return media_path(url_a) == media_path(url_b)
+
+
 class Highlight(Story):
     """
     Structure representing a user's highlight with its associated story items.
@@ -2024,8 +2046,26 @@ class Highlight(Story):
 
     @property
     def cover_url(self) -> str:
-        """URL of the highlights' cover."""
-        return self._node['cover_media']['thumbnail_src']
+        """URL of the highlights' cover shown on the profile.
+
+        ``cover_media.thumbnail_src`` is kept when ``cover_media_cropped_thumbnail.url`` is missing or empty, and
+        when both URLs are the same media, so an auto-generated cover stays at the higher resolution and the saved
+        filename does not change. When the paths differ, the cropped URL is the custom cover shown on the profile
+        and is returned instead. ``cover_cropped_url`` is unchanged.
+
+        Two URLs are the same media when their paths match after the query string and size or crop segments such as
+        ``s640x640``, ``s150x150``, ``p150x150``, and ``e35`` are removed. The CDN host is ignored.
+
+        .. versionchanged:: 4.17
+           Return the profile cover when it is a different picture from ``cover_media.thumbnail_src``.
+        """
+        thumbnail_src = self._node['cover_media']['thumbnail_src']
+        cropped = self._node.get('cover_media_cropped_thumbnail') or {}
+        cropped_url = cropped.get('url') if isinstance(cropped, dict) else None
+        if isinstance(cropped_url, str) and cropped_url \
+                and not _same_highlight_cover_media(thumbnail_src, cropped_url):
+            return cropped_url
+        return thumbnail_src
 
     @property
     def cover_cropped_url(self) -> str:
