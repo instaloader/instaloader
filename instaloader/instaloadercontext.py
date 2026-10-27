@@ -725,6 +725,18 @@ class InstaloaderContext:
             data = _query()
             yield from (edge['node'] for edge in data['edges'])
 
+    def get_web_api_json(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """JSON request to an ``api/v1/`` endpoint of ``www.instagram.com``, as the web app's scripts make it.
+
+        Some of these endpoints answer with an HTML page unless the request has the ``Sec-Fetch-*`` headers of a
+        script request.
+
+        .. versionadded:: 4.15.5"""
+        with copy_session(self._session, self.request_timeout) as tmpsession:
+            tmpsession.headers.update({'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors',
+                                       'Sec-Fetch-Site': 'same-origin'})
+            return self.get_json(path, params, session=tmpsession)
+
     def get_iphone_json(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """JSON request to ``i.instagram.com``.
 
