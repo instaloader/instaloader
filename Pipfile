@@ -21,3 +21,4 @@ pip-licenses = "*"
 [packages]
 requests = "*"
 browser-cookie3 = "*"
+rich = "*"
