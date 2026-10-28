@@ -168,6 +168,18 @@ class InstaloaderContext:
         if not self.quiet:
             print(*msg, sep=sep, end=end, flush=flush)
 
+    @staticmethod
+    def printable(text: str) -> str:
+        """Return *text* with the characters that stdout cannot encode replaced by ``?``.
+
+        Use it when logging filenames: on Windows, sanitized paths contain characters such as U+FF1A that a
+        cp1252 console cannot print, and a download must not be lost because its name cannot be logged.
+        Characters the console can print are left untouched.
+
+        .. versionadded:: 4.15.5"""
+        encoding = getattr(sys.stdout, 'encoding', None) or 'utf-8'
+        return text.encode(encoding, errors='replace').decode(encoding, errors='replace')
+
     def error(self, msg, repeat_at_end=True):
         """Log a non-fatal error message to stderr, which is repeated at program termination.
 
@@ -852,7 +864,7 @@ class InstaloaderContext:
         """Write raw response data into a file.
 
         .. versionadded:: 4.2.1"""
-        self.log(filename, end=' ', flush=True)
+        self.log(self.printable(filename), end=' ', flush=True)
         with open(filename + '.temp', 'wb') as file:
             if isinstance(resp, requests.Response):
                 shutil.copyfileobj(resp.raw, file)
