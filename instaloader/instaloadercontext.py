@@ -21,10 +21,22 @@ import requests.utils
 from .exceptions import *
 
 
+def _instagram_cookiejar(cookies: Dict[str, str]) -> requests.cookies.RequestsCookieJar:
+    """Cookie jar with the given cookies of the ``.instagram.com`` domain.
+
+    Instagram sets its cookies, e.g. "rur" with every response, for that domain. Cookies without a domain, as
+    :func:`requests.utils.cookiejar_from_dict` creates them, would not be replaced but sent along with the
+    renewed ones, and Instagram would answer page requests with a redirect to the same page in a loop."""
+    jar = requests.cookies.RequestsCookieJar()
+    for name, value in cookies.items():
+        jar.set(name, value, domain='.instagram.com', path='/')
+    return jar
+
+
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
-    new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
+    new.cookies = _instagram_cookiejar(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
@@ -254,7 +266,7 @@ class InstaloaderContext:
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
         session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
+        session.cookies = _instagram_cookiejar(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
         # Override default timeout behavior.
