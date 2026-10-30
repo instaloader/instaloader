@@ -631,6 +631,15 @@ class InstaloaderContext:
         sessionid = self._session.cookies.get_dict().get("sessionid", "")
         if sessionid not in self._web_api_tokens_cache:
             html = self._get_page(self._session, "")
+            # When Instagram no longer accepts the session, it deletes the sessionid cookie and serves the start
+            # page as to a logged-out visitor, whose ID in the web app is 0. That page may still have tokens.
+            viewer = re.search(r'"NON_FACEBOOK_USER_ID":"?(\d+)', html)
+            if self.is_logged_in and ("sessionid" not in self._session.cookies.get_dict() or
+                                      (viewer is not None and viewer.group(1) == "0")):
+                raise AbortDownloadException(
+                    "Instagram served the start page as to a logged-out visitor. The session has expired "
+                    "or been logged out, please recreate it and try again."
+                )
             tokens = {}
             for name, pattern in [
                 ("fb_dtsg", r'"DTSGInitialData",\[\],\{[^{}]*"token":"([^"]+)"'),
@@ -642,14 +651,6 @@ class InstaloaderContext:
                     tokens[name] = match.group(1)
                 # Logged out, the start page has no fb_dtsg, and the web app sends its queries without.
                 elif name != "fb_dtsg" or self.is_logged_in:
-                    # The web app's ID of the viewer, which is 0 for a logged-out visitor.
-                    viewer = re.search(r'"NON_FACEBOOK_USER_ID":"?(\d+)', html)
-                    if self.is_logged_in and ("sessionid" not in self._session.cookies.get_dict() or
-                                              viewer is None or viewer.group(1) == "0"):
-                        raise AbortDownloadException(
-                            "Instagram served the start page as to a logged-out visitor. The session has expired "
-                            "or been logged out, please recreate it and try again."
-                        )
                     raise BadResponseException(
                         "The start page did not contain the token {}.".format(name)
                     )
