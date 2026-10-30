@@ -642,6 +642,14 @@ class InstaloaderContext:
                     tokens[name] = match.group(1)
                 # Logged out, the start page has no fb_dtsg, and the web app sends its queries without.
                 elif name != "fb_dtsg" or self.is_logged_in:
+                    # The web app's ID of the viewer, which is 0 for a logged-out visitor.
+                    viewer = re.search(r'"NON_FACEBOOK_USER_ID":"?(\d+)', html)
+                    if self.is_logged_in and ("sessionid" not in self._session.cookies.get_dict() or
+                                              viewer is None or viewer.group(1) == "0"):
+                        raise AbortDownloadException(
+                            "Instagram served the start page as to a logged-out visitor. The session has expired "
+                            "or been logged out, please recreate it and try again."
+                        )
                     raise BadResponseException(
                         "The start page did not contain the token {}.".format(name)
                     )
