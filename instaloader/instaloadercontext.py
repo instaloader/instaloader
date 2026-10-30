@@ -820,11 +820,22 @@ class InstaloaderContext:
                    'Sec-Fetch-Site': 'none'}
         try:
             resp = session.get(url, headers=headers, allow_redirects=False)
+            # When Instagram renews the "rur" cookie, it redirects to the same page with a query such as
+            # "?r=1". Follow these, but no redirect to another page, such as the login or a challenge page.
+            for _ in range(3):
+                self._raise_if_login_redirect(resp)
+                redirect_url = urllib.parse.urljoin(url, resp.headers.get('location', ''))
+                if not resp.is_redirect or urllib.parse.urlsplit(redirect_url)[:3] != urllib.parse.urlsplit(url)[:3]:
+                    break
+                resp = session.get(redirect_url, headers=headers, allow_redirects=False)
         except requests.exceptions.RequestException as err:
             raise ConnectionException("Page request to {}: {}".format(url, err)) from err
         self._raise_if_login_redirect(resp)
         if resp.status_code == 404:
             raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.is_redirect:
+            raise ConnectionException("{} (redirect to {})".format(self._response_error(resp),
+                                                                   resp.headers.get('location')))
         if resp.status_code != 200:
             raise ConnectionException(self._response_error(resp))
         return resp.text
