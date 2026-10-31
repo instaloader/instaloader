@@ -1618,6 +1618,20 @@ class Profile:
                                                 .format(self.username))["data"]["user"]["edge_chaining"]["edges"])
 
 
+def _query_reels_media(context: InstaloaderContext, reel_ids: List[str]) -> List[Dict[str, Any]]:
+    """The reels, i.e. stories (by user ID) or highlights (by ``highlight:`` ID), with their items in the
+    format of the iPhone API, as the web app queries them (PolarisStoriesV3ReelPageStandaloneQuery)."""
+    data = context.doc_id_graphql_query(
+        "29170422829314651",
+        {"reel_ids_arr": reel_ids,
+         "__relay_internal__pv__PolarisCommunityNoteStoriesLabelEnabledrelayprovider": True},
+        web_api=True,
+    )["data"]["xdt_api__v1__feed__reels_media"]
+    if data is None:
+        raise BadResponseException("Bad reels media JSON.")
+    return data["reels_media"]
+
+
 class StoryItem:
     """
     Structure containing information about a user story item i.e. image or video.
@@ -1682,6 +1696,34 @@ class StoryItem:
         if shortcode_media is None:
             raise BadResponseException("Fetching StoryItem metadata failed.")
         return cls(context, shortcode_media)
+
+    @classmethod
+    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any],
+                           owner_profile: Optional[Profile] = None):
+        """Create a StoryItem from a given iphone_struct, as the items of stories and highlights are returned.
+
+        .. versionadded:: 4.17"""
+        is_video = media["media_type"] == 2
+        fake_node: Dict[str, Any] = {
+            "id": str(media["pk"]),
+            "__typename": "GraphStoryVideo" if is_video else "GraphStoryImage",
+            "is_video": is_video,
+            "taken_at_timestamp": media["taken_at"],
+            "expiring_at_timestamp": media.get("expiring_at"),
+            "caption": media["caption"].get("text") if media.get("caption") is not None else None,
+            # Smallest first, as in the GraphQL structure.
+            "display_resources": [{"src": candidate["url"],
+                                   "config_width": candidate["width"],
+                                   "config_height": candidate["height"]}
+                                  for candidate in reversed(media["image_versions2"]["candidates"])],
+            "iphone_struct": media,
+        }
+        if "user" in media:
+            fake_node["owner"] = {"id": str(media["user"]["pk"])}
+        if is_video:
+            fake_node["video_resources"] = [{"src": version["url"]}
+                                            for version in reversed(media.get("video_versions") or [])]
+        return cls(context, fake_node, owner_profile)
 
     @property
     def _iphone_struct(self) -> Dict[str, Any]:
@@ -1883,7 +1925,6 @@ class Story:
         self._node = node
         self._unique_id: Optional[str] = None
         self._owner_profile: Optional[Profile] = None
-        self._iphone_struct_: Optional[Dict[str, Any]] = None
 
     def __repr__(self):
         return '<Story by {} changed {:%Y-%m-%d_%H-%M-%S_UTC}>'.format(self.owner_username, self.latest_media_utc)
@@ -1954,23 +1995,10 @@ class Story:
         """The story owner's ID."""
         return self.owner_profile.userid
 
-    def _fetch_iphone_struct(self) -> None:
-        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
-            data = self._context.get_iphone_json(
-                path='api/v1/feed/reels_media/?reel_ids={}'.format(self.owner_id), params={}
-            )
-            self._iphone_struct_ = data['reels'][str(self.owner_id)]
-
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all items from a story."""
-        self._fetch_iphone_struct()
         for item in reversed(self._node['items']):
-            if self._iphone_struct_ is not None:
-                for iphone_struct_item in self._iphone_struct_['items']:
-                    if iphone_struct_item['pk'] == int(item['id']):
-                        item['iphone_struct'] = iphone_struct_item
-                        break
-            yield StoryItem(self._context, item, self.owner_profile)
+            yield StoryItem.from_iphone_struct(self._context, item, self.owner_profile)
 
 
 class Highlight(Story):
@@ -2000,7 +2028,6 @@ class Highlight(Story):
         super().__init__(context, node)
         self._owner_profile = owner
         self._items: Optional[List[Dict[str, Any]]] = None
-        self._iphone_struct_: Optional[Dict[str, Any]] = None
 
     def __repr__(self):
         return '<Highlight by {}: {}>'.format(self.owner_username, self.title)
@@ -2034,17 +2061,7 @@ class Highlight(Story):
 
     def _fetch_items(self):
         if not self._items:
-            self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
-                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
-                                                       "highlight_reel_ids": [str(self.unique_id)],
-                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
-
-    def _fetch_iphone_struct(self) -> None:
-        if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
-            data = self._context.get_iphone_json(
-                path='api/v1/feed/reels_media/?reel_ids=highlight:{}'.format(self.unique_id), params={}
-            )
-            self._iphone_struct_ = data['reels']['highlight:{}'.format(self.unique_id)]
+            self._items = _query_reels_media(self._context, ['highlight:{}'.format(self.unique_id)])[0]['items']
 
     @property
     def itemcount(self) -> int:
@@ -2056,15 +2073,9 @@ class Highlight(Story):
     def get_items(self) -> Iterator[StoryItem]:
         """Retrieve all associated highlight items."""
         self._fetch_items()
-        self._fetch_iphone_struct()
         assert self._items is not None
         for item in self._items:
-            if self._iphone_struct_ is not None:
-                for iphone_struct_item in self._iphone_struct_['items']:
-                    if iphone_struct_item['pk'] == int(item['id']):
-                        item['iphone_struct'] = iphone_struct_item
-                        break
-            yield StoryItem(self._context, item, self.owner_profile)
+            yield StoryItem.from_iphone_struct(self._context, item, self.owner_profile)
 
 
 class Hashtag:
