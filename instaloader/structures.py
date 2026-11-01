@@ -58,7 +58,7 @@ class PostComment:
         media: Dict[str, Any],
         answers: Iterator["PostCommentAnswer"],
         post: "Post",
-    ):
+    ) -> "PostComment":
         return cls(
             context=context,
             node={
@@ -200,7 +200,7 @@ class Post:
             self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
-    def from_shortcode(cls, context: InstaloaderContext, shortcode: str):
+    def from_shortcode(cls, context: InstaloaderContext, shortcode: str) -> "Post":
         """Create a post object from a given shortcode"""
         # pylint:disable=protected-access
         post = cls(context, {'shortcode': shortcode})
@@ -208,12 +208,12 @@ class Post:
         return post
 
     @classmethod
-    def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
+    def from_mediaid(cls, context: InstaloaderContext, mediaid: int) -> "Post":
         """Create a post object from a given mediaid"""
         return cls.from_shortcode(context, Post.mediaid_to_shortcode(mediaid))
 
     @classmethod
-    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]) -> "Post":
         """Create a post from a given iphone_struct.
 
         .. versionadded:: 4.9"""
@@ -982,7 +982,7 @@ class Profile:
             self._iphone_struct_ = node['iphone_struct']
 
     @classmethod
-    def from_username(cls, context: InstaloaderContext, username: str):
+    def from_username(cls, context: InstaloaderContext, username: str) -> "Profile":
         """Create a Profile instance from a given username, raise exception if it does not exist.
 
         See also :meth:`Instaloader.check_profile_id`.
@@ -1017,7 +1017,7 @@ class Profile:
         return cls(context, cls._normalize_profile_data(node))
 
     @classmethod
-    def from_id(cls, context: InstaloaderContext, profile_id: int):
+    def from_id(cls, context: InstaloaderContext, profile_id: int) -> "Profile":
         """Create a Profile instance from a given userid. If possible, use :meth:`Profile.from_username`
         or constructor directly rather than this method, since it requires more requests.
 
@@ -1052,7 +1052,7 @@ class Profile:
         return profile
 
     @classmethod
-    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]):
+    def from_iphone_struct(cls, context: InstaloaderContext, media: Dict[str, Any]) -> "Profile":
         """Create a profile from a given iphone_struct.
 
         .. versionadded:: 4.9"""
@@ -1066,7 +1066,7 @@ class Profile:
         })
 
     @classmethod
-    def own_profile(cls, context: InstaloaderContext):
+    def own_profile(cls, context: InstaloaderContext) -> "Profile":
         """Return own profile if logged-in.
 
         :param context: :attr:`Instaloader.context`
@@ -1669,7 +1669,7 @@ class StoryItem:
         return hash(self.mediaid)
 
     @classmethod
-    def from_mediaid(cls, context: InstaloaderContext, mediaid: int):
+    def from_mediaid(cls, context: InstaloaderContext, mediaid: int) -> "StoryItem":
         """Create a StoryItem object from a given mediaid.
 
         .. versionadded:: 4.9
@@ -2093,7 +2093,7 @@ class Hashtag:
         self._has_full_metadata = False
 
     @classmethod
-    def from_name(cls, context: InstaloaderContext, name: str):
+    def from_name(cls, context: InstaloaderContext, name: str) -> "Hashtag":
         """
         Create a Hashtag instance from a given hashtag name, without preceding '#'. Raises an Exception if there is no
         hashtag with the given name.
