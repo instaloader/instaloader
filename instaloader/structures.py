@@ -976,6 +976,8 @@ class Profile:
         self._has_public_story: Optional[bool] = None
         self._node = node
         self._has_full_metadata = False
+        # The profile's data embedded in its page, including its first posts, if loaded from there when not logged in
+        self._page_user: Optional[Dict[str, Any]] = None
         self._iphone_struct_ = None
         if 'iphone_struct' in node:
             # if loaded from JSON with load_structure_from_file()
@@ -991,6 +993,17 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
+        node, page_user = cls._from_page(context, username)
+        profile = cls(context, node)
+        if not context.is_logged_in:
+            # The page has all that a logged-out visitor sees, including the first posts for get_posts().
+            profile._page_user = page_user
+            profile._has_full_metadata = True
+        return profile
+
+    @staticmethod
+    def _from_page(context: InstaloaderContext, username: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Return the node of a profile and the user data that its page embeds."""
         # Resolve the profile through its public web page, which Instagram renders with the
         # profile embedded. The web_profile_info endpoint previously used here is refused
         # with HTTP 400 for some professional profiles, and with HTTP 401 or 429 for some
@@ -1006,15 +1019,15 @@ class Profile:
             user.update(data.get("xig_user_by_username") or {})
         if not user.get("pk"):
             raise ProfileNotExistsException("Profile {} does not exist.".format(username))
-        user.pop("polaris_ordered_timeline_connection", None)
         # The page's "id" is not the user ID, which is "pk".
         node = dict(user, id=user["pk"])
+        node.pop("polaris_ordered_timeline_connection", None)
         if context.is_logged_in:
             # The page shows the profile as a logged-out visitor sees it. Leave the missing
             # fields, notably the viewer's relationship to the profile, such as
             # followed_by_viewer, to the GraphQL profile query in _obtain_metadata().
-            return cls(context, node)
-        return cls(context, cls._normalize_profile_data(node))
+            return node, user
+        return Profile._normalize_profile_data(node), user
 
     @classmethod
     def from_id(cls, context: InstaloaderContext, profile_id: int) -> "Profile":
@@ -1091,21 +1104,9 @@ class Profile:
         try:
             if not self._has_full_metadata:
                 if not self._context.is_logged_in:
-                    # Anonymous access: the web_profile_info endpoint returns the full
-                    # node in the legacy format and still works, unlike the GraphQL
-                    # profile query.
-                    try:
-                        data = self._context.get_json(
-                            "api/v1/users/web_profile_info/",
-                            params={"username": self.username},
-                        ).get('data')
-                    except QueryReturnedNotFoundException as err:
-                        raise ProfileNotExistsException(
-                            'Profile {} does not exist.'.format(self.username)) from err
-                    user_data = data.get('user') if data else None
-                    if user_data is None:
-                        raise ProfileNotExistsException('Profile {} does not exist.'.format(self.username))
-                    self._node = user_data
+                    # Instagram refuses the GraphQL profile query and web_profile_info when
+                    # not logged in, so take the profile from its page.
+                    self._node, self._page_user = self._from_page(self._context, self.username)
                     self._has_full_metadata = True
                     return
                 user_id = self._node.get('id') or self._node.get('pk')
@@ -1394,18 +1395,16 @@ class Profile:
         :rtype: NodeIterator[Post]
         :raises PrivateProfileNotFollowedException: When logged in and the profile is private and not followed.
         :raises LoginRequiredException: When not logged in and the profile is private."""
+        self._obtain_metadata()
         if not self._context.is_logged_in:
             # As the logged-out web app, take the first posts from the profile page, and query further ones
             # (PolarisLoggedOutDesktopWWWProfilePostsTabContentQuery_connection) by the page's "id" of the
             # profile, which is not its user ID.
-            page = self._context.get_page_data(f"{self.username}/")
+            user = self._page_user
             # The page shows no posts of a private profile, rather than an error.
-            if any((data.get("xig_user_by_username") or {}).get("is_private") for data in page):
+            if self.is_private:
                 raise LoginRequiredException(f"Login required to access the posts of private profile {self.username}.")
-            user = next((data["xig_user_by_username"] for data in page
-                         if "polaris_ordered_timeline_connection" in (data.get("xig_user_by_username") or {})),
-                        None)
-            if user is None:
+            if user is None or "polaris_ordered_timeline_connection" not in user:
                 raise BadResponseException(f"The page of profile {self.username} did not contain its posts.")
             return NodeIterator(
                 context=self._context,
@@ -1423,7 +1422,6 @@ class Profile:
                 first_data=user["polaris_ordered_timeline_connection"],
                 web_api=True,
             )
-        self._obtain_metadata()
         # Instagram answers with an empty timeline rather than an error in that case. Unlike followed_by_viewer,
         # which defaults to False, friendship_status tells whether the follow state is actually known.
         if (self.is_private and self.username != (self._context.username or '').lower() and
