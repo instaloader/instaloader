@@ -1257,16 +1257,27 @@ class Profile:
 
     @property
     def external_url(self) -> Optional[str]:
+        """:raises LoginRequiredException: When not logged in."""
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("Login required to access the external URL of a profile.")
         return self._metadata('external_url')
 
     @property
     def is_business_account(self) -> bool:
-        """.. versionadded:: 4.4"""
+        """.. versionadded:: 4.4
+
+        :raises LoginRequiredException: When not logged in."""
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("Login required to access whether a profile is a business account.")
         return self._metadata('is_business_account')
 
     @property
     def business_category_name(self) -> str:
-        """.. versionadded:: 4.4"""
+        """.. versionadded:: 4.4
+
+        :raises LoginRequiredException: When not logged in."""
+        if not self._context.is_logged_in:
+            raise LoginRequiredException("Login required to access the business category of a profile.")
         return self._metadata('business_category_name')
 
     @property
