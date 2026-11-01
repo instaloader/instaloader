@@ -51,7 +51,7 @@ See :ref:`install` for more options on how to install Instaloader.
                 [--stories] [--highlights] [--tagged] [--reels] [--igtv]
                 [--login YOUR-USERNAME] [--fast-update]
                 profile | "#hashtag" | %location_id |
-                :stories | :feed | :saved
+                :stories | :feed | :saved | :saved:collection
 
 See :ref:`download-pictures-from-instagram` for a detailed introduction on how
 to use Instaloader to download pictures from Instagram.
