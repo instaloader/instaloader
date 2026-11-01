@@ -733,6 +733,9 @@ class Post:
         comments = self._node.get('edge_media_to_comment')
         if comments and 'count' in comments:
             return comments['count']
+        # Nodes from the iPhone API and the doc_id based profile posts query carry the count as plain 'comments'.
+        if isinstance(self._node.get('comments'), int):
+            return self._node['comments']
         try:
             return self._field('edge_media_to_parent_comment', 'count')
         except KeyError:
