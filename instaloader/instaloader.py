@@ -24,7 +24,8 @@ from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic,
+                         _query_reels_media)
 
 
 def _get_config_dir() -> str:
@@ -813,11 +814,13 @@ class Instaloader:
         """
 
         if not userids:
-            data = self.context.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704",
-                                              {"only_stories": True})["data"]["user"]
+            # The query that the web app's start page sends for its stories tray (PolarisStoriesV3TrayContainerQuery).
+            data = self.context.doc_id_graphql_query("38657722893875056",
+                                                     {"data": {"is_following_feed": False, "reason": "web_home"}},
+                                                     web_api=True)["data"]["xdt_api__v1__feed__reels_tray"]
             if data is None:
                 raise BadResponseException('Bad stories reel JSON.')
-            userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
+            userids = list(reel["id"] for reel in data["tray"])
 
         def _userid_chunks():
             assert userids is not None
@@ -826,9 +829,8 @@ class Instaloader:
                 yield userids[i:i + userids_per_query]
 
         for userid_chunk in _userid_chunks():
-            stories = self.context.graphql_query("303a4ae99711322310f25250d988f3b7",
-                                                 {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
-            yield from (Story(self.context, media) for media in stories['reels_media'])
+            reels = _query_reels_media(self.context, [str(userid) for userid in userid_chunk])
+            yield from (Story(self.context, reel) for reel in reels)
 
     @_requires_login
     def download_stories(self,

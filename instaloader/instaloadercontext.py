@@ -21,10 +21,22 @@ import requests.utils
 from .exceptions import *
 
 
+def _instagram_cookiejar(cookies: Dict[str, str]) -> requests.cookies.RequestsCookieJar:
+    """Cookie jar with the given cookies of the ``.instagram.com`` domain.
+
+    Instagram sets its cookies, e.g. "rur" with every response, for that domain. Cookies without a domain, as
+    :func:`requests.utils.cookiejar_from_dict` creates them, would not be replaced but sent along with the
+    renewed ones, and Instagram would answer page requests with a redirect to the same page in a loop."""
+    jar = requests.cookies.RequestsCookieJar()
+    for name, value in cookies.items():
+        jar.set(name, value, domain='.instagram.com', path='/')
+    return jar
+
+
 def copy_session(session: requests.Session, request_timeout: Optional[float] = None) -> requests.Session:
     """Duplicates a requests.Session."""
     new = requests.Session()
-    new.cookies = requests.utils.cookiejar_from_dict(requests.utils.dict_from_cookiejar(session.cookies))
+    new.cookies = _instagram_cookiejar(requests.utils.dict_from_cookiejar(session.cookies))
     new.headers = session.headers.copy()  # type: ignore
     # Override default timeout behavior.
     # Need to silence mypy bug for this. See: https://github.com/python/mypy/issues/2427
@@ -254,7 +266,7 @@ class InstaloaderContext:
     def load_session(self, username, sessiondata):
         """Not meant to be used directly, use :meth:`Instaloader.load_session`."""
         session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(sessiondata)
+        session.cookies = _instagram_cookiejar(sessiondata)
         session.headers.update(self._default_http_header())
         session.headers.update({'X-CSRFToken': session.cookies.get_dict()['csrftoken']})
         # Override default timeout behavior.
@@ -619,6 +631,15 @@ class InstaloaderContext:
         sessionid = self._session.cookies.get_dict().get("sessionid", "")
         if sessionid not in self._web_api_tokens_cache:
             html = self._get_page(self._session, "")
+            # When Instagram no longer accepts the session, it deletes the sessionid cookie and serves the start
+            # page as to a logged-out visitor, whose ID in the web app is 0. That page may still have tokens.
+            viewer = re.search(r'"NON_FACEBOOK_USER_ID":"?(\d+)', html)
+            if self.is_logged_in and ("sessionid" not in self._session.cookies.get_dict() or
+                                      (viewer is not None and viewer.group(1) == "0")):
+                raise AbortDownloadException(
+                    "Instagram served the start page as to a logged-out visitor. The session has expired "
+                    "or been logged out, please recreate it and try again."
+                )
             tokens = {}
             for name, pattern in [
                 ("fb_dtsg", r'"DTSGInitialData",\[\],\{[^{}]*"token":"([^"]+)"'),
@@ -820,11 +841,22 @@ class InstaloaderContext:
                    'Sec-Fetch-Site': 'none'}
         try:
             resp = session.get(url, headers=headers, allow_redirects=False)
+            # When Instagram renews the "rur" cookie, it redirects to the same page with a query such as
+            # "?r=1". Follow these, but no redirect to another page, such as the login or a challenge page.
+            for _ in range(3):
+                self._raise_if_login_redirect(resp)
+                redirect_url = urllib.parse.urljoin(url, resp.headers.get('location', ''))
+                if not resp.is_redirect or urllib.parse.urlsplit(redirect_url)[:3] != urllib.parse.urlsplit(url)[:3]:
+                    break
+                resp = session.get(redirect_url, headers=headers, allow_redirects=False)
         except requests.exceptions.RequestException as err:
             raise ConnectionException("Page request to {}: {}".format(url, err)) from err
         self._raise_if_login_redirect(resp)
         if resp.status_code == 404:
             raise QueryReturnedNotFoundException(self._response_error(resp))
+        if resp.is_redirect:
+            raise ConnectionException("{} (redirect to {})".format(self._response_error(resp),
+                                                                   resp.headers.get('location')))
         if resp.status_code != 200:
             raise ConnectionException(self._response_error(resp))
         return resp.text
