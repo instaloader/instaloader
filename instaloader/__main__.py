@@ -3,6 +3,7 @@
 import ast
 import datetime
 import os
+import pickle
 import re
 import sys
 from argparse import ArgumentParser, ArgumentTypeError, SUPPRESS
@@ -197,6 +198,24 @@ def _main(instaloader: Instaloader, targetlist: List[str],
                     print("\nInterrupted by user.", file=sys.stderr)
                     return ExitCode.USER_ABORTED
         instaloader.context.log("Logged in as %s." % username)
+    elif sessionfile is not None:
+        # Load the session even if no --login is given. Previously, --sessionfile was
+        # silently ignored without --login, so downloads ran anonymously although a
+        # session file was explicitly passed, which makes them prone to rate limiting.
+        session_username = None
+        try:
+            with open(sessionfile, 'rb') as sessionfile_handle:
+                instaloader.context.load_session(None, pickle.load(sessionfile_handle))
+            session_username = instaloader.test_login()
+        except (FileNotFoundError, pickle.UnpicklingError, KeyError):
+            pass
+        if session_username is not None:
+            instaloader.context.username = session_username
+            instaloader.context.log("Loaded session from %s." % sessionfile)
+            instaloader.context.log("Logged in as %s." % session_username)
+        else:
+            instaloader.context.error("Warning: Session file %s does not contain a valid session - "
+                                      "continuing anonymously." % sessionfile)
     # since 4.2.9 login is required for geotags
     if instaloader.download_geotags and not instaloader.context.is_logged_in:
         instaloader.context.error("Warning: Login is required to download geotags of posts.")
@@ -465,7 +484,8 @@ def main():
     g_login.add_argument('-B', '--cookiefile', metavar='COOKIE-FILE',
                          help='Cookie file of a profile to load cookies')
     g_login.add_argument('-f', '--sessionfile',
-                         help='Path for loading and storing session key file. '
+                         help='Path for loading and storing session key file. If given without '
+                              '--login and the file exists, the session is loaded from it. '
                               'Defaults to ' + get_default_session_filename("<login_name>"))
     g_login.add_argument('-p', '--password', metavar='YOUR-PASSWORD',
                          help='Password for your Instagram account. Without this option, '
