@@ -913,6 +913,8 @@ class Post:
     def location(self) -> Optional[PostLocation]:
         """
         If the Post has a location, returns PostLocation NamedTuple with fields 'id', 'lat' and 'lng' and 'name'.
+        Returns None if the location has no ID. 'slug' is empty and 'has_public_page' is None if Instagram did not
+        include them with the post.
 
         .. versionchanged:: 4.2.9
            Require being logged in (as required by Instagram), return None if not logged-in.
@@ -922,11 +924,19 @@ class Post:
             return self._location
         if not self._context.is_logged_in:
             return None
-        location_id = int(loc['id'])
-        if any(k not in loc for k in ('name', 'slug', 'has_public_page', 'lat', 'lng')):
-            loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
-                                              params={'__a': 1, '__d': 'dis'})['native_location_data']['location_info'])
-        self._location = PostLocation(location_id, loc['name'], loc['slug'], loc['has_public_page'],
+        # The GraphQL format has "id", the format of the web app's current queries and of the iPhone API has "pk".
+        location_id = loc.get('id') or loc.get('pk')
+        if location_id is None:
+            return None
+        if 'name' not in loc:
+            try:
+                loc.update(self._context.get_json("explore/locations/{0}/".format(location_id),
+                                                  params={'__a': 1, '__d': 'dis'})
+                           ['native_location_data']['location_info'])
+            except (ConnectionException, KeyError) as err:
+                self._context.error("Unable to fetch location {0}: {1}".format(location_id, err))
+                return None
+        self._location = PostLocation(int(location_id), loc['name'], loc.get('slug', ''), loc.get('has_public_page'),
                                       loc.get('lat'), loc.get('lng'))
         return self._location
 
