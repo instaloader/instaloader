@@ -209,7 +209,8 @@ Instead of :option:`--login`, it is possible to use
 .. option:: --load-cookies BROWSER-NAME, -b BROWSER-NAME
 
    Load Instagram session cookies from a browser instead of using Instaloader's own login mechanism.
-   This method requires the `browser_cookie3 <https://github.com/borisbabic/browser_cookie3>`__ library.
+   This method uses a vendored copy of `browser_cookie3 <https://github.com/borisbabic/browser_cookie3>`__ (bundled with Instaloader).
+   Install its runtime dependencies with ``pip install instaloader[browser-cookie-import]``.
    By default, cookies are loaded from the browser's main profile, but you can specify a custom cookie file using :option:`--cookiefile`.
 
    Since :option:`--load-cookies` and :option:`--login` are alternative ways to acquire a session, they cannot be used together when initially acquiring a session.

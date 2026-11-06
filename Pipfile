@@ -20,4 +20,6 @@ pip-licenses = "*"
 
 [packages]
 requests = "*"
-browser-cookie3 = "*"
+lz4 = "*"
+pycryptodomex = "*"
+dbus-python = {version = "*", sys_platform = "== 'linux'"}
