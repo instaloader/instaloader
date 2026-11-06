@@ -1,0 +1,16 @@
+instaloader.exe is a standalone executable built with PyInstaller. Besides Instaloader itself
+(see ../LICENSE.txt), it contains the following third-party software:
+
+- Python, its standard library and the libraries it is built with, see Python.txt and
+  Python-incorporated-software.txt.
+- The Python packages listed in third-party.txt, along with their license texts.
+
+browser-cookie3 is licensed under the GNU Lesser General Public License version 3, whose text is
+included in third-party.txt. It refers to the GNU General Public License version 3, see GPL-3.0.txt.
+certifi is licensed under the Mozilla Public License 2.0, whose text is included in third-party.txt.
+Their source code, in the versions listed in third-party.txt, is available at
+https://pypi.org/project/browser-cookie3/#history and https://pypi.org/project/certifi/#history.
+
+You may build instaloader.exe with modified versions of these packages: the source code of
+Instaloader, including the script used to build instaloader.exe (deploy/windows/create_exe.py),
+is published along with each release at https://github.com/instaloader/instaloader/releases.

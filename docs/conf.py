@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Instaloader'
-copyright = '2023, Alexander Graf and Andre Koch-Kramer'
+copyright = '2016-2026, Alexander Graf, Andre Koch-Kramer and the Instaloader contributors'
 author = 'Alexander Graf and Andre Koch-Kramer'
 
 # -- General configuration ---------------------------------------------------

@@ -69,6 +69,9 @@ class NodeIterator(Iterator[T]):
 
     .. versionchanged: 4.13
        Included support for `doc_id`-based queries (using POST method).
+
+    .. versionchanged: 4.16
+       Added `web_api` parameter, see :meth:`InstaloaderContext.doc_id_graphql_query`.
     """
 
     _graphql_page_length = 12
@@ -83,10 +86,12 @@ class NodeIterator(Iterator[T]):
                  query_referer: Optional[str] = None,
                  first_data: Optional[Dict[str, Any]] = None,
                  is_first: Optional[Callable[[T, Optional[T]], bool]] = None,
-                 doc_id: Optional[str] = None):
+                 doc_id: Optional[str] = None,
+                 web_api: bool = False):
         self._context = context
         self._query_hash = query_hash
         self._doc_id = doc_id
+        self._web_api = web_api
         self._edge_extractor = edge_extractor
         self._node_wrapper = node_wrapper
         self._query_variables = query_variables if query_variables is not None else {}
@@ -99,6 +104,7 @@ class NodeIterator(Iterator[T]):
         else:
             self._data = self._query()
         self._first_node: Optional[Dict] = None
+        self._first_item: Optional[T] = None
         self._is_first = is_first
 
     def _query(self, after: Optional[str] = None) -> Dict:
@@ -109,15 +115,15 @@ class NodeIterator(Iterator[T]):
             return self._query_query_hash(self._query_hash, after)
 
     def _query_doc_id(self, doc_id: str, after: Optional[str] = None) -> Dict:
-        pagination_variables: Dict[str, Any] = {'__relay_internal__pv__PolarisFeedShareMenurelayprovider': False}
+        pagination_variables: Dict[str, Any] = {}
         if after is not None:
             pagination_variables['after'] = after
             pagination_variables['before'] = None
-            pagination_variables['first'] = 12
+            pagination_variables['first'] = NodeIterator._graphql_page_length
             pagination_variables['last'] = None
         data = self._edge_extractor(
             self._context.doc_id_graphql_query(
-                doc_id, {**self._query_variables, **pagination_variables}, self._query_referer
+                doc_id, {**self._query_variables, **pagination_variables}, self._query_referer, self._web_api
             )
         )
         self._best_before = datetime.now() + NodeIterator._shelf_life
@@ -151,10 +157,10 @@ class NodeIterator(Iterator[T]):
             item = self._node_wrapper(node)
             if self._is_first is not None:
                 if self._is_first(item, self.first_item):
-                    self._first_node = node
+                    self._first_node, self._first_item = node, item
             else:
                 if self._first_node is None:
-                    self._first_node = node
+                    self._first_node, self._first_item = node, item
             return item
         if self._data.get('page_info', {}).get('has_next_page'):
             query_response = self._query(self._data['page_info']['end_cursor'])
@@ -201,7 +207,15 @@ class NodeIterator(Iterator[T]):
         .. versionchanged:: 4.9.2
            What is considered the first item can be overridden.
         """
-        return self._node_wrapper(self._first_node) if self._first_node is not None else None
+        if self._first_item is None:
+            # Restore _first_item from _first_node. Needed after thawing, since
+            # FrozenNodeIterator stores the node, not the item.
+            self._first_item = (
+                self._node_wrapper(self._first_node)
+                if self._first_node is not None
+                else None
+            )
+        return self._first_item
 
     @staticmethod
     def page_length() -> int:

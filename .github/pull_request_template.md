@@ -20,5 +20,8 @@ describe:
 - Further considerations
   - Is it based on master (bugfix), upcoming/v4.X (new feature), or another pull request?
   - Does it preserve backward compatibility and existing behavior?
+  - If generative AI was involved, ensure it follows our AI policy.
+
+(also see https://instaloader.github.io/contributing.html)
 
 -->
