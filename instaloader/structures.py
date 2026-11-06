@@ -1085,9 +1085,9 @@ class Profile:
         :param context: :attr:`Instaloader.context`
 
         .. versionadded:: 4.5.2"""
-        if not context.is_logged_in:
+        if not context.is_logged_in or context.user_id is None:
             raise LoginRequiredException("Login required to access own profile.")
-        return cls(context, context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
+        return cls.from_id(context, int(context.user_id))
 
     def _asdict(self):
         json_node = self._node.copy()

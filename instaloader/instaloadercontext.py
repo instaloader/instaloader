@@ -273,10 +273,30 @@ class InstaloaderContext:
 
     def test_login(self) -> Optional[str]:
         """Not meant to be used directly, use :meth:`Instaloader.test_login`."""
+        if self.user_id is None:
+            return None
         try:
-            data = self.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})
-            return data["data"]["user"]["username"] if data["data"]["user"] is not None else None
-        except (AbortDownloadException, ConnectionException) as err:
+            # The start page has no fb_dtsg if the session is not logged in.
+            if "fb_dtsg" not in self._web_api_tokens():
+                return None
+            # Resolve the session's user ID (from its ds_user_id cookie) with the profile query,
+            # as Profile.from_id() does.
+            # pylint:disable=duplicate-code
+            user = self.doc_id_graphql_query(
+                '27937681195819736',
+                {
+                    "id": self.user_id,
+                    "render_surface": "PROFILE",
+                    "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
+                    "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+                    "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
+                    "enable_integrity_filters": True,
+                },
+                web_api=True,
+            ).get("data", {}).get("user")
+            return user.get("username") if user else None
+        except (AbortDownloadException, ConnectionException, BadResponseException) as err:
             self.error(f"Error when checking if logged in: {err}")
             return None
 
