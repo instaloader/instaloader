@@ -415,8 +415,8 @@ class Post:
                     "shortcode": self.shortcode,
                     "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
                 },
-                # As the logged-out web app does.
-                web_api=not self._context.is_logged_in,
+                # As the web app does.
+                web_api=True,
             )
             web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
             items = web_info.get("items")
@@ -1119,7 +1119,7 @@ class Profile:
                     "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
                     "enable_integrity_filters": True,
                 }
-                data = self._context.doc_id_graphql_query('27937681195819736', variables)
+                data = self._context.doc_id_graphql_query('27937681195819736', variables, web_api=True)
                 if data is None:
                     raise QueryReturnedNotFoundException('GraphQL query returned None')
                 user_data = data.get('data', {}).get('user')
