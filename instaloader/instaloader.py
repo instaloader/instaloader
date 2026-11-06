@@ -24,7 +24,8 @@ from .lateststamps import LatestStamps
 from .nodeiterator import NodeIterator, resumable_iteration
 from .sectioniterator import SectionIterator
 from .structures import (Hashtag, Highlight, JsonExportable, Post, PostLocation, Profile, Story, StoryItem,
-                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic)
+                         load_structure_from_file, save_structure_to_file, PostSidecarNode, TitlePic,
+                         _normalize_highlight, _reels_media)
 
 
 def _get_config_dir() -> str:
@@ -813,22 +814,24 @@ class Instaloader:
         """
 
         if not userids:
-            data = self.context.graphql_query("d15efd8c0c5b23f0ef71f18bf363c704",
-                                              {"only_stories": True})["data"]["user"]
+            data = self.context.doc_id_graphql_query(
+                # fb_api_req_friendly_name=PolarisStoriesV3TrayContainerQuery
+                "38657722893875056", {"data": {"is_following_feed": False, "reason": "web_home"}}, web_api=True,
+            )["data"]["xdt_api__v1__feed__reels_tray"]
             if data is None:
                 raise BadResponseException('Bad stories reel JSON.')
-            userids = list(edge["node"]["id"] for edge in data["feed_reels_tray"]["edge_reels_tray_to_reel"]["edges"])
+            userids = list(int(reel["user"]["pk"]) for reel in data["tray"])
 
         def _userid_chunks():
             assert userids is not None
-            userids_per_query = 50
+            # The reels media query fails for more than 35 reel IDs.
+            userids_per_query = 30
             for i in range(0, len(userids), userids_per_query):
                 yield userids[i:i + userids_per_query]
 
         for userid_chunk in _userid_chunks():
-            stories = self.context.graphql_query("303a4ae99711322310f25250d988f3b7",
-                                                 {"reel_ids": userid_chunk, "precomposed_overlay": False})["data"]
-            yield from (Story(self.context, media) for media in stories['reels_media'])
+            reels = _reels_media(self.context, [str(userid) for userid in userid_chunk])
+            yield from (Story(self.context, reel) for reel in reels)
 
     @_requires_login
     def download_stories(self,
@@ -945,14 +948,17 @@ class Instaloader:
         """
 
         userid = user if isinstance(user, int) else user.userid
-        data = self.context.graphql_query("7c16654f22c819fb63d1183034a5162f",
-                                          {"user_id": userid, "include_chaining": False, "include_reel": False,
-                                           "include_suggested_users": False, "include_logged_out_extras": False,
-                                           "include_highlight_reels": True})["data"]["user"]['edge_highlight_reels']
-        if data is None:
-            raise BadResponseException('Bad highlights reel JSON.')
-        yield from (Highlight(self.context, edge['node'], user if isinstance(user, Profile) else None)
-                    for edge in data['edges'])
+        owner = user if isinstance(user, Profile) else None
+        yield from NodeIterator(
+            context=self.context,
+            query_hash=None,
+            edge_extractor=lambda d: d['data']['highlights'],
+            node_wrapper=lambda n: Highlight(self.context, _normalize_highlight(n), owner),
+            query_variables={"user_id": str(userid)},
+            # fb_api_req_friendly_name=ProfileStoryHighlightsTrayContentQuery_connection
+            doc_id="38168009559465141",
+            web_api=True,
+        )
 
     @_requires_login
     def download_highlights(self,

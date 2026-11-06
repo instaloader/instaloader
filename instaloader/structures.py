@@ -1334,17 +1334,10 @@ class Profile:
 
     @property
     def has_public_story(self) -> bool:
-        if not self._has_public_story:
+        if self._has_public_story is None:
             self._obtain_metadata()
-            # query rate might be limited:
-            data = self._context.graphql_query('9ca88e465c3f866a76f7adee3871bdd8',
-                                               {'user_id': self.userid, 'include_chaining': False,
-                                                'include_reel': False, 'include_suggested_users': False,
-                                                'include_logged_out_extras': True,
-                                                'include_highlight_reels': False},
-                                               'https://www.instagram.com/{}/'.format(self.username))
-            self._has_public_story = data['data']['user']['has_public_story']
-        assert self._has_public_story is not None
+            # The timestamp of the profile's latest story item, or 0 without a story.
+            self._has_public_story = bool(self._node.get('latest_reel_media'))
         return self._has_public_story
 
     @property
@@ -1866,6 +1859,59 @@ class StoryItem:
         return None
 
 
+def _normalize_story_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize a story item of the web app's reels media query to a legacy-compatible node, preserving the
+    source structure."""
+    is_video = item["media_type"] == 2
+    # Smallest first and preferred version last, as in the legacy node.
+    candidates = sorted((item.get("image_versions2") or {}).get("candidates") or [],
+                        key=lambda candidate: (candidate.get("width") or 0) * (candidate.get("height") or 0))
+    video_versions = list(reversed(item.get("video_versions") or []))
+    caption = item.get("caption")
+    return {
+        **item,
+        "id": str(item["pk"]),
+        "owner": {"id": str(item["user"]["pk"])},
+        "__typename": "GraphStoryVideo" if is_video else "GraphStoryImage",
+        "is_video": is_video,
+        "taken_at_timestamp": item["taken_at"],
+        "expiring_at_timestamp": item["expiring_at"],
+        "display_resources": [{"src": candidate["url"], "config_width": candidate.get("width"),
+                               "config_height": candidate.get("height")} for candidate in candidates],
+        "video_resources": [{"src": version["url"]} for version in video_versions],
+        "caption": caption.get("text") if isinstance(caption, dict) else None,
+    }
+
+
+def _reels_media(context: InstaloaderContext, reel_ids: List[str]) -> List[Dict[str, Any]]:
+    """The reels of the given user IDs or ``highlight:`` IDs, with their items normalized."""
+    data = context.doc_id_graphql_query(
+        # fb_api_req_friendly_name=PolarisStoriesV3ReelPageStandaloneQuery
+        "29341065465524437",
+        {"media_id": None, "reel_ids_arr": reel_ids,
+         "__relay_internal__pv__PolarisCommunityNoteStoriesLabelEnabledrelayprovider": True},
+        web_api=True,
+    )["data"]["xdt_api__v1__feed__reels_media"]
+    if data is None:
+        raise BadResponseException("Bad reels media JSON.")
+    return [dict(reel, items=[_normalize_story_item(item) for item in reel["items"]])
+            for reel in data["reels_media"]]
+
+
+def _normalize_highlight(node: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize a highlight of the web app's highlights tray query to a legacy-compatible node, preserving the
+    source structure."""
+    # The tray only has the cropped version of the cover.
+    cover_url = node["cover_media"]["cropped_image_version"]["url"]
+    return {
+        **node,
+        "id": node["id"].removeprefix("highlight:"),
+        "owner": node["user"],
+        "cover_media": {"thumbnail_src": cover_url},
+        "cover_media_cropped_thumbnail": {"url": cover_url},
+    }
+
+
 class Story:
     """
     Structure representing a user story with its associated items.
@@ -2043,10 +2089,7 @@ class Highlight(Story):
 
     def _fetch_items(self):
         if not self._items:
-            self._items = self._context.graphql_query("45246d3fe16ccc6577e0bd297a5db1ab",
-                                                      {"reel_ids": [], "tag_names": [], "location_ids": [],
-                                                       "highlight_reel_ids": [str(self.unique_id)],
-                                                       "precomposed_overlay": False})['data']['reels_media'][0]['items']
+            self._items = _reels_media(self._context, ["highlight:{}".format(self.unique_id)])[0]['items']
 
     def _fetch_iphone_struct(self) -> None:
         if self._context.iphone_support and self._context.is_logged_in and not self._iphone_struct_:
