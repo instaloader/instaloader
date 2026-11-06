@@ -264,12 +264,15 @@ class Post:
         """Fetch play_count for a reel via the clips connection endpoint as a fallback."""
         try:
             resp = context.doc_id_graphql_query(
-                "27234427476213202",
+                "28971369649196954",
                 {"data": {"include_feed_video": True, "page_size": 12,
-                           "target_user_id": str(user_id)}},
+                           "target_user_id": str(user_id)},
+                 "id": str(user_id),
+                 "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": True},
+                web_api=True,
             )
-            edges = ((resp.get("data") or {})
-                     .get("xdt_api__v1__clips__user__connection_v2") or {})
+            user = (resp.get("data") or {}).get("fetch__XDTUserDict") or {}
+            edges = user.get("clips_connection") or {}
             for edge in edges.get("edges") or []:
                 media = (edge.get("node") or {}).get("media") or {}
                 if media.get("code") == shortcode:
@@ -415,8 +418,8 @@ class Post:
                     "shortcode": self.shortcode,
                     "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
                 },
-                # As the logged-out web app does.
-                web_api=not self._context.is_logged_in,
+                # As the web app does.
+                web_api=True,
             )
             web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
             items = web_info.get("items")
@@ -1085,9 +1088,9 @@ class Profile:
         :param context: :attr:`Instaloader.context`
 
         .. versionadded:: 4.5.2"""
-        if not context.is_logged_in:
+        if not context.is_logged_in or context.user_id is None:
             raise LoginRequiredException("Login required to access own profile.")
-        return cls(context, context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]["user"])
+        return cls.from_id(context, int(context.user_id))
 
     def _asdict(self):
         json_node = self._node.copy()
@@ -1119,7 +1122,7 @@ class Profile:
                     "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
                     "enable_integrity_filters": True,
                 }
-                data = self._context.doc_id_graphql_query('27937681195819736', variables)
+                data = self._context.doc_id_graphql_query('27937681195819736', variables, web_api=True)
                 if data is None:
                     raise QueryReturnedNotFoundException('GraphQL query returned None')
                 user_data = data.get('data', {}).get('user')
@@ -1516,17 +1519,21 @@ class Profile:
         self._obtain_metadata()
         return NodeIterator(
             context = self._context,
-            edge_extractor = lambda d: d['data']['xdt_api__v1__clips__user__connection_v2'],
+            edge_extractor = lambda d: d['data']['fetch__XDTUserDict']['clips_connection'],
             # Reels post info is incomplete relative to regular posts so we create a Post from the shortcode
             # and fetch the additional metadata with an additional API request per Reel
             node_wrapper = lambda n: Post.from_shortcode(context=self._context, shortcode=n["media"]["code"]),
-            query_variables = {'data': {
-                'page_size': 12, 'include_feed_video': True, "target_user_id": str(self.userid)}},
+            query_variables = {
+                'data': {'page_size': 12, 'include_feed_video': True, "target_user_id": str(self.userid)},
+                'id': str(self.userid),
+                '__relay_internal__pv__PolarisShortDramaEnabledrelayprovider': True,
+            },
             query_referer = 'https://www.instagram.com/{0}/'.format(self.username),
             is_first = Profile._make_is_newest_checker(),
             # fb_api_req_friendly_name=PolarisProfileReelsTabContentQuery_connection
-            doc_id = '7845543455542541',
+            doc_id = '28971369649196954',
             query_hash = None,
+            web_api = True,
         )
 
     def get_igtv_posts(self) -> NodeIterator[Post]:
