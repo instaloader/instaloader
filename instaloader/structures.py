@@ -1495,6 +1495,26 @@ class Profile:
 
         .. versionadded:: 4.0.7"""
         self._obtain_metadata()
+        if self._context.is_logged_in:
+            # The web app's query, which Instagram only answers when logged in.
+            return NodeIterator(
+                context=self._context,
+                edge_extractor=lambda d: d['data']['xdt_api__v1__usertags__user_id__feed_connection'],
+                # The nodes lack most of the post's metadata, as in get_reels().
+                node_wrapper=lambda n: Post.from_shortcode(self._context, n['code']),
+                query_variables={
+                    "count": 12,
+                    "user_id": str(self.userid),
+                    "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": True,
+                    "__relay_internal__pv__PolarisSEOIsCrawlerrelayprovider": False,
+                },
+                query_referer='https://www.instagram.com/{0}/'.format(self.username),
+                is_first=Profile._make_is_newest_checker(),
+                # fb_api_req_friendly_name=PolarisProfileTaggedTabContentQuery_connection
+                doc_id='29092174377082390',
+                query_hash=None,
+                web_api=True,
+            )
         return NodeIterator(
             self._context,
             'e31a871f7301132ceaab56507a66bbb7',
