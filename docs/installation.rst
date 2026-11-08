@@ -36,6 +36,12 @@ To **upgrade Instaloader** to its current version, do::
 - On **Android**, you can use Instaloader with `Termux <https://play.google.com/store/apps/details?id=com.termux>`__
   after typing ``pkg install python`` and ``pip3 install instaloader``.
 
+- On **Linux**, the third-party `OTinstaller <https://github.com/OSINTVerseHQ/OTinstaller>`__ tool
+  manager can install Instaloader into its own virtualenv with
+  ``otinstaller init`` and then ``otinstaller install instaloader``. It is not maintained by the Instaloader
+  team, so please report problems with it
+  `on the OTinstaller tracker <https://github.com/OSINTVerseHQ/OTinstaller/issues>`__.
+
 - To test the most current **pre-release** version of Instaloader::
 
      pip3 install --pre instaloader
