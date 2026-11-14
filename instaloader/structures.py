@@ -1119,7 +1119,7 @@ class Profile:
                     "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
                     "enable_integrity_filters": True,
                 }
-                data = self._context.doc_id_graphql_query('27937681195819736', variables)
+                data = self._context.doc_id_graphql_query('27937681195819736', variables, web_api=True)
                 if data is None:
                     raise QueryReturnedNotFoundException('GraphQL query returned None')
                 user_data = data.get('data', {}).get('user')
