@@ -829,6 +829,21 @@ class InstaloaderContext:
             raise ConnectionException(self._response_error(resp))
         return resp.text
 
+    def get_profile_id_from_page(self, path: str) -> Optional[str]:
+        """Read a profile's ID from its page, using the current session."""
+        html = self._get_page(self._session, path)
+        decoder = json.JSONDecoder()
+        ids = set()
+        # Decode the logging object without depending on its JSON field order.
+        for match in re.finditer(r'"page_logging"\s*:\s*', html):
+            with suppress(json.JSONDecodeError):
+                page_logging, _ = decoder.raw_decode(html, match.end())
+                if isinstance(page_logging, dict) and page_logging.get("name") == "profilePage":
+                    params = page_logging.get("params")
+                    if isinstance(params, dict) and params.get("profile_id"):
+                        ids.add(str(params["profile_id"]))
+        return ids.pop() if len(ids) == 1 else None
+
     def get_page_data(self, path: str) -> List[Dict[str, Any]]:
         """Load a page of ``www.instagram.com`` as a logged-out visitor and return the data it embeds.
 

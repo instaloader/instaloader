@@ -993,7 +993,22 @@ class Profile:
         :param username: Username
         :raises: :class:`ProfileNotExistsException`
         """
-        node, page_user = cls._from_page(context, username)
+        try:
+            node, page_user = cls._from_page(context, username)
+        except ProfileNotExistsException:
+            if not context.is_logged_in:
+                raise
+            # A profile hidden from anonymous visitors may still be accessible with this session.
+            try:
+                profile_id = context.get_profile_id_from_page(f"{username.lower()}/")
+            except QueryReturnedNotFoundException:
+                profile_id = None
+            if profile_id is not None:
+                profile = cls(context, {"id": profile_id, "username": username.lower()})
+                profile._obtain_metadata()
+                if profile.username == username.lower():
+                    return profile
+            raise
         profile = cls(context, node)
         if not context.is_logged_in:
             # The page has all that a logged-out visitor sees, including the first posts for get_posts().
