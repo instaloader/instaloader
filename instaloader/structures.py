@@ -409,20 +409,42 @@ class Post:
 
     def _obtain_metadata(self):
         if not self._full_metadata_dict:
-            resp = self._context.doc_id_graphql_query(
-                "27128499623469141",
-                {
-                    "shortcode": self.shortcode,
-                    "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
-                },
-                # As the logged-out web app does.
-                web_api=not self._context.is_logged_in,
-            )
-            web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
-            items = web_info.get("items")
-            if not items:
-                raise BadResponseException("Fetching Post metadata failed.")
-            self._full_metadata_dict = Post._normalize_post_data(items[0])
+            if not self._context.is_logged_in:
+                # Instagram rate-limits/rejects anonymous api/graphql queries for
+                # xdt_api__v1__media__shortcode__web_info (error 1675004), so load
+                # the post data embedded in its public web page instead.
+                page = self._context.get_page_data(f"p/{self.shortcode}/")
+                polaris_media = next(
+                    (data["xig_polaris_media"] for data in page if data.get("xig_polaris_media")),
+                    None,
+                )
+                if not polaris_media:
+                    raise BadResponseException("Fetching Post metadata failed.")
+                media = polaris_media.get("if_not_gated_logged_out")
+                if not media:
+                    raise LoginRequiredException(f"Login required to access post {self.shortcode}.")
+                if isinstance(media.get("user"), dict):
+                    media = dict(
+                        media,
+                        user={
+                            k: v for k, v in media["user"].items()
+                            if k != "polaris_ordered_timeline_connection"
+                        },
+                    )
+                self._full_metadata_dict = Post._normalize_post_data(media)
+            else:
+                resp = self._context.doc_id_graphql_query(
+                    "27128499623469141",
+                    {
+                        "shortcode": self.shortcode,
+                        "__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider": False,
+                    },
+                )
+                web_info = (resp.get("data") or {}).get("xdt_api__v1__media__shortcode__web_info") or {}
+                items = web_info.get("items")
+                if not items:
+                    raise BadResponseException("Fetching Post metadata failed.")
+                self._full_metadata_dict = Post._normalize_post_data(items[0])
             if self.shortcode != self._full_metadata_dict['shortcode']:
                 self._node.update(self._full_metadata_dict)
                 raise PostChangedException
